@@ -37,7 +37,7 @@ schema:
       type: object
       description: ''
       default: null
-      format: resource-c_kobo_server
+      format: resource-c_kobo_account
       originalType: string
   required:
     - kobo_server

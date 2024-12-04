@@ -14,7 +14,7 @@ from psycopg2 import errors
 
 # type names that refer to Windmill Resources
 postgresql = dict
-c_kobo_server = dict
+c_kobo_account = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,14 +26,14 @@ def conninfo(db: postgresql):
 
 
 def main(
-    kobo_server: c_kobo_server,
+    kobo_account: c_kobo_account,
     form_id: str,
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/frizzle-persistent-storage/datalake",
 ):
-    kobo_server_base_url = kobo_server["server"]["base_url"]
-    kobo_api_key = kobo_server["api_key"]
+    kobo_server_base_url = kobo_account["server"]["base_url"]
+    kobo_api_key = kobo_account["api_key"]
     forms = fetch_kobo_forms(kobo_server_base_url, kobo_api_key, [form_id])
     logger.info(f"Found {len(forms)} matching form(s)")
 
