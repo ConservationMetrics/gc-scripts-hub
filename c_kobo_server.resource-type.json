@@ -1,0 +1,68 @@
+{
+    "type": "object",
+    "order": [
+        "server",
+        "api_key"
+    ],
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [],
+    "properties": {
+        "server": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "order": [
+                        "base_url"
+                    ],
+                    "title": "https://kf.kobotoolbox.org",
+                    "required": [
+                        "base_url"
+                    ],
+                    "properties": {
+                        "label": {
+                            "enum": [
+                                "https://kf.kobotoolbox.org"
+                            ],
+                            "type": "string"
+                        },
+                        "base_url": {
+                            "type": "string",
+                            "default": "https://kf.kobotoolbox.org",
+                            "disabled": true,
+                            "nullable": false,
+                            "description": ""
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "https://kobo.humanitarianresponse.info",
+                    "required": [
+                        "base_url"
+                    ],
+                    "properties": {
+                        "label": {
+                            "enum": [
+                                "https://kobo.humanitarianresponse.info"
+                            ],
+                            "type": "string"
+                        },
+                        "base_url": {
+                            "type": "string",
+                            "default": "https://kobo.humanitarianresponse.info",
+                            "disabled": true,
+                            "nullable": false,
+                            "description": ""
+                        }
+                    }
+                }
+            ]
+        },
+        "api_key": {
+            "type": "string",
+            "default": "",
+            "description": ""
+        }
+    }
+}
