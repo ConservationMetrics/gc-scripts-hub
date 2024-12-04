@@ -15,6 +15,9 @@ from psycopg2 import errors
 # type names that refer to Windmill Resources
 postgresql = dict
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def conninfo(db: postgresql):
     """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
@@ -30,14 +33,14 @@ def main(
     kobo_server_base_url: str = "https://kf.kobotoolbox.org",
 ):
     forms = fetch_kobo_forms(kobo_server_base_url, kobo_api_key, [form_id])
-    logging.info(f"Found {len(forms)} matching form(s)")
+    logger.info(f"Found {len(forms)} matching form(s)")
 
     form_data = process_forms(kobo_server_base_url, kobo_api_key, forms, attachment_root)
-    logging.info(f"Downloaded {len(form_data)} submissions, including attachments")
+    logger.info(f"Downloaded {len(form_data)} submissions, including attachments")
 
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
     db_writer.handle_output(form_data)
-    logging.info(f"Wrote response content to database table [{db_table_name}]")
+    logger.info(f"Wrote response content to database table [{db_table_name}]")
 
 
 def fetch_kobo_forms(server_base_url, kobo_api_key, form_ids):
@@ -93,7 +96,6 @@ def process_forms(server_base_url, kobo_api_key, my_forms, attachment_root):
             if "_attachments" in result:
                 for attachment in result["_attachments"]:
                     if "download_url" in attachment:
-                        logging.info(attachment["download_url"])
                         response = requests.get(attachment["download_url"], headers=headers)
                         if response.status_code == 200:
                             file_name = attachment["filename"]
@@ -107,12 +109,12 @@ def process_forms(server_base_url, kobo_api_key, my_forms, attachment_root):
                             os.makedirs(os.path.dirname(save_path), exist_ok=True)
                             with open(save_path, "wb") as file:
                                 file.write(response.content)
-                            logging.info("Download completed.")
+                            logger.debug("Download completed: " + attachment["download_url"])
                         else:
                             # TODO: add retries
-                            logging.error("Failed downloading attachments.")
+                            logger.error("Failed downloading attachments.")
         submissions = current_form_data
-        logging.info(
+        logger.info(
             f"Form {index + 1} (ID: {form_id}): Fetched {len(submissions)} submission(s)."
         )
     return form_data
@@ -239,7 +241,7 @@ class KoboDBWriter:
             """
             cursor.execute(query)
             conn.commit()
-            logging.info(f"Table {table_name}__columns created.")
+            logger.info(f"Table {table_name}__columns created.")
         cursor.execute(
             f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
         )
@@ -271,12 +273,12 @@ class KoboDBWriter:
                         """
                         cursor.execute(query)
                     except errors.UniqueViolation:
-                        logging.info(
+                        logger.info(
                             f"Skipping insert of mappings into {table_name}__columns due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
                         )
                         continue
                     except Exception as e:
-                        logging.error(
+                        logger.error(
                             f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}__columns: {e}"
                         )
                         raise
@@ -306,7 +308,7 @@ class KoboDBWriter:
                     CREATE TABLE public.{table_name} (
                         _id TEXT PRIMARY KEY);
                     """)
-                    logging.info(f"Table {table_name} created.")
+                    logger.info(f"Table {table_name} created.")
 
                 for sanitized_column in missing_columns:
                     # it's pkey of the table
@@ -318,12 +320,12 @@ class KoboDBWriter:
                         ADD COLUMN "{sanitized_column}" TEXT;
                         """)
                     except errors.DuplicateColumn:
-                        logging.error(
+                        logger.error(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
                         continue
                     except Exception as e:
-                        logging.error(
+                        logger.error(
                             f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
                         )
                         raise
@@ -392,20 +394,20 @@ class KoboDBWriter:
             sql = m
             missing_mappings[str(original)] = sql
 
-        logging.info(f"New incoming map keys missing from db: {len(missing_mappings)}")
+        logger.info(f"New incoming map keys missing from db: {len(missing_mappings)}")
 
         if missing_mappings:
             self._create_missing_mappings(table_name, missing_mappings)
             time.sleep(10)
 
-        logging.info(f"New incoming field keys missing from db: {len(missing_field_keys)}")
+        logger.info(f"New incoming field keys missing from db: {len(missing_field_keys)}")
 
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
             updated_fields = self._get_existing_cols(table_name)
             # assert updated_fields != existing_fields, "{table_name} fields have not been updated properly."
 
-        logging.info(f"Inserting {len(rows)} submissions into DB.")
+        logger.info(f"Inserting {len(rows)} submissions into DB.")
 
         for row, _ in rows:
             try:
@@ -420,19 +422,19 @@ class KoboDBWriter:
 
                 cursor.execute(insert_query, tuple(values))
             except errors.UniqueViolation:
-                logging.debug(
+                logger.debug(
                     f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."
                 )
                 conn.rollback()
                 continue
             except Exception as e:
-                logging.error(f"Error inserting data: {e}, {type(e).__name__}")
+                logger.error(f"Error inserting data: {e}, {type(e).__name__}")
                 conn.rollback()
 
             try:
                 conn.commit()
             except Exception as e:
-                logging.error(f"Error committing transaction: {e}")
+                logger.error(f"Error committing transaction: {e}")
                 conn.rollback()
 
         cursor.close()
