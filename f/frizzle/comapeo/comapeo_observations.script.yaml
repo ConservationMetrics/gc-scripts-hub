@@ -1,0 +1,52 @@
+summary: 'CoMapeo: Fetch Observations'
+description: 'This script fetches observations and attachments from the REST API of a CoMapeo archive server.'
+lock: '!inline f/frizzle/comapeo/comapeo_observations.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - comapeo_server_base_url
+    - comapeo_access_token
+    - comapeo_project_blocklist
+    - db
+    - db_table_prefix
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: "A path where CoMapeo attachments will be stored. Default is \"/frizzle-persistent-storage/datalake\"."
+      default: null
+      originalType: string
+    comapeo_access_token:
+      type: string
+      description: 'Your CoMapeo access token.'
+      default: null
+      originalType: string
+    comapeo_project_blocklist:
+      type: array
+      description: 'An optional blocklist of project IDs to exclude from fetching.'
+      default: []
+      items:
+        type: string
+      originalType: array
+    comapeo_server_base_url:
+      type: string
+      description: 'The base URL of a CoMapeo archive server.'
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: 'A PostgreSQL database connection.'
+      default: null
+      format: resource-postgresql
+    db_table_prefix:
+      type: string
+      description: 'A prefix to add to the names of the database tables created by this script. Default is \"comapeo\".'
+      default: null
+      originalType: string
+  required:
+    - db
+    - comapeo_server_base_url
+    - comapeo_access_token
