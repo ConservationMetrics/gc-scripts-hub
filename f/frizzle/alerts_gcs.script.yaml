@@ -1,23 +1,25 @@
 summary: ''
 description: ''
-lock: '!inline f/frizzle/kobo_responses.script.lock'
+lock: '!inline f/frizzle/alerts_gcs.script.lock'
 concurrency_time_window_s: 0
+has_preprocessor: false
 kind: script
+no_main_func: false
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - kobo_api_key
-    - kobo_server_base_url
-    - form_id
-    - db
-    - db_table_name
-    - attachment_root
+    - no_default
+    - name
+    - age
+    - obj
+    - l
+    - file_
   properties:
-    attachment_root:
+    alerts_bucket:
       type: string
       description: ''
-      default: /frizzle-persistent-storage/datalake
+      default: null
       originalType: string
     db:
       type: object
@@ -29,23 +31,17 @@ schema:
       description: ''
       default: null
       originalType: string
-    form_id:
+    destination_path:
       type: string
+      description: ''
+      default: /frizzle-persistent-storage/datalake/change_detection/alerts
+      originalType: string
+    territory_id:
+      type: integer
       description: ''
       default: null
-      originalType: string
-    kobo_api_key:
-      type: string
-      description: ''
-      default: null
-      originalType: string
-    kobo_server_base_url:
-      type: string
-      description: ''
-      default: 'https://kf.kobotoolbox.org'
-      originalType: string
   required:
-    - kobo_api_key
-    - form_id
+    - alerts_bucket
+    - territory_id
     - db
     - db_table_name
