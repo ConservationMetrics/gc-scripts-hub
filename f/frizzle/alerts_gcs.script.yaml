@@ -7,12 +7,11 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - no_default
-    - name
-    - age
-    - obj
-    - l
-    - file_
+    - gcp_service_acct
+    - alerts_bucket
+    - territory_id
+    - db
+    - db_table_name
   properties:
     alerts_bucket:
       type: string
