@@ -22,6 +22,14 @@ because otherwise Windmill tries to make the tests (as with ALL python files) in
 
 ### Development
 
+In Windmill, scripts and flows can be written in Python, TypeScript, Go, and a number of other languages.
+
+The `f/` directory is designated for storing code in a workspace, and will be used when synchronizing the contents of this repository with a server.
+
+Within the `f/` directory, we store code in directories that represent a specific set of tasks. For example, the `f/frizzle/` directory contains scripts for data ETL and pipelining tasks.
+
+For information on developing scripts, see the [Windmill Scripts quickstart](https://www.windmill.dev/docs/getting_started/scripts_quickstart).
+
 You may develop within Windmill's code editor, or locally.  Developing locally has the advantage
 of being able to run tests.
 
