@@ -1,0 +1,53 @@
+summary: ''
+description: ''
+lock: '!inline f/frizzle/kobo_responses.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - kobo_api_key
+    - kobo_server_base_url
+    - form_id
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: ''
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    form_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    kobo_api_key:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    kobo_server_base_url:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+  required:
+    - kobo_api_key
+    - kobo_server_base_url
+    - form_id
+    - db
+    - db_table_name
+    - attachment_root
