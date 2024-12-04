@@ -1,4 +1,4 @@
-summary: 'Fetch CoMapeo Observations'
+summary: 'CoMapeo: Fetch Observations'
 description: 'This script fetches observations and attachments from the REST API of a CoMapeo archive server.'
 lock: '!inline f/frizzle/comapeo/comapeo_observations.script.lock'
 concurrency_time_window_s: 0

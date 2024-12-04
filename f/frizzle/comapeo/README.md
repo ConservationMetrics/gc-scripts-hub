@@ -1,4 +1,4 @@
-# CoMapeo
+# CoMapeo: Fetch Observations
 
 This script fetches data from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
 
