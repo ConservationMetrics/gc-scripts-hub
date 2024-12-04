@@ -132,8 +132,7 @@ def sync_gcs_to_local(
         the (local) file names that were written.
 
     FIXME: Ensure dst_path exists before downloading files.
-    FIXME: sync, don't brute-force re-download files that already exist
-       - see https://github.com/ConservationMetrics/frizzle-sandbox/issues/169
+    FIXME: sync, don't brute-force re-download files that already exist - see #6
     """
     gcp_credential = Credentials.from_service_account_info(gcp_service_acct)
     storage_client = gcs.Client(
