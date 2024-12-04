@@ -17,6 +17,9 @@ Then push the code in this Git repo your workspace:
 
     wmill sync push --skip-variables
 
+Test files — those that end in `_test.py` — are excluded by `wmill.yml` from syncing to Windmill;
+because otherwise Windmill tries to make the tests (as with ALL python files) into bona-fide Windmill scripts.
+
 ### Development
 
 You may develop within Windmill's code editor, or locally.  Developing locally has the advantage
@@ -26,6 +29,22 @@ If you developed on the server, sync your remote changes into Git version contro
 
     wmill sync pull --skip-variables  # optionally add --raw to clobber your local repo
     # TODO: git add, commit, etc
+
+
+## Running Tests
+
+You can run tests using tox:
+
+    tox
+
+The virtual env for each script under test is defined according to the
+`«scriptname».script.lock` file that Windmill creates.  This means that you'll need to have
+Windmill create it, either by running the script being tested _at least once in Windmill itself_, or using the CLI:
+
+    wmill script generate-metadata
+
+For more about how Windmill chooses the package dependencies to go in these
+metadata/lock files, read https://www.windmill.dev/docs/advanced/imports#imports-in-python
 
 
 # Running Windmill
