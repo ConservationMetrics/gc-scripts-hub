@@ -1,5 +1,5 @@
-summary: ''
-description: ''
+summary: 'Kobo: Fetch Survey Responses'
+description: 'Uses KoboToolbox REST API to download all form submissions'
 lock: '!inline f/frizzle/kobo_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
