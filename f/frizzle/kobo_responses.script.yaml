@@ -7,7 +7,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - kobo_server
+    - kobo_account
     - form_id
     - db
     - db_table_name
@@ -33,14 +33,14 @@ schema:
       description: ''
       default: null
       originalType: string
-    kobo_server:
+    kobo_account:
       type: object
-      description: ''
+      description: 'A server and API key pair to connect to the Kobo form'
       default: null
       format: resource-c_kobo_account
       originalType: string
   required:
-    - kobo_server
+    - kobo_account
     - form_id
     - db
     - db_table_name
