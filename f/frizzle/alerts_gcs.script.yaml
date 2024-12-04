@@ -1,0 +1,50 @@
+summary: ''
+description: ''
+lock: '!inline f/frizzle/alerts_gcs.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - gcp_service_acct
+    - alerts_bucket
+    - territory_id
+    - db
+    - db_table_name
+  properties:
+    alerts_bucket:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: ''
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    destination_path:
+      type: string
+      description: ''
+      default: /frizzle-persistent-storage/datalake/change_detection/alerts
+      originalType: string
+    gcp_service_acct:
+      type: object
+      description: ''
+      default: null
+      format: resource-gcp_service_account
+    territory_id:
+      type: integer
+      description: ''
+      default: null
+  required:
+    - gcp_service_acct
+    - alerts_bucket
+    - territory_id
+    - db
+    - db_table_name
