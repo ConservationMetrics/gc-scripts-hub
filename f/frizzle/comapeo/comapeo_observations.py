@@ -197,9 +197,6 @@ def camel_to_snake(name):
 class CoMapeoDBWriter:
     """
     Converts unstructured CoMapeo observations data to structured SQL tables.
-
-    Methods:
-        __init__(db_connection_string, table_name): Initializes the CoMapeoDBWriter with the provided connection string and project to be used.
     """
 
     def __init__(self, db_connection_string, table_prefix):
