@@ -23,11 +23,11 @@ def conninfo(db: postgresql):
 
 def main(
     kobo_api_key: str,
-    kobo_server_base_url: str,
     form_id: str,
     db: postgresql,
     db_table_name: str,
-    attachment_root: str,
+    attachment_root: str = "/frizzle-persistent-storage/datalake",
+    kobo_server_base_url: str = "https://kf.kobotoolbox.org",
 ):
     forms = fetch_kobo_forms(kobo_server_base_url, kobo_api_key, [form_id])
     logging.info(f"Found {len(forms)} matching form(s)")

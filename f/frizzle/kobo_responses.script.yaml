@@ -17,7 +17,7 @@ schema:
     attachment_root:
       type: string
       description: ''
-      default: null
+      default: /frizzle-persistent-storage/datalake
       originalType: string
     db:
       type: object
@@ -42,12 +42,10 @@ schema:
     kobo_server_base_url:
       type: string
       description: ''
-      default: null
+      default: 'https://kf.kobotoolbox.org'
       originalType: string
   required:
     - kobo_api_key
-    - kobo_server_base_url
     - form_id
     - db
     - db_table_name
-    - attachment_root
