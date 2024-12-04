@@ -1,4 +1,5 @@
 # requirements:
+# google-auth
 # google-cloud~=0.34.0
 # google-cloud-storage~=2.13
 # pandas~=2.2
@@ -14,11 +15,13 @@ import uuid
 
 import pandas as pd
 import psycopg2
-from google.cloud import storage
+from google.cloud import storage as gcs
+from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import errors
 
 # type names that refer to Windmill Resources
+gcp_service_account = dict
 postgresql = dict
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +36,7 @@ def conninfo(db: postgresql):
 
 
 def main(
+    gcp_service_acct: gcp_service_account,
     alerts_bucket: str,
     territory_id: int,
     db: postgresql,
@@ -60,7 +64,11 @@ def main(
     """
     alerts_metadata_filename = "alerts_history.csv"
     downloaded_files = sync_gcs_to_local(
-        destination_path, alerts_bucket, territory_id, alerts_metadata_filename
+        destination_path,
+        gcp_service_acct,
+        alerts_bucket,
+        territory_id,
+        alerts_metadata_filename,
     )
     gjson_and_metas = process_files(
         destination_path, downloaded_files, territory_id, alerts_metadata_filename
@@ -102,7 +110,9 @@ def _get_tif_rel_filepath(blob_name, local_file_path, territory_id):
     return filepath
 
 
-def sync_gcs_to_local(dst_path, bucket_name, territory_id, alerts_metadata_filename):
+def sync_gcs_to_local(
+    dst_path, gcp_service_acct, bucket_name, territory_id, alerts_metadata_filename
+):
     """Download files from a GCS bucket to a local directory.
 
     Parameters
@@ -125,7 +135,10 @@ def sync_gcs_to_local(dst_path, bucket_name, territory_id, alerts_metadata_filen
     FIXME: sync, don't brute-force re-download files that already exist
        - see https://github.com/ConservationMetrics/frizzle-sandbox/issues/169
     """
-    storage_client = storage.Client()
+    gcp_credential = Credentials.from_service_account_info(gcp_service_acct)
+    storage_client = gcs.Client(
+        credentials=gcp_credential, project=gcp_service_acct["project_id"]
+    )
     bucket = storage_client.bucket(bucket_name)
 
     # List all files in the GCS bucket
