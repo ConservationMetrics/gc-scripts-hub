@@ -16,7 +16,7 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: "A path where CoMapeo attachments will be stored. Default is \"/frizzle-persistent-storage/datalake\"."
+      description: 'A path where CoMapeo attachments will be stored. Default is \"/frizzle-persistent-storage/datalake\".'
       default: null
       originalType: string
     comapeo_access_token:
