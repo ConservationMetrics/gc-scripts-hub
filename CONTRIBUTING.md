@@ -121,3 +121,6 @@ Developers can choose when in their workflow to apply Ruff formatting and lintin
 >          "editor.defaultFormatter": "charliermarsh.ruff"
 >      }
 >      ```
+
+Document Python code according to **[NumPy's documentation
+standard](https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard)**.
