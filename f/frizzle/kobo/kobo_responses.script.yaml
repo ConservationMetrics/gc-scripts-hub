@@ -1,14 +1,13 @@
-summary: ''
-description: ''
-lock: '!inline f/frizzle/kobo_responses.script.lock'
+summary: 'Kobo: Fetch Survey Responses'
+description: 'Uses KoboToolbox REST API to download all form submissions'
+lock: '!inline f/frizzle/kobo/kobo_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - kobo_api_key
-    - kobo_server_base_url
+    - kobotoolbox
     - form_id
     - db
     - db_table_name
@@ -34,18 +33,14 @@ schema:
       description: ''
       default: null
       originalType: string
-    kobo_api_key:
-      type: string
-      description: ''
+    kobotoolbox:
+      type: object
+      description: 'A server and API key pair to connect to the KoboToolbox form'
       default: null
-      originalType: string
-    kobo_server_base_url:
-      type: string
-      description: ''
-      default: 'https://kf.kobotoolbox.org'
+      format: resource-c_kobotoolbox_account
       originalType: string
   required:
-    - kobo_api_key
+    - kobotoolbox
     - form_id
     - db
     - db_table_name
