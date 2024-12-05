@@ -1,0 +1,26 @@
+{
+	"type": "object",
+	"order": [
+		"server_url",
+		"api_key"
+	],
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"required": [
+		"server_url"
+	],
+	"properties": {
+		"server_url": {
+			"type": "string",
+			"default": "",
+      "placeholder": "https://kf.kobotoolbox.org",
+			"pattern": "^(https?://)([^/]+)$",
+			"nullable": false,
+			"description": "The base URL of your KoboToolbox server"
+		},
+		"api_key": {
+			"type": "string",
+			"default": "",
+			"description": "In KoboToolbox, found under Account Settings > Security"
+		}
+	}
+}
