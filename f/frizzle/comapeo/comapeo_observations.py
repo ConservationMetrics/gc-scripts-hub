@@ -49,15 +49,12 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    attachment_failed = False
-
-    comapeo_data, attachment_failed = process_comapeo_data(
+    comapeo_data, attachment_failed = download_and_transform_comapeo_data(
         comapeo_server_base_url,
         comapeo_access_token,
         comapeo_projects,
         db_table_prefix,
         attachment_root,
-        attachment_failed,
     )
     logger.info(
         f"Downloaded {sum(len(observations) for observations in comapeo_data.values())} observations from {len(comapeo_data)} projects."
@@ -77,17 +74,31 @@ def main(
 def fetch_comapeo_projects(
     comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
 ):
+    """
+    Fetches a list of projects from the CoMapeo API, excluding any projects
+    specified in the blocklist.
+
+    Parameters
+    ----------
+    comapeo_server_base_url : str
+        The base URL of the CoMapeo server.
+    comapeo_access_token : str
+        The access token used for authenticating with the CoMapeo API.
+    comapeo_project_blocklist : list
+        A list of project IDs to be excluded from the fetched results.
+
+    Returns
+    -------
+    list
+        A list of dictionaries, each containing the 'project_id' and 'project_name'
+        of a project fetched from the CoMapeo API, excluding those in the blocklist.
+    """
+
     url = f"{comapeo_server_base_url}/projects"
     headers = {"Authorization": f"Bearer {comapeo_access_token}"}
     payload = {}
     logger.info("Fetching projects from CoMapeo API...")
     response = requests.request("GET", url, headers=headers, data=payload)
-
-    if response.status_code != 200:
-        logger.error(f"Unexpected status code: {response.status_code}")
-        raise ValueError(
-            f"Failed to fetch projects: {response.status_code} - {response.reason}"
-        )
 
     response.raise_for_status()
     results = response.json().get("data", [])
@@ -117,15 +128,17 @@ def fetch_comapeo_projects(
 )
 def download_attachment(url, headers, save_path):
     try:
+        logger.info("I am trying to download this attachment...")
         response = requests.get(url, headers=headers)
+        response.raise_for_status()
 
         content_type = response.headers.get("Content-Type", "")
         extension = mimetypes.guess_extension(content_type) or ""
 
         file_name = os.path.basename(url) + extension
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        with open(save_path, "wb") as file:
-            file.write(response.content)
+        with open(save_path, "wb") as f:
+            f.write(response.content)
         logger.info("Download completed.")
         return file_name
 
@@ -138,20 +151,46 @@ def camel_to_snake(name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
-def process_comapeo_data(
+def download_and_transform_comapeo_data(
     comapeo_server_base_url,
     comapeo_access_token,
     comapeo_projects,
     db_table_prefix,
     attachment_root,
-    attachment_failed,
 ):
+    """
+    Downloads and transforms CoMapeo project data from the API, converting it into a structured format and downloading any associated attachments.
+
+    Parameters
+    ----------
+    comapeo_server_base_url : str
+        The base URL of the CoMapeo server.
+    comapeo_access_token : str
+        The access token used for authenticating with the CoMapeo API.
+    comapeo_projects : list
+        A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
+    db_table_prefix : str
+        The prefix to be used for database table names.
+    attachment_root : str
+        The root directory where attachments will be saved.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - comapeo_data : dict
+            A dictionary where keys are project names and values are lists of observations.
+        - attachment_failed : bool
+            A flag indicating if any attachment downloads failed.
+    """
+
     comapeo_data = {}
+    attachment_failed = False
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
         sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
-        prefixed_project_name = f"{db_table_prefix}_{sanitized_project_name}"
+        final_project_name = f"{db_table_prefix + '_' if db_table_prefix else ''}{sanitized_project_name}"
 
         # Download the project data
         url = f"{comapeo_server_base_url}/projects/{project_id}/observations"
@@ -186,14 +225,14 @@ def process_comapeo_data(
                     f"[{observation['lon']}, {observation['lat']}]"
                 )
 
-            # Process tags
+            # Transform tags
             if "tags" in observation:
                 for key, value in observation["tags"].items():
                     new_key = key.replace("-", "_")
                     observation[new_key] = value
                 del observation["tags"]
 
-            # Process attachments
+            # Download attachments
             if "attachments" in observation:
                 filenames = []
                 for attachment in observation["attachments"]:
@@ -221,7 +260,7 @@ def process_comapeo_data(
                 observation["attachments"] = ", ".join(filenames)
 
         # Store observations in a dictionary with project_id as key
-        comapeo_data[prefixed_project_name] = current_project_data
+        comapeo_data[final_project_name] = current_project_data
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
@@ -314,7 +353,7 @@ class CoMapeoDBWriter:
 
     def handle_output(self, outputs):
         """
-        Processes CoMapeo data and inserts it into a PostgreSQL database. It iterates over each CoMapeo object, extracts relevant features and properties, and constructs SQL queries to insert these data into the database. After processing all features, it commits the transaction and closes the database connection.
+        Inserts CoMapeo project data into a PostgreSQL database. For each project, it checks the database schema and adds any missing fields. It then constructs and executes SQL insert queries to store the data in separate tables for each project. After processing all data, it commits the transaction and closes the database connection.
         """
         conn = self._get_conn()
         cursor = conn.cursor()
