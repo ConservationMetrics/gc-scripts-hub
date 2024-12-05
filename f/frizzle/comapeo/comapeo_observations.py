@@ -37,6 +37,14 @@ def main(
     comapeo_projects = fetch_comapeo_projects(
         comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
     )
+
+    # Run culminates in success if there were no projects returned by the API
+    if len(comapeo_projects) == 0:
+        logger.info(
+            "No projects fetched. Skipping data processing and database writing."
+        )
+        return
+
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
     comapeo_data = process_comapeo_data(
@@ -65,17 +73,15 @@ def fetch_comapeo_projects(
     logger.info("Fetching projects from CoMapeo API...")
     response = requests.request("GET", url, headers=headers, data=payload)
 
-    if response.status_code == 404:
-        logger.error(f"URL not found: {url}")
+    if response.status_code != 200:
+        logger.error(f"Unexpected status code: {response.status_code}")
         raise ValueError(
             f"Failed to fetch projects: {response.status_code} - {response.reason}"
         )
 
     response.raise_for_status()
     results = response.json().get("data", [])
-    # TODO: no projects fetched does not need to culminate as a job failure; it could simply mean there are no projects on the CoMapeo API
-    if not results:
-        raise ValueError(f"No projects were fetched: {response.json()}")
+
     comapeo_projects = [
         {
             "project_id": res.get("projectId"),
@@ -91,9 +97,6 @@ def fetch_comapeo_projects(
             for project in comapeo_projects
             if project["project_id"] not in comapeo_project_blocklist
         ]
-
-    if not comapeo_projects:
-        raise ValueError("No valid projects found.")
 
     return comapeo_projects
 
