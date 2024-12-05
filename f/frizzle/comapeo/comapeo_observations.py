@@ -1,16 +1,18 @@
 # requirements:
 # psycopg2-binary
 # requests~=2.32
+# retrying~=1.3
 
 import logging
+import mimetypes
 import os
 import re
 
 import psycopg2
-import requests
 from psycopg2 import errors
+import requests
 
-import mimetypes
+from retrying import retry
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -47,12 +49,15 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_data = process_comapeo_data(
+    attachment_failed = False
+
+    comapeo_data, attachment_failed = process_comapeo_data(
         comapeo_server_base_url,
         comapeo_access_token,
         comapeo_projects,
         db_table_prefix,
         attachment_root,
+        attachment_failed,
     )
     logger.info(
         f"Downloaded {sum(len(observations) for observations in comapeo_data.values())} observations from {len(comapeo_data)} projects."
@@ -64,6 +69,9 @@ def main(
     logging.info(
         f"Wrote response content to database table(s) with prefix [{db_table_prefix}]"
     )
+
+    if attachment_failed:
+        raise RuntimeError("Some attachments failed to download.")
 
 
 def fetch_comapeo_projects(
@@ -103,6 +111,30 @@ def fetch_comapeo_projects(
     return comapeo_projects
 
 
+@retry(
+    stop_max_attempt_number=3,
+    wait_exponential_multiplier=1000,
+    wait_exponential_max=3000,
+)
+def download_attachment(url, headers, save_path):
+    try:
+        response = requests.get(url, headers=headers)
+
+        content_type = response.headers.get("Content-Type", "")
+        extension = mimetypes.guess_extension(content_type) or ""
+
+        file_name = os.path.basename(url) + extension
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, "wb") as file:
+            file.write(response.content)
+        logger.info("Download completed.")
+        return file_name
+
+    except Exception as e:
+        logger.error(f"Exception during download: {e}")
+        return None
+
+
 def camel_to_snake(name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
@@ -113,6 +145,7 @@ def process_comapeo_data(
     comapeo_projects,
     db_table_prefix,
     attachment_root,
+    attachment_failed,
 ):
     comapeo_data = {}
     for index, project in enumerate(comapeo_projects):
@@ -131,7 +164,6 @@ def process_comapeo_data(
         response = requests.get(url, headers=headers)
         current_project_data = []
 
-        # TODO: add retries
         try:
             current_project_data = response.json().get("data", [])
         except requests.exceptions.JSONDecodeError:
@@ -168,36 +200,24 @@ def process_comapeo_data(
                 for attachment in observation["attachments"]:
                     if "url" in attachment:
                         logger.info(attachment["url"])
-                        response = requests.get(attachment["url"], headers=headers)
-                        if response.status_code == 200:
-                            content_type = response.headers.get("Content-Type", "")
-                            extension = mimetypes.guess_extension(content_type) or ""
-
-                            file_name = os.path.basename(attachment["url"]) + extension
-                            filenames.append(file_name)
-
-                            save_path = os.path.join(
+                        file_name = download_attachment(
+                            attachment["url"],
+                            headers,
+                            os.path.join(
                                 attachment_root,
                                 "comapeo",
                                 sanitized_project_name,
                                 "attachments",
-                                file_name,
-                            )
-                            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                            with open(save_path, "wb") as file:
-                                file.write(response.content)
-                            logger.info("Download completed.")
+                                os.path.basename(attachment["url"]),
+                            ),
+                        )
+                        if file_name is not None:
+                            filenames.append(file_name)
                         else:
-                            # TODO: add retries
-                            try:
-                                error_message = response.json().get(
-                                    "message", "Unknown error"
-                                )
-                            except requests.exceptions.JSONDecodeError:
-                                error_message = "No JSON response received."
                             logger.error(
-                                f"Failed downloading attachments. Error: {error_message}"
+                                f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
                             )
+                            attachment_failed = True
 
                 observation["attachments"] = ", ".join(filenames)
 
@@ -207,7 +227,7 @@ def process_comapeo_data(
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
         )
-    return comapeo_data
+    return comapeo_data, attachment_failed
 
 
 class CoMapeoDBWriter:
