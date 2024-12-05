@@ -48,15 +48,17 @@ def main(
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
     comapeo_data = process_comapeo_data(
-        comapeo_server_base_url, comapeo_access_token, comapeo_projects, attachment_root
+        comapeo_server_base_url,
+        comapeo_access_token,
+        comapeo_projects,
+        db_table_prefix,
+        attachment_root,
     )
     logger.info(
         f"Downloaded {sum(len(observations) for observations in comapeo_data.values())} observations from {len(comapeo_data)} projects."
     )
 
-    # TODO: During data processing, ensure table names are sanitized and constructed using db_table_prefix and project names, rather than delegating this task to the DB writer.
-
-    db_writer = CoMapeoDBWriter(conninfo(db), db_table_prefix)
+    db_writer = CoMapeoDBWriter(conninfo(db))
     db_writer.handle_output(comapeo_data)
 
     logging.info(
@@ -101,14 +103,23 @@ def fetch_comapeo_projects(
     return comapeo_projects
 
 
+def camel_to_snake(name):
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+
+
 def process_comapeo_data(
-    comapeo_server_base_url, comapeo_access_token, comapeo_projects, attachment_root
+    comapeo_server_base_url,
+    comapeo_access_token,
+    comapeo_projects,
+    db_table_prefix,
+    attachment_root,
 ):
     comapeo_data = {}
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
         sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
+        prefixed_project_name = f"{db_table_prefix}_{sanitized_project_name}"
 
         # Download the project data
         url = f"{comapeo_server_base_url}/projects/{project_id}/observations"
@@ -131,6 +142,12 @@ def process_comapeo_data(
         for observation in current_project_data:
             observation["project_name"] = project_name
             observation["project_id"] = project_id
+
+            # Convert keys from camelCase to snake_case
+            observation = {
+                ("docId" if k == "docId" else camel_to_snake(k)): v
+                for k, v in observation.items()
+            }
 
             # Create g__coordinates field
             if "lat" in observation and "lon" in observation:
@@ -185,7 +202,7 @@ def process_comapeo_data(
                 observation["attachments"] = ", ".join(filenames)
 
         # Store observations in a dictionary with project_id as key
-        comapeo_data[sanitized_project_name] = current_project_data
+        comapeo_data[prefixed_project_name] = current_project_data
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
@@ -193,21 +210,16 @@ def process_comapeo_data(
     return comapeo_data
 
 
-def camel_to_snake(name):
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-
-
 class CoMapeoDBWriter:
     """
     Converts unstructured CoMapeo observations data to structured SQL tables.
     """
 
-    def __init__(self, db_connection_string, table_prefix):
+    def __init__(self, db_connection_string):
         """
         Initializes the CoMapeoIOManager with the provided connection string and form response table to be used.
         """
         self.db_connection_string = db_connection_string
-        self.table_prefix = table_prefix
 
     def _get_conn(self):
         """
@@ -285,26 +297,13 @@ class CoMapeoDBWriter:
         """
         Processes CoMapeo data and inserts it into a PostgreSQL database. It iterates over each CoMapeo object, extracts relevant features and properties, and constructs SQL queries to insert these data into the database. After processing all features, it commits the transaction and closes the database connection.
         """
-        table_prefix = self.table_prefix
-
         conn = self._get_conn()
         cursor = conn.cursor()
 
         comapeo_projects = outputs
 
         for project_name, project_data in comapeo_projects.items():
-            sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
-            table_name = f"{table_prefix}_{sanitized_project_name}"
-
-            project_data = [
-                {
-                    ("docId" if k == "docId" else camel_to_snake(k)): v
-                    for k, v in entry.items()
-                }
-                for entry in project_data
-            ]
-
-            existing_fields = self._inspect_schema(table_name)
+            existing_fields = self._inspect_schema(project_name)
             rows = []
             for entry in project_data:
                 sanitized_entry = {
@@ -317,7 +316,7 @@ class CoMapeoDBWriter:
                 missing_field_keys.update(set(row.keys()).difference(existing_fields))
 
             if missing_field_keys:
-                self._create_missing_fields(table_name, missing_field_keys)
+                self._create_missing_fields(project_name, missing_field_keys)
 
             logger.info(f"Inserting {len(rows)} submissions into DB.")
 
@@ -333,12 +332,12 @@ class CoMapeoDBWriter:
                     ]
 
                     # Construct the insert query
-                    insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
+                    insert_query = f"INSERT INTO {project_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
 
                     cursor.execute(insert_query, tuple(values))
                 except errors.UniqueViolation:
                     logger.debug(
-                        f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                        f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
                     )
                     conn.rollback()
                     continue
