@@ -7,7 +7,7 @@ We use GitHub to host code, track issues, and accept pull requests.
 
 ## Git Branching
 
-**We build and release from the `main` branch, so code merged here should always be stable.**
+**We release from the `main` branch, so code merged here should always be stable.**
 
 Prefer short lived features branches.
 - Piecemeal progress towards broad code changes should merge to long-running branches until
