@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 import responses
+import testing.postgresql
 
 from f.frizzle.kobo.tests.assets import server_responses
 
@@ -48,4 +49,8 @@ def koboserver(mocked_responses):
 
 @pytest.fixture
 def pg_database():
-    return dict(dbname="", user="", password="", host="", port="")
+    db = testing.postgresql.Postgresql(port=7654)
+    dsn = db.dsn()
+    dsn["dbname"] = dsn.pop("database")
+    yield dsn
+    db.stop

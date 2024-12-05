@@ -1,3 +1,5 @@
+import psycopg2
+
 from f.frizzle.kobo.kobo_responses import main, sanitize
 
 
@@ -82,18 +84,21 @@ def test_sanitize_with_nesting():
 
 
 def test_script(koboserver, pg_database, tmp_path):
-    attachments = tmp_path / "attachments"
+    asset_storage = tmp_path / "datalake"
 
     main(
-        koboserver.account, koboserver.form_id, pg_database, "kobo_responses", tmp_path
+        koboserver.account,
+        koboserver.form_id,
+        pg_database,
+        "kobo_responses",
+        asset_storage,
     )
 
     # Attachments are saved to disk
-    assert (
-        attachments
-        / "cmi_admin_kobo_test/attachments/f7bef041e8624f09946bff05ee5cbd4b/5c408d9d-6a76-4fbb-bf4e-9ed8f8e3e382/1637241249813.jpg"
-    ).exists()
+    assert (asset_storage / "Arboles" / "attachments" / "1637241249813.jpg").exists()
 
-    # # Survey responses are written to a SQL Table
-    # engine = sqlalchemy.create_engine(f"sqlite:///{warehousedb}")
-    # assert sqlalchemy.inspect(engine).has_table("kobo_responses")
+    # Survey responses are written to a SQL Table
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM kobo_responses")
+            assert cursor.fetchone()[0] == 3
