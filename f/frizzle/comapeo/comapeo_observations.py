@@ -113,8 +113,7 @@ def fetch_comapeo_projects(
 
 @retry(
     stop_max_attempt_number=3,
-    wait_exponential_multiplier=1000,
-    wait_exponential_max=3000,
+    wait_exponential_multiplier=500,
 )
 def download_attachment(url, headers, save_path):
     try:
