@@ -1,4 +1,4 @@
-from f.frizzle.kobo_responses import sanitize
+from f.frizzle.kobo.kobo_responses import sanitize
 
 
 def test_sanitize():
