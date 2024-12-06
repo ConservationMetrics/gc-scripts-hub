@@ -3,9 +3,10 @@ from dataclasses import dataclass
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.frizzle.kobo.tests.assets import server_responses
+
+pytest_plugins = ["f.frizzle.tests.conftest"]
 
 
 @pytest.fixture
@@ -45,12 +46,3 @@ def koboserver(mocked_responses):
     )
 
     return KoboServer(dict(server_url=server_url, api_key="Callooh!Callay!"), form_id)
-
-
-@pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql(port=7654)
-    dsn = db.dsn()
-    dsn["dbname"] = dsn.pop("database")
-    yield dsn
-    db.stop
