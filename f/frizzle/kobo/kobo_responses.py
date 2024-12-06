@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def conninfo(db: postgresql):
     """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
-    return "dbname={dbname} user={user} password={password} host={host} port={port}".format(**db)
+    return " ".join(f"{k}={v}" for k, v in db.items())
 
 
 def main(
@@ -34,92 +34,72 @@ def main(
 ):
     kobo_server_base_url = kobotoolbox["server_url"]
     kobo_api_key = kobotoolbox["api_key"]
-    forms = fetch_kobo_forms(kobo_server_base_url, kobo_api_key, [form_id])
-    logger.info(f"Found {len(forms)} matching form(s)")
 
-    form_data = process_forms(kobo_server_base_url, kobo_api_key, forms, attachment_root)
-    logger.info(f"Downloaded {len(form_data)} submissions, including attachments")
+    form_data = download_form_and_attachments(
+        kobo_server_base_url, kobo_api_key, form_id, attachment_root
+    )
 
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
     db_writer.handle_output(form_data)
     logger.info(f"Wrote response content to database table [{db_table_name}]")
 
 
-def fetch_kobo_forms(server_base_url, kobo_api_key, form_ids):
-    my_forms = []
-    url = f"{server_base_url}/api/v2/assets.json"
-    headers = {"Authorization": f"Token {kobo_api_key}"}
-    payload = {}
-    response = requests.request("GET", url, headers=headers, data=payload)
-    response.raise_for_status()
-    results = response.json().get("results", [])
-    if not results:
-        raise ValueError(f"No forms were fetched: {response.json()}")
-    my_forms = {
-        "dataset_id": next(
-            (sanitize_form_name(res["name"]) for res in results if res.get("uid") in form_ids),
-            None,
-        ),
-        "dataset_name": next((res["name"] for res in results if res.get("uid") in form_ids), None),
-        "forms": [res for res in results if res.get("uid") in form_ids],
+def download_form_and_attachments(
+    server_base_url, kobo_api_key, form_id, attachment_root
+):
+    headers = {
+        "Authorization": f"Token {kobo_api_key}",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
     }
-    if len(my_forms["forms"]) != len(form_ids):
-        raise ValueError(
-            f"Did not find some form(s). It may be on a different server or accessible with a different API key: {[res.get('uid') for res in results]} != {form_ids}"
-        )
+    # First get the name of the form. You have to hit a different endpoint just for this.
+    form_uri = f"{server_base_url}/api/v2/assets/{form_id}/"
+    response = requests.get(form_uri, headers=headers)
+    response.raise_for_status()
+    data_uri = response.json()["data"]
+    form_name = response.json().get("name")
+    dataset_id = sanitize_form_name(form_name)
 
-    return my_forms
+    # Next download the form questions & metadata
+    # FIXME: need to paginate. Maximum results per page is 30000.
+    response = requests.get(data_uri, headers=headers)
+    response.raise_for_status()
 
+    all_submissions = response.json()["results"]
 
-def process_forms(server_base_url, kobo_api_key, my_forms, attachment_root):
-    result = {}
-    form_data = []
-    for index, form in enumerate(my_forms["forms"]):
-        form_id = form.get("uid")
-        # Download the form questions & metadata
-        url = f"{server_base_url}/api/v2/assets/{form_id}/data/"
-        headers = {
-            "Authorization": f"Token {kobo_api_key}",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-        }
+    for submission in all_submissions:
+        # Inject the form name/id to each submission.
+        # Thus these fields will be added as columns along with all the other submission info later on.
+        submission["dataset_name"] = form_name
+        submission["dataset_id"] = dataset_id
 
-        response = requests.get(url, headers=headers)
-        current_form_data = response.json()["results"]
-        # incorporate the dataset_name/id for each submission to be inserted in the same way as other fields later on
-        for submission in current_form_data:
-            submission["dataset_name"] = my_forms["dataset_name"]
-            submission["dataset_id"] = my_forms["dataset_id"]
-        form_data.append(current_form_data)
-        # TODO: store this in sql
-        data = response.json()
+        # If the result has attachments, download them.
+        if "_attachments" in submission:
+            for attachment in submission["_attachments"]:
+                if "download_url" in attachment:
+                    response = requests.get(attachment["download_url"], headers=headers)
+                    if response.status_code == 200:
+                        file_name = attachment["filename"]
+                        # ie. datalake/{dataset_id}/attachments/{files}
+                        save_path = os.path.join(
+                            attachment_root,
+                            dataset_id,
+                            "attachments",
+                            os.path.basename(file_name),
+                        )
+                        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                        with open(save_path, "wb") as file:
+                            file.write(response.content)
+                        logger.debug(
+                            "Download completed: " + attachment["download_url"]
+                        )
+                    else:
+                        # TODO: add retries
+                        logger.error("Failed downloading attachments.")
 
-        for result in data["results"]:
-            # Check if the result has attachments
-            if "_attachments" in result:
-                for attachment in result["_attachments"]:
-                    if "download_url" in attachment:
-                        response = requests.get(attachment["download_url"], headers=headers)
-                        if response.status_code == 200:
-                            file_name = attachment["filename"]
-                            # ie. datalake/{dataset_id}/attachments/{files}
-                            save_path = os.path.join(
-                                attachment_root,
-                                my_forms["dataset_id"],
-                                "attachments",
-                                os.path.basename(file_name),
-                            )
-                            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                            with open(save_path, "wb") as file:
-                                file.write(response.content)
-                            logger.debug("Download completed: " + attachment["download_url"])
-                        else:
-                            # TODO: add retries
-                            logger.error("Failed downloading attachments.")
-        submissions = current_form_data
-        logger.info(
-            f"Form {index + 1} (ID: {form_id}): Fetched {len(submissions)} submission(s)."
-        )
-    return form_data
+    logger.info(
+        f"[Form {form_id}] Downloaded {len(all_submissions)} submission(s), including attachments."
+    )
+    return all_submissions
 
 
 def sanitize_form_name(form_name):
@@ -334,11 +314,14 @@ class KoboDBWriter:
         finally:
             conn.close()
 
-    def handle_output(self, outputs):
+    def handle_output(self, all_submissions):
         """
-        Processes alerts metadata data from Dagster assets and inserts it into a PostgreSQL database. It iterates over each alerts metadata object, extracts relevant features and properties, and constructs SQL queries to insert these data into the database. After processing all features, it commits the transaction and closes the database connection.
+        Flattens kobo form submissions and inserts them into a PostgreSQL database.
+
+        Parameters
+        ----------
+        all_submissions : list of dict
         """
-        db_connection_string = self.db_connection_string
         table_name = self.table_name
 
         conn = self._get_conn()
@@ -349,11 +332,9 @@ class KoboDBWriter:
         incoming_columns_dict = {}
 
         rows = []
-        # There will always be only 1 single form to be processed
-        form = outputs[0]
         # Iterate over each submission to collect the full set of columns needed
         original_to_sql = {}
-        for submission in form:
+        for submission in all_submissions:
             sanitized_columns_dict, updated_columns_map = sanitize(
                 submission,
                 existing_columns_map,
