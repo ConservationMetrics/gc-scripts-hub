@@ -1,7 +1,6 @@
 # requirements:
 # psycopg2-binary
 # requests~=2.32
-# retrying~=1.3
 
 import logging
 import mimetypes
@@ -11,8 +10,6 @@ import re
 import psycopg2
 from psycopg2 import errors
 import requests
-
-from retrying import retry
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -122,13 +119,34 @@ def fetch_comapeo_projects(
     return comapeo_projects
 
 
-@retry(
-    stop_max_attempt_number=3,
-    wait_exponential_multiplier=500,
-)
 def download_attachment(url, headers, save_path):
+    """
+    Downloads a file from a specified URL and saves it to a given path.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the file to be downloaded.
+    headers : dict
+        A dictionary of HTTP headers to send with the request, such as authentication tokens.
+    save_path : str
+        The file system path where the downloaded file will be saved.
+
+    Returns
+    -------
+    str or None
+        The name of the file if the download is successful, or None if an error occurs.
+
+    Notes
+    -----
+    The function attempts to determine the file extension based on the 'Content-Type'
+    header of the HTTP response from the CoMapeo Server. If the 'Content-Type' is not recognized,
+    the file will be saved without an extension.
+
+    The function intentionally does not raise exceptions. Instead, it logs errors and returns None,
+    allowing the caller to handle the download failure gracefully.
+    """
     try:
-        logger.info("I am trying to download this attachment...")
         response = requests.get(url, headers=headers)
         response.raise_for_status()
 
