@@ -1,6 +1,11 @@
 import psycopg2
 
-from f.frizzle.comapeo.comapeo_observations import main
+from f.frizzle.comapeo.comapeo_observations import main, camel_to_snake
+
+
+def test_camel_to_snake():
+    assert camel_to_snake("animalType") == "animal_type"
+    assert camel_to_snake("Animal2Type") == "animal2_type"
 
 
 def test_script(comapeoserver, pg_database, tmp_path):
@@ -29,7 +34,7 @@ def test_script(comapeoserver, pg_database, tmp_path):
         with conn.cursor() as cursor:
             cursor.execute("""
                 SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
+                    SELECT FROM information_schema.tables
                     WHERE table_name = 'comapeo_river_mapping'
                 )
             """)
