@@ -8,7 +8,7 @@ pytest_plugins = ["f.frizzle.tests.conftest"]
 
 
 @pytest.fixture
-def gcs_service_client():
+def gcs_emulator_client():
     """Return a google.cloud.storage.Client against an GCS emulator running in tox-docker"""
     # See https://github.com/tox-dev/tox-docker?tab=readme-ov-file#configuration, `expose` option
     TOX_DOCKER_GCS_PORT = os.environ["TOX_DOCKER_GCS_PORT"]
@@ -25,4 +25,4 @@ def gcs_service_client():
 
     # Clean up: Delete all buckets
     for bucket in storage_client.list_buckets():
-        bucket.delete()
+        bucket.delete(force=True)
