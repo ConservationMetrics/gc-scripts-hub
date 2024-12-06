@@ -38,7 +38,7 @@ def comapeo_project_observations(uri, project_id):
                 "lon": 2.3522,
                 "attachments": [
                     {
-                        "url": f"{uri}/projects/{project_id}/attachments/doc_id_2/photo/capybara"
+                        "url": f"{uri}/projects/{project_id}/attachments/doc_id_2/photo/capybara.jpg"
                     }
                 ],
                 "tags": {

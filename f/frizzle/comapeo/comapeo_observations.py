@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 
 def conninfo(db: postgresql):
     """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
-    return "dbname={dbname} user={user} password={password} host={host} port={port}".format(
-        **db
-    )
+    return " ".join(f"{k}={v}" for k, v in db.items())
 
 
 def main(

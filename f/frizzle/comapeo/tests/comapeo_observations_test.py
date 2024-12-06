@@ -15,7 +15,7 @@ def test_script(comapeoserver, pg_database, tmp_path):
         comapeoserver.comapeo_server,
         comapeoserver.comapeo_project_blocklist,
         pg_database,
-        None,
+        "comapeo",
         asset_storage,
     )
 
