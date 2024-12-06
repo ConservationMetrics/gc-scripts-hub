@@ -3,14 +3,13 @@
 # requests~=2.32
 
 import logging
+import mimetypes
 import os
 import re
 
 import psycopg2
-import requests
 from psycopg2 import errors
-
-import mimetypes
+import requests
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -37,45 +36,70 @@ def main(
     comapeo_projects = fetch_comapeo_projects(
         comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
     )
+
+    # Run culminates in success if there were no projects returned by the API
+    if len(comapeo_projects) == 0:
+        logger.info(
+            "No projects fetched. Skipping data processing and database writing."
+        )
+        return
+
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_data = process_comapeo_data(
-        comapeo_server_base_url, comapeo_access_token, comapeo_projects, attachment_root
+    comapeo_data, attachment_failed = download_and_transform_comapeo_data(
+        comapeo_server_base_url,
+        comapeo_access_token,
+        comapeo_projects,
+        db_table_prefix,
+        attachment_root,
     )
     logger.info(
         f"Downloaded {sum(len(observations) for observations in comapeo_data.values())} observations from {len(comapeo_data)} projects."
     )
 
-    # TODO: During data processing, ensure table names are sanitized and constructed using db_table_prefix and project names, rather than delegating this task to the DB writer.
-
-    db_writer = CoMapeoDBWriter(conninfo(db), db_table_prefix)
+    db_writer = CoMapeoDBWriter(conninfo(db))
     db_writer.handle_output(comapeo_data)
 
     logging.info(
         f"Wrote response content to database table(s) with prefix [{db_table_prefix}]"
     )
 
+    if attachment_failed:
+        raise RuntimeError("Some attachments failed to download.")
+
 
 def fetch_comapeo_projects(
     comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
 ):
+    """
+    Fetches a list of projects from the CoMapeo API, excluding any projects
+    specified in the blocklist.
+
+    Parameters
+    ----------
+    comapeo_server_base_url : str
+        The base URL of the CoMapeo server.
+    comapeo_access_token : str
+        The access token used for authenticating with the CoMapeo API.
+    comapeo_project_blocklist : list
+        A list of project IDs to be excluded from the fetched results.
+
+    Returns
+    -------
+    list
+        A list of dictionaries, each containing the 'project_id' and 'project_name'
+        of a project fetched from the CoMapeo API, excluding those in the blocklist.
+    """
+
     url = f"{comapeo_server_base_url}/projects"
     headers = {"Authorization": f"Bearer {comapeo_access_token}"}
     payload = {}
     logger.info("Fetching projects from CoMapeo API...")
     response = requests.request("GET", url, headers=headers, data=payload)
 
-    if response.status_code == 404:
-        logger.error(f"URL not found: {url}")
-        raise ValueError(
-            f"Failed to fetch projects: {response.status_code} - {response.reason}"
-        )
-
     response.raise_for_status()
     results = response.json().get("data", [])
-    # TODO: no projects fetched does not need to culminate as a job failure; it could simply mean there are no projects on the CoMapeo API
-    if not results:
-        raise ValueError(f"No projects were fetched: {response.json()}")
+
     comapeo_projects = [
         {
             "project_id": res.get("projectId"),
@@ -92,20 +116,99 @@ def fetch_comapeo_projects(
             if project["project_id"] not in comapeo_project_blocklist
         ]
 
-    if not comapeo_projects:
-        raise ValueError("No valid projects found.")
-
     return comapeo_projects
 
 
-def process_comapeo_data(
-    comapeo_server_base_url, comapeo_access_token, comapeo_projects, attachment_root
+def download_attachment(url, headers, save_path):
+    """
+    Downloads a file from a specified URL and saves it to a given path.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the file to be downloaded.
+    headers : dict
+        A dictionary of HTTP headers to send with the request, such as authentication tokens.
+    save_path : str
+        The file system path where the downloaded file will be saved.
+
+    Returns
+    -------
+    str or None
+        The name of the file if the download is successful, or None if an error occurs.
+
+    Notes
+    -----
+    The function attempts to determine the file extension based on the 'Content-Type'
+    header of the HTTP response from the CoMapeo Server. If the 'Content-Type' is not recognized,
+    the file will be saved without an extension.
+
+    The function intentionally does not raise exceptions. Instead, it logs errors and returns None,
+    allowing the caller to handle the download failure gracefully.
+    """
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
+        content_type = response.headers.get("Content-Type", "")
+        extension = mimetypes.guess_extension(content_type) or ""
+
+        file_name = os.path.basename(url) + extension
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, "wb") as f:
+            f.write(response.content)
+        logger.info("Download completed.")
+        return file_name
+
+    except Exception as e:
+        logger.error(f"Exception during download: {e}")
+        return None
+
+
+def camel_to_snake(name):
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+
+
+def download_and_transform_comapeo_data(
+    comapeo_server_base_url,
+    comapeo_access_token,
+    comapeo_projects,
+    db_table_prefix,
+    attachment_root,
 ):
+    """
+    Downloads and transforms CoMapeo project data from the API, converting it into a structured format and downloading any associated attachments.
+
+    Parameters
+    ----------
+    comapeo_server_base_url : str
+        The base URL of the CoMapeo server.
+    comapeo_access_token : str
+        The access token used for authenticating with the CoMapeo API.
+    comapeo_projects : list
+        A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
+    db_table_prefix : str
+        The prefix to be used for database table names.
+    attachment_root : str
+        The root directory where attachments will be saved.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - comapeo_data : dict
+            A dictionary where keys are project names and values are lists of observations.
+        - attachment_failed : bool
+            A flag indicating if any attachment downloads failed.
+    """
+
     comapeo_data = {}
+    attachment_failed = False
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
         sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
+        final_project_name = f"{db_table_prefix + '_' if db_table_prefix else ''}{sanitized_project_name}"
 
         # Download the project data
         url = f"{comapeo_server_base_url}/projects/{project_id}/observations"
@@ -117,7 +220,6 @@ def process_comapeo_data(
         response = requests.get(url, headers=headers)
         current_project_data = []
 
-        # TODO: add retries
         try:
             current_project_data = response.json().get("data", [])
         except requests.exceptions.JSONDecodeError:
@@ -129,69 +231,59 @@ def process_comapeo_data(
             observation["project_name"] = project_name
             observation["project_id"] = project_id
 
+            # Convert keys from camelCase to snake_case
+            observation = {
+                ("docId" if k == "docId" else camel_to_snake(k)): v
+                for k, v in observation.items()
+            }
+
             # Create g__coordinates field
             if "lat" in observation and "lon" in observation:
                 observation["g__coordinates"] = (
                     f"[{observation['lon']}, {observation['lat']}]"
                 )
 
-            # Process tags
+            # Transform tags
             if "tags" in observation:
                 for key, value in observation["tags"].items():
                     new_key = key.replace("-", "_")
                     observation[new_key] = value
                 del observation["tags"]
 
-            # Process attachments
+            # Download attachments
             if "attachments" in observation:
                 filenames = []
                 for attachment in observation["attachments"]:
                     if "url" in attachment:
                         logger.info(attachment["url"])
-                        response = requests.get(attachment["url"], headers=headers)
-                        if response.status_code == 200:
-                            content_type = response.headers.get("Content-Type", "")
-                            extension = mimetypes.guess_extension(content_type) or ""
-
-                            file_name = os.path.basename(attachment["url"]) + extension
-                            filenames.append(file_name)
-
-                            save_path = os.path.join(
+                        file_name = download_attachment(
+                            attachment["url"],
+                            headers,
+                            os.path.join(
                                 attachment_root,
                                 "comapeo",
                                 sanitized_project_name,
                                 "attachments",
-                                file_name,
-                            )
-                            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                            with open(save_path, "wb") as file:
-                                file.write(response.content)
-                            logger.info("Download completed.")
+                                os.path.basename(attachment["url"]),
+                            ),
+                        )
+                        if file_name is not None:
+                            filenames.append(file_name)
                         else:
-                            # TODO: add retries
-                            try:
-                                error_message = response.json().get(
-                                    "message", "Unknown error"
-                                )
-                            except requests.exceptions.JSONDecodeError:
-                                error_message = "No JSON response received."
                             logger.error(
-                                f"Failed downloading attachments. Error: {error_message}"
+                                f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
                             )
+                            attachment_failed = True
 
                 observation["attachments"] = ", ".join(filenames)
 
         # Store observations in a dictionary with project_id as key
-        comapeo_data[sanitized_project_name] = current_project_data
+        comapeo_data[final_project_name] = current_project_data
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
         )
-    return comapeo_data
-
-
-def camel_to_snake(name):
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+    return comapeo_data, attachment_failed
 
 
 class CoMapeoDBWriter:
@@ -199,12 +291,11 @@ class CoMapeoDBWriter:
     Converts unstructured CoMapeo observations data to structured SQL tables.
     """
 
-    def __init__(self, db_connection_string, table_prefix):
+    def __init__(self, db_connection_string):
         """
         Initializes the CoMapeoIOManager with the provided connection string and form response table to be used.
         """
         self.db_connection_string = db_connection_string
-        self.table_prefix = table_prefix
 
     def _get_conn(self):
         """
@@ -280,28 +371,15 @@ class CoMapeoDBWriter:
 
     def handle_output(self, outputs):
         """
-        Processes CoMapeo data and inserts it into a PostgreSQL database. It iterates over each CoMapeo object, extracts relevant features and properties, and constructs SQL queries to insert these data into the database. After processing all features, it commits the transaction and closes the database connection.
+        Inserts CoMapeo project data into a PostgreSQL database. For each project, it checks the database schema and adds any missing fields. It then constructs and executes SQL insert queries to store the data in separate tables for each project. After processing all data, it commits the transaction and closes the database connection.
         """
-        table_prefix = self.table_prefix
-
         conn = self._get_conn()
         cursor = conn.cursor()
 
         comapeo_projects = outputs
 
         for project_name, project_data in comapeo_projects.items():
-            sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
-            table_name = f"{table_prefix}_{sanitized_project_name}"
-
-            project_data = [
-                {
-                    ("docId" if k == "docId" else camel_to_snake(k)): v
-                    for k, v in entry.items()
-                }
-                for entry in project_data
-            ]
-
-            existing_fields = self._inspect_schema(table_name)
+            existing_fields = self._inspect_schema(project_name)
             rows = []
             for entry in project_data:
                 sanitized_entry = {
@@ -314,7 +392,7 @@ class CoMapeoDBWriter:
                 missing_field_keys.update(set(row.keys()).difference(existing_fields))
 
             if missing_field_keys:
-                self._create_missing_fields(table_name, missing_field_keys)
+                self._create_missing_fields(project_name, missing_field_keys)
 
             logger.info(f"Inserting {len(rows)} submissions into DB.")
 
@@ -330,12 +408,12 @@ class CoMapeoDBWriter:
                     ]
 
                     # Construct the insert query
-                    insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
+                    insert_query = f"INSERT INTO {project_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
 
                     cursor.execute(insert_query, tuple(values))
                 except errors.UniqueViolation:
                     logger.debug(
-                        f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                        f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
                     )
                     conn.rollback()
                     continue
