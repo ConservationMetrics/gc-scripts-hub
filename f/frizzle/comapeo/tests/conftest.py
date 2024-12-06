@@ -56,6 +56,5 @@ def pg_database():
     db = testing.postgresql.Postgresql(port=7654)
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
-    dsn["password"] = ""
     yield dsn
     db.stop
