@@ -13,6 +13,7 @@ import requests
 
 # type names that refer to Windmill Resources
 postgresql = dict
+c_comapeo_server = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,16 +27,13 @@ def conninfo(db: postgresql):
 
 
 def main(
-    comapeo_server_base_url: str,
-    comapeo_access_token: str,
+    comapeo_server: c_comapeo_server,
     comapeo_project_blocklist: list,
     db: postgresql,
     db_table_prefix: str = "comapeo",
     attachment_root: str = "/frizzle-persistent-storage/datalake",
 ):
-    comapeo_projects = fetch_comapeo_projects(
-        comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
-    )
+    comapeo_projects = fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist)
 
     # Run culminates in success if there were no projects returned by the API
     if len(comapeo_projects) == 0:
@@ -47,8 +45,7 @@ def main(
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
     comapeo_data, attachment_failed = download_and_transform_comapeo_data(
-        comapeo_server_base_url,
-        comapeo_access_token,
+        comapeo_server,
         comapeo_projects,
         db_table_prefix,
         attachment_root,
@@ -68,19 +65,15 @@ def main(
         raise RuntimeError("Some attachments failed to download.")
 
 
-def fetch_comapeo_projects(
-    comapeo_server_base_url, comapeo_access_token, comapeo_project_blocklist
-):
+def fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist):
     """
     Fetches a list of projects from the CoMapeo API, excluding any projects
     specified in the blocklist.
 
     Parameters
     ----------
-    comapeo_server_base_url : str
-        The base URL of the CoMapeo server.
-    comapeo_access_token : str
-        The access token used for authenticating with the CoMapeo API.
+    comapeo_server: dict
+        A dictionary containing the 'server_url' and 'access_token' keys for the CoMapeo server.
     comapeo_project_blocklist : list
         A list of project IDs to be excluded from the fetched results.
 
@@ -91,8 +84,11 @@ def fetch_comapeo_projects(
         of a project fetched from the CoMapeo API, excluding those in the blocklist.
     """
 
-    url = f"{comapeo_server_base_url}/projects"
-    headers = {"Authorization": f"Bearer {comapeo_access_token}"}
+    server_url = comapeo_server["server_url"]
+    access_token = comapeo_server["access_token"]
+
+    url = f"{server_url}/projects"
+    headers = {"Authorization": f"Bearer {access_token}"}
     payload = {}
     logger.info("Fetching projects from CoMapeo API...")
     response = requests.request("GET", url, headers=headers, data=payload)
@@ -170,8 +166,7 @@ def camel_to_snake(name):
 
 
 def download_and_transform_comapeo_data(
-    comapeo_server_base_url,
-    comapeo_access_token,
+    comapeo_server,
     comapeo_projects,
     db_table_prefix,
     attachment_root,
@@ -181,10 +176,8 @@ def download_and_transform_comapeo_data(
 
     Parameters
     ----------
-    comapeo_server_base_url : str
-        The base URL of the CoMapeo server.
-    comapeo_access_token : str
-        The access token used for authenticating with the CoMapeo API.
+    comapeo_server : dict
+        A dictionary containing the 'server_url' and 'access_token' keys for the CoMapeo server.
     comapeo_projects : list
         A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
     db_table_prefix : str
@@ -202,6 +195,9 @@ def download_and_transform_comapeo_data(
             A flag indicating if any attachment downloads failed.
     """
 
+    server_url = comapeo_server["server_url"]
+    access_token = comapeo_server["access_token"]
+
     comapeo_data = {}
     attachment_failed = False
     for index, project in enumerate(comapeo_projects):
@@ -211,9 +207,9 @@ def download_and_transform_comapeo_data(
         final_project_name = f"{db_table_prefix + '_' if db_table_prefix else ''}{sanitized_project_name}"
 
         # Download the project data
-        url = f"{comapeo_server_base_url}/projects/{project_id}/observations"
+        url = f"{server_url}/projects/{project_id}/observations"
         headers = {
-            "Authorization": f"Bearer {comapeo_access_token}",
+            "Authorization": f"Bearer {access_token}",
         }
 
         logger.info(f"Fetching project {index + 1} (ID: {project_id})...")
