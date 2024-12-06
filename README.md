@@ -17,7 +17,7 @@ Then push the code in this Git repo your workspace:
 
     wmill sync push --skip-variables
 
-Test files — those that end in `_test.py` — are excluded by `wmill.yml` from syncing to Windmill;
+Folders named `./tests/` are excluded by `wmill.yml` from syncing to Windmill —
 because otherwise Windmill tries to make the tests (as with ALL python files) into bona-fide Windmill scripts.
 
 ### Development
