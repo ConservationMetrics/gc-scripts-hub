@@ -7,8 +7,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - comapeo_server_base_url
-    - comapeo_access_token
+    - comapeo
     - comapeo_project_blocklist
     - db
     - db_table_prefix
@@ -19,10 +18,11 @@ schema:
       description: 'A path where CoMapeo attachments will be stored. Default is \"/frizzle-persistent-storage/datalake\".'
       default: null
       originalType: string
-    comapeo_access_token:
-      type: string
-      description: 'Your CoMapeo access token.'
+    comapeo:
+      type: object
+      description: 'A server URL and access token pair to connect to a CoMapeo archive server.'
       default: null
+      format: resource-c_comapeo_server
       originalType: string
     comapeo_project_blocklist:
       type: array
@@ -48,5 +48,4 @@ schema:
       originalType: string
   required:
     - db
-    - comapeo_server_base_url
-    - comapeo_access_token
+    - comapeo
