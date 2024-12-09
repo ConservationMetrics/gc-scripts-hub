@@ -83,7 +83,7 @@ def test_sanitize_with_nesting():
     }
 
 
-def test_script(koboserver, pg_database, tmp_path):
+def test_script_e2e(koboserver, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
