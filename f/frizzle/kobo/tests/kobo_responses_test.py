@@ -1,4 +1,6 @@
-from f.frizzle.kobo.kobo_responses import sanitize
+import psycopg2
+
+from f.frizzle.kobo.kobo_responses import main, sanitize
 
 
 def test_sanitize():
@@ -11,7 +13,9 @@ def test_sanitize():
     }
     global_mapping = {"x": "X"}
 
-    sql_message, updated_global_mapping = sanitize(message, global_mapping, "/", [("/", "__")])
+    sql_message, updated_global_mapping = sanitize(
+        message, global_mapping, "/", [("/", "__")]
+    )
     assert sql_message == {
         "col1": 1,
         "col2": 2,
@@ -77,3 +81,24 @@ def test_sanitize_with_nesting():
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",
     }
+
+
+def test_script_e2e(koboserver, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+
+    main(
+        koboserver.account,
+        koboserver.form_id,
+        pg_database,
+        "kobo_responses",
+        asset_storage,
+    )
+
+    # Attachments are saved to disk
+    assert (asset_storage / "Arboles" / "attachments" / "1637241249813.jpg").exists()
+
+    # Survey responses are written to a SQL Table
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM kobo_responses")
+            assert cursor.fetchone()[0] == 3
