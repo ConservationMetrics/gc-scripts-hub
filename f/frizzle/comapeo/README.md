@@ -2,28 +2,6 @@
 
 This script fetches observations and attachments from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified local directory.
 
-## Configuration
-
-#### `comapeo_server` (required)
-
-A dictionary containing a server URL and access token key pair to connect to a CoMapeo Archive Server.
-
-#### `attachment_root` (optional, default: "/frizzle-persistent-storage/datalake")
-
-A path where CoMapeo attachments will be stored. Attachment files (e.g., photos and audio) will be stored in the following directory schema: `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
-
-#### `comapeo_project_blocklist` (optional)
-
-An optional blocklist of project IDs to exclude from fetching.
-
-#### `db` (required)
-
-A dictionary containing the database connection parameters for storing tabular data.
-
-#### `db_table_prefix` (optional, default: "comapeo")
-
-This is a prefix added to the database table names created by this script. For each project, the observation data is stored in a table with this prefix. For instance, if `db_table_prefix` is "comapeo" and the project `name` is "My Mapeo Project", the script will create a Postgres table named `comapeo_my_mapeo_project`. If no prefix is provided, the table name will simply be the project `name` without a preceding underscore, such as `my_mapeo_project`.
-
 ## Endpoints
 
 The request header must include an access token in the format: Authorized: Bearer <token>.
