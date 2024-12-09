@@ -70,7 +70,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
     yield storage_client
 
 
-def test_script(pg_database, mock_alerts_storage_client, tmp_path):
+def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     _main(

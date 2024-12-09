@@ -55,7 +55,12 @@ def main(
 
 
 def _main(
-    storage_client, alerts_bucket, territory_id, db, db_table_name, destination_path
+    storage_client: gcs.Client,
+    alerts_bucket: str,
+    territory_id: int,
+    db: postgresql,
+    db_table_name: str,
+    destination_path: str,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
