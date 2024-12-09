@@ -1,12 +1,12 @@
 # Kobo: Fetch Survey Responses
 
-Uses KoboToolbox REST API to download all form submissions.
+This script fetches form submissions from the KoboToolbox REST API, transforms the data for SQL compatibility, and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified local directory.
 
 ## Configuration
 
 #### `kobotoolbox` (required)
 
-A server and API key pair to connect to the KoboToolbox form.
+A dictionary containing a server URL and API key pair to connect to the KoboToolbox account.
 
 #### `form_id` (required)
 
@@ -14,7 +14,7 @@ The unique identifier of the form to fetch submissions from.
 
 #### `db` (required)
 
-A PostgreSQL database connection.
+A dictionary containing the database connection parameters for storing tabular data.
 
 #### `db_table_name` (required)
 

@@ -1,16 +1,12 @@
 # CoMapeo: Fetch Observations
 
-This script fetches observations and attachments from the REST API of a CoMapeo archive server, which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
+This script fetches observations and attachments from the REST API of a CoMapeo archive server, which stores data from multiple CoMapeo projects. Each project contains observation data and attachments. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified local directory.
 
 ## Configuration
 
-#### `comapeo_server_base_url` (required)
+#### `comapeo_server` (required)
 
-The base URL of a CoMapeo archive server.
-
-#### `comapeo_access_token` (required)
-
-Your CoMapeo access token.
+A dictionary containing a server URL and access token key pair to connect to a CoMapeo Archive Server.
 
 #### `attachment_root` (optional, default: "/frizzle-persistent-storage/datalake")
 
@@ -22,7 +18,7 @@ An optional blocklist of project IDs to exclude from fetching.
 
 #### `db` (required)
 
-A PostgreSQL database connection.
+A dictionary containing the database connection parameters for storing tabular data.
 
 #### `db_table_prefix` (optional, default: "comapeo")
 
