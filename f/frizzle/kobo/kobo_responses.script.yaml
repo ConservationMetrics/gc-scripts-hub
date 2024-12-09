@@ -15,27 +15,27 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: ''
+      description: 'A path where KoboToolbox attachments will be stored. Attachment files will be stored in the following directory schema: `{attachment_root}/{dataset_id}/attachments/{filename}`'
       default: /frizzle-persistent-storage/datalake
       originalType: string
     db:
       type: object
-      description: ''
+      description: 'A database connection for storing tabular data.'
       default: null
       format: resource-postgresql
     db_table_name:
       type: string
-      description: ''
+      description: 'The name of the database table where the form data will be stored.'
       default: null
       originalType: string
     form_id:
       type: string
-      description: ''
+      description: 'The unique identifier of the form to fetch submissions from.'
       default: null
       originalType: string
     kobotoolbox:
       type: object
-      description: 'A server and API key pair to connect to the KoboToolbox form'
+      description: 'A server and API key pair to connect to the KoboToolbox account'
       default: null
       format: resource-c_kobotoolbox_account
       originalType: string
