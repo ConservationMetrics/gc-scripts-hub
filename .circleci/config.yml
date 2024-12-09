@@ -21,5 +21,11 @@ jobs:
           args: tox~=4.18
           pypi-cache: false
       - run:
+          # If we want to get rid of this step, convert our scripts to use
+          # SqlAlchemy so tests would use SQLite.
+          name: Install PostgreSQL server to test against
+          command: |
+            sudo apt-get update && sudo apt-get install postgresql
+      - run:
           name: Run tests
           command: tox -- -v
