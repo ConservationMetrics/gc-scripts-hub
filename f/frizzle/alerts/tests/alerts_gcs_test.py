@@ -2,11 +2,11 @@ import logging
 import os
 
 import google.api_core.exceptions
+import psycopg2
 import pytest
 
 from f.frizzle.alerts.alerts_gcs import _main
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MOCK_BUCKET_NAME = "test-bucket"
@@ -26,13 +26,12 @@ def mock_alerts_storage_client(gcs_emulator_client):
     def upload_blob(bucket, source_file_name, destination_blob_name):
         blob = bucket.blob(destination_blob_name)
         blob.upload_from_filename(source_file_name)
-        logger.warning(f"Uploaded {source_file_name} -> {destination_blob_name}")
+        logger.info(f"Uploaded {source_file_name} -> {destination_blob_name}")
 
-    def upload_string_blob(bucket, string_data, destination_blob_name):
-        logger.warning("BBB")
+    def upload_text_blob(bucket, s, destination_blob_name):
         blob = bucket.blob(destination_blob_name)
-        blob.upload_from_string(string_data)
-        logger.info(f"Uploaded string data -> {destination_blob_name}")
+        blob.upload_from_string(s)
+        logger.info(f"Uploaded text blob -> {destination_blob_name}")
 
     def verify_blob_exists(bucket, blob_name):
         blob = bucket.blob(blob_name)
@@ -81,3 +80,25 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
         "fake_alerts",
         asset_storage,
     )
+
+    # Alerts are written to a SQL Table
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM fake_alerts")
+            assert cursor.fetchone()[0] == 3
+
+    for basename in (
+        "S1_T0_202309900112345671",
+        "S1_T1_202309900112345671",
+        "S2_T0_202309900112345671",
+        "S2_T1_202309900112345671",
+    ):
+        # Attachments are saved to disk
+        # file naming format: <territory_id>/<year_detec>/<month_detec>/<alert_id>/images/<filename>.tif
+        assert (
+            asset_storage / "100/2023/09/202309900112345671/images" / f"{basename}.tif"
+        ).exists()
+        # Attachments are also converted to JPG
+        assert (
+            asset_storage / "100/2023/09/202309900112345671/images" / f"{basename}.jpg"
+        ).exists()
