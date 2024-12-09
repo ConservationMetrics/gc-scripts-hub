@@ -1,10 +1,32 @@
 # CoMapeo: Fetch Observations
 
-This script fetches data from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
+This script fetches observations and attachments from the REST API of a CoMapeo archive server, which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
 
-The script requires the following configuration values: `comapeo_server_base_url`, `comapeo_access_token`, `attachment_root`, and an optional `comapeo_project_blocklist`. Additionally, the IO manager requires a `db` Postgres resource and `db_table_prefix`.
+## Configuration
 
-For each project, the observations data is stored in a table prefixed by `table_prefix`. For example, with a `table_prefix` of "comapeo" and a `name` of "My Mapeo Project", this script will create a Postgres table named `comapeo_my_mapeo_project`. Attachment files (e.g. photos and audio) will be stored in the following directory schema: `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
+#### `comapeo_server_base_url` (required)
+
+The base URL of a CoMapeo archive server.
+
+#### `comapeo_access_token` (required)
+
+Your CoMapeo access token.
+
+#### `attachment_root` (optional, default: "/frizzle-persistent-storage/datalake")
+
+A path where CoMapeo attachments will be stored. Attachment files (e.g., photos and audio) will be stored in the following directory schema: `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
+
+#### `comapeo_project_blocklist` (optional)
+
+An optional blocklist of project IDs to exclude from fetching.
+
+#### `db` (required)
+
+A PostgreSQL database connection.
+
+#### `db_table_prefix` (optional, default: "comapeo")
+
+This is a prefix added to the database table names created by this script. For each project, the observation data is stored in a table with this prefix. For instance, if `db_table_prefix` is "comapeo" and the project `name` is "My Mapeo Project", the script will create a Postgres table named `comapeo_my_mapeo_project`. If no prefix is provided, the table name will simply be the project `name` without a preceding underscore, such as `my_mapeo_project`.
 
 ## Endpoints
 
