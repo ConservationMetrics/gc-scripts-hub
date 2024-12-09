@@ -1,5 +1,5 @@
 summary: 'Alerts: Fetch alerts from Google Cloud Storage'
-description: 'Download new remote-sensing alerts put into GCS by a partner'
+description: Download new remote-sensing alerts put into GCS by a partner
 lock: '!inline f/frizzle/alerts/alerts_gcs.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -12,35 +12,45 @@ schema:
     - territory_id
     - db
     - db_table_name
+    - destination_path
   properties:
     alerts_bucket:
       type: string
-      description: ''
+      description: The name of the Google Cloud Storage bucket where the alerts are stored.
       default: null
       originalType: string
     db:
       type: object
-      description: ''
+      description: The database connection parameters for storing tabular data.
       default: null
       format: resource-postgresql
     db_table_name:
       type: string
-      description: ''
+      description: The name of the database table where alerts will be stored.
       default: null
       originalType: string
     destination_path:
       type: string
-      description: ''
+      description: >-
+        A string specifying the local directory path where files will be
+        downloaded and processed.
       default: /frizzle-persistent-storage/datalake/change_detection/alerts
       originalType: string
     gcp_service_acct:
       type: object
-      description: ''
+      description: >-
+        Google Cloud service account credentials. This should reference the
+        contents of a `service.json` file provided by the alerts publisher. For
+        more information on setting up and retrieving GCP credentials, see:
+        https://cloud.google.com/docs/authentication/provide-credentials-adc#on-prem
       default: null
       format: resource-gcp_service_account
     territory_id:
       type: integer
-      description: ''
+      description: >-
+        The territory ID (areas of interest) for which change detection alerts
+        will be retrieved. This ID is used to filter and process relevant
+        alerts.
       default: null
   required:
     - gcp_service_acct
