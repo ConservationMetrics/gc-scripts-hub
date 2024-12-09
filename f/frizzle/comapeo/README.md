@@ -1,6 +1,6 @@
 # CoMapeo: Fetch Observations
 
-This script fetches observations and attachments from the REST API of a CoMapeo archive server, which stores data from multiple CoMapeo projects. Each project contains observation data and attachments. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified local directory.
+This script fetches observations and attachments from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified local directory.
 
 ## Configuration
 
