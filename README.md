@@ -56,6 +56,11 @@ Windmill create it, either by running the script being tested _at least once in 
 For more about how Windmill chooses the package dependencies to go in these
 metadata/lock files, read https://www.windmill.dev/docs/advanced/imports#imports-in-python
 
+It also means that `tox` creates different environments for each "folder" of scripts.
+To run tests for only one folder, specify the folder as an `-e «environment»` CLI arg:
+
+    tox -e alerts
+
 
 # Running Windmill
 
