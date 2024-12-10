@@ -1,6 +1,6 @@
 # Google Cloud Alerts Change Detection Integration
 
-This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it downloads the images and saves them to a specified local directory, and converts several images to JPG.
+This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory.
 
 ## API Queries
 
@@ -26,4 +26,11 @@ Change detection alert files are currently stored on GCP in this format:
 <territory_id>/raster/<year_detec>/<month_detec>/<sat_viz_prefix>_T1_<id>.tif
 ```
 
-Currently, we are assuming there to be only four raster files for each change detection alert: a 'before' and 'after' GeoTIFF used for detection and visualization, respectively
+Currently, we are assuming there to be only four raster images for each change detection alert: a 'before' and 'after' used for detection and visualization, respectively.  Each of these is saved in both TIFF and JPEG format in the following way:
+
+```
+100/raster/2023/09/S1_T0_202309900112345671.tif
+100/raster/2023/09/S1_T1_202309900112345671.tif
+100/raster/2023/09/S2_T0_202309900112345671.tif
+100/raster/2023/09/S2_T1_202309900112345671.tif
+```
