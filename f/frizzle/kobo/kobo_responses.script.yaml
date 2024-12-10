@@ -1,5 +1,5 @@
 summary: 'Kobo: Fetch Survey Responses'
-description: 'Uses KoboToolbox REST API to download all form submissions'
+description: Uses KoboToolbox REST API to download all form submissions
 lock: '!inline f/frizzle/kobo/kobo_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -15,27 +15,30 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: 'A path where KoboToolbox attachments will be stored. Attachment files will be stored in the following directory schema: `{attachment_root}/{dataset_id}/attachments/{filename}`'
+      description: >-
+        A path where KoboToolbox attachments will be stored. Attachment
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{dataset_id}/attachments/{filename}`
       default: /frizzle-persistent-storage/datalake
       originalType: string
     db:
       type: object
-      description: 'A database connection for storing tabular data.'
+      description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
     db_table_name:
       type: string
-      description: 'The name of the database table where the form data will be stored.'
+      description: The name of the database table where the form data will be stored.
       default: null
       originalType: string
     form_id:
       type: string
-      description: 'The unique identifier of the form to fetch submissions from.'
+      description: The unique identifier of the form to fetch submissions from.
       default: null
       originalType: string
     kobotoolbox:
       type: object
-      description: 'A server and API key pair to connect to the KoboToolbox account'
+      description: A server and API key pair to connect to the KoboToolbox account
       default: null
       format: resource-c_kobotoolbox_account
       originalType: string
