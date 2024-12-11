@@ -24,7 +24,7 @@ jobs:
           # SqlAlchemy so tests would use SQLite.
           name: Install PostgreSQL server to test against
           command: |
-            sudo apt-get update && sudo apt-get install postgresql
+            apt-get update && apt-get install postgresql
       - setup_remote_docker
       - run:
           name: Run tests
