@@ -8,7 +8,7 @@ def test_camel_to_snake():
     assert camel_to_snake("Animal2Type") == "animal2_type"
 
 
-def test_script(comapeoserver, pg_database, tmp_path):
+def test_script_e2e(comapeoserver, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
