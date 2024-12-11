@@ -10,9 +10,8 @@ workflows:
 
 jobs:
   test:
-    executor:
-      name: python/default
-      tag: "3.13"
+    docker:
+      - image: python:3.13
     steps:
       - checkout
       - python/install-packages:
@@ -26,6 +25,7 @@ jobs:
           name: Install PostgreSQL server to test against
           command: |
             sudo apt-get update && sudo apt-get install postgresql
+      - setup_remote_docker
       - run:
           name: Run tests
           command: tox -- -v
