@@ -44,10 +44,32 @@ def main(
     db_table_name: str,
     destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
 ):
+    """
+    Wrapper around _main() that instantiates the GCP client.
+    """
+    gcp_credential = Credentials.from_service_account_info(gcp_service_acct)
+    storage_client = gcs.Client(
+        credentials=gcp_credential, project=gcp_service_acct["project_id"]
+    )
+
+    return _main(
+        storage_client, alerts_bucket, territory_id, db, db_table_name, destination_path
+    )
+
+
+def _main(
+    storage_client: gcs.Client,
+    alerts_bucket: str,
+    territory_id: int,
+    db: postgresql,
+    db_table_name: str,
+    destination_path: str,
+):
     """Download alerts to warehouse storage and index them in a database.
 
     Parameters
     ----------
+    storage_client : google.cloud.storage.Client
     alerts_bucket : str
         The name of the GCS bucket containing alerts.
     territory_id : int
@@ -64,9 +86,10 @@ def main(
     None
     """
     alerts_metadata_filename = "alerts_history.csv"
+
     downloaded_files = sync_gcs_to_local(
         destination_path,
-        gcp_service_acct,
+        storage_client,
         alerts_bucket,
         territory_id,
         alerts_metadata_filename,
@@ -112,7 +135,7 @@ def _get_tif_rel_filepath(blob_name, local_file_path, territory_id):
 
 
 def sync_gcs_to_local(
-    dst_path, gcp_service_acct, bucket_name, territory_id, alerts_metadata_filename
+    dst_path, storage_client, bucket_name, territory_id, alerts_metadata_filename
 ):
     """Download files from a GCS bucket to a local directory.
 
@@ -120,6 +143,7 @@ def sync_gcs_to_local(
     ----------
     dst_path : str
         The local directory where files will be downloaded.
+    storage_client : google.cloud.storage.Client
     bucket_name : str
         The name of the GCS bucket to download from.
     territory_id : int
@@ -135,10 +159,6 @@ def sync_gcs_to_local(
     FIXME: Ensure dst_path exists before downloading files.
     FIXME: sync, don't brute-force re-download files that already exist - see #6
     """
-    gcp_credential = Credentials.from_service_account_info(gcp_service_acct)
-    storage_client = gcs.Client(
-        credentials=gcp_credential, project=gcp_service_acct["project_id"]
-    )
     bucket = storage_client.bucket(bucket_name)
 
     # List all files in the GCS bucket

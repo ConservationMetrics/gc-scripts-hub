@@ -3,6 +3,12 @@ version: 2.1
 orbs:
   python: circleci/python@3.0.0
 
+executors:
+  machine-executor:
+    machine:
+      # https://circleci.com/docs/2.0/configuration-reference/#available-machine-images
+      image: ubuntu-2404:current
+
 workflows:
   run-tests:
     jobs:
@@ -10,22 +16,24 @@ workflows:
 
 jobs:
   test:
-    executor:
-      name: python/default
-      tag: "3.13"
+    resource_class: medium
+    # machine executor is required to expose ports in tox-docker:
+    # https://circleci.com/docs/2.0/building-docker-images/#mounting-folders
+    executor: machine-executor
+
     steps:
       - checkout
       - python/install-packages:
           pkg-manager: pip
           pip-dependency-file: ""
-          args: tox~=4.18
+          args: tox~=4.18 tox-docker~=5.0
           pypi-cache: false
       - run:
           # If we want to get rid of this step, convert our scripts to use
           # SqlAlchemy so tests would use SQLite.
           name: Install PostgreSQL server to test against
           command: |
-            sudo apt-get update && sudo apt-get install postgresql
+            sudo apt-get update && sudo apt-get install --yes postgresql
       - run:
           name: Run tests
           command: tox -- -v
