@@ -34,13 +34,18 @@ def conninfo(db: postgresql):
 
 
 def main(
-    comapeo_server: comapeo_server,
+    comapeo: comapeo_server,
     comapeo_project_blocklist: list,
     db: postgresql,
     db_table_prefix: str = "comapeo",
     attachment_root: str = "/frizzle-persistent-storage/datalake",
 ):
-    comapeo_projects = fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist)
+    server_url = comapeo["server_url"]
+    access_token = comapeo["access_token"]
+
+    comapeo_projects = fetch_comapeo_projects(
+        server_url, access_token, comapeo_project_blocklist
+    )
 
     # Run culminates in success if there were no projects returned by the API
     if len(comapeo_projects) == 0:
@@ -52,7 +57,8 @@ def main(
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
     comapeo_data, attachment_failed = download_and_transform_comapeo_data(
-        comapeo_server,
+        server_url,
+        access_token,
         comapeo_projects,
         db_table_prefix,
         attachment_root,
@@ -72,7 +78,7 @@ def main(
         raise RuntimeError("Some attachments failed to download.")
 
 
-def fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist):
+def fetch_comapeo_projects(server_url, access_token, comapeo_project_blocklist):
     """
     Fetches a list of projects from the CoMapeo API, excluding any projects
     specified in the blocklist.
@@ -90,9 +96,6 @@ def fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist):
         A list of dictionaries, each containing the 'project_id' and 'project_name'
         of a project fetched from the CoMapeo API, excluding those in the blocklist.
     """
-
-    server_url = comapeo_server["server_url"]
-    access_token = comapeo_server["access_token"]
 
     url = f"{server_url}/projects"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -173,7 +176,8 @@ def camel_to_snake(name):
 
 
 def download_and_transform_comapeo_data(
-    comapeo_server,
+    server_url,
+    access_token,
     comapeo_projects,
     db_table_prefix,
     attachment_root,
@@ -201,9 +205,6 @@ def download_and_transform_comapeo_data(
         - attachment_failed : bool
             A flag indicating if any attachment downloads failed.
     """
-
-    server_url = comapeo_server["server_url"]
-    access_token = comapeo_server["access_token"]
 
     comapeo_data = {}
     attachment_failed = False

@@ -19,17 +19,13 @@ schema:
         A path where CoMapeo attachments will be stored. Attachment files (e.g.,
         photos and audio) will be stored in the following directory schema: 
         `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
-      default: null
+      default: /frizzle-persistent-storage/datalake
       originalType: string
     comapeo:
       type: object
       description: A server URL and access token pair to connect to a CoMapeo archive server.
-    comapeo:
-      type: object
-      description: 'A server URL and access token pair to connect to a CoMapeo archive server.'
       default: null
-      format: resource-c_comapeo_server
-      originalType: string
+      format: resource-comapeo_server
     comapeo_project_blocklist:
       type: array
       description: An optional blocklist of project IDs to exclude from fetching.
@@ -53,7 +49,7 @@ schema:
         `comapeo_my_mapeo_project`. If no prefix is provided, the table name will 
         simply be the project `name` without a preceding underscore, such as 
         `my_mapeo_project`.
-      default: null
+      default: comapeo
       originalType: string
   required:
     - db
