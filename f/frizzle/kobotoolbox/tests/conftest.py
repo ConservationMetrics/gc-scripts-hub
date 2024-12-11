@@ -5,7 +5,7 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.frizzle.kobo.tests.assets import server_responses
+from f.frizzle.kobotoolbox.tests.assets import server_responses
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def koboserver(mocked_responses):
         account: dict
         form_id: str
 
-    server_url = "http://kobo.example.org"
+    server_url = "http://kobotoolbox.example.org"
     form_id = "mimsyweretheborogoves"
     form_name = "Arboles"
 
@@ -39,7 +39,7 @@ def koboserver(mocked_responses):
     )
     mocked_responses.get(
         re.compile(rf"{server_url}/api/v2/assets/{form_id}/data/\d+/attachments/\d+/?"),
-        body=open("f/frizzle/kobo/tests/assets/trees.png", "rb").read(),
+        body=open("f/frizzle/kobotoolbox/tests/assets/trees.png", "rb").read(),
         content_type="image/png",
         headers={"Content-Length": "3632"},
     )

@@ -1,5 +1,5 @@
 summary: 'CoMapeo: Fetch Observations'
-description: 'This script fetches observations and attachments from the REST API of a CoMapeo archive server.'
+description: This script fetches observations and attachments from the REST API of a CoMapeo archive server.
 lock: '!inline f/frizzle/comapeo/comapeo_observations.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -15,9 +15,15 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: 'A path where CoMapeo attachments will be stored. Default is \"/frizzle-persistent-storage/datalake\".'
+      description: >-
+        A path where CoMapeo attachments will be stored. Attachment files (e.g.,
+        photos and audio) will be stored in the following directory schema: 
+        `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
       default: null
       originalType: string
+    comapeo:
+      type: object
+      description: A server URL and access token pair to connect to a CoMapeo archive server.
     comapeo:
       type: object
       description: 'A server URL and access token pair to connect to a CoMapeo archive server.'
@@ -26,24 +32,27 @@ schema:
       originalType: string
     comapeo_project_blocklist:
       type: array
-      description: 'An optional blocklist of project IDs to exclude from fetching.'
+      description: An optional blocklist of project IDs to exclude from fetching.
       default: []
       items:
         type: string
       originalType: array
-    comapeo_server_base_url:
-      type: string
-      description: 'The base URL of a CoMapeo archive server.'
-      default: null
-      originalType: string
     db:
       type: object
-      description: 'A PostgreSQL database connection.'
+      description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
     db_table_prefix:
       type: string
-      description: 'A prefix to add to the names of the database tables created by this script. Default is \"comapeo\".'
+      description: >-
+        This is a prefix added to the database table names created by this script.
+        For each project, the observation data is stored in a table with this 
+        prefix. 
+        For instance, if `db_table_prefix` is "comapeo" and the project `name` is
+        "My Mapeo Project", the script will create a Postgres table named 
+        `comapeo_my_mapeo_project`. If no prefix is provided, the table name will 
+        simply be the project `name` without a preceding underscore, such as 
+        `my_mapeo_project`.
       default: null
       originalType: string
   required:
