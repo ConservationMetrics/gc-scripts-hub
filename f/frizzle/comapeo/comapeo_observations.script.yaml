@@ -24,6 +24,9 @@ schema:
     comapeo:
       type: object
       description: A server URL and access token pair to connect to a CoMapeo archive server.
+    comapeo:
+      type: object
+      description: 'A server URL and access token pair to connect to a CoMapeo archive server.'
       default: null
       format: resource-c_comapeo_server
       originalType: string
@@ -54,5 +57,4 @@ schema:
       originalType: string
   required:
     - db
-    - comapeo_server_base_url
     - comapeo
