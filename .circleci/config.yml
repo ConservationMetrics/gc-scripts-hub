@@ -3,6 +3,12 @@ version: 2.1
 orbs:
   python: circleci/python@3.0.0
 
+executors:
+  machine-executor:
+    machine:
+      # https://circleci.com/docs/2.0/configuration-reference/#available-machine-images
+      image: ubuntu-2404:current
+
 workflows:
   run-tests:
     jobs:
@@ -10,8 +16,11 @@ workflows:
 
 jobs:
   test:
-    docker:
-      - image: python:3.13
+    resource_class: medium
+    # machine executor is required to expose ports in tox-docker:
+    # https://circleci.com/docs/2.0/building-docker-images/#mounting-folders
+    executor: machine-executor
+
     steps:
       - checkout
       - python/install-packages:
@@ -24,8 +33,7 @@ jobs:
           # SqlAlchemy so tests would use SQLite.
           name: Install PostgreSQL server to test against
           command: |
-            apt-get update && apt-get install --yes postgresql
-      - setup_remote_docker
+            sudo apt-get update && sudo apt-get install --yes postgresql
       - run:
           name: Run tests
           command: tox -- -v
