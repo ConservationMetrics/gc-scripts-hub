@@ -1,0 +1,6 @@
+territory_id,type_alert,month,year,total_alerts,description_alerts,confidence
+100,001,09,2023,84,fake_alert,1
+100,001,10,2023,9,fake_alert,0
+100,001,11,2023,3,fake_alert,0
+100,001,12,2022,3,fake_alert,0
+100,001,01,2024,0,fake_alert,1
