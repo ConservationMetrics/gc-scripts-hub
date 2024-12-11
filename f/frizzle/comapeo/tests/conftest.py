@@ -6,6 +6,7 @@ import responses
 import testing.postgresql
 
 from f.frizzle.comapeo.tests.assets import server_responses
+from f.frizzle.comapeo.comapeo_observations import comapeo_server
 
 
 @pytest.fixture
@@ -45,8 +46,10 @@ def comapeoserver(mocked_responses):
         headers={"Content-Length": "11044"},
     )
 
+    server: comapeo_server = dict(server_url=server_url, access_token=access_token)
+
     return CoMapeoServer(
-        dict(server_url=server_url, access_token=access_token),
+        server,
         comapeo_project_blocklist,
     )
 

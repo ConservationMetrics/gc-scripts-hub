@@ -6,6 +6,7 @@ import logging
 import mimetypes
 import os
 import re
+from typing import TypedDict
 
 import psycopg2
 from psycopg2 import errors
@@ -13,7 +14,12 @@ import requests
 
 # type names that refer to Windmill Resources
 postgresql = dict
-c_comapeo_server = dict
+
+
+class comapeo_server(TypedDict):
+    server_url: str
+    access_token: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,7 +34,7 @@ def conninfo(db: postgresql):
 
 
 def main(
-    comapeo_server: c_comapeo_server,
+    comapeo_server: comapeo_server,
     comapeo_project_blocklist: list,
     db: postgresql,
     db_table_prefix: str = "comapeo",
@@ -73,8 +79,8 @@ def fetch_comapeo_projects(comapeo_server, comapeo_project_blocklist):
 
     Parameters
     ----------
-    comapeo_server: dict
-        A dictionary containing the 'server_url' and 'access_token' keys for the CoMapeo server.
+    server: comapeo_server
+        For authenticating with the CoMapeo API
     comapeo_project_blocklist : list
         A list of project IDs to be excluded from the fetched results.
 
