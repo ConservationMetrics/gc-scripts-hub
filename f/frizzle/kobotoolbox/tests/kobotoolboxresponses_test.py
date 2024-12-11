@@ -1,6 +1,6 @@
 import psycopg2
 
-from f.frizzle.kobo.kobo_responses import main, sanitize
+from f.frizzle.kobotoolbox.kobotoolbox_responses import main, sanitize
 
 
 def test_sanitize():
