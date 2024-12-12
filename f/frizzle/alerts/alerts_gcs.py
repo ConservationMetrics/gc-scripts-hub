@@ -18,7 +18,7 @@ import psycopg2
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
-from psycopg2 import errors
+from psycopg2 import errors, sql
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
@@ -365,26 +365,12 @@ class AlertsDBWriter:
         """
         return psycopg2.connect(dsn=self.db_connection_string)
 
-    def _table_exists(self, cursor, table_name):
-        cursor.execute(
-            """
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = %s
-        );
-        """,
-            (table_name,),
-        )
-        return cursor.fetchone()[0]
-
     def _create_metadata_cols(self, metadata, table_name):
         metadata_table_name = f"{table_name}__metadata"
 
         with self._get_conn() as conn, conn.cursor() as cursor:
-            if not self._table_exists(cursor, metadata_table_name):
-                query = f"""
-                CREATE TABLE {metadata_table_name} (
+            query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {metadata_table_name} (
                     territory_id text NOT NULL,
                     type_alert text NOT NULL,
                     month text NOT NULL,
@@ -396,48 +382,45 @@ class AlertsDBWriter:
                     source text,
                     alert_source text
                 );
-                """
-                cursor.execute(query)
-                conn.commit()
-                logger.info(f"Table {metadata_table_name} created.")
+                """).format(metadata_table_name=sql.Identifier(metadata_table_name))
+            cursor.execute(query)
+            conn.commit()
 
     def _create_alerts_table(self, table_name):
         with self._get_conn() as conn, conn.cursor() as cursor:
-            if not self._table_exists(cursor, table_name):
-                query = f"""
-                CREATE TABLE {table_name}
-                (
-                    _id character varying(36) NOT NULL,
-                    -- These are found in "properties" of an alert Feature:
-                    alert_type text,
-                    area_alert_ha double precision,
-                    basin_id bigint,
-                    count bigint,
-                    date_end_t0 text,
-                    date_end_t1 text,
-                    date_start_t0 text,
-                    date_start_t1 text,
-                    grid bigint,
-                    label bigint,
-                    month_detec text,
-                    sat_detect_prefix text,
-                    sat_viz_prefix text,
-                    satellite text,
-                    territory_id bigint,
-                    territory_name text,
-                    year_detec text,
-                    length_alert_km double precision,  -- only present for linestring
-                    -- Deconstruct the "geometry" of a Feature:
-                    g__type text,
-                    g__coordinates text,
-                    -- Added by us
-                    source text,
-                    alert_source text
-                );
-                """
-                cursor.execute(query)
-                conn.commit()
-                logger.info(f"Table {table_name} created.")
+            query = sql.SQL("""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
+                _id character varying(36) NOT NULL,
+                -- These are found in "properties" of an alert Feature:
+                alert_type text,
+                area_alert_ha double precision,
+                basin_id bigint,
+                count bigint,
+                date_end_t0 text,
+                date_end_t1 text,
+                date_start_t0 text,
+                date_start_t1 text,
+                grid bigint,
+                label bigint,
+                month_detec text,
+                sat_detect_prefix text,
+                sat_viz_prefix text,
+                satellite text,
+                territory_id bigint,
+                territory_name text,
+                year_detec text,
+                length_alert_km double precision,  -- only present for linestring
+                -- Deconstruct the "geometry" of a Feature:
+                g__type text,
+                g__coordinates text,
+                -- Added by us
+                source text,
+                alert_source text
+            );
+            """).format(table_name=sql.Identifier(table_name))
+            cursor.execute(query)
+            conn.commit()
 
     def handle_output(self, geojsons, metadatas):
         """

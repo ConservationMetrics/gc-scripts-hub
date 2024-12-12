@@ -9,8 +9,8 @@ import re
 from typing import TypedDict
 
 import psycopg2
-from psycopg2 import errors
 import requests
+from psycopg2 import errors, sql
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -314,54 +314,40 @@ class CoMapeoDBWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            (table_name,),
         )
         columns = [row[0] for row in cursor.fetchall()]
         cursor.close()
         conn.close()
         return columns
 
-    def _table_exists(self, cursor, table_name):
-        """
-        Checks if the given table exists in the database.
-        """
-        cursor.execute(
-            """
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public'
-          AND table_name = %s
-        );
-        """,
-            (table_name,),
-        )
-        return cursor.fetchone()[0]
-
     def _create_missing_fields(self, table_name, missing_columns):
         """
         Generates and executes SQL statements to add missing fields to the table.
         """
+        table_name = sql.Identifier(table_name)
         try:
             with self._get_conn() as conn, conn.cursor() as cursor:
-                # Check if the table exists and create it if it doesn't
-                if not self._table_exists(cursor, table_name):
-                    cursor.execute(f"""
-                    CREATE TABLE public.{table_name} (
-                        _id TEXT PRIMARY KEY);
-                    """)
-                    logger.info(f"Table {table_name} created.")
+                query = sql.SQL(
+                    "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
+                ).format(table_name=table_name)
+                cursor.execute(query)
 
                 for sanitized_column in missing_columns:
                     # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
-                        cursor.execute(f"""
-                        ALTER TABLE {table_name} 
-                        ADD COLUMN "{sanitized_column}" TEXT;
-                        """)
+                        query = sql.SQL(
+                            "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
+                        ).format(
+                            table_name=table_name,
+                            colname=sql.Identifier(sanitized_column),
+                        )
+                        cursor.execute(query)
                     except errors.DuplicateColumn:
-                        logger.error(
+                        logger.debug(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
                         continue
