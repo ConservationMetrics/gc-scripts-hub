@@ -35,6 +35,19 @@ def main(
 
 
 def fetch_data_from_postgres(db_connection_string, table_name: str):
+    """
+    Fetches all data from a specified PostgreSQL table.
+
+    Parameters
+    ----------
+        db_connection_string (str): The connection string for the PostgreSQL database.
+        table_name (str): The name of the table to fetch data from.
+
+    Returns
+    -------
+        tuple: A tuple containing a list of column names and a list of rows fetched from the table.
+    """
+
     try:
         conn = psycopg2.connect(db_connection_string)
         cursor = conn.cursor()
@@ -43,7 +56,7 @@ def fetch_data_from_postgres(db_connection_string, table_name: str):
         rows = cursor.fetchall()
     except psycopg2.Error as e:
         logger.error(f"Error fetching data from {table_name}: {e}")
-        return None, None
+        raise
     finally:
         cursor.close()
         conn.close()
@@ -56,12 +69,15 @@ def format_data_as_geojson(data):
     """
     Converts data from a PostgreSQL table into a GeoJSON FeatureCollection.
 
-    Args:
+    Parameters
+    ----------
         data (tuple): A tuple containing columns and rows fetched from the database.
 
-    Returns:
+    Returns
+    -------
         dict: A GeoJSON FeatureCollection with features extracted from the data.
     """
+
     columns, rows = data
     features = []
     for row in rows:
@@ -99,6 +115,16 @@ def format_data_as_geojson(data):
 
 
 def save_file(data, db_table_name: str, storage_path: str):
+    """
+    Saves the provided data as a GeoJSON file in the specified storage path.
+
+    Parameters
+    ----------
+        data (dict): The data to be saved, formatted as a GeoJSON FeatureCollection.
+        db_table_name (str): The name of the database table, used to name the output file.
+        storage_path (str): The directory path where the GeoJSON file will be saved.
+    """
+
     try:
         os.makedirs(storage_path, exist_ok=True)
         geojson_path = os.path.join(storage_path, f"{db_table_name}.geojson")
