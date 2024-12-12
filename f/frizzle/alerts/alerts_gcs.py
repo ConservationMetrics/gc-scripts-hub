@@ -432,9 +432,7 @@ class AlertsDBWriter:
                     g__coordinates text,
                     -- Added by us
                     source text,
-                    alert_source text,
-                    -- Unused, TODO remove
-                    geom GEOMETRY
+                    alert_source text
                 );
                 """
                 cursor.execute(query)
@@ -465,7 +463,6 @@ class AlertsDBWriter:
                         try:
                             source = geojson["source"]
                             alert_source = geojson["alert_source"]
-                            geom = json.dumps(feature["geometry"])
                             if "properties" in feature:
                                 properties_str = json.dumps(feature["properties"])
                                 properties = json.loads(properties_str)
@@ -491,6 +488,7 @@ class AlertsDBWriter:
                             territory_id = properties.get("territory_id")
                             territory_name = properties.get("territory_name")
                             year_detec = properties.get("year_detec")
+                            # In lieu of, say, PostGIS, use `g__*` columns to represent the Feature's geometry.
                             g__type = feature["geometry"].get("type")
                             g__coordinates = json.dumps(
                                 feature["geometry"]["coordinates"]
@@ -498,10 +496,9 @@ class AlertsDBWriter:
                             length_alert_km = properties.get("length_alert_km")
 
                             # Inserting data into the alerts table
-                            query = f""" INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, geom, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s); """
+                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s); """
 
                             # Execute the query
-                            # `g__*` columns are for backward compatibility and are redundant with `geom` column
                             cursor.execute(
                                 query,
                                 (
@@ -524,7 +521,6 @@ class AlertsDBWriter:
                                     territory_name,
                                     year_detec,
                                     source,
-                                    geom,
                                     g__type,
                                     g__coordinates,
                                     length_alert_km,
