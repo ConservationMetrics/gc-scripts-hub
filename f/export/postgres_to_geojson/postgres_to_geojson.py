@@ -85,7 +85,7 @@ def format_data_as_geojson(data):
         geometry = {}
         feature_id = None
 
-        # The expectated schema here is that geometry columns are prefixed with "g__"
+        # The expected schema here is that geometry columns are prefixed with "g__"
         # If an "_id" column is present, it is used as the feature id
         # All other columns are treated as properties
         for col, value in zip(columns, row):
