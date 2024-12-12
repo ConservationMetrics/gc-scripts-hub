@@ -1,6 +1,2 @@
-summary: null
+summary: A collection of export scripts
 display_name: export
-extra_perms:
-  u/rudo: true
-owners:
-  - u/rudo
