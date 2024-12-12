@@ -309,6 +309,36 @@ class KoboDBWriter:
         finally:
             conn.close()
 
+    @staticmethod
+    def _safe_insert(cursor, table_name, columns, values):
+        """
+        Safely construct and execute an INSERT query to avoid SQL injection.
+
+        Parameters
+        ----------
+        cursor : psycopg2 cursor
+            The database cursor for executing the query.
+        table_name : str
+            The name of the table to insert data into.
+        columns : list of str
+            The list of column names to insert data into.
+        values : list
+            The values to insert into the table.
+
+        Returns
+        -------
+        None
+        """
+        query = sql.SQL(
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+        ).format(
+            table=sql.Identifier(table_name),
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+        )
+
+        cursor.execute(query, values)
+
     def handle_output(self, all_submissions):
         """
         Flattens kobo form submissions and inserts them into a PostgreSQL database.
@@ -393,18 +423,17 @@ class KoboDBWriter:
 
         for row, _ in rows:
             try:
-                # Wrap column names in single quotes
-                columns = ", ".join(f'"{name}"' for name in row.keys())
+                cols, vals = zip(*row.items())
 
-                # Prepare the values list, converting None to 'NULL'
-                values = [
-                    f"{value}" if value is not None else None for value in row.values()
-                ]
+                # Serialize lists, dict values to JSON text
+                vals = list(vals)
+                for i in range(len(vals)):
+                    value = vals[i]
+                    if isinstance(value, list) or isinstance(value, dict):
+                        vals[i] = json.dumps(value)
 
-                # Construct the insert query
-                insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
+                self._safe_insert(cursor, table_name, cols, vals)
 
-                cursor.execute(insert_query, tuple(values))
             except errors.UniqueViolation:
                 logger.debug(
                     f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."

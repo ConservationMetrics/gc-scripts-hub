@@ -2,6 +2,7 @@
 # psycopg2-binary
 # requests~=2.32
 
+import json
 import logging
 import mimetypes
 import os
@@ -359,6 +360,36 @@ class CoMapeoDBWriter:
         finally:
             conn.close()
 
+    @staticmethod
+    def _safe_insert(cursor, table_name, columns, values):
+        """
+        Safely construct and execute an INSERT query to avoid SQL injection.
+
+        Parameters
+        ----------
+        cursor : psycopg2 cursor
+            The database cursor for executing the query.
+        table_name : str
+            The name of the table to insert data into.
+        columns : list of str
+            The list of column names to insert data into.
+        values : list
+            The values to insert into the table.
+
+        Returns
+        -------
+        None
+        """
+        query = sql.SQL(
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+        ).format(
+            table=sql.Identifier(table_name),
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+        )
+
+        cursor.execute(query, values)
+
     def handle_output(self, outputs):
         """
         Inserts CoMapeo project data into a PostgreSQL database. For each project, it checks the database schema and adds any missing fields. It then constructs and executes SQL insert queries to store the data in separate tables for each project. After processing all data, it commits the transaction and closes the database connection.
@@ -388,19 +419,16 @@ class CoMapeoDBWriter:
 
             for row in rows:
                 try:
-                    # Wrap column names in single quotes
-                    columns = ", ".join(f'"{name}"' for name in row.keys())
+                    cols, vals = zip(*row.items())
 
-                    # Prepare the values list, converting None to 'NULL'
-                    values = [
-                        f"{value}" if value is not None else None
-                        for value in row.values()
-                    ]
+                    # Serialize lists, dict values to JSON text
+                    vals = list(vals)
+                    for i in range(len(vals)):
+                        value = vals[i]
+                        if isinstance(value, list) or isinstance(value, dict):
+                            vals[i] = json.dumps(value)
 
-                    # Construct the insert query
-                    insert_query = f"INSERT INTO {project_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
-
-                    cursor.execute(insert_query, tuple(values))
+                    self._safe_insert(cursor, project_name, cols, vals)
                 except errors.UniqueViolation:
                     logger.debug(
                         f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
