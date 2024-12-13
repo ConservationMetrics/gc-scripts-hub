@@ -10,7 +10,7 @@ import time
 
 import psycopg2
 import requests
-from psycopg2 import errors
+from psycopg2 import errors, sql
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -170,7 +170,9 @@ class KoboDBWriter:
 
     """
 
-    def __init__(self, db_connection_string, table_name, reverse_properties_separated_by="/"):
+    def __init__(
+        self, db_connection_string, table_name, reverse_properties_separated_by="/"
+    ):
         """
         Component for syncing messages to a SQL database table. This component
         automatically handles table width resizing, row-level updates, most data type
@@ -207,7 +209,8 @@ class KoboDBWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            (table_name,),
         )
         columns = [row[0] for row in cursor.fetchall()]
         cursor.close()
@@ -218,17 +221,18 @@ class KoboDBWriter:
         """Fetches the column names of the given table."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        if not self._table_exists(cursor, f"{table_name}__columns"):
-            query = f"""
-            CREATE TABLE public.{table_name}__columns (
-            original_column VARCHAR(128) NULL,
-            sql_column VARCHAR(64) NOT NULL);
-            """
-            cursor.execute(query)
-            conn.commit()
-            logger.info(f"Table {table_name}__columns created.")
+
+        columns_table_name = f"{table_name}__columns"
+        query = sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {columns_table_name} (
+        original_column VARCHAR(128) NULL,
+        sql_column VARCHAR(64) NOT NULL);
+        """).format(columns_table_name=sql.Identifier(columns_table_name))
+        cursor.execute(query)
+        conn.commit()
         cursor.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            (table_name,),
         )
         columns = [row[0] for row in cursor.fetchall()]
         cursor.close()
@@ -270,42 +274,30 @@ class KoboDBWriter:
         finally:
             conn.close()
 
-    def _table_exists(self, cursor, table_name):
-        cursor.execute(
-            """
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_schema = 'public'
-          AND table_name = %s
-        );
-        """,
-            (table_name,),
-        )
-        return cursor.fetchone()[0]
-
     def _create_missing_fields(self, table_name, missing_columns):
         """Generates and executes SQL statements to add missing fields to the table."""
+        table_name = sql.Identifier(table_name)
         try:
             with self._get_conn() as conn, conn.cursor() as cursor:
-                # Check if the table exists and create it if it doesn't
-                if not self._table_exists(cursor, table_name):
-                    cursor.execute(f"""
-                    CREATE TABLE public.{table_name} (
-                        _id TEXT PRIMARY KEY);
-                    """)
-                    logger.info(f"Table {table_name} created.")
+                query = sql.SQL(
+                    "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
+                ).format(table_name=table_name)
+                cursor.execute(query)
 
                 for sanitized_column in missing_columns:
                     # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
-                        cursor.execute(f"""
-                        ALTER TABLE {table_name}
-                        ADD COLUMN "{sanitized_column}" TEXT;
-                        """)
+                        query = sql.SQL(
+                            "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
+                        ).format(
+                            table_name=table_name,
+                            colname=sql.Identifier(sanitized_column),
+                        )
+                        cursor.execute(query)
                     except errors.DuplicateColumn:
-                        logger.error(
+                        logger.debug(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
                         continue
@@ -316,6 +308,36 @@ class KoboDBWriter:
                         raise
         finally:
             conn.close()
+
+    @staticmethod
+    def _safe_insert(cursor, table_name, columns, values):
+        """
+        Safely construct and execute an INSERT query to avoid SQL injection.
+
+        Parameters
+        ----------
+        cursor : psycopg2 cursor
+            The database cursor for executing the query.
+        table_name : str
+            The name of the table to insert data into.
+        columns : list of str
+            The list of column names to insert data into.
+        values : list
+            The values to insert into the table.
+
+        Returns
+        -------
+        None
+        """
+        query = sql.SQL(
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+        ).format(
+            table=sql.Identifier(table_name),
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+        )
+
+        cursor.execute(query, values)
 
     def handle_output(self, all_submissions):
         """
@@ -357,7 +379,9 @@ class KoboDBWriter:
 
             # what's in existing mapping but it doesn't exist in the form table
             # NOTE: this can happen when the database is new based off legacy mapping
-            missing_field_keys.update(set(existing_mappings.values()).difference(existing_fields))
+            missing_field_keys.update(
+                set(existing_mappings.values()).difference(existing_fields)
+            )
 
             # what's in incoming keys but it doesn't exist in the form table
             missing_field_keys.update(set(sanitized.keys()).difference(existing_fields))
@@ -386,7 +410,9 @@ class KoboDBWriter:
             self._create_missing_mappings(table_name, missing_mappings)
             time.sleep(10)
 
-        logger.info(f"New incoming field keys missing from db: {len(missing_field_keys)}")
+        logger.info(
+            f"New incoming field keys missing from db: {len(missing_field_keys)}"
+        )
 
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
@@ -397,16 +423,17 @@ class KoboDBWriter:
 
         for row, _ in rows:
             try:
-                # Wrap column names in single quotes
-                columns = ", ".join(f'"{name}"' for name in row.keys())
+                cols, vals = zip(*row.items())
 
-                # Prepare the values list, converting None to 'NULL'
-                values = [f"{value}" if value is not None else None for value in row.values()]
+                # Serialize lists, dict values to JSON text
+                vals = list(vals)
+                for i in range(len(vals)):
+                    value = vals[i]
+                    if isinstance(value, list) or isinstance(value, dict):
+                        vals[i] = json.dumps(value)
 
-                # Construct the insert query
-                insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
+                self._safe_insert(cursor, table_name, cols, vals)
 
-                cursor.execute(insert_query, tuple(values))
             except errors.UniqueViolation:
                 logger.debug(
                     f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."

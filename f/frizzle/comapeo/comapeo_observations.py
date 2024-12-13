@@ -2,6 +2,7 @@
 # psycopg2-binary
 # requests~=2.32
 
+import json
 import logging
 import mimetypes
 import os
@@ -9,8 +10,8 @@ import re
 from typing import TypedDict
 
 import psycopg2
-from psycopg2 import errors
 import requests
+from psycopg2 import errors, sql
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -314,54 +315,40 @@ class CoMapeoDBWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
         cursor.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = '{table_name}'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+            (table_name,),
         )
         columns = [row[0] for row in cursor.fetchall()]
         cursor.close()
         conn.close()
         return columns
 
-    def _table_exists(self, cursor, table_name):
-        """
-        Checks if the given table exists in the database.
-        """
-        cursor.execute(
-            """
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public'
-          AND table_name = %s
-        );
-        """,
-            (table_name,),
-        )
-        return cursor.fetchone()[0]
-
     def _create_missing_fields(self, table_name, missing_columns):
         """
         Generates and executes SQL statements to add missing fields to the table.
         """
+        table_name = sql.Identifier(table_name)
         try:
             with self._get_conn() as conn, conn.cursor() as cursor:
-                # Check if the table exists and create it if it doesn't
-                if not self._table_exists(cursor, table_name):
-                    cursor.execute(f"""
-                    CREATE TABLE public.{table_name} (
-                        _id TEXT PRIMARY KEY);
-                    """)
-                    logger.info(f"Table {table_name} created.")
+                query = sql.SQL(
+                    "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
+                ).format(table_name=table_name)
+                cursor.execute(query)
 
                 for sanitized_column in missing_columns:
                     # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
-                        cursor.execute(f"""
-                        ALTER TABLE {table_name} 
-                        ADD COLUMN "{sanitized_column}" TEXT;
-                        """)
+                        query = sql.SQL(
+                            "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
+                        ).format(
+                            table_name=table_name,
+                            colname=sql.Identifier(sanitized_column),
+                        )
+                        cursor.execute(query)
                     except errors.DuplicateColumn:
-                        logger.error(
+                        logger.debug(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
                         continue
@@ -372,6 +359,36 @@ class CoMapeoDBWriter:
                         raise
         finally:
             conn.close()
+
+    @staticmethod
+    def _safe_insert(cursor, table_name, columns, values):
+        """
+        Safely construct and execute an INSERT query to avoid SQL injection.
+
+        Parameters
+        ----------
+        cursor : psycopg2 cursor
+            The database cursor for executing the query.
+        table_name : str
+            The name of the table to insert data into.
+        columns : list of str
+            The list of column names to insert data into.
+        values : list
+            The values to insert into the table.
+
+        Returns
+        -------
+        None
+        """
+        query = sql.SQL(
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+        ).format(
+            table=sql.Identifier(table_name),
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+        )
+
+        cursor.execute(query, values)
 
     def handle_output(self, outputs):
         """
@@ -402,19 +419,16 @@ class CoMapeoDBWriter:
 
             for row in rows:
                 try:
-                    # Wrap column names in single quotes
-                    columns = ", ".join(f'"{name}"' for name in row.keys())
+                    cols, vals = zip(*row.items())
 
-                    # Prepare the values list, converting None to 'NULL'
-                    values = [
-                        f"{value}" if value is not None else None
-                        for value in row.values()
-                    ]
+                    # Serialize lists, dict values to JSON text
+                    vals = list(vals)
+                    for i in range(len(vals)):
+                        value = vals[i]
+                        if isinstance(value, list) or isinstance(value, dict):
+                            vals[i] = json.dumps(value)
 
-                    # Construct the insert query
-                    insert_query = f"INSERT INTO {project_name} ({columns}) VALUES ({', '.join(['%s'] * len(row))});"
-
-                    cursor.execute(insert_query, tuple(values))
+                    self._safe_insert(cursor, project_name, cols, vals)
                 except errors.UniqueViolation:
                     logger.debug(
                         f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
