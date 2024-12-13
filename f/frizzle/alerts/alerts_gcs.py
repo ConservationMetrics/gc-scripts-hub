@@ -394,7 +394,7 @@ class AlertsDBWriter:
                 _id character varying(36) NOT NULL,
                 -- These are found in "properties" of an alert Feature:
                 alert_type text,
-                area_alert_ha double precision,
+                area_alert_ha double precision,  -- only present for polygon
                 basin_id bigint,
                 count bigint,
                 date_end_t0 text,
