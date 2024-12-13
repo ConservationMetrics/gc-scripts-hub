@@ -3,7 +3,8 @@
 
 import json
 import logging
-import os
+
+from pathlib import Path
 
 import psycopg2
 
@@ -125,8 +126,9 @@ def save_file(data, db_table_name: str, storage_path: str):
         storage_path (str): The directory path where the GeoJSON file will be saved.
     """
 
-    os.makedirs(storage_path, exist_ok=True)
-    geojson_path = os.path.join(storage_path, f"{db_table_name}.geojson")
-    with open(geojson_path, "w") as f:
+    storage_path = Path(storage_path)
+    storage_path.mkdir(parents=True, exist_ok=True)
+    geojson_path = storage_path / f"{db_table_name}.geojson"
+    with geojson_path.open("w") as f:
         json.dump(data, f)
     logger.info(f"GeoJSON file saved to {geojson_path}")
