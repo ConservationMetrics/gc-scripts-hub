@@ -6,7 +6,7 @@ import logging
 
 from pathlib import Path
 
-import psycopg2
+from psycopg2 import sql, connect, Error
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -50,12 +50,16 @@ def fetch_data_from_postgres(db_connection_string, table_name: str):
     """
 
     try:
-        conn = psycopg2.connect(db_connection_string)
+        conn = connect(db_connection_string)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT * FROM {table_name};")
+        cursor.execute(
+            sql.SQL("SELECT * FROM {table_name}").format(
+                table_name=sql.Identifier(table_name)
+            )
+        )
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
-    except psycopg2.Error as e:
+    except Error as e:
         logger.error(f"Error fetching data from {table_name}: {e}")
         raise
     finally:
