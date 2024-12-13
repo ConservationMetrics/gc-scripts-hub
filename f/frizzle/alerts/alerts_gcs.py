@@ -100,7 +100,7 @@ def _main(
     outputs = load_alerts_to_postgis(destination_path, gjson_and_metas)
 
     db_writer = AlertsDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(outputs)
+    db_writer.handle_output(outputs["geojsons"], outputs["alerts_metadata"])
     logger.info(f"Wrote response content to database table [{db_table_name}]")
 
 
@@ -379,106 +379,67 @@ class AlertsDBWriter:
         return cursor.fetchone()[0]
 
     def _create_metadata_cols(self, metadata, table_name):
-        # TODO: have this reflect the create_table.sql file
-        metadata_cols = [
-            "territory_id",
-            "type_alert",
-            "month",
-            "year",
-            "total_alerts",
-            "description_alerts",
-            "confidence",
-            "metadata_uuid",
-            "source",
-            "alert_source",
-        ]
+        metadata_table_name = f"{table_name}__metadata"
+
         with self._get_conn() as conn, conn.cursor() as cursor:
-            if not self._table_exists(cursor, f"{table_name}__metadata"):
+            if not self._table_exists(cursor, metadata_table_name):
                 query = f"""
-                CREATE TABLE public.{table_name}__metadata();
+                CREATE TABLE {metadata_table_name} (
+                    territory_id text NOT NULL,
+                    type_alert text NOT NULL,
+                    month text NOT NULL,
+                    year text NOT NULL,
+                    total_alerts text NOT NULL,
+                    description_alerts text,
+                    confidence text,
+                    metadata_uuid text,
+                    source text,
+                    alert_source text
+                );
                 """
                 cursor.execute(query)
                 conn.commit()
-                logger.info(f"Table {table_name}__metadata created.")
-            else:
-                return
-            for column in metadata.keys():
-                # if the column is not one we care about do not add it
-                if column not in metadata_cols:
-                    continue
-                try:
-                    cursor.execute(f"""
-                    ALTER TABLE {table_name}__metadata
-                    ADD COLUMN "{column}" TEXT;
-                    """)
-                except errors.DuplicateColumn:
-                    logger.error(
-                        f"Skipping adding column due to DuplicateColumn, metadata column has been accounted for already in the past: {column}"
-                    )
-                    continue
-                except Exception as e:
-                    logger.error(
-                        f"An error occurred while creating new column: {column} for {table_name}__metadata: {e}"
-                    )
-                    raise
+                logger.info(f"Table {metadata_table_name} created.")
 
-    def _create_alert_cols(self, table_name):
-        # TODO: have this reflect the create_table.sql file
-        alert_cols = [
-            "_id",
-            "alert_source",
-            "alert_type",
-            "area_alert_ha",
-            "basin_id",
-            "count",
-            "date_end_t0",
-            "date_end_t1",
-            "date_start_t0",
-            "date_start_t1",
-            "grid",
-            "label",
-            "length_alert_km",
-            "month_detec",
-            "sat_detect_prefix",
-            "sat_viz_prefix",
-            "satellite",
-            "territory_id",
-            "territory_name",
-            "year_detec",
-            "g__coordinates",
-            "g__type",
-            "geom",
-            "source",
-        ]
-
+    def _create_alerts_table(self, table_name):
         with self._get_conn() as conn, conn.cursor() as cursor:
-            if not self._table_exists(cursor, f"{table_name}__metadata"):
+            if not self._table_exists(cursor, table_name):
                 query = f"""
-                CREATE TABLE public.{table_name}();
+                CREATE TABLE {table_name}
+                (
+                    _id character varying(36) NOT NULL,
+                    -- These are found in "properties" of an alert Feature:
+                    alert_type text,
+                    area_alert_ha double precision,  -- only present for polygon
+                    basin_id bigint,
+                    count bigint,
+                    date_end_t0 text,
+                    date_end_t1 text,
+                    date_start_t0 text,
+                    date_start_t1 text,
+                    grid bigint,
+                    label bigint,
+                    month_detec text,
+                    sat_detect_prefix text,
+                    sat_viz_prefix text,
+                    satellite text,
+                    territory_id bigint,
+                    territory_name text,
+                    year_detec text,
+                    length_alert_km double precision,  -- only present for linestring
+                    -- Deconstruct the "geometry" of a Feature:
+                    g__type text,
+                    g__coordinates text,
+                    -- Added by us
+                    source text,
+                    alert_source text
+                );
                 """
                 cursor.execute(query)
                 conn.commit()
                 logger.info(f"Table {table_name} created.")
-            else:
-                return
-            for column in alert_cols:
-                try:
-                    cursor.execute(f"""
-                    ALTER TABLE {table_name}
-                    ADD COLUMN "{column}" TEXT;
-                    """)
-                except errors.DuplicateColumn:
-                    logger.error(
-                        f"Skipping adding column due to DuplicateColumn, alert column has been accounted for already in the past: {column}"
-                    )
-                    continue
-                except Exception as e:
-                    logger.error(
-                        f"An error occurred while creating new column: {column} for {table_name}: {e}"
-                    )
-                    raise
 
-    def handle_output(self, outputs):
+    def handle_output(self, geojsons, metadatas):
         """
         Processes GeoJSON data/metadata from Dagster assets and inserts it into a PostgreSQL database. It iterates over each GeoJSON/metadata object, extracts relevant features and properties, and constructs SQL queries to insert these data into the database. After processing all features, it commits the transaction and closes the database connection.
         """
@@ -487,10 +448,10 @@ class AlertsDBWriter:
         cursor = conn.cursor()
 
         try:
-            geojsons = outputs["geojsons"]
             if geojsons:
-                # check to see if we need to create the cols for the first time
-                self._create_alert_cols(table_name)
+                # check to see if we need to create the table for the first time
+                # FIXME: this func creates its own cursor but we already have one
+                self._create_alerts_table(table_name)
             else:
                 logger.info("No alerts geojson to store.")
 
@@ -502,7 +463,6 @@ class AlertsDBWriter:
                         try:
                             source = geojson["source"]
                             alert_source = geojson["alert_source"]
-                            geom = json.dumps(feature["geometry"])
                             if "properties" in feature:
                                 properties_str = json.dumps(feature["properties"])
                                 properties = json.loads(properties_str)
@@ -528,6 +488,7 @@ class AlertsDBWriter:
                             territory_id = properties.get("territory_id")
                             territory_name = properties.get("territory_name")
                             year_detec = properties.get("year_detec")
+                            # In lieu of, say, PostGIS, use `g__*` columns to represent the Feature's geometry.
                             g__type = feature["geometry"].get("type")
                             g__coordinates = json.dumps(
                                 feature["geometry"]["coordinates"]
@@ -535,10 +496,9 @@ class AlertsDBWriter:
                             length_alert_km = properties.get("length_alert_km")
 
                             # Inserting data into the alerts table
-                            query = f""" INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, geom, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s); """
+                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s); """
 
                             # Execute the query
-                            # `g__*` columns are for backward compatibility and are redundant with `geom` column
                             cursor.execute(
                                 query,
                                 (
@@ -561,7 +521,6 @@ class AlertsDBWriter:
                                     territory_name,
                                     year_detec,
                                     source,
-                                    geom,
                                     g__type,
                                     g__coordinates,
                                     length_alert_km,
@@ -585,8 +544,6 @@ class AlertsDBWriter:
                     logger.exception("An error occurred while processing GeoJSON")
                     conn.rollback()  # Rollback the transaction in case of an error
                     raise
-
-            metadatas = outputs["alerts_metadata"]
 
             if metadatas:
                 self._create_metadata_cols(metadatas[0], table_name)
