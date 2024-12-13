@@ -125,12 +125,8 @@ def save_file(data, db_table_name: str, storage_path: str):
         storage_path (str): The directory path where the GeoJSON file will be saved.
     """
 
-    try:
-        os.makedirs(storage_path, exist_ok=True)
-        geojson_path = os.path.join(storage_path, f"{db_table_name}.geojson")
-        with open(geojson_path, "w") as f:
-            json.dump(data, f)
-    except OSError as e:
-        logger.error(f"Error saving file {geojson_path}: {e}")
-    else:
-        logger.info(f"GeoJSON file saved to {geojson_path}")
+    os.makedirs(storage_path, exist_ok=True)
+    geojson_path = os.path.join(storage_path, f"{db_table_name}.geojson")
+    with open(geojson_path, "w") as f:
+        json.dump(data, f)
+    logger.info(f"GeoJSON file saved to {geojson_path}")
