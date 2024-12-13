@@ -2,7 +2,7 @@ from f.export.postgres_to_geojson.postgres_to_geojson import main
 import json
 
 
-def test_script_e2e(pg_database, tmp_path):
+def test_script_e2e(pg_database, database_mock_data, tmp_path):
     asset_storage = tmp_path / "datalake/export"
 
     main(
