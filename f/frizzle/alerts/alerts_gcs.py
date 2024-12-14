@@ -377,7 +377,7 @@ class AlertsDBWriter:
                     year text NOT NULL,
                     total_alerts text NOT NULL,
                     description_alerts text,
-                    confidence smallint,
+                    confidence real,
                     metadata_uuid text,
                     source text,
                     alert_source text
@@ -396,7 +396,7 @@ class AlertsDBWriter:
                 alert_type text,
                 area_alert_ha double precision,  -- only present for polygon
                 basin_id bigint,
-                confidence smallint,
+                confidence real,
                 count bigint,
                 date_end_t0 text,
                 date_end_t1 text,
@@ -554,7 +554,7 @@ class AlertsDBWriter:
 
                     if confidence is not None:
                         try:
-                            confidence = int(confidence)
+                            confidence = float(confidence)
                         except ValueError:
                             confidence = None
 
