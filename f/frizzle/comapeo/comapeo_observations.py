@@ -5,8 +5,8 @@
 import json
 import logging
 import mimetypes
-import os
 import re
+from pathlib import Path
 from typing import TypedDict
 
 import psycopg2
@@ -160,8 +160,8 @@ def download_attachment(url, headers, save_path):
         content_type = response.headers.get("Content-Type", "")
         extension = mimetypes.guess_extension(content_type) or ""
 
-        file_name = os.path.basename(url) + extension
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        file_name = Path(url).name + extension
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(response.content)
         logger.info("Download completed.")
@@ -172,8 +172,47 @@ def download_attachment(url, headers, save_path):
         return None
 
 
-def camel_to_snake(name):
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
+    """
+    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions and truncating long keys.
+    Optionally leaves specified keys unchanged.
+
+    Parameters
+    ----------
+    dictionary : dict
+        The dictionary whose keys are to be converted.
+    special_case_keys : set, optional
+        A set of keys that should not be converted.
+
+    Returns
+    -------
+    dict
+        A new dictionary with the keys converted to snake_case and truncated if necessary.
+    """
+    if special_case_keys is None:
+        special_case_keys = set()
+
+    new_dict = {}
+    items = list(dictionary.items())
+    for key, value in items:
+        if key in special_case_keys:
+            final_key = key
+        else:
+            new_key = (
+                re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
+            )
+            base_key = new_key[:61] if len(new_key) > 63 else new_key
+            final_key = base_key
+            if len(new_key) > 63:
+                final_key = f"{base_key}_1"
+
+            counter = 1
+            while final_key in new_dict:
+                counter += 1
+                final_key = f"{base_key}_{counter}"
+
+        new_dict[final_key] = value
+    return new_dict
 
 
 def download_and_transform_comapeo_data(
@@ -232,28 +271,27 @@ def download_and_transform_comapeo_data(
             logger.info("Response received: ", response.text)
             raise ValueError("Invalid JSON response received from server.")
 
-        for observation in current_project_data:
+        for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
             observation["project_id"] = project_id
 
-            # Convert keys from camelCase to snake_case
-            observation = {
-                ("docId" if k == "docId" else camel_to_snake(k)): v
-                for k, v in observation.items()
-            }
+            # Create k/v pairs for each tag
+            for key, value in observation.pop("tags", {}).items():
+                observation[key] = value
 
-            # Create g__coordinates field
+            # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
+            # docId will be written to the database as _id (primary key)
+            special_case_keys = set(["docId"])
+            observation = normalize_and_snakecase_keys(observation, special_case_keys)
+
+            # Create g__coordinates and g__type fields
+            # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
+            # Other geometry types and formats may be added in the future
             if "lat" in observation and "lon" in observation:
                 observation["g__coordinates"] = (
                     f"[{observation['lon']}, {observation['lat']}]"
                 )
-
-            # Transform tags
-            if "tags" in observation:
-                for key, value in observation["tags"].items():
-                    new_key = key.replace("-", "_")
-                    observation[new_key] = value
-                del observation["tags"]
+                observation["g__type"] = "Point"
 
             # Download attachments
             if "attachments" in observation:
@@ -264,12 +302,12 @@ def download_and_transform_comapeo_data(
                         file_name = download_attachment(
                             attachment["url"],
                             headers,
-                            os.path.join(
-                                attachment_root,
-                                "comapeo",
-                                sanitized_project_name,
-                                "attachments",
-                                os.path.basename(attachment["url"]),
+                            str(
+                                Path(attachment_root)
+                                / "comapeo"
+                                / sanitized_project_name
+                                / "attachments"
+                                / Path(attachment["url"]).name
                             ),
                         )
                         if file_name is not None:
@@ -281,6 +319,8 @@ def download_and_transform_comapeo_data(
                             attachment_failed = True
 
                 observation["attachments"] = ", ".join(filenames)
+
+            current_project_data[i] = observation
 
         # Store observations in a dictionary with project_id as key
         comapeo_data[final_project_name] = current_project_data
@@ -336,7 +376,6 @@ class CoMapeoDBWriter:
                 cursor.execute(query)
 
                 for sanitized_column in missing_columns:
-                    # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
