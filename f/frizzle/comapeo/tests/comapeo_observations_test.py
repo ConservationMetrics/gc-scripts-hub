@@ -25,10 +25,19 @@ def test_script_e2e(comapeoserver, pg_database, tmp_path):
     ).exists()
 
     with psycopg2.connect(**pg_database) as conn:
-        # Survey responses from forest_expedition are written to a SQL Table
+        # Survey responses from forest_expedition are written to a SQL Table in expected format
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM comapeo_forest_expedition")
             assert cursor.fetchone()[0] == 3
+
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'comapeo_forest_expedition'"
+            )
+            columns = [row[0] for row in cursor.fetchall()]
+            assert "notes" in columns
+
+            cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")
+            assert cursor.fetchone()[0] == "Point"
 
         # comapeo_river_mapping SQL Table does not exist (it's in the blocklist)
         with conn.cursor() as cursor:

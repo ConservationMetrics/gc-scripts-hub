@@ -232,7 +232,7 @@ def download_and_transform_comapeo_data(
             logger.info("Response received: ", response.text)
             raise ValueError("Invalid JSON response received from server.")
 
-        for observation in current_project_data:
+        for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
             observation["project_id"] = project_id
 
@@ -284,6 +284,8 @@ def download_and_transform_comapeo_data(
                             attachment_failed = True
 
                 observation["attachments"] = ", ".join(filenames)
+
+            current_project_data[i] = observation
 
         # Store observations in a dictionary with project_id as key
         comapeo_data[final_project_name] = current_project_data
