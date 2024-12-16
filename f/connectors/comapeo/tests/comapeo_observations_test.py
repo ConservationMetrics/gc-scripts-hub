@@ -1,6 +1,6 @@
 import psycopg2
 
-from f.frizzle.comapeo.comapeo_observations import main, camel_to_snake
+from f.connectors.comapeo.comapeo_observations import main, camel_to_snake
 
 
 def test_camel_to_snake():

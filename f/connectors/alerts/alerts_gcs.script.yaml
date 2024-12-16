@@ -1,6 +1,6 @@
 summary: 'Alerts: Fetch alerts from Google Cloud Storage'
 description: Download new remote sensing alerts put into GCS by a partner
-lock: '!inline f/frizzle/alerts/alerts_gcs.script.lock'
+lock: '!inline f/connectors/alerts/alerts_gcs.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:

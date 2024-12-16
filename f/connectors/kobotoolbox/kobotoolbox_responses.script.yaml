@@ -1,6 +1,6 @@
 summary: 'KoboToolbox: Fetch Survey Responses'
 description: Uses KoboToolbox REST API to download all form submissions
-lock: '!inline f/frizzle/kobotoolbox/kobotoolbox_responses.script.lock'
+lock: '!inline f/connectors/kobotoolbox/kobotoolbox_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
