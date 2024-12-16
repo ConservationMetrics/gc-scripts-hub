@@ -5,8 +5,8 @@
 import json
 import logging
 import mimetypes
-import os
 import re
+from pathlib import Path
 from typing import TypedDict
 
 import psycopg2
@@ -160,8 +160,8 @@ def download_attachment(url, headers, save_path):
         content_type = response.headers.get("Content-Type", "")
         extension = mimetypes.guess_extension(content_type) or ""
 
-        file_name = os.path.basename(url) + extension
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        file_name = Path(url).name + extension
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(response.content)
         logger.info("Download completed.")
@@ -291,12 +291,12 @@ def download_and_transform_comapeo_data(
                         file_name = download_attachment(
                             attachment["url"],
                             headers,
-                            os.path.join(
-                                attachment_root,
-                                "comapeo",
-                                sanitized_project_name,
-                                "attachments",
-                                os.path.basename(attachment["url"]),
+                            str(
+                                Path(attachment_root)
+                                / "comapeo"
+                                / sanitized_project_name
+                                / "attachments"
+                                / Path(attachment["url"]).name
                             ),
                         )
                         if file_name is not None:
