@@ -267,10 +267,8 @@ def download_and_transform_comapeo_data(
             observation["project_id"] = project_id
 
             # Create k/v pairs for each tag
-            if "tags" in observation:
-                for key, value in observation["tags"].items():
-                    observation[key] = value
-                del observation["tags"]
+            for key, value in observation.pop("tags", {}).items():
+                observation[key] = value
 
             # Convert keys from camelCase to snake_case, handling key collisions and char limits
             observation = normalize_and_snakecase_keys(observation)
