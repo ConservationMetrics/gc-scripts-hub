@@ -172,9 +172,9 @@ def download_attachment(url, headers, save_path):
         return None
 
 
-def snakecase_keys_with_collision_handling(dictionary):
+def normalize_and_snakecase_keys(dictionary):
     """
-    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions.
+    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions and truncating long keys.
 
     Parameters
     ----------
@@ -184,22 +184,25 @@ def snakecase_keys_with_collision_handling(dictionary):
     Returns
     -------
     dict
-        A new dictionary with the keys converted to snake_case.
+        A new dictionary with the keys converted to snake_case and truncated if necessary.
     """
     new_dict = {}
     items = list(dictionary.items())
     for key, value in items:
         new_key = re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
-        if new_key in new_dict and new_dict[new_key] != value:
-            logger.warning(
-                f"Key collision detected: {new_key} already exists. Original key: {key}"
-            )
-            original_key = new_key
-            counter = 2
-            while new_key in new_dict:
-                new_key = f"{original_key}_{counter}"
-                counter += 1
-        new_dict[new_key] = value
+
+        base_key = new_key[:61] if len(new_key) > 63 else new_key
+
+        final_key = base_key
+        if len(new_key) > 63:
+            final_key = f"{base_key}_1"
+
+        counter = 1
+        while final_key in new_dict:
+            counter += 1
+            final_key = f"{base_key}_{counter}"
+
+        new_dict[final_key] = value
     return new_dict
 
 
@@ -269,8 +272,8 @@ def download_and_transform_comapeo_data(
                     observation[key] = value
                 del observation["tags"]
 
-            # Convert keys from camelCase to snake_case, handling key collisions
-            observation = snakecase_keys_with_collision_handling(observation)
+            # Convert keys from camelCase to snake_case, handling key collisions and char limits
+            observation = normalize_and_snakecase_keys(observation)
 
             # Create g__coordinates and g__type fields
             # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
@@ -364,7 +367,6 @@ class CoMapeoDBWriter:
                 cursor.execute(query)
 
                 for sanitized_column in missing_columns:
-                    # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:

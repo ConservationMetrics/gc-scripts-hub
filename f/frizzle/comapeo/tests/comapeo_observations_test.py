@@ -2,11 +2,11 @@ import psycopg2
 
 from f.frizzle.comapeo.comapeo_observations import (
     main,
-    snakecase_keys_with_collision_handling,
+    normalize_and_snakecase_keys,
 )
 
 
-def test_snakecase_keys_with_collision_handling():
+def test_normalize_and_snakecase_keys():
     input_dict = {
         "camelCaseKey": "value1",
         "anotherCamelCaseKey": "value2",
@@ -14,6 +14,8 @@ def test_snakecase_keys_with_collision_handling():
         "keyWithCollision": "value4",
         "key_with_collision": "value5",
         "key_with_collision_2": "value6",
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation": "value7",
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncationAlso": "value8",
     }
 
     expected_output = {
@@ -23,9 +25,11 @@ def test_snakecase_keys_with_collision_handling():
         "key_with_collision_2": "value4",
         "key_with_collision_3": "value5",
         "key_with_collision_2_2": "value6",
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_1": "value7",
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": "value8",
     }
 
-    result = snakecase_keys_with_collision_handling(input_dict)
+    result = normalize_and_snakecase_keys(input_dict)
 
     assert result == expected_output, f"Expected {expected_output}, but got {result}"
 
