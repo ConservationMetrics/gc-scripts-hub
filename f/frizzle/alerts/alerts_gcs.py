@@ -377,7 +377,7 @@ class AlertsDBWriter:
                     year text NOT NULL,
                     total_alerts text NOT NULL,
                     description_alerts text,
-                    confidence text,
+                    confidence real,
                     metadata_uuid text,
                     source text,
                     alert_source text
@@ -396,6 +396,7 @@ class AlertsDBWriter:
                 alert_type text,
                 area_alert_ha double precision,  -- only present for polygon
                 basin_id bigint,
+                confidence real,
                 count bigint,
                 date_end_t0 text,
                 date_end_t1 text,
@@ -457,6 +458,7 @@ class AlertsDBWriter:
                             alert_type = properties.get("alert_type")
                             area_alert_ha = properties.get("area_alert_ha")
                             basin_id = properties.get("basin_id")
+                            confidence = properties.get("confidence")
                             count = properties.get("count")
                             date_end_t0 = properties.get("date_end_t0")
                             date_end_t1 = properties.get("date_end_t1")
@@ -479,7 +481,7 @@ class AlertsDBWriter:
                             length_alert_km = properties.get("length_alert_km")
 
                             # Inserting data into the alerts table
-                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s); """
+                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, confidence, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
 
                             # Execute the query
                             cursor.execute(
@@ -489,6 +491,7 @@ class AlertsDBWriter:
                                     alert_type,
                                     area_alert_ha,
                                     basin_id,
+                                    confidence,
                                     count,
                                     date_end_t0,
                                     date_end_t1,
