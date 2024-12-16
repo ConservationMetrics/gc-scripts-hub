@@ -63,7 +63,6 @@ def test_script_e2e(comapeoserver, pg_database, tmp_path):
 
             assert "notes" in columns
 
-            # Test that the column names are snake_case and handling potential collisions
             assert "created_at_2" in columns
 
             cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")
