@@ -56,10 +56,8 @@ def test_script_e2e(comapeoserver, pg_database, tmp_path):
             cursor.execute("SELECT COUNT(*) FROM comapeo_forest_expedition")
             assert cursor.fetchone()[0] == 3
 
-            cursor.execute(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'comapeo_forest_expedition'"
-            )
-            columns = [row[0] for row in cursor.fetchall()]
+            cursor.execute("SELECT * FROM comapeo_forest_expedition LIMIT 0")
+            columns = [desc[0] for desc in cursor.description]
 
             assert "notes" in columns
 
