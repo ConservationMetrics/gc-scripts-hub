@@ -8,32 +8,36 @@ from f.frizzle.comapeo.comapeo_observations import (
 
 def test_normalize_and_snakecase_keys():
     input_dict = {
-        "camelCaseKey": "1",
-        "anotherCamelCaseKey": "2",
-        "keyWith-Collision": "3",
-        "keyWithCollision": "4",
-        "KeyWithCollision": "5",
-        "key-with-collision": "6",
-        "key_with_collision": "7",
-        "key_with_collision_2": "8",
-        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation": "9",
-        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncationAlso": "10",
+        "primaryKey": 1,
+        "camelCaseKey": 2,
+        "anotherCamelCaseKey": 3,
+        "keyWith-Collision": 4,
+        "keyWithCollision": 5,
+        "KeyWithCollision": 6,
+        "key-with-collision": 7,
+        "key_with_collision": 8,
+        "key_with_collision_2": 9,
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation": 10,
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncationAlso": 11,
     }
+
+    special_case_keys = set(["primaryKey"])
 
     expected_output = {
-        "camel_case_key": "1",
-        "another_camel_case_key": "2",
-        "key_with_collision": "3",
-        "key_with_collision_2": "4",
-        "key_with_collision_3": "5",
-        "key_with_collision_4": "6",
-        "key_with_collision_5": "7",
-        "key_with_collision_2_2": "8",
-        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_1": "9",
-        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": "10",
+        "primaryKey": 1,
+        "camel_case_key": 2,
+        "another_camel_case_key": 3,
+        "key_with_collision": 4,
+        "key_with_collision_2": 5,
+        "key_with_collision_3": 6,
+        "key_with_collision_4": 7,
+        "key_with_collision_5": 8,
+        "key_with_collision_2_2": 9,
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_1": 10,
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": 11,
     }
 
-    result = normalize_and_snakecase_keys(input_dict)
+    result = normalize_and_snakecase_keys(input_dict, special_case_keys)
 
     assert result == expected_output, f"Expected {expected_output}, but got {result}"
 
