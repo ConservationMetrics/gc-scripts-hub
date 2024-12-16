@@ -1,6 +1,6 @@
 import psycopg2
 
-from f.frizzle.comapeo.comapeo_observations import (
+from f.connectors.comapeo.comapeo_observations import (
     main,
     normalize_and_snakecase_keys,
 )

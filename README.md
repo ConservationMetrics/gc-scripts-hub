@@ -26,7 +26,7 @@ In Windmill, scripts and flows can be written in Python, TypeScript, Go, and a n
 
 The `f/` directory is designated for storing code in a workspace folder, and will be used when synchronizing the contents of this repository with a server.
 
-Within the `f/` directory, we store code in directories that represent a specific set of tasks. For example, the `f/frizzle/` directory contains scripts for data ETL and pipelining tasks.
+Within the `f/` directory, we store code in directories that represent a specific set of tasks. For example, the `f/connectors/` directory contains scripts for data ETL and pipelining tasks.
 
 Note that Windmill also designates a `u/` directory for storing code per user on a workspace. We are not using this convention in this repository. See [Windmill's local development guide](https://www.windmill.dev/docs/advanced/local_development) for more information on these directories and how they are synchronized with a server.
 

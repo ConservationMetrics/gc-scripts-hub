@@ -5,7 +5,7 @@ import google.api_core.exceptions
 import psycopg2
 import pytest
 
-from f.frizzle.alerts.alerts_gcs import _main
+from f.connectors.alerts.alerts_gcs import _main
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
         logger.info(f"Uploaded {source_file_name} -> {destination_blob_name}")
 
     # Upload test files to the emulator
-    assets_directory = "f/frizzle/alerts/tests/assets/"
+    assets_directory = "f/connectors/alerts/tests/assets/"
     alerts_filenames = [
         "alerts_history.csv",
         "100/vector/2023/09/alerts.geojson",

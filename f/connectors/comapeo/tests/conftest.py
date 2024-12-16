@@ -5,8 +5,8 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.frizzle.comapeo.tests.assets import server_responses
-from f.frizzle.comapeo.comapeo_observations import comapeo_server
+from f.connectors.comapeo.tests.assets import server_responses
+from f.connectors.comapeo.comapeo_observations import comapeo_server
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def comapeoserver(mocked_responses):
     )
     mocked_responses.get(
         re.compile(rf"{server_url}/projects/{project_id}/attachments/.+/photo/.+"),
-        body=open("f/frizzle/comapeo/tests/assets/capybara.jpg", "rb").read(),
+        body=open("f/connectors/comapeo/tests/assets/capybara.jpg", "rb").read(),
         content_type="image/jpg",
         headers={"Content-Length": "11044"},
     )
