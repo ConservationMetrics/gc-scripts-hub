@@ -27,6 +27,7 @@ def comapeo_project_observations(uri, project_id):
                     "notes": "Rapid",
                     "type": "water",
                     "status": "active",
+                    "created_at": "village",
                 },
             },
             {
