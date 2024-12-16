@@ -8,25 +8,29 @@ from f.frizzle.comapeo.comapeo_observations import (
 
 def test_normalize_and_snakecase_keys():
     input_dict = {
-        "camelCaseKey": "value1",
-        "anotherCamelCaseKey": "value2",
-        "keyWith-Collision": "value3",
-        "keyWithCollision": "value4",
-        "key_with_collision": "value5",
-        "key_with_collision_2": "value6",
-        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation": "value7",
-        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncationAlso": "value8",
+        "camelCaseKey": "1",
+        "anotherCamelCaseKey": "2",
+        "keyWith-Collision": "3",
+        "keyWithCollision": "4",
+        "KeyWithCollision": "5",
+        "key-with-collision": "6",
+        "key_with_collision": "7",
+        "key_with_collision_2": "8",
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation": "9",
+        "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncationAlso": "10",
     }
 
     expected_output = {
-        "camel_case_key": "value1",
-        "another_camel_case_key": "value2",
-        "key_with_collision": "value3",
-        "key_with_collision_2": "value4",
-        "key_with_collision_3": "value5",
-        "key_with_collision_2_2": "value6",
-        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_1": "value7",
-        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": "value8",
+        "camel_case_key": "1",
+        "another_camel_case_key": "2",
+        "key_with_collision": "3",
+        "key_with_collision_2": "4",
+        "key_with_collision_3": "5",
+        "key_with_collision_4": "6",
+        "key_with_collision_5": "7",
+        "key_with_collision_2_2": "8",
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_1": "9",
+        "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": "10",
     }
 
     result = normalize_and_snakecase_keys(input_dict)
