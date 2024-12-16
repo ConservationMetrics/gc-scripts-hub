@@ -242,11 +242,14 @@ def download_and_transform_comapeo_data(
                 for k, v in observation.items()
             }
 
-            # Create g__coordinates field
+            # Create g__coordinates and g__type fields
+            # Currently, only Point observations with lat and lon fields are supported
+            # Other geometry types and formats may be added in the future
             if "lat" in observation and "lon" in observation:
                 observation["g__coordinates"] = (
                     f"[{observation['lon']}, {observation['lat']}]"
                 )
+                observation["g__type"] = "Point"
 
             # Transform tags
             if "tags" in observation:
