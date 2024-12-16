@@ -1,11 +1,33 @@
 import psycopg2
 
-from f.frizzle.comapeo.comapeo_observations import main, camel_to_snake
+from f.frizzle.comapeo.comapeo_observations import (
+    main,
+    snakecase_keys_with_collision_handling,
+)
 
 
-def test_camel_to_snake():
-    assert camel_to_snake("animalType") == "animal_type"
-    assert camel_to_snake("Animal2Type") == "animal2_type"
+def test_snakecase_keys_with_collision_handling():
+    input_dict = {
+        "camelCaseKey": "value1",
+        "anotherCamelCaseKey": "value2",
+        "keyWith-Collision": "value3",
+        "keyWithCollision": "value4",
+        "key_with_collision": "value5",
+        "key_with_collision_2": "value6",
+    }
+
+    expected_output = {
+        "camel_case_key": "value1",
+        "another_camel_case_key": "value2",
+        "key_with_collision": "value3",
+        "key_with_collision_2": "value4",
+        "key_with_collision_3": "value5",
+        "key_with_collision_2_2": "value6",
+    }
+
+    result = snakecase_keys_with_collision_handling(input_dict)
+
+    assert result == expected_output, f"Expected {expected_output}, but got {result}"
 
 
 def test_script_e2e(comapeoserver, pg_database, tmp_path):
@@ -34,7 +56,11 @@ def test_script_e2e(comapeoserver, pg_database, tmp_path):
                 "SELECT column_name FROM information_schema.columns WHERE table_name = 'comapeo_forest_expedition'"
             )
             columns = [row[0] for row in cursor.fetchall()]
+
             assert "notes" in columns
+
+            # Test that the column names are snake_case and handling potential collisions
+            assert "created_at_2" in columns
 
             cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")
             assert cursor.fetchone()[0] == "Point"

@@ -172,8 +172,35 @@ def download_attachment(url, headers, save_path):
         return None
 
 
-def camel_to_snake(name):
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+def snakecase_keys_with_collision_handling(dictionary):
+    """
+    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions.
+
+    Parameters
+    ----------
+    dictionary : dict
+        The dictionary whose keys are to be converted.
+
+    Returns
+    -------
+    dict
+        A new dictionary with the keys converted to snake_case.
+    """
+    new_dict = {}
+    items = list(dictionary.items())
+    for key, value in items:
+        new_key = re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
+        if new_key in new_dict and new_dict[new_key] != value:
+            logger.warning(
+                f"Key collision detected: {new_key} already exists. Original key: {key}"
+            )
+            original_key = new_key
+            counter = 2
+            while new_key in new_dict:
+                new_key = f"{original_key}_{counter}"
+                counter += 1
+        new_dict[new_key] = value
+    return new_dict
 
 
 def download_and_transform_comapeo_data(
@@ -236,27 +263,23 @@ def download_and_transform_comapeo_data(
             observation["project_name"] = project_name
             observation["project_id"] = project_id
 
-            # Convert keys from camelCase to snake_case
-            observation = {
-                ("docId" if k == "docId" else camel_to_snake(k)): v
-                for k, v in observation.items()
-            }
+            # Create k/v pairs for each tag
+            if "tags" in observation:
+                for key, value in observation["tags"].items():
+                    observation[key] = value
+                del observation["tags"]
+
+            # Convert keys from camelCase to snake_case, handling key collisions
+            observation = snakecase_keys_with_collision_handling(observation)
 
             # Create g__coordinates and g__type fields
-            # Currently, only Point observations with lat and lon fields are supported
+            # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
             # Other geometry types and formats may be added in the future
             if "lat" in observation and "lon" in observation:
                 observation["g__coordinates"] = (
                     f"[{observation['lon']}, {observation['lat']}]"
                 )
                 observation["g__type"] = "Point"
-
-            # Transform tags
-            if "tags" in observation:
-                for key, value in observation["tags"].items():
-                    new_key = key.replace("-", "_")
-                    observation[new_key] = value
-                del observation["tags"]
 
             # Download attachments
             if "attachments" in observation:
@@ -409,7 +432,7 @@ class CoMapeoDBWriter:
             rows = []
             for entry in project_data:
                 sanitized_entry = {
-                    ("_id" if k == "docId" else k): v for k, v in entry.items()
+                    ("_id" if k == "doc_id" else k): v for k, v in entry.items()
                 }
                 rows.append(sanitized_entry)
 
