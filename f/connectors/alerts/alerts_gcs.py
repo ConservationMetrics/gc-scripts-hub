@@ -614,7 +614,9 @@ class AlertsDBWriter:
                             raise
                     conn.commit()
                 except Exception as e:
-                    logger.exception(f"An error occurred while processing alerts: {e}")
+                    logger.exception(
+                        f"An error occurred while processing alerts: {str(e)}"
+                    )
                     conn.rollback()
                     raise
 
@@ -672,7 +674,7 @@ class AlertsDBWriter:
                     conn.rollback()
                 except Exception as e:
                     logger.exception(
-                        f"An error occurred while processing alerts metadata: {e}"
+                        f"An error occurred while processing alerts metadata: {str(e)}"
                     )
                     conn.rollback()
                     raise
