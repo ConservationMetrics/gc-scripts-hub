@@ -64,7 +64,9 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             assert cursor.fetchone()[0] == 1  # Length of assets/alerts.geojson
 
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert cursor.fetchone()[0] == 5  # Length of asserts/alerts_history.csv
+            assert (
+                cursor.fetchone()[0] == 5
+            )  # Length of asserts/alerts_history.csv sans a duplicate
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(
