@@ -10,6 +10,8 @@ Google Cloud storage has a built-in API solution, [GCS JSON API](https://cloud.g
 
 ## File storage and retrieval
 
+### Google Cloud Platform
+
 Change detection alert files are currently stored on GCP in this format:
 
 **Vector:**
@@ -26,11 +28,18 @@ Change detection alert files are currently stored on GCP in this format:
 <territory_id>/raster/<year_detec>/<month_detec>/<sat_viz_prefix>_T1_<id>.tif
 ```
 
+### Stored data
+
+**Vector:**
+```
+<territory_id>/<year_detec>/<month_detec>/<alert_id>/alert_<id>.geojson
+```
+
+**Raster:**
 Currently, we are assuming there to be only four raster images for each change detection alert: a 'before' and 'after' used for detection and visualization, respectively.  Each of these is saved in both TIFF and JPEG format in the following way:
 
 ```
-100/raster/2023/09/S1_T0_202309900112345671.tif
-100/raster/2023/09/S1_T1_202309900112345671.tif
-100/raster/2023/09/S2_T0_202309900112345671.tif
-100/raster/2023/09/S2_T1_202309900112345671.tif
+<territory_id>/<year_detec>/<month_detec>/<alert_id>/images/<sat_viz_prefix>_T0_<id>.tif
+<territory_id>/<year_detec>/<month_detec>/<alert_id>/images/<sat_viz_prefix>_T0_<id>.jpg
+...
 ```
