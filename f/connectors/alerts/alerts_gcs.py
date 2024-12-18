@@ -97,7 +97,7 @@ def _main(
         alerts_metadata_filename,
     )
 
-    # convert_tiffs_to_jpg(destination_path, tiff_files, territory_id)
+    convert_tiffs_to_jpg(destination_path, tiff_files, territory_id)
 
     prepared_alerts_metadata = prepare_alerts_metadata(alerts_metadata, territory_id)
 
