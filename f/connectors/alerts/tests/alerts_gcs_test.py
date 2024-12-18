@@ -73,7 +73,10 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             assert cursor.fetchone()[0] is None
 
     # GeoJSON is saved to disk
-    assert (asset_storage / "100/2023/09/alert_202309900112345671.geojson").exists()
+    assert (
+        asset_storage
+        / "100/2023/09/202309900112345671/alert_202309900112345671.geojson"
+    ).exists()
 
     # Rasters are saved to disk
     for basename in (
