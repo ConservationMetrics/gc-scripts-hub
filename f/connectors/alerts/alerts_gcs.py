@@ -97,7 +97,7 @@ def _main(
         alerts_metadata_filename,
     )
 
-    convert_tiffs_to_jpg(destination_path, tiff_files, territory_id)
+    convert_tiffs_to_jpg(tiff_files)
 
     prepared_alerts_metadata = prepare_alerts_metadata(alerts_metadata, territory_id)
 
@@ -226,7 +226,7 @@ def sync_gcs_to_local(
     return geojson_files, tiff_files, alerts_metadata
 
 
-def convert_tiffs_to_jpg(destination_path, tiff_files, territory_id):
+def convert_tiffs_to_jpg(tiff_files):
     """Convert TIFF files to JPEG format.
 
     Parameters
@@ -242,27 +242,25 @@ def convert_tiffs_to_jpg(destination_path, tiff_files, territory_id):
     -------
     None
     """
-    logger.info(f"Processing files: {tiff_files}")
+    logger.info(f"Converting TIF files: {tiff_files}")
     for tiff_file in tiff_files:
-        jpeg_file = Path(tiff_file).stem + ".jpg"
-
-        local_file_path = Path(destination_path) / tiff_file
-        rel_filepath = Path(destination_path) / _get_rel_filepath(
-            str(local_file_path), territory_id
-        )
+        tiff_file_path = Path(tiff_file)
+        jpeg_file_path = tiff_file_path.with_suffix(".jpg")
+        jpeg_file = jpeg_file_path.name
 
         # If the jpeg file already exists, skip it
-        if (rel_filepath / jpeg_file).exists():
+        if jpeg_file_path.exists:
+            logger.info(f"JPEG file already exists: {jpeg_file}")
             continue
 
         logger.info(f"Converting TIFF file to JPEG: {jpeg_file}")
 
         # Ensure the file exists in the local directory
-        if (rel_filepath / local_file_path.name).exists():
+        if tiff_file_path.exists():
             try:
-                with Image.open(rel_filepath / local_file_path.name) as img:
+                with Image.open(tiff_file_path) as img:
                     # Save the image in the same location in the datalake as the tiff
-                    img.save(rel_filepath / jpeg_file, "JPEG")
+                    img.save(jpeg_file_path, "JPEG")
             except Exception as e:
                 logger.error(
                     f"TIFF image can not be opened, potentially empty: {str(e)}"
