@@ -249,7 +249,7 @@ def convert_tiffs_to_jpg(tiff_files):
         jpeg_file = jpeg_file_path.name
 
         # If the jpeg file already exists, skip it
-        if jpeg_file_path.exists:
+        if jpeg_file_path.exists():
             logger.info(f"JPEG file already exists: {jpeg_file}")
             continue
 
