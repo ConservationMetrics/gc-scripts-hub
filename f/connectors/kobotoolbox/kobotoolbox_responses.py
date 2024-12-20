@@ -11,6 +11,7 @@ from pathlib import Path
 import psycopg2
 import requests
 from psycopg2 import errors, sql
+from unidecode import unidecode
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -183,10 +184,19 @@ def sanitize_form_name(form_name):
     str
         A sanitized version of the form name.
     """
-    name = re.sub(r"[\s()]", "_", form_name)
-    name = re.sub(r"[^a-zA-Z0-9_-]", "", name)
-    name = name.lstrip("-")
-    return name if name else "default"
+    # Replace spaces and parentheses with underscores in the form name
+    sanitized_name = re.sub(r"[\s()]", "_", form_name)
+
+    # Replace characters with accents with their unaccented equivalents
+    sanitized_name = unidecode(sanitized_name)
+
+    # Remove any characters that are not alphanumeric, underscores, or hyphens
+    sanitized_name = re.sub(r"[^a-zA-Z0-9_-]", "", sanitized_name)
+
+    # Remove leading hyphens from the name
+    sanitized_name = sanitized_name.lstrip("-")
+
+    return sanitized_name if sanitized_name else "default"
 
 
 def _reverse_parts(k, sep="/"):
