@@ -42,10 +42,10 @@ def main(
         kobo_server_base_url, kobo_api_key, form_id, attachment_root
     )
 
-    prepared_form_data = prepare_form_data(form_data)
+    transformed_form_data = transform_form_data(form_data)
 
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(prepared_form_data)
+    db_writer.handle_output(transformed_form_data)
     logger.info(
         f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
     )
@@ -147,8 +147,8 @@ def download_form_responses_and_attachments(
     return form_submissions
 
 
-def prepare_form_data(form_data):
-    """Prepare KoboToolbox form data by e.g. detecting and formatting geometry fields for SQL database insertion.
+def transform_form_data(form_data):
+    """Transform KoboToolbox form data by e.g. formatting geometry fields for SQL database insertion.
 
     Parameters
     ----------
@@ -158,7 +158,7 @@ def prepare_form_data(form_data):
     Returns
     -------
     list
-        A list of prepared form submissions.
+        A list of transformed form submissions.
     """
     for submission in form_data:
         geolocation = submission.get("_geolocation")
