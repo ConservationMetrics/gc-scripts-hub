@@ -4,9 +4,9 @@
 
 import json
 import logging
-import os
 import re
 import time
+from pathlib import Path
 
 import psycopg2
 import requests
@@ -87,13 +87,13 @@ def download_attachments(
                     response = requests.get(attachment["download_url"], headers=headers)
                     if response.status_code == 200:
                         file_name = attachment["filename"]
-                        save_path = os.path.join(
-                            attachment_root,
-                            dataset_id,
-                            "attachments",
-                            os.path.basename(file_name),
+                        save_path = (
+                            Path(attachment_root)
+                            / dataset_id
+                            / "attachments"
+                            / Path(file_name).name
                         )
-                        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                        save_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(save_path, "wb") as file:
                             file.write(response.content)
                         logger.debug(
