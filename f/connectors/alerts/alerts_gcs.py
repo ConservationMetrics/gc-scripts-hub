@@ -167,12 +167,17 @@ def sync_gcs_to_local(
 
     Returns
     -------
-    tuple
-        A tuple containing a set of str with the local file names that were written
-        and the alerts metadata content.
+    geojson_files : set of str
+        A set containing the local file paths of the downloaded GeoJSON files.
+    tiff_files : set of str
+        A set containing the local file paths of the downloaded TIFF files.
+    alerts_metadata : str
+        The content of the alerts metadata file.
 
     FIXME: sync, don't brute-force re-download files that already exist - see #6
     """
+
+    destination_path = Path(destination_path)
 
     bucket = storage_client.bucket(bucket_name)
 
@@ -188,20 +193,28 @@ def sync_gcs_to_local(
         f"Found {len(files_to_download)} files to download from bucket '{bucket_name}'."
     )
 
-    Path(destination_path).mkdir(parents=True, exist_ok=True)
+    destination_path.mkdir(parents=True, exist_ok=True)
 
-    downloaded_files = set()
+    geojson_files = set()
+    tiff_files = set()
+
+    # Filter files to download only geojson and tiff files
+    files_to_download = {
+        blob_name
+        for blob_name in files_to_download
+        if blob_name.lower().endswith((".geojson", ".tif", ".tiff"))
+    }
 
     # Download files from the GCS bucket to the local directory
     for blob_name in files_to_download:
         blob = bucket.blob(blob_name)
-        local_file_path = Path(destination_path) / blob_name
+        local_file_path = destination_path / blob_name
         filename = local_file_path.name
 
         logger.info(f"Downloading file: {filename}")
 
         # Generate relative file path for all files
-        rel_filepath = Path(destination_path) / _get_rel_filepath(
+        rel_filepath = destination_path / _get_rel_filepath(
             str(local_file_path), territory_id
         )
 
@@ -210,11 +223,11 @@ def sync_gcs_to_local(
 
         blob.download_to_filename(rel_filepath / filename)
 
-        downloaded_files.add(str(rel_filepath / filename))
-
-    # Create lists of GeoJSON and TIFF files
-    geojson_files = [f for f in downloaded_files if f.endswith(".geojson")]
-    tiff_files = [f for f in downloaded_files if f.endswith((".tif", ".tiff"))]
+        file_path_str = str(rel_filepath / filename)
+        if file_path_str.endswith(".geojson"):
+            geojson_files.add(file_path_str)
+        elif file_path_str.endswith((".tif", ".tiff")):
+            tiff_files.add(file_path_str)
 
     # Additionally, retrieve alerts metadata content from the root of the bucket
     # and store it in memory (it's not a large file)
@@ -321,13 +334,13 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     df = pd.read_csv(StringIO(alerts_metadata))
 
     # Filter DataFrame based on territory_id
-    filtered_df = df[df["territory_id"] == territory_id].copy()
+    filtered_df = df.loc[df["territory_id"] == territory_id]
 
     # Generate a unique UUID for each row
     filtered_df["metadata_uuid"] = filtered_df.apply(_generate_uuid, axis=1)
 
     # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
-    filtered_df.loc[:, "alert_source"] = "terras"
+    filtered_df["alert_source"] = "terras"
 
     # Replace all NaN values with None
     filtered_df = filtered_df.replace({nan: None})

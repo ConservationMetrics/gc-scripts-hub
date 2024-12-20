@@ -28,7 +28,7 @@ Change detection alert files are currently stored on GCP in this format:
 <territory_id>/raster/<year_detec>/<month_detec>/<sat_viz_prefix>_T1_<id>.tif
 ```
 
-### Stored data
+### Warehouse
 
 **Vector:**
 ```
