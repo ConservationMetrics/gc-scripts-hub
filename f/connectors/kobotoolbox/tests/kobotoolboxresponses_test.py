@@ -1,6 +1,10 @@
 import psycopg2
 
-from f.connectors.kobotoolbox.kobotoolbox_responses import main, sanitize
+from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    main,
+    sanitize,
+    sanitize_form_name,
+)
 
 
 def test_sanitize():
@@ -81,6 +85,20 @@ def test_sanitize_with_nesting():
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",
     }
+
+
+def test_sanitize_form_name():
+    form_names = [
+        ("CHECKLIST MISSÃO - EVU", "CHECKLIST_MISSAO_-_EVU"),
+        ("Xin chào thế giới", "Xin_chao_the_gioi"),
+        ("Wayana tïlï epïï pëk", "Wayana_tili_epii_pek"),
+        ("Привет мир", "Privet_mir"),
+        ("안녕하세요 세계", "annyeonghaseyo_segye"),
+        ("Juǀʼhoan", "Juhoan"),
+        ("'Are'Are Raeꞌareha", "AreAre_Raeareha"),
+    ]
+    for original, expected in form_names:
+        assert sanitize_form_name(original) == expected
 
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
