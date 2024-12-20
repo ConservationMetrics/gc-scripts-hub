@@ -49,67 +49,50 @@ def main(
     )
 
 
-def download_attachments(
-    form_submissions, form_name, dataset_id, attachment_root, headers
-):
-    """Download attachments from form submissions and save them locally.
-
-    This function iterates over form submissions, injecting form name and ID into each submission.
-    If attachments are present, it downloads them using the provided headers and saves them
-    to a specified root directory.
+def _download_submission_attachments(submission, dataset_id, attachment_root, headers):
+    """Download and save attachments from a form submission.
 
     Parameters
     ----------
-    form_submissions : list
-        A list of form submissions containing potential attachments.
-    form_name : str
-        The name of the form, used for injecting into each submission.
+    submission : dict
+        The form submission data
     dataset_id : str
-        The dataset identifier, used for constructing the save path.
+        The identifier for the dataset, used to organize the save path.
     attachment_root : str
-        The root directory where attachments will be saved.
+        The base directory where attachments will be stored.
     headers : dict
-        HTTP headers used for downloading attachments.
+        HTTP headers required for downloading the attachments.
 
     Returns
     -------
     None
-
-    TODO: Add retries for failed downloads.
     """
-    for submission in form_submissions:
-        submission["dataset_name"] = form_name
-        submission["dataset_id"] = dataset_id
 
-        if "_attachments" in submission:
-            for attachment in submission["_attachments"]:
-                if "download_url" in attachment:
-                    response = requests.get(attachment["download_url"], headers=headers)
-                    if response.status_code == 200:
-                        file_name = attachment["filename"]
-                        save_path = (
-                            Path(attachment_root)
-                            / dataset_id
-                            / "attachments"
-                            / Path(file_name).name
-                        )
-                        save_path.parent.mkdir(parents=True, exist_ok=True)
-                        with open(save_path, "wb") as file:
-                            file.write(response.content)
-                        logger.debug(
-                            "Download completed: " + attachment["download_url"]
-                        )
-                    else:
-                        logger.error("Failed downloading attachments.")
+    for attachment in submission["_attachments"]:
+        if "download_url" in attachment:
+            response = requests.get(attachment["download_url"], headers=headers)
+            if response.status_code == 200:
+                file_name = attachment["filename"]
+                save_path = (
+                    Path(attachment_root)
+                    / dataset_id
+                    / "attachments"
+                    / Path(file_name).name
+                )
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(save_path, "wb") as file:
+                    file.write(response.content)
+                logger.debug(f"Download completed: ${attachment["download_url"]}")
+            else:
+                logger.error(
+                    f"Failed downloading attachment: {attachment['download_url']}"
+                )
 
 
 def download_form_responses_and_attachments(
     server_base_url, kobo_api_key, form_id, attachment_root
 ):
-    """Download form responses and their attachments from KoboToolbox.
-
-    This function retrieves form metadata and submissions from the KoboToolbox API,
-    downloads any attachments, and logs the number of submissions processed.
+    """Download form responses and their attachments from the KoboToolbox API.
 
     Parameters
     ----------
@@ -125,7 +108,7 @@ def download_form_responses_and_attachments(
     Returns
     -------
     list
-        A list of form submissions including any downloaded attachments.
+        A list of form submissions data.
     """
     headers = {
         "Authorization": f"Token {kobo_api_key}",
@@ -146,9 +129,15 @@ def download_form_responses_and_attachments(
 
     form_submissions = response.json()["results"]
 
-    download_attachments(
-        form_submissions, form_name, dataset_id, attachment_root, headers
-    )
+    for submission in form_submissions:
+        submission["dataset_name"] = form_name
+        submission["dataset_id"] = dataset_id
+
+        # Download attachments for each submission, if they exist
+        if "_attachments" in submission:
+            _download_submission_attachments(
+                submission, dataset_id, attachment_root, headers
+            )
 
     logger.info(
         f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s), including attachments."
@@ -265,17 +254,20 @@ def sanitize(
 
     Returns
     -------
-    tuple
-        A tuple containing the sanitized message and updated column renames.
+    sanitized_sql_message : dict
+        The sanitized message dictionary with SQL-compatible keys.
+    updated_column_renames : dict
+        The updated column renames dictionary.
     """
-    column_renames = column_renames.copy()
-    sql_message = {}
+
+    updated_column_renames = column_renames.copy()
+    sanitized_sql_message = {}
     for original_key, value in message.items():
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
 
-        if original_key in column_renames:
-            sql_message[column_renames[original_key]] = value
+        if original_key in updated_column_renames:
+            sanitized_sql_message[updated_column_renames[original_key]] = value
             continue
 
         key = original_key
@@ -284,11 +276,11 @@ def sanitize(
         for args in str_replace:
             key = key.replace(*args)
         key = _drop_nonsql_chars(key)
-        key = _shorten_and_uniqify(key, column_renames.values(), maxlen)
+        key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
-        column_renames[original_key] = key
-        sql_message[key] = value
-    return sql_message, column_renames
+        updated_column_renames[original_key] = key
+        sanitized_sql_message[key] = value
+    return sanitized_sql_message, updated_column_renames
 
 
 class KoboDBWriter:
@@ -415,7 +407,6 @@ class KoboDBWriter:
                 cursor.execute(query)
 
                 for sanitized_column in missing_columns:
-                    # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
