@@ -1,10 +1,6 @@
 import psycopg2
 
-from f.connectors.kobotoolbox.kobotoolbox_responses import (
-    main,
-    sanitize,
-    sanitize_form_name,
-)
+from f.connectors.kobotoolbox.kobotoolbox_responses import main, sanitize
 
 
 def test_sanitize():
@@ -87,33 +83,20 @@ def test_sanitize_with_nesting():
     }
 
 
-def test_sanitize_form_name():
-    form_names = [
-        ("CHECKLIST MISSÃO - EVU", "CHECKLIST_MISSAO_-_EVU"),
-        ("Xin chào thế giới", "Xin_chao_the_gioi"),
-        ("Wayana tïlï epïï pëk", "Wayana_tili_epii_pek"),
-        ("Привет мир", "Privet_mir"),
-        ("안녕하세요 세계", "annyeonghaseyo_segye"),
-        ("Juǀʼhoan", "Juhoan"),
-        ("'Are'Are Raeꞌareha", "AreAre_Raeareha"),
-    ]
-    for original, expected in form_names:
-        assert sanitize_form_name(original) == expected
-
-
 def test_script_e2e(koboserver, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
+    table_name = "kobo_responses"
 
     main(
         koboserver.account,
         koboserver.form_id,
         pg_database,
-        "kobo_responses",
+        table_name,
         asset_storage,
     )
 
     # Attachments are saved to disk
-    assert (asset_storage / "Arboles" / "attachments" / "1637241249813.jpg").exists()
+    assert (asset_storage / table_name / "attachments" / "1637241249813.jpg").exists()
 
     # Survey responses are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
