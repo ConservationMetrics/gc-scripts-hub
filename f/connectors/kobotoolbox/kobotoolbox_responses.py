@@ -82,7 +82,7 @@ def _download_submission_attachments(submission, dataset_id, attachment_root, he
                 save_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(save_path, "wb") as file:
                     file.write(response.content)
-                logger.debug(f"Download completed: ${attachment["download_url"]}")
+                logger.debug(f"Download completed: {attachment['download_url']}")
             else:
                 logger.error(
                     f"Failed downloading attachment: {attachment['download_url']}"
