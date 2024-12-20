@@ -102,3 +102,9 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM kobo_responses")
             assert cursor.fetchone()[0] == 3
+
+            # Check that the coordinates of a fixture entry are stored as a Point
+            cursor.execute(
+                "SELECT g__type, g__coordinates FROM kobo_responses WHERE _id = '124961136'"
+            )
+            assert cursor.fetchone() == ("Point", "[36.97012, -122.0109429]")
