@@ -20,6 +20,7 @@ import psycopg2
 from psycopg2 import errors, sql
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
+from numpy import nan
 from PIL import Image
 
 # type names that refer to Windmill Resources
