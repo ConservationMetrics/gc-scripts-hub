@@ -20,7 +20,10 @@ def pg_database():
 def gcs_emulator_client():
     """Return a google.cloud.storage.Client against an GCS emulator running in tox-docker"""
     # See https://github.com/tox-dev/tox-docker?tab=readme-ov-file#configuration, `expose` option
-    TOX_DOCKER_GCS_PORT = os.environ["TOX_DOCKER_GCS_PORT"]
+    try:
+        TOX_DOCKER_GCS_PORT = os.environ["TOX_DOCKER_GCS_PORT"]
+    except KeyError:
+        raise RuntimeError("You need to: $ pip install tox-docker")
     emulator_endpoint = f"http://localhost:{TOX_DOCKER_GCS_PORT}"
 
     # Create a storage client that connects to the emulator
