@@ -15,13 +15,12 @@ from io import StringIO
 from pathlib import Path
 
 import pandas as pd
-from numpy import nan
 import psycopg2
-from psycopg2 import errors, sql
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from numpy import nan
 from PIL import Image
+from psycopg2 import errors, sql
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
@@ -403,88 +402,62 @@ class AlertsDBWriter:
         """
         return psycopg2.connect(dsn=self.db_connection_string)
 
-    def _create_alerts_metadata_table(self, cursor, table_name):
+    def _create_alerts_metadata_table(self, table_name):
         metadata_table_name = f"{table_name}__metadata"
 
-        query = sql.SQL("""
-            CREATE TABLE IF NOT EXISTS {metadata_table_name} (
+        with self._get_conn() as conn, conn.cursor() as cursor:
+            query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {metadata_table_name} (
+                    _id character varying(36) NOT NULL PRIMARY KEY,
+                    territory_id text,
+                    type_alert bigint,
+                    month bigint,
+                    year bigint,
+                    total_alerts bigint,
+                    description_alerts text,
+                    confidence real,
+                    alert_source text
+                );
+                """).format(metadata_table_name=sql.Identifier(metadata_table_name))
+            cursor.execute(query)
+            conn.commit()
+
+    def _create_alerts_table(self, table_name):
+        with self._get_conn() as conn, conn.cursor() as cursor:
+            query = sql.SQL("""
+            CREATE TABLE IF NOT EXISTS {table_name}
+            (
                 _id character varying(36) NOT NULL PRIMARY KEY,
-                territory_id text,
-                type_alert bigint,
-                month bigint,
-                year bigint,
-                total_alerts bigint,
-                description_alerts text,
+                -- These are found in "properties" of an alert Feature:
+                alert_type text,
+                area_alert_ha double precision,  -- only present for polygon
+                basin_id bigint,
                 confidence real,
+                count bigint,
+                date_end_t0 text,
+                date_end_t1 text,
+                date_start_t0 text,
+                date_start_t1 text,
+                grid bigint,
+                label bigint,
+                month_detec text,
+                sat_detect_prefix text,
+                sat_viz_prefix text,
+                satellite text,
+                territory_id bigint,
+                territory_name text,
+                year_detec text,
+                length_alert_km double precision,  -- only present for linestring
+                -- Deconstruct the "geometry" of a Feature:
+                g__type text,
+                g__coordinates text,
+                -- Added by us
+                source text,
                 alert_source text
             );
-            """).format(metadata_table_name=sql.Identifier(metadata_table_name))
-        cursor.execute(query)
-
-    def _create_alerts_table(self, cursor, table_name):
-        query = sql.SQL("""
-        CREATE TABLE IF NOT EXISTS {table_name}
-        (
-            _id character varying(36) NOT NULL PRIMARY KEY,
-            -- These are found in "properties" of an alert Feature:
-            alert_type text,
-            area_alert_ha double precision,  -- only present for polygon
-            basin_id bigint,
-            confidence real,
-            count bigint,
-            date_end_t0 text,
-            date_end_t1 text,
-            date_start_t0 text,
-            date_start_t1 text,
-            grid bigint,
-            label bigint,
-            month_detec text,
-            sat_detect_prefix text,
-            sat_viz_prefix text,
-            satellite text,
-            territory_id bigint,
-            territory_name text,
-            year_detec text,
-            length_alert_km double precision,  -- only present for linestring
-            -- Deconstruct the "geometry" of a Feature:
-            g__type text,
-            g__coordinates text,
-            -- Added by us
-            source text,
-            alert_source text
-        );
-        """).format(table_name=sql.Identifier(table_name))
-        cursor.execute(query)
-
-    @staticmethod
-    def _safe_insert(cursor, table_name, columns, values):
-        """
-        Safely construct and execute an INSERT query to avoid SQL injection.
-
-        Parameters
-        ----------
-        cursor : psycopg2 cursor
-            The database cursor for executing the query.
-        table_name : str
-            The name of the table to insert data into.
-        columns : list of str
-            The list of column names to insert data into.
-        values : list
-            The values to insert into the table.
-
-        Returns
-        -------
-        None
-        """
-        query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
-        ).format(
-            table=sql.Identifier(table_name),
-            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
-            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
-        )
-
-        cursor.execute(query, values)
+            """).format(table_name=sql.Identifier(table_name))
+            cursor.execute(query)
+            conn.commit()
 
     def handle_output(self, alerts, alerts_metadata):
         """
@@ -503,7 +476,7 @@ class AlertsDBWriter:
 
         try:
             if alerts:
-                self._create_alerts_table(cursor, table_name)
+                self._create_alerts_table(table_name)
             else:
                 logger.info("No alerts data to store.")
 
@@ -547,61 +520,37 @@ class AlertsDBWriter:
                             )
                             length_alert_km = properties.get("length_alert_km")
 
-                            columns = [
-                                "_id",
-                                "alert_type",
-                                "area_alert_ha",
-                                "basin_id",
-                                "confidence",
-                                "count",
-                                "date_end_t0",
-                                "date_end_t1",
-                                "date_start_t0",
-                                "date_start_t1",
-                                "grid",
-                                "label",
-                                "month_detec",
-                                "sat_detect_prefix",
-                                "sat_viz_prefix",
-                                "satellite",
-                                "territory_id",
-                                "territory_name",
-                                "year_detec",
-                                "source",
-                                "g__type",
-                                "g__coordinates",
-                                "length_alert_km",
-                                "alert_source",
-                            ]
+                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, confidence, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
 
-                            values = [
-                                _id,
-                                alert_type,
-                                area_alert_ha,
-                                basin_id,
-                                confidence,
-                                count,
-                                date_end_t0,
-                                date_end_t1,
-                                date_start_t0,
-                                date_start_t1,
-                                grid,
-                                label,
-                                month_detec,
-                                sat_detect_prefix,
-                                sat_viz_prefix,
-                                satellite,
-                                territory_id,
-                                territory_name,
-                                year_detec,
-                                source,
-                                g__type,
-                                g__coordinates,
-                                length_alert_km,
-                                alert_source,
-                            ]
-
-                            self._safe_insert(cursor, table_name, columns, values)
+                            cursor.execute(
+                                query,
+                                (
+                                    _id,
+                                    alert_type,
+                                    area_alert_ha,
+                                    basin_id,
+                                    confidence,
+                                    count,
+                                    date_end_t0,
+                                    date_end_t1,
+                                    date_start_t0,
+                                    date_start_t1,
+                                    grid,
+                                    label,
+                                    month_detec,
+                                    sat_detect_prefix,
+                                    sat_viz_prefix,
+                                    satellite,
+                                    territory_id,
+                                    territory_name,
+                                    year_detec,
+                                    source,
+                                    g__type,
+                                    g__coordinates,
+                                    length_alert_km,
+                                    alert_source,
+                                ),
+                            )
 
                         except errors.UniqueViolation:
                             logger.info(
@@ -614,15 +563,13 @@ class AlertsDBWriter:
                             )
                             raise
                     conn.commit()
-                except Exception as e:
-                    logger.exception(
-                        f"An error occurred while processing alerts: {str(e)}"
-                    )
+                except Exception:
+                    logger.exception("An error occurred while processing GeoJSON")
                     conn.rollback()
                     raise
 
             if alerts_metadata:
-                self._create_alerts_metadata_table(cursor, table_name)
+                self._create_alerts_metadata_table(table_name)
             else:
                 logger.info("No alerts metadata to store.")
 
@@ -640,42 +587,33 @@ class AlertsDBWriter:
                     confidence = metadata.get("confidence")
                     alert_source = metadata.get("alert_source")
 
-                    columns = [
-                        "_id",
-                        "territory_id",
-                        "type_alert",
-                        "month",
-                        "year",
-                        "total_alerts",
-                        "description_alerts",
-                        "confidence",
-                        "alert_source",
-                    ]
+                    query = f"""INSERT INTO {table_name}__metadata (_id, territory_id, type_alert, month, year, total_alerts, description_alerts, confidence, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
 
-                    values = [
-                        _id,
-                        territory_id,
-                        type_alert,
-                        month,
-                        year,
-                        total_alerts,
-                        description_alerts,
-                        confidence,
-                        alert_source,
-                    ]
-
-                    self._safe_insert(
-                        cursor, f"{table_name}__metadata", columns, values
+                    # Execute the query
+                    cursor.execute(
+                        query,
+                        (
+                            _id,
+                            territory_id,
+                            type_alert,
+                            month,
+                            year,
+                            total_alerts,
+                            description_alerts,
+                            confidence,
+                            alert_source,
+                        ),
                     )
+
                     conn.commit()
                 except errors.UniqueViolation:
                     logger.info(
-                        f"Skipping insert due to UniqueViolation, this entry has been processed already in the past: {_id}"
+                        f"Skipping insert due to UniqueViolation, this alert has been processed already in the past: {source}"
                     )
                     conn.rollback()
-                except Exception as e:
+                except Exception:
                     logger.exception(
-                        f"An error occurred while processing alerts metadata: {str(e)}"
+                        "An error occurred while processing alerts metadata."
                     )
                     conn.rollback()
                     raise
