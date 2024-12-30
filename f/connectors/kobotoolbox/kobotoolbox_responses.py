@@ -204,7 +204,7 @@ def _drop_nonsql_chars(s):
     return re.sub(r"[ ./?\[\]\\,<>(){}]", "", s)
 
 
-def shorten_and_uniqify(identifier, conflicts, maxlen):
+def _shorten_and_uniqify(identifier, conflicts, maxlen):
     """Shorten an identifier and ensure its uniqueness within a set of conflicts.
 
     This function truncates an identifier to a specified maximum length and appends a
@@ -282,7 +282,7 @@ def sanitize(
         for args in str_replace:
             key = key.replace(*args)
         key = _drop_nonsql_chars(key)
-        key = shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
+        key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
         updated_column_renames[original_key] = key
         sanitized_sql_message[key] = value
@@ -474,9 +474,7 @@ class KoboDBWriter:
         all_submissions : list of dict
         """
         table_name = self.table_name
-        columns_table_name = (
-            f"{shorten_and_uniqify(f'{table_name}', set(), 54)}__columns"
-        )
+        columns_table_name = f"{table_name[:54]}__columns"
 
         conn = self._get_conn()
         cursor = conn.cursor()

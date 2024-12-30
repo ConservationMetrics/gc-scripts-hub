@@ -3,7 +3,6 @@ import psycopg2
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
     main,
     sanitize,
-    shorten_and_uniqify,
 )
 
 
@@ -85,18 +84,6 @@ def test_sanitize_with_nesting():
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",
     }
-
-
-def test_shorten_and_uniqify_for_columns_table():
-    table_name = "planting_submissions_for_planted_trees_under_our_island_program"
-    shortened_columns_table_name = shorten_and_uniqify(
-        table_name, set(), 54
-    )  # 54 chars to create space for "__columns"
-    columns_table_name = f"{shortened_columns_table_name}__columns"
-    assert (
-        columns_table_name
-        == "planting_submissions_for_planted_trees_under_our_islan__columns"
-    )
 
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
