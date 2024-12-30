@@ -42,8 +42,10 @@ def main(
         kobo_server_base_url, kobo_api_key, form_id, attachment_root
     )
 
+    transformed_form_data = format_geometry_fields(form_data)
+
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(form_data)
+    db_writer.handle_output(transformed_form_data)
     logger.info(
         f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
     )
@@ -143,6 +145,29 @@ def download_form_responses_and_attachments(
         f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s), including attachments."
     )
     return form_submissions
+
+
+def format_geometry_fields(form_data):
+    """Transform KoboToolbox form data by formatting geometry fields for SQL database insertion.
+
+    Parameters
+    ----------
+    form_data : list
+        A list of form submissions downloaded from the KoboToolbox API.
+
+    Returns
+    -------
+    list
+        A list of transformed form submissions.
+    """
+    for submission in form_data:
+        geolocation = submission.get("_geolocation")
+        if geolocation:
+            submission["g__type"] = "Point"
+            submission["g__coordinates"] = geolocation
+            del submission["_geolocation"]
+
+    return form_data
 
 
 def sanitize_form_name(form_name):
