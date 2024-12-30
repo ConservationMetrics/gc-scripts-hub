@@ -42,7 +42,7 @@ def main(
         kobo_server_base_url, kobo_api_key, form_id, attachment_root
     )
 
-    transformed_form_data = transform_form_data(form_data)
+    transformed_form_data = format_geometry_fields(form_data)
 
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
     db_writer.handle_output(transformed_form_data)
@@ -147,8 +147,8 @@ def download_form_responses_and_attachments(
     return form_submissions
 
 
-def transform_form_data(form_data):
-    """Transform KoboToolbox form data by e.g. formatting geometry fields for SQL database insertion.
+def format_geometry_fields(form_data):
+    """Transform KoboToolbox form data by formatting geometry fields for SQL database insertion.
 
     Parameters
     ----------
@@ -167,7 +167,6 @@ def transform_form_data(form_data):
             submission["g__coordinates"] = geolocation
             del submission["_geolocation"]
 
-        # TODO: consider discarding KoboToolbox meta fields not useful to store in the data warehouse
     return form_data
 
 
