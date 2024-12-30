@@ -70,19 +70,26 @@ def _download_submission_attachments(
     Returns
     -------
     None
-    """
 
+    Notes
+    -----
+    If the file already exists at the specified path, the function will skip downloading the file.
+    """
     for attachment in submission["_attachments"]:
         if "download_url" in attachment:
+            file_name = attachment["filename"]
+            save_path = (
+                Path(attachment_root)
+                / db_table_name
+                / "attachments"
+                / Path(file_name).name
+            )
+            if save_path.exists():
+                logger.info(f"File already exists, skipping download: {save_path}")
+                continue
+
             response = requests.get(attachment["download_url"], headers=headers)
             if response.status_code == 200:
-                file_name = attachment["filename"]
-                save_path = (
-                    Path(attachment_root)
-                    / db_table_name
-                    / "attachments"
-                    / Path(file_name).name
-                )
                 save_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(save_path, "wb") as file:
                     file.write(response.content)
