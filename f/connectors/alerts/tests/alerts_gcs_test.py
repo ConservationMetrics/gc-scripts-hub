@@ -32,7 +32,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
     assets_directory = "f/connectors/alerts/tests/assets/"
     alerts_filenames = [
         "alerts_history.csv",
-        "100/vector/2023/09/alerts.geojson",
+        "100/vector/2023/09/alert_202309900112345671.geojson",
         "100/raster/2023/09/S1_T0_202309900112345671.tif",
         "100/raster/2023/09/S1_T1_202309900112345671.tif",
         "100/raster/2023/09/S2_T0_202309900112345671.tif",
@@ -63,12 +63,22 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             cursor.execute("SELECT COUNT(*) FROM fake_alerts")
             assert cursor.fetchone()[0] == 1  # Length of assets/alerts.geojson
 
+            # Count of unique rows in alerts_history.csv based on UUID
+            # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert cursor.fetchone()[0] == 5  # Length of asserts/alerts_history.csv
+            assert cursor.fetchone()[0] == 5
 
-    # Metadata is saved to disk
-    assert (asset_storage / "alerts_history.csv").exists()
-    assert (asset_storage / "100/vector/2023/09/alerts.geojson").exists()
+            # Check that the confidence field is NULL if it is not defined in the CSV
+            cursor.execute(
+                "SELECT confidence FROM fake_alerts__metadata WHERE year = 2022 AND month = 12"
+            )  # This is the only row in the CSV that does not have a confidence value
+            assert cursor.fetchone()[0] is None
+
+    # GeoJSON is saved to disk
+    assert (
+        asset_storage
+        / "100/2023/09/202309900112345671/alert_202309900112345671.geojson"
+    ).exists()
 
     # Rasters are saved to disk
     for basename in (
@@ -85,3 +95,6 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
         assert (
             asset_storage / "100/2023/09/202309900112345671/images" / f"{basename}.jpg"
         ).exists()
+
+    # Alerts metadata is not saved to disk
+    assert not (asset_storage / "alerts_history.csv").exists()
