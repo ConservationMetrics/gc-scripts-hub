@@ -146,8 +146,7 @@ def download_attachment(url, headers, save_path):
 
     Notes
     -----
-    If the file already exists at the specified path, the function will skip the download process
-    and return the existing file's name.
+    If the file already exists at the specified path, the function will skip downloading the file.
 
     The function attempts to determine the file extension based on the 'Content-Type'
     header of the HTTP response from the CoMapeo Server. If the 'Content-Type' is not recognized,
@@ -157,11 +156,11 @@ def download_attachment(url, headers, save_path):
     allowing the caller to handle the download failure gracefully.
 
     """
-    try:
-        if Path(save_path).exists():
-            logger.info("File already exists, skipping download.")
-            return Path(save_path).name
+    if Path(save_path).exists():
+        logger.info("File already exists, skipping download.")
+        return Path(save_path).name
 
+    try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
 
