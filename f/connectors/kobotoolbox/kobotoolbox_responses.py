@@ -39,7 +39,7 @@ def main(
     kobo_api_key = kobotoolbox["api_key"]
 
     form_data = download_form_responses_and_attachments(
-        kobo_server_base_url, kobo_api_key, form_id, attachment_root
+        kobo_server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
     )
 
     transformed_form_data = format_geometry_fields(form_data)
@@ -51,7 +51,9 @@ def main(
     )
 
 
-def _download_submission_attachments(submission, dataset_id, attachment_root, headers):
+def _download_submission_attachments(
+    submission, db_table_name, attachment_root, headers
+):
     """Download and save attachments from a form submission.
 
     Parameters
@@ -77,7 +79,7 @@ def _download_submission_attachments(submission, dataset_id, attachment_root, he
                 file_name = attachment["filename"]
                 save_path = (
                     Path(attachment_root)
-                    / dataset_id
+                    / db_table_name
                     / "attachments"
                     / Path(file_name).name
                 )
@@ -92,7 +94,7 @@ def _download_submission_attachments(submission, dataset_id, attachment_root, he
 
 
 def download_form_responses_and_attachments(
-    server_base_url, kobo_api_key, form_id, attachment_root
+    server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
 ):
     """Download form responses and their attachments from the KoboToolbox API.
 
@@ -122,7 +124,6 @@ def download_form_responses_and_attachments(
     response.raise_for_status()
     data_uri = response.json()["data"]
     form_name = response.json().get("name")
-    dataset_id = sanitize_form_name(form_name)
 
     # Next download the form questions & metadata
     # FIXME: need to paginate. Maximum results per page is 30000.
@@ -133,12 +134,11 @@ def download_form_responses_and_attachments(
 
     for submission in form_submissions:
         submission["dataset_name"] = form_name
-        submission["dataset_id"] = dataset_id
 
         # Download attachments for each submission, if they exist
         if "_attachments" in submission:
             _download_submission_attachments(
-                submission, dataset_id, attachment_root, headers
+                submission, db_table_name, attachment_root, headers
             )
 
     logger.info(
@@ -168,25 +168,6 @@ def format_geometry_fields(form_data):
             del submission["_geolocation"]
 
     return form_data
-
-
-def sanitize_form_name(form_name):
-    """Sanitize a form name for use in file paths.
-
-    Parameters
-    ----------
-    form_name : str
-        The original form name to be sanitized.
-
-    Returns
-    -------
-    str
-        A sanitized version of the form name.
-    """
-    name = re.sub(r"[\s()]", "_", form_name)
-    name = re.sub(r"[^a-zA-Z0-9_-]", "", name)
-    name = name.lstrip("-")
-    return name if name else "default"
 
 
 def _reverse_parts(k, sep="/"):

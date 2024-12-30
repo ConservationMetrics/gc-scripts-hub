@@ -85,17 +85,18 @@ def test_sanitize_with_nesting():
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
+    table_name = "kobo_responses"
 
     main(
         koboserver.account,
         koboserver.form_id,
         pg_database,
-        "kobo_responses",
+        table_name,
         asset_storage,
     )
 
     # Attachments are saved to disk
-    assert (asset_storage / "Arboles" / "attachments" / "1637241249813.jpg").exists()
+    assert (asset_storage / table_name / "attachments" / "1637241249813.jpg").exists()
 
     # Survey responses are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
