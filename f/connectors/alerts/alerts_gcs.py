@@ -173,7 +173,8 @@ def sync_gcs_to_local(
 
     Notes
     -----
-    If the file already exists at the specified path, the function will skip downloading the file.
+    The function checks the last modified timestamps of both the local file and the GCS file.
+    If the local file is up-to-date or newer than the GCS file, it will skip downloading the file.
     """
 
     destination_path = Path(destination_path)
