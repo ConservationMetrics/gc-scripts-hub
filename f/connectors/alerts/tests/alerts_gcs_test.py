@@ -98,3 +98,58 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
 
     # Alerts metadata is not saved to disk
     assert not (asset_storage / "alerts_history.csv").exists()
+
+
+def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    asset_storage.mkdir(parents=True, exist_ok=True)
+
+    _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        100,
+        pg_database,
+        "fake_alerts",
+        asset_storage,
+    )
+
+    tif_file_path = (
+        asset_storage
+        / "100/2023/09/202309900112345671/images/S1_T0_202309900112345671.tif"
+    )
+    # Log initial timestamp and download time of the file
+    initial_timestamp = tif_file_path.stat().st_mtime
+    initial_download_time = os.path.getctime(tif_file_path)
+
+    _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        100,
+        pg_database,
+        "fake_alerts",
+        asset_storage,
+    )
+
+    # Check that the file timestamp and download time have not changed,
+    # since the file was not updated
+    assert tif_file_path.stat().st_mtime == initial_timestamp
+    assert os.path.getctime(tif_file_path) == initial_download_time
+
+    # Modify the file to simulate an update
+    with open(tif_file_path, "a") as f:
+        f.write("Modified content to simulate a file update.")
+
+    _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        100,
+        pg_database,
+        "fake_alerts",
+        asset_storage,
+    )
+
+    # Now, the file timestamp and download time should
+    # have changed, since the file was updated
+    updated_timestamp = tif_file_path.stat().st_mtime
+    assert updated_timestamp > initial_timestamp
+    assert os.path.getctime(tif_file_path) > initial_download_time
