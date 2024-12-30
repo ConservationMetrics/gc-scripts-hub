@@ -171,7 +171,9 @@ def sync_gcs_to_local(
     alerts_metadata : str
         The content of the alerts metadata file.
 
-    FIXME: sync, don't brute-force re-download files that already exist - see #6
+    Notes
+    -----
+    If the file already exists at the specified path, the function will skip downloading the file.
     """
 
     destination_path = Path(destination_path)
@@ -208,19 +210,31 @@ def sync_gcs_to_local(
         local_file_path = destination_path / blob_name
         filename = local_file_path.name
 
-        logger.info(f"Downloading file: {filename}")
-
         # Generate relative file path for all files
         rel_filepath = destination_path / _get_rel_filepath(
             str(local_file_path), territory_id
         )
 
+        local_file_full_path = rel_filepath / filename
+
+        if local_file_full_path.exists():
+            # Get the local file's last modified time
+            local_last_modified = local_file_full_path.stat().st_mtime
+
+            # Get the GCS file's updated timestamp
+            blob.reload()
+            gcs_last_modified = blob.updated.timestamp()
+
+            if local_last_modified >= gcs_last_modified:
+                logger.info(f"File is up-to-date, skipping download: {filename}")
+                continue
+
+        logger.info(f"Downloading file: {filename}")
         if not rel_filepath.exists():
             rel_filepath.mkdir(parents=True, exist_ok=True)
+        blob.download_to_filename(local_file_full_path)
 
-        blob.download_to_filename(rel_filepath / filename)
-
-        file_path_str = str(rel_filepath / filename)
+        file_path_str = str(local_file_full_path)
         if file_path_str.endswith(".geojson"):
             geojson_files.add(file_path_str)
         elif file_path_str.endswith((".tif", ".tiff")):
