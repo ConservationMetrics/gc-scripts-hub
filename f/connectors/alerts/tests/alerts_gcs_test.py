@@ -63,10 +63,10 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             cursor.execute("SELECT COUNT(*) FROM fake_alerts")
             assert cursor.fetchone()[0] == 1  # Length of assets/alerts.geojson
 
+            # Count of unique rows in alerts_history.csv based on UUID
+            # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert (
-                cursor.fetchone()[0] == 5
-            )  # Length of asserts/alerts_history.csv sans a duplicate
+            assert cursor.fetchone()[0] == 5
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(

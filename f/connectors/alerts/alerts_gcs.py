@@ -7,10 +7,8 @@
 # psycopg2-binary
 # requests~=2.32
 
-import hashlib
 import json
 import logging
-import uuid
 from io import StringIO
 from pathlib import Path
 
@@ -281,31 +279,6 @@ def convert_tiffs_to_jpg(tiff_files):
     logger.info("Successfully converted TIFF files to JPEG.")
 
 
-def _generate_uuid(row):
-    """
-    Generate a unique UUID for a row using SHA256 hashing.
-
-    Parameters
-    ----------
-    row : pd.Series
-        A pandas Series representing a row in the DataFrame.
-
-    Returns
-    -------
-    str
-        A unique UUID for the row.
-    """
-
-    def sha256sum(data):
-        h = hashlib.sha256()
-        h.update(data.encode("utf-8"))
-        return h.hexdigest()
-
-    row_data = json.dumps(row.to_dict(), sort_keys=True)
-    row_hash = sha256sum(row_data)
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, row_hash))
-
-
 def prepare_alerts_metadata(alerts_metadata, territory_id):
     """
     Prepare alerts metadata by filtering and processing CSV data.
@@ -335,8 +308,20 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Filter DataFrame based on territory_id
     filtered_df = df.loc[df["territory_id"] == territory_id]
 
-    # Hash each row into a unique UUID
-    filtered_df["metadata_uuid"] = filtered_df.apply(_generate_uuid, axis=1)
+    # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
+    # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
+    filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
+        filtered_df[
+            [
+                "territory_id",
+                "type_alert",
+                "month",
+                "year",
+                "description_alerts",
+            ]
+        ].sort_index(axis=1),
+        index=False,
+    )
 
     # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
     filtered_df["alert_source"] = "terras"
@@ -439,7 +424,7 @@ class AlertsDBWriter:
             query = sql.SQL("""
             CREATE TABLE IF NOT EXISTS {table_name}
             (
-                _id character varying(36) NOT NULL PRIMARY KEY,
+                _id bigint NOT NULL PRIMARY KEY,
                 -- These are found in "properties" of an alert Feature:
                 alert_type text,
                 area_alert_ha double precision,  -- only present for polygon
