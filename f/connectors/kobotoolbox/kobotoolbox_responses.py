@@ -4,9 +4,9 @@
 
 import json
 import logging
-import os
 import re
 import time
+from pathlib import Path
 
 import psycopg2
 import requests
@@ -38,18 +38,82 @@ def main(
     kobo_server_base_url = kobotoolbox["server_url"]
     kobo_api_key = kobotoolbox["api_key"]
 
-    form_data = download_form_and_attachments(
-        kobo_server_base_url, kobo_api_key, form_id, attachment_root
+    form_data = download_form_responses_and_attachments(
+        kobo_server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
     )
 
+    transformed_form_data = format_geometry_fields(form_data)
+
     db_writer = KoboDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(form_data)
-    logger.info(f"Wrote response content to database table [{db_table_name}]")
+    db_writer.handle_output(transformed_form_data)
+    logger.info(
+        f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
+    )
 
 
-def download_form_and_attachments(
-    server_base_url, kobo_api_key, form_id, attachment_root
+def _download_submission_attachments(
+    submission, db_table_name, attachment_root, headers
 ):
+    """Download and save attachments from a form submission.
+
+    Parameters
+    ----------
+    submission : dict
+        The form submission data
+    dataset_id : str
+        The identifier for the dataset, used to organize the save path.
+    attachment_root : str
+        The base directory where attachments will be stored.
+    headers : dict
+        HTTP headers required for downloading the attachments.
+
+    Returns
+    -------
+    None
+    """
+
+    for attachment in submission["_attachments"]:
+        if "download_url" in attachment:
+            response = requests.get(attachment["download_url"], headers=headers)
+            if response.status_code == 200:
+                file_name = attachment["filename"]
+                save_path = (
+                    Path(attachment_root)
+                    / db_table_name
+                    / "attachments"
+                    / Path(file_name).name
+                )
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(save_path, "wb") as file:
+                    file.write(response.content)
+                logger.debug(f"Download completed: {attachment['download_url']}")
+            else:
+                logger.error(
+                    f"Failed downloading attachment: {attachment['download_url']}"
+                )
+
+
+def download_form_responses_and_attachments(
+    server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
+):
+    """Download form responses and their attachments from the KoboToolbox API.
+
+    Parameters
+    ----------
+    server_base_url : str
+        The base URL of the KoboToolbox server.
+    kobo_api_key : str
+        The API key for authenticating requests to the KoboToolbox server.
+    form_id : str
+        The unique identifier of the form to download.
+    attachment_root : str
+        The root directory where attachments will be saved.
+
+    Returns
+    -------
+    list
+        A list of form submissions data.
+    """
     headers = {
         "Authorization": f"Token {kobo_api_key}",
         "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -60,74 +124,112 @@ def download_form_and_attachments(
     response.raise_for_status()
     data_uri = response.json()["data"]
     form_name = response.json().get("name")
-    dataset_id = sanitize_form_name(form_name)
 
     # Next download the form questions & metadata
     # FIXME: need to paginate. Maximum results per page is 30000.
     response = requests.get(data_uri, headers=headers)
     response.raise_for_status()
 
-    all_submissions = response.json()["results"]
+    form_submissions = response.json()["results"]
 
-    for submission in all_submissions:
-        # Inject the form name/id to each submission.
-        # Thus these fields will be added as columns along with all the other submission info later on.
+    for submission in form_submissions:
         submission["dataset_name"] = form_name
-        submission["dataset_id"] = dataset_id
 
-        # If the result has attachments, download them.
+        # Download attachments for each submission, if they exist
         if "_attachments" in submission:
-            for attachment in submission["_attachments"]:
-                if "download_url" in attachment:
-                    response = requests.get(attachment["download_url"], headers=headers)
-                    if response.status_code == 200:
-                        file_name = attachment["filename"]
-                        # ie. datalake/{dataset_id}/attachments/{files}
-                        save_path = os.path.join(
-                            attachment_root,
-                            dataset_id,
-                            "attachments",
-                            os.path.basename(file_name),
-                        )
-                        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                        with open(save_path, "wb") as file:
-                            file.write(response.content)
-                        logger.debug(
-                            "Download completed: " + attachment["download_url"]
-                        )
-                    else:
-                        # TODO: add retries
-                        logger.error("Failed downloading attachments.")
+            _download_submission_attachments(
+                submission, db_table_name, attachment_root, headers
+            )
 
     logger.info(
-        f"[Form {form_id}] Downloaded {len(all_submissions)} submission(s), including attachments."
+        f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s), including attachments."
     )
-    return all_submissions
+    return form_submissions
 
 
-def sanitize_form_name(form_name):
-    # sanitizes form_name string for path creation
-    name = re.sub(r"[\s()]", "_", form_name)
-    name = re.sub(r"[^a-zA-Z0-9_-]", "", name)
-    name = name.lstrip("-")
-    return name if name else "default"
+def format_geometry_fields(form_data):
+    """Transform KoboToolbox form data by formatting geometry fields for SQL database insertion.
+
+    Parameters
+    ----------
+    form_data : list
+        A list of form submissions downloaded from the KoboToolbox API.
+
+    Returns
+    -------
+    list
+        A list of transformed form submissions.
+    """
+    for submission in form_data:
+        geolocation = submission.get("_geolocation")
+        if geolocation:
+            submission["g__type"] = "Point"
+            submission["g__coordinates"] = geolocation
+            del submission["_geolocation"]
+
+    return form_data
 
 
 def _reverse_parts(k, sep="/"):
+    """Reverse the parts of a string separated by a given separator.
+
+    Parameters
+    ----------
+    k : str
+        The string to be reversed.
+    sep : str, optional
+        The separator used to split and join the string parts, by default "/".
+
+    Returns
+    -------
+    str
+        The string with its parts reversed.
+    """
     return sep.join(reversed(k.split(sep)))
 
 
 def _drop_nonsql_chars(s):
+    """Remove non-SQL compatible characters from a string.
+
+    Parameters
+    ----------
+    s : str
+        The string from which to remove non-SQL characters.
+
+    Returns
+    -------
+    str
+        The cleaned string with non-SQL characters removed.
+    """
     return re.sub(r"[ ./?\[\]\\,<>(){}]", "", s)
 
 
-def _shorten_and_uniqify(key, conflicts, maxlen):
+def _shorten_and_uniqify(identifier, conflicts, maxlen):
+    """Shorten an identifier and ensure its uniqueness within a set of conflicts.
+
+    This function truncates an identifier to a specified maximum length and appends a
+    numeric suffix if necessary to ensure uniqueness within a set of conflicting identifiers.
+
+    Parameters
+    ----------
+    identifier : str
+        The original identifier to be shortened and made unique.
+    conflicts : set
+        A set of identifiers that the new identifier must not conflict with.
+    maxlen : int
+        The maximum allowed length for the identifier.
+
+    Returns
+    -------
+    str
+        A shortened and unique version of the identifier.
+    """
     counter = 1
-    new_key = key[:maxlen]
-    while new_key in conflicts:
-        new_key = "{}_{:03d}".format(key[: maxlen - 4], counter)
+    new_identifier = identifier[:maxlen]
+    while new_identifier in conflicts:
+        new_identifier = "{}_{:03d}".format(identifier[: maxlen - 4], counter)
         counter += 1
-    return new_key
+    return new_identifier
 
 
 def sanitize(
@@ -137,28 +239,54 @@ def sanitize(
     str_replace=[],
     maxlen=63,  # https://stackoverflow.com/a/27865772
 ):
-    column_renames = column_renames.copy()
-    sql_message = {}
+    """Sanitize a message for SQL compatibility and rename columns.
+
+    This function processes a message dictionary, converting lists and dictionaries
+    to JSON strings, renaming columns based on provided mappings, and ensuring
+    SQL compatibility of keys.
+
+    Parameters
+    ----------
+    message : dict
+        The original message dictionary to be sanitized.
+    column_renames : dict
+        A dictionary mapping original column names to their new names.
+    reverse_properties_separated_by : str, optional
+        A separator for reversing property names, by default None.
+    str_replace : list, optional
+        A list of tuples specifying string replacements, by default [].
+    maxlen : int, optional
+        The maximum length for SQL-compatible keys, by default 63.
+
+    Returns
+    -------
+    sanitized_sql_message : dict
+        The sanitized message dictionary with SQL-compatible keys.
+    updated_column_renames : dict
+        The updated column renames dictionary.
+    """
+
+    updated_column_renames = column_renames.copy()
+    sanitized_sql_message = {}
     for original_key, value in message.items():
         if isinstance(value, list) or isinstance(value, dict):
             value = json.dumps(value)
 
-        if original_key in column_renames:
-            sql_message[column_renames[original_key]] = value
+        if original_key in updated_column_renames:
+            sanitized_sql_message[updated_column_renames[original_key]] = value
             continue
 
-        # transform
         key = original_key
         if reverse_properties_separated_by:
             key = _reverse_parts(original_key, reverse_properties_separated_by)
         for args in str_replace:
             key = key.replace(*args)
         key = _drop_nonsql_chars(key)
-        key = _shorten_and_uniqify(key, column_renames.values(), maxlen)
+        key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
-        column_renames[original_key] = key
-        sql_message[key] = value
-    return sql_message, column_renames
+        updated_column_renames[original_key] = key
+        sanitized_sql_message[key] = value
+    return sanitized_sql_message, updated_column_renames
 
 
 class KoboDBWriter:
@@ -217,12 +345,11 @@ class KoboDBWriter:
         conn.close()
         return columns
 
-    def _get_existing_cols(self, table_name):
+    def _get_existing_cols(self, table_name, columns_table_name):
         """Fetches the column names of the given table."""
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        columns_table_name = f"{table_name}__columns"
         query = sql.SQL("""
         CREATE TABLE IF NOT EXISTS {columns_table_name} (
         original_column VARCHAR(128) NULL,
@@ -257,18 +384,18 @@ class KoboDBWriter:
                 for original_column, sql_column in missing_columns.items():
                     try:
                         query = f"""
-                        INSERT INTO {table_name}__columns (original_column, sql_column)
+                        INSERT INTO {table_name} (original_column, sql_column)
                         VALUES ('{original_column}', '{sql_column}');
                         """
                         cursor.execute(query)
                     except errors.UniqueViolation:
                         logger.info(
-                            f"Skipping insert of mappings into {table_name}__columns due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
+                            f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
                         )
                         continue
                     except Exception as e:
                         logger.error(
-                            f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}__columns: {e}"
+                            f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
                         )
                         raise
         finally:
@@ -285,7 +412,6 @@ class KoboDBWriter:
                 cursor.execute(query)
 
                 for sanitized_column in missing_columns:
-                    # it's pkey of the table
                     if sanitized_column == "_id":
                         continue
                     try:
@@ -348,13 +474,13 @@ class KoboDBWriter:
         all_submissions : list of dict
         """
         table_name = self.table_name
+        columns_table_name = f"{table_name[:54]}__columns"
 
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        existing_fields = self._get_existing_cols(table_name)
-        existing_columns_map = self._get_existing_mappings(table_name + "__columns")
-        incoming_columns_dict = {}
+        existing_fields = self._get_existing_cols(table_name, columns_table_name)
+        existing_columns_map = self._get_existing_mappings(columns_table_name)
 
         rows = []
         # Iterate over each submission to collect the full set of columns needed
@@ -371,35 +497,27 @@ class KoboDBWriter:
         missing_map_keys = set()
         missing_field_keys = set()
         for sanitized, existing_mappings in rows:
-            # what's in sanitized incoming that we are not supporting currently
+            # Identify keys in the sanitized data that are not currently supported by existing mappings
             missing_map_keys.update(
                 set(sanitized.keys()).difference(set(existing_mappings.values()))
             )
-            diff = set(existing_mappings.values()).difference(existing_fields)
-
-            # what's in existing mapping but it doesn't exist in the form table
-            # NOTE: this can happen when the database is new based off legacy mapping
+            # Identify keys in existing mappings that do not exist in the database table
+            # NOTE: This can occur when the database is newly created based on legacy mappings
             missing_field_keys.update(
                 set(existing_mappings.values()).difference(existing_fields)
             )
 
-            # what's in incoming keys but it doesn't exist in the form table
+            # Identify keys in the sanitized data that do not exist in the database table
             missing_field_keys.update(set(sanitized.keys()).difference(existing_fields))
 
         missing_mappings = {}
         for m in missing_map_keys:
-            # FIXME: need to clean from the database probably instead
-            if m in ["g__coordinates", "_topic", "p___sender", "g__type"]:
-                continue
-            # TODO: write a test for this when it's empty
-            # m is a missing key
+            # TODO: Write a test for this when it's empty
             original = [key for key, val in original_to_sql.items() if val == m]
             if original:
                 original = original[0]
             else:
-                # we don't need to support this sql column
-                # as it doesn't have a matched original to be mapped
-                # and can be skipped
+                # Skip this SQL column as it has no corresponding original key to map from
                 continue
             sql = m
             missing_mappings[str(original)] = sql
@@ -407,7 +525,7 @@ class KoboDBWriter:
         logger.info(f"New incoming map keys missing from db: {len(missing_mappings)}")
 
         if missing_mappings:
-            self._create_missing_mappings(table_name, missing_mappings)
+            self._create_missing_mappings(columns_table_name, missing_mappings)
             time.sleep(10)
 
         logger.info(
@@ -416,8 +534,6 @@ class KoboDBWriter:
 
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
-            updated_fields = self._get_existing_cols(table_name)
-            # assert updated_fields != existing_fields, "{table_name} fields have not been updated properly."
 
         logger.info(f"Inserting {len(rows)} submissions into DB.")
 
@@ -425,7 +541,7 @@ class KoboDBWriter:
             try:
                 cols, vals = zip(*row.items())
 
-                # Serialize lists, dict values to JSON text
+                # Serialize lists and dict values to JSON text
                 vals = list(vals)
                 for i in range(len(vals)):
                     value = vals[i]
