@@ -620,7 +620,7 @@ class AlertsDBWriter:
                     conn.commit()
                 except errors.UniqueViolation:
                     logger.info(
-                        f"Skipping insert due to UniqueViolation, this alert has been processed already in the past: {_id}"
+                        f"Skipping insert due to UniqueViolation, this alert has been processed already in the past: {source}"
                     )
                     conn.rollback()
                 except Exception:
