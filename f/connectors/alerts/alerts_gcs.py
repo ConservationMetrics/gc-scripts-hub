@@ -18,7 +18,6 @@ import pandas as pd
 import psycopg2
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
-from numpy import nan
 from PIL import Image
 from psycopg2 import errors, sql
 
@@ -336,14 +335,14 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Filter DataFrame based on territory_id
     filtered_df = df.loc[df["territory_id"] == territory_id]
 
-    # Generate a unique UUID for each row
+    # Hash each row into a unique UUID
     filtered_df["metadata_uuid"] = filtered_df.apply(_generate_uuid, axis=1)
 
     # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
     filtered_df["alert_source"] = "terras"
 
     # Replace all NaN values with None
-    filtered_df = filtered_df.replace({nan: None})
+    filtered_df.replace({float("nan"): None}, inplace=True)
 
     # Convert DataFrame to list of dictionaries
     prepared_alerts_metadata = filtered_df.to_dict("records")
