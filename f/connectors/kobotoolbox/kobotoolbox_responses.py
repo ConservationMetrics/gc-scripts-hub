@@ -204,32 +204,32 @@ def _drop_nonsql_chars(s):
     return re.sub(r"[ ./?\[\]\\,<>(){}]", "", s)
 
 
-def _shorten_and_uniqify(key, conflicts, maxlen):
-    """Shorten a key and ensure its uniqueness within a set of conflicts.
+def shorten_and_uniqify(identifier, conflicts, maxlen):
+    """Shorten an identifier and ensure its uniqueness within a set of conflicts.
 
-    This function truncates a key to a specified maximum length and appends a
-    numeric suffix if necessary to ensure uniqueness within a set of conflicting keys.
+    This function truncates an identifier to a specified maximum length and appends a
+    numeric suffix if necessary to ensure uniqueness within a set of conflicting identifiers.
 
     Parameters
     ----------
-    key : str
-        The original key to be shortened and made unique.
+    identifier : str
+        The original identifier to be shortened and made unique.
     conflicts : set
-        A set of keys that the new key must not conflict with.
+        A set of identifiers that the new identifier must not conflict with.
     maxlen : int
-        The maximum allowed length for the key.
+        The maximum allowed length for the identifier.
 
     Returns
     -------
     str
-        A shortened and unique version of the key.
+        A shortened and unique version of the identifier.
     """
     counter = 1
-    new_key = key[:maxlen]
-    while new_key in conflicts:
-        new_key = "{}_{:03d}".format(key[: maxlen - 4], counter)
+    new_identifier = identifier[:maxlen]
+    while new_identifier in conflicts:
+        new_identifier = "{}_{:03d}".format(identifier[: maxlen - 4], counter)
         counter += 1
-    return new_key
+    return new_identifier
 
 
 def sanitize(
@@ -282,7 +282,7 @@ def sanitize(
         for args in str_replace:
             key = key.replace(*args)
         key = _drop_nonsql_chars(key)
-        key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
+        key = shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
         updated_column_renames[original_key] = key
         sanitized_sql_message[key] = value
@@ -345,12 +345,11 @@ class KoboDBWriter:
         conn.close()
         return columns
 
-    def _get_existing_cols(self, table_name):
+    def _get_existing_cols(self, table_name, columns_table_name):
         """Fetches the column names of the given table."""
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        columns_table_name = f"{table_name}__columns"
         query = sql.SQL("""
         CREATE TABLE IF NOT EXISTS {columns_table_name} (
         original_column VARCHAR(128) NULL,
@@ -385,18 +384,18 @@ class KoboDBWriter:
                 for original_column, sql_column in missing_columns.items():
                     try:
                         query = f"""
-                        INSERT INTO {table_name}__columns (original_column, sql_column)
+                        INSERT INTO {table_name} (original_column, sql_column)
                         VALUES ('{original_column}', '{sql_column}');
                         """
                         cursor.execute(query)
                     except errors.UniqueViolation:
                         logger.info(
-                            f"Skipping insert of mappings into {table_name}__columns due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
+                            f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
                         )
                         continue
                     except Exception as e:
                         logger.error(
-                            f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}__columns: {e}"
+                            f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
                         )
                         raise
         finally:
@@ -475,12 +474,15 @@ class KoboDBWriter:
         all_submissions : list of dict
         """
         table_name = self.table_name
+        columns_table_name = (
+            f"{shorten_and_uniqify(f'{table_name}', set(), 54)}__columns"
+        )
 
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        existing_fields = self._get_existing_cols(table_name)
-        existing_columns_map = self._get_existing_mappings(table_name + "__columns")
+        existing_fields = self._get_existing_cols(table_name, columns_table_name)
+        existing_columns_map = self._get_existing_mappings(columns_table_name)
 
         rows = []
         # Iterate over each submission to collect the full set of columns needed
@@ -525,7 +527,7 @@ class KoboDBWriter:
         logger.info(f"New incoming map keys missing from db: {len(missing_mappings)}")
 
         if missing_mappings:
-            self._create_missing_mappings(table_name, missing_mappings)
+            self._create_missing_mappings(columns_table_name, missing_mappings)
             time.sleep(10)
 
         logger.info(
