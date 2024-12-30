@@ -117,6 +117,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         asset_storage
         / "100/2023/09/202309900112345671/images/S1_T0_202309900112345671.tif"
     )
+
     # Log initial timestamp and download time of the file
     initial_timestamp = tif_file_path.stat().st_mtime
     initial_download_time = os.path.getctime(tif_file_path)
@@ -130,8 +131,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         asset_storage,
     )
 
-    # Check that the file timestamp and download time have not changed,
-    # since the file was not updated
+    # Check that the file timestamp and download time have not changed, since the file was not updated
     assert tif_file_path.stat().st_mtime == initial_timestamp
     assert os.path.getctime(tif_file_path) == initial_download_time
 
@@ -148,8 +148,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         asset_storage,
     )
 
-    # Now, the file timestamp and download time should
-    # have changed, since the file was updated
+    # Now, the file timestamp and download time should have changed, since the file was updated
     updated_timestamp = tif_file_path.stat().st_mtime
     assert updated_timestamp > initial_timestamp
     assert os.path.getctime(tif_file_path) > initial_download_time
