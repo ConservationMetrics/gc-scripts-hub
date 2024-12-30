@@ -1,9 +1,6 @@
 import psycopg2
 
-from f.connectors.kobotoolbox.kobotoolbox_responses import (
-    main,
-    sanitize,
-)
+from f.connectors.kobotoolbox.kobotoolbox_responses import main, sanitize
 
 
 def test_sanitize():
