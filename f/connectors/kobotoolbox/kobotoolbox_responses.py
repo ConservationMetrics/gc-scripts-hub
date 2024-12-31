@@ -165,7 +165,6 @@ def format_geometry_fields(form_data):
             # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
             coordinates = submission.pop("_geolocation")[::-1]
             submission.update({"g__type": "Point", "g__coordinates": coordinates})
-            del submission["_geolocation"]
 
     return form_data
 
