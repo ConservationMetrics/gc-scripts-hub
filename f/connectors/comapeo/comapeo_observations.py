@@ -439,6 +439,7 @@ class CoMapeoDBWriter:
         comapeo_projects = outputs
 
         for project_name, project_data in comapeo_projects.items():
+            # TODO: Safely truncate each project_name to 63 characters while retaining uniqueness
             project_db_table_name = project_name[:63]
             existing_fields = self._inspect_schema(project_db_table_name)
             rows = []
