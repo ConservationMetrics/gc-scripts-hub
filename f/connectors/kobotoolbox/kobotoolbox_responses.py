@@ -298,17 +298,21 @@ class KoboDBWriter:
     """
 
     def __init__(
-        self, db_connection_string, table_name, reverse_properties_separated_by="/"
+        self,
+        db_connection_string,
+        table_name,
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__")],
     ):
         """
         Component for syncing messages to a SQL database table. This component
         automatically handles table width resizing, row-level updates, most data type
         conversions, and sanitizing kobo field names to be SQL-compatible.
 
-        Example of using `reverse_properties_separated_by`:
+        Example of using `reverse_properties_separated_by` and `str_replace`:
         - incoming field => `{"group1/group2/question": "How do you do?"}`
-        - `reverse_properties_separated_by="/"`
-        - SQL column/value => `{"question/group2/group1": "How do you do?"}`
+        - `reverse_properties_separated_by="/"`, `str_replace=[("/", "__")]`
+        - SQL column/value => `{"question__group2__group1": "How do you do?"}`
 
         Parameters
         ----------
@@ -320,10 +324,14 @@ class KoboDBWriter:
             An optional transformation of flat property names: split the name on the
             `reverse_properties_separated_by` character, reverse the parts, then re-concatenate
             them with the same separator.
+        str_replace : list
+            An optional list of tuples specifying string replacements to be applied to the
+            property names.
         """
         self.db_connection_string = db_connection_string
         self.table_name = table_name
         self.reverse_separator = reverse_properties_separated_by
+        self.str_replace = str_replace
 
     def _get_conn(self):
         """
@@ -489,6 +497,7 @@ class KoboDBWriter:
                 submission,
                 existing_columns_map,
                 reverse_properties_separated_by=self.reverse_separator,
+                str_replace=self.str_replace,
             )
             rows.append((sanitized_columns_dict, existing_columns_map))
             original_to_sql.update(updated_columns_map)
