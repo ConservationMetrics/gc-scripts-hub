@@ -60,8 +60,6 @@ def _download_submission_attachments(
     ----------
     submission : dict
         The form submission data
-    dataset_id : str
-        The identifier for the dataset, used to organize the save path.
     attachment_root : str
         The base directory where attachments will be stored.
     headers : dict
