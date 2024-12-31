@@ -9,6 +9,7 @@
 
 import json
 import logging
+import uuid
 from io import StringIO
 from pathlib import Path
 
@@ -424,8 +425,9 @@ class AlertsDBWriter:
             query = sql.SQL("""
             CREATE TABLE IF NOT EXISTS {table_name}
             (
-                _id numeric NOT NULL PRIMARY KEY,
+                _id character varying(36) NOT NULL PRIMARY KEY,
                 -- These are found in "properties" of an alert Feature:
+                alert_id text,
                 alert_type text,
                 area_alert_ha double precision,  -- only present for polygon
                 basin_id bigint,
@@ -491,7 +493,11 @@ class AlertsDBWriter:
                             else:
                                 properties = None
 
-                            _id = properties.get("id")
+                            # Generate a UUID for the alert based on the alert's ID
+                            _id = str(
+                                uuid.uuid5(uuid.NAMESPACE_DNS, properties.get("id"))
+                            )
+                            alert_id = properties.get("id")
                             alert_type = properties.get("alert_type")
                             area_alert_ha = properties.get("area_alert_ha")
                             basin_id = properties.get("basin_id")
@@ -517,12 +523,13 @@ class AlertsDBWriter:
                             )
                             length_alert_km = properties.get("length_alert_km")
 
-                            query = f"""INSERT INTO {table_name} (_id, alert_type, area_alert_ha, basin_id, confidence, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
+                            query = f"""INSERT INTO {table_name} (_id, alert_id, alert_type, area_alert_ha, basin_id, confidence, count, date_end_t0, date_end_t1, date_start_t0, date_start_t1, grid, label, month_detec, sat_detect_prefix, sat_viz_prefix, satellite, territory_id, territory_name, year_detec, source, g__type, g__coordinates, length_alert_km, alert_source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
 
                             cursor.execute(
                                 query,
                                 (
                                     _id,
+                                    alert_id,
                                     alert_type,
                                     area_alert_ha,
                                     basin_id,
