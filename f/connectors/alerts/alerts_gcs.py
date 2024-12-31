@@ -424,7 +424,7 @@ class AlertsDBWriter:
             query = sql.SQL("""
             CREATE TABLE IF NOT EXISTS {table_name}
             (
-                _id bigint NOT NULL PRIMARY KEY,
+                _id numeric NOT NULL PRIMARY KEY,
                 -- These are found in "properties" of an alert Feature:
                 alert_type text,
                 area_alert_ha double precision,  -- only present for polygon
