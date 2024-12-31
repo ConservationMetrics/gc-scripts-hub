@@ -439,7 +439,8 @@ class CoMapeoDBWriter:
         comapeo_projects = outputs
 
         for project_name, project_data in comapeo_projects.items():
-            existing_fields = self._inspect_schema(project_name)
+            project_db_table_name = project_name[:63]
+            existing_fields = self._inspect_schema(project_db_table_name)
             rows = []
             for entry in project_data:
                 sanitized_entry = {
@@ -452,7 +453,7 @@ class CoMapeoDBWriter:
                 missing_field_keys.update(set(row.keys()).difference(existing_fields))
 
             if missing_field_keys:
-                self._create_missing_fields(project_name, missing_field_keys)
+                self._create_missing_fields(project_db_table_name, missing_field_keys)
 
             logger.info(f"Inserting {len(rows)} submissions into DB.")
 
@@ -467,10 +468,10 @@ class CoMapeoDBWriter:
                         if isinstance(value, list) or isinstance(value, dict):
                             vals[i] = json.dumps(value)
 
-                    self._safe_insert(cursor, project_name, cols, vals)
+                    self._safe_insert(cursor, project_db_table_name, cols, vals)
                 except errors.UniqueViolation:
                     logger.debug(
-                        f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                        f"Skipping insertion of rows to {project_db_table_name} due to UniqueViolation, this _id has been accounted for already in the past."
                     )
                     conn.rollback()
                     continue

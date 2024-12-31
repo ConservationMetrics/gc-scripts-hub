@@ -400,7 +400,7 @@ class AlertsDBWriter:
         return psycopg2.connect(dsn=self.db_connection_string)
 
     def _create_alerts_metadata_table(self, table_name):
-        metadata_table_name = f"{table_name}__metadata"
+        metadata_table_name = f"{table_name[:53]}__metadata"
 
         with self._get_conn() as conn, conn.cursor() as cursor:
             query = sql.SQL("""
