@@ -425,7 +425,7 @@ class AlertsDBWriter:
             query = sql.SQL("""
             CREATE TABLE IF NOT EXISTS {table_name}
             (
-                _id character varying(36) NOT NULL PRIMARY KEY,
+                _id uuid PRIMARY KEY,
                 -- These are found in "properties" of an alert Feature:
                 alert_id text,
                 alert_type text,
