@@ -110,3 +110,9 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
                 "SELECT g__type, g__coordinates FROM kobo_responses WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("Point", "[-122.0109429, 36.97012]")
+
+            # Check that meta/instanceID was sanitized to instanceID__meta
+            cursor.execute(
+                "SELECT \"instanceID__meta\" FROM kobo_responses WHERE _id = '124961136'"
+            )
+            assert cursor.fetchone() == ("uuid:e58da38d-3eee-4bd7-8512-4a97ea8fbb01",)
