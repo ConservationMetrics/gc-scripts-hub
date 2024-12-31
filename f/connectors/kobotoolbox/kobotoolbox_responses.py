@@ -161,10 +161,10 @@ def format_geometry_fields(form_data):
         A list of transformed form submissions.
     """
     for submission in form_data:
-        geolocation = submission.get("_geolocation")
-        if geolocation:
-            submission["g__type"] = "Point"
-            submission["g__coordinates"] = geolocation
+        if "_geolocation" in submission:
+            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
+            coordinates = submission.pop("_geolocation")[::-1]
+            submission.update({"g__type": "Point", "g__coordinates": coordinates})
             del submission["_geolocation"]
 
     return form_data
