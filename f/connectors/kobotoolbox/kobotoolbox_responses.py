@@ -443,7 +443,8 @@ class KoboDBWriter:
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
         """
-        Safely construct and execute an INSERT query to avoid SQL injection.
+        Constructs and executes a safe INSERT query to prevent SQL injection,
+        and handles conflicts by updating existing records.
 
         Parameters
         ----------
@@ -458,17 +459,51 @@ class KoboDBWriter:
 
         Returns
         -------
-        None
+        tuple
+            A tuple containing the count of inserted and updated rows.
         """
+        inserted_count = 0
+        updated_count = 0
+
+        # Check if there is an existing row that is different from the new values
+        id_index = columns.index("_id")
+        values[id_index] = str(values[id_index])
+        select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            table=sql.Identifier(table_name),
+        )
+        cursor.execute(select_query, (values[columns.index("_id")],))
+        existing_row = cursor.fetchone()
+
+        if existing_row and list(existing_row) == values:
+            # No changes, skip the update
+            return inserted_count, updated_count
+
         query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
+            "ON CONFLICT (_id) DO UPDATE SET {updates} "
+            "RETURNING (xmax = 0) AS inserted"
         ).format(
             table=sql.Identifier(table_name),
             fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
             placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+            updates=sql.SQL(", ").join(
+                sql.Composed(
+                    [sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)]
+                )
+                for col in columns
+                if col != "_id"
+            ),
         )
 
         cursor.execute(query, values)
+        result = cursor.fetchone()
+        if result and result[0]:
+            inserted_count += 1
+        else:
+            updated_count += 1
+
+        return inserted_count, updated_count
 
     def handle_output(self, all_submissions):
         """
@@ -541,7 +576,10 @@ class KoboDBWriter:
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
 
-        logger.info(f"Inserting {len(rows)} submissions into DB.")
+        logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
+
+        inserted_count = 0
+        updated_count = 0
 
         for row, _ in rows:
             try:
@@ -554,14 +592,12 @@ class KoboDBWriter:
                     if isinstance(value, list) or isinstance(value, dict):
                         vals[i] = json.dumps(value)
 
-                self._safe_insert(cursor, table_name, cols, vals)
-
-            except errors.UniqueViolation:
-                logger.debug(
-                    f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                result_inserted_count, result_updated_count = self._safe_insert(
+                    cursor, table_name, cols, vals
                 )
-                conn.rollback()
-                continue
+                inserted_count += result_inserted_count
+                updated_count += result_updated_count
+
             except Exception as e:
                 logger.error(f"Error inserting data: {e}, {type(e).__name__}")
                 conn.rollback()
@@ -571,6 +607,9 @@ class KoboDBWriter:
             except Exception as e:
                 logger.error(f"Error committing transaction: {e}")
                 conn.rollback()
+
+        logger.info(f"Total rows inserted: {inserted_count}")
+        logger.info(f"Total rows updated: {updated_count}")
 
         cursor.close()
         conn.close()
