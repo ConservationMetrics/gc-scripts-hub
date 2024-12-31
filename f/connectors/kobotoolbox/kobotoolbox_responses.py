@@ -309,10 +309,10 @@ class KoboDBWriter:
         automatically handles table width resizing, row-level updates, most data type
         conversions, and sanitizing kobo field names to be SQL-compatible.
 
-        Example of using `reverse_properties_separated_by`:
+        Example of using `reverse_properties_separated_by` and `str_replace`:
         - incoming field => `{"group1/group2/question": "How do you do?"}`
-        - `reverse_properties_separated_by="/"`
-        - SQL column/value => `{"question/group2/group1": "How do you do?"}`
+        - `reverse_properties_separated_by="/"`, `str_replace=[("/", "__")]`
+        - SQL column/value => `{"question__group2__group1": "How do you do?"}`
 
         Parameters
         ----------
