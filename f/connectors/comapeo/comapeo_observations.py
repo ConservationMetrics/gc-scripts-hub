@@ -402,32 +402,76 @@ class CoMapeoDBWriter:
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
         """
-        Safely construct and execute an INSERT query to avoid SQL injection.
+        Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
+        This method also handles conflicts by updating existing records if necessary.
+
+        The function first checks if a row with the same primary key (_id) already exists in the table. If it does,
+        and the existing row's data matches the new values, the operation is skipped. Otherwise, it performs an
+        INSERT operation. If a conflict on the primary key occurs, it updates the existing row with the new values.
 
         Parameters
         ----------
         cursor : psycopg2 cursor
-            The database cursor for executing the query.
+            The database cursor used to execute SQL queries.
         table_name : str
-            The name of the table to insert data into.
+            The name of the table where data will be inserted.
         columns : list of str
-            The list of column names to insert data into.
+            The list of column names corresponding to the values being inserted.
         values : list
-            The values to insert into the table.
+            The list of values to be inserted into the table, aligned with the columns.
 
         Returns
         -------
-        None
+        tuple
+            A tuple containing two integers: the count of rows inserted and the count of rows updated.
         """
+        inserted_count = 0
+        updated_count = 0
+
+        # Check if there is an existing row that is different from the new values
+        # We are doing this in order to keep track of which rows are actually updated
+        # (Otherwise all existing rows would be added to updated_count)
+        id_index = columns.index("_id")
+        values[id_index] = str(values[id_index])
+        select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            table=sql.Identifier(table_name),
+        )
+        cursor.execute(select_query, (values[columns.index("_id")],))
+        existing_row = cursor.fetchone()
+
+        if existing_row and list(existing_row) == values:
+            # No changes, skip the update
+            return inserted_count, updated_count
+
         query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
+            "ON CONFLICT (_id) DO UPDATE SET {updates} "
+            # The RETURNING clause is used to determine if the row was inserted or updated.
+            # xmax is a system column in PostgreSQL that stores the transaction ID of the deleting transaction.
+            # If xmax is 0, it means the row was newly inserted and not updated.
+            "RETURNING (xmax = 0) AS inserted"
         ).format(
             table=sql.Identifier(table_name),
             fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
             placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+            updates=sql.SQL(", ").join(
+                sql.Composed(
+                    [sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)]
+                )
+                for col in columns
+                if col != "_id"
+            ),
         )
 
         cursor.execute(query, values)
+        result = cursor.fetchone()
+        if result and result[0]:
+            inserted_count += 1
+        else:
+            updated_count += 1
+
+        return inserted_count, updated_count
 
     def handle_output(self, outputs):
         """
@@ -454,7 +498,10 @@ class CoMapeoDBWriter:
             if missing_field_keys:
                 self._create_missing_fields(project_name, missing_field_keys)
 
-            logger.info(f"Inserting {len(rows)} submissions into DB.")
+            logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
+
+            inserted_count = 0
+            updated_count = 0
 
             for row in rows:
                 try:
@@ -467,13 +514,11 @@ class CoMapeoDBWriter:
                         if isinstance(value, list) or isinstance(value, dict):
                             vals[i] = json.dumps(value)
 
-                    self._safe_insert(cursor, project_name, cols, vals)
-                except errors.UniqueViolation:
-                    logger.debug(
-                        f"Skipping insertion of rows to {project_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                    result_inserted_count, result_updated_count = self._safe_insert(
+                        cursor, project_name, cols, vals
                     )
-                    conn.rollback()
-                    continue
+                    inserted_count += result_inserted_count
+                    updated_count += result_updated_count
                 except Exception as e:
                     logger.error(f"Error inserting data: {e}, {type(e).__name__}")
                     conn.rollback()
@@ -483,6 +528,9 @@ class CoMapeoDBWriter:
                 except Exception as e:
                     logger.error(f"Error committing transaction: {e}")
                     conn.rollback()
+
+        logger.info(f"Total rows inserted: {inserted_count}")
+        logger.info(f"Total rows updated: {updated_count}")
 
         cursor.close()
         conn.close()
