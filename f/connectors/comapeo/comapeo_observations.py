@@ -320,6 +320,11 @@ def download_and_transform_comapeo_data(
 
                 observation["attachments"] = ", ".join(filenames)
 
+                # Convert all values to strings, except for special cases
+                for key in observation:
+                    if key not in special_case_keys:
+                        observation[key] = str(observation[key])
+
             current_project_data[i] = observation
 
         # Store observations in a dictionary with project_id as key
