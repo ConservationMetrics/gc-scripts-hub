@@ -443,29 +443,35 @@ class KoboDBWriter:
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
         """
-        Constructs and executes a safe INSERT query to prevent SQL injection,
-        and handles conflicts by updating existing records.
+        Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
+        This method also handles conflicts by updating existing records if necessary.
+
+        The function first checks if a row with the same primary key (_id) already exists in the table. If it does,
+        and the existing row's data matches the new values, the operation is skipped. Otherwise, it performs an
+        INSERT operation. If a conflict on the primary key occurs, it updates the existing row with the new values.
 
         Parameters
         ----------
         cursor : psycopg2 cursor
-            The database cursor for executing the query.
+            The database cursor used to execute SQL queries.
         table_name : str
-            The name of the table to insert data into.
+            The name of the table where data will be inserted.
         columns : list of str
-            The list of column names to insert data into.
+            The list of column names corresponding to the values being inserted.
         values : list
-            The values to insert into the table.
+            The list of values to be inserted into the table, aligned with the columns.
 
         Returns
         -------
         tuple
-            A tuple containing the count of inserted and updated rows.
+            A tuple containing two integers: the count of rows inserted and the count of rows updated.
         """
         inserted_count = 0
         updated_count = 0
 
         # Check if there is an existing row that is different from the new values
+        # We are doing this in order to keep track of which rows are actually updated
+        # (Otherwise all existing rows would be added to updated_count)
         id_index = columns.index("_id")
         values[id_index] = str(values[id_index])
         select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
@@ -482,6 +488,9 @@ class KoboDBWriter:
         query = sql.SQL(
             "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
             "ON CONFLICT (_id) DO UPDATE SET {updates} "
+            # The RETURNING clause is used to determine if the row was inserted or updated.
+            # xmax is a system column in PostgreSQL that stores the transaction ID of the deleting transaction.
+            # If xmax is 0, it means the row was newly inserted and not updated.
             "RETURNING (xmax = 0) AS inserted"
         ).format(
             table=sql.Identifier(table_name),
