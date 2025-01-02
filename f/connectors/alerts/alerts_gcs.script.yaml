@@ -29,7 +29,7 @@ schema:
       description: The name of the database table where alerts will be stored.
       default: null
       originalType: string
-      pattern: '^.{0,53}$'
+      pattern: '^.{1,53}$'
     destination_path:
       type: string
       description: >-
