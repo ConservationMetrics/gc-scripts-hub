@@ -274,6 +274,7 @@ def download_and_transform_comapeo_data(
         for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
             observation["project_id"] = project_id
+            observation["data_source"] = "CoMapeo"
 
             # Create k/v pairs for each tag
             for key, value in observation.pop("tags", {}).items():
