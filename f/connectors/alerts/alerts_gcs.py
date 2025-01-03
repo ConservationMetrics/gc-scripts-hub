@@ -322,8 +322,8 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         index=False,
     )
 
-    # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
-    filtered_df["alert_source"] = "terras"
+    # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s). Also, if this changes for future alerts, we will need to ensure that existing records are not overwritten.
+    filtered_df["data_source"] = "terras"
 
     # Replace all NaN values with None
     filtered_df.replace({float("nan"): None}, inplace=True)
@@ -361,12 +361,12 @@ def prepare_alerts_data(local_directory, geojson_files):
             logger.info(f"Storing GeoJSON file: {file_name}")
             with file_path.open("r") as f:
                 geojson_data = json.load(f)
-                # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
+                # TODO: See comment above about data source
                 prepared_alerts_data.append(
                     {
-                        "source": file_name,
                         "data": geojson_data,
-                        "alert_source": "terras",
+                        "data_source": "terras",
+                        "source_file_name": file_name,
                     }
                 )
 
@@ -399,20 +399,20 @@ class AlertsDBWriter:
         return psycopg2.connect(dsn=self.db_connection_string)
 
     def _create_alerts_metadata_table(self, table_name):
-        metadata_table_name = f"{table_name}__metadata"
+        metadata_table_name = f"{table_name[:53]}__metadata"
 
         with self._get_conn() as conn, conn.cursor() as cursor:
             query = sql.SQL("""
                 CREATE TABLE IF NOT EXISTS {metadata_table_name} (
                     _id character varying(36) NOT NULL PRIMARY KEY,
-                    territory_id text,
-                    type_alert bigint,
-                    month bigint,
-                    year bigint,
-                    total_alerts bigint,
-                    description_alerts text,
                     confidence real,
-                    alert_source text
+                    description_alerts text,
+                    month bigint,
+                    territory_id text,
+                    total_alerts bigint,
+                    type_alert bigint,
+                    year bigint,
+                    data_source text
                 );
                 """).format(metadata_table_name=sql.Identifier(metadata_table_name))
             cursor.execute(query)
@@ -449,8 +449,8 @@ class AlertsDBWriter:
                 g__type text,
                 g__coordinates text,
                 -- Added by us
-                source text,
-                alert_source text
+                data_source text,
+                source_file_name text
             );
             """).format(table_name=sql.Identifier(table_name))
             cursor.execute(query)
@@ -555,8 +555,6 @@ class AlertsDBWriter:
 
                     for feature in alert["data"]["features"]:
                         try:
-                            source = alert["source"]
-                            alert_source = alert["alert_source"]
                             if "properties" in feature:
                                 properties_str = json.dumps(feature["properties"])
                                 properties = json.loads(properties_str)
@@ -579,6 +577,7 @@ class AlertsDBWriter:
                             date_start_t1 = properties.get("date_start_t1")
                             grid = properties.get("grid")
                             label = properties.get("label")
+                            length_alert_km = properties.get("length_alert_km")
                             month_detec = properties.get("month_detec")
                             sat_detect_prefix = properties.get("sat_detect_prefix")
                             sat_viz_prefix = properties.get("sat_viz_prefix")
@@ -591,7 +590,8 @@ class AlertsDBWriter:
                             g__coordinates = json.dumps(
                                 feature["geometry"]["coordinates"]
                             )
-                            length_alert_km = properties.get("length_alert_km")
+                            data_source = alert["data_source"]
+                            source_file_name = alert["source_file_name"]
 
                             columns = [
                                 "_id",
@@ -614,11 +614,11 @@ class AlertsDBWriter:
                                 "territory_id",
                                 "territory_name",
                                 "year_detec",
-                                "source",
                                 "g__type",
                                 "g__coordinates",
                                 "length_alert_km",
-                                "alert_source",
+                                "data_source",
+                                "source_file_name",
                             ]
 
                             values = [
@@ -642,11 +642,11 @@ class AlertsDBWriter:
                                 territory_id,
                                 territory_name,
                                 year_detec,
-                                source,
                                 g__type,
                                 g__coordinates,
                                 length_alert_km,
-                                alert_source,
+                                data_source,
+                                source_file_name,
                             ]
 
                             result_inserted_count, result_updated_count = (
@@ -676,14 +676,14 @@ class AlertsDBWriter:
                     cursor.execute("BEGIN")
 
                     _id = metadata.get("metadata_uuid")
-                    territory_id = metadata.get("territory_id")
-                    type_alert = metadata.get("type_alert")
-                    month = metadata.get("month")
-                    year = metadata.get("year")
-                    total_alerts = metadata.get("total_alerts")
-                    description_alerts = metadata.get("description_alerts")
                     confidence = metadata.get("confidence")
-                    alert_source = metadata.get("alert_source")
+                    description_alerts = metadata.get("description_alerts")
+                    month = metadata.get("month")
+                    territory_id = metadata.get("territory_id")
+                    total_alerts = metadata.get("total_alerts")
+                    type_alert = metadata.get("type_alert")
+                    year = metadata.get("year")
+                    data_source = metadata.get("data_source")
 
                     columns = [
                         "_id",
@@ -694,7 +694,7 @@ class AlertsDBWriter:
                         "total_alerts",
                         "description_alerts",
                         "confidence",
-                        "alert_source",
+                        "data_source",
                     ]
 
                     values = [
@@ -706,7 +706,7 @@ class AlertsDBWriter:
                         total_alerts,
                         description_alerts,
                         confidence,
-                        alert_source,
+                        data_source,
                     ]
 
                     self._safe_insert(

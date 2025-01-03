@@ -132,6 +132,7 @@ def download_form_responses_and_attachments(
 
     for submission in form_submissions:
         submission["dataset_name"] = form_name
+        submission["data_source"] = "KoboToolbox"
 
         # Download attachments for each submission, if they exist
         if "_attachments" in submission:

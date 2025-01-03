@@ -274,6 +274,7 @@ def download_and_transform_comapeo_data(
         for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
             observation["project_id"] = project_id
+            observation["data_source"] = "CoMapeo"
 
             # Create k/v pairs for each tag
             for key, value in observation.pop("tags", {}).items():
@@ -488,7 +489,10 @@ class CoMapeoDBWriter:
         comapeo_projects = outputs
 
         for project_name, project_data in comapeo_projects.items():
-            existing_fields = self._inspect_schema(project_name)
+            # Safely truncate each project_name to 63 characters
+            # TODO: ...while retaining uniqueness
+            project_db_table_name = project_name[:63]
+            existing_fields = self._inspect_schema(project_db_table_name)
             rows = []
             for entry in project_data:
                 sanitized_entry = {
@@ -501,7 +505,7 @@ class CoMapeoDBWriter:
                 missing_field_keys.update(set(row.keys()).difference(existing_fields))
 
             if missing_field_keys:
-                self._create_missing_fields(project_name, missing_field_keys)
+                self._create_missing_fields(project_db_table_name, missing_field_keys)
 
             logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
 
