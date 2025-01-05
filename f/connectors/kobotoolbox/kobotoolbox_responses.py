@@ -60,8 +60,6 @@ def _download_submission_attachments(
     ----------
     submission : dict
         The form submission data
-    dataset_id : str
-        The identifier for the dataset, used to organize the save path.
     attachment_root : str
         The base directory where attachments will be stored.
     headers : dict
@@ -141,6 +139,7 @@ def download_form_responses_and_attachments(
 
     for submission in form_submissions:
         submission["dataset_name"] = form_name
+        submission["data_source"] = "KoboToolbox"
 
         # Download attachments for each submission, if they exist
         if "_attachments" in submission:
@@ -168,11 +167,10 @@ def format_geometry_fields(form_data):
         A list of transformed form submissions.
     """
     for submission in form_data:
-        geolocation = submission.get("_geolocation")
-        if geolocation:
-            submission["g__type"] = "Point"
-            submission["g__coordinates"] = geolocation
-            del submission["_geolocation"]
+        if "_geolocation" in submission:
+            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
+            coordinates = submission.pop("_geolocation")[::-1]
+            submission.update({"g__type": "Point", "g__coordinates": coordinates})
 
     return form_data
 
@@ -306,17 +304,21 @@ class KoboDBWriter:
     """
 
     def __init__(
-        self, db_connection_string, table_name, reverse_properties_separated_by="/"
+        self,
+        db_connection_string,
+        table_name,
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__")],
     ):
         """
         Component for syncing messages to a SQL database table. This component
         automatically handles table width resizing, row-level updates, most data type
         conversions, and sanitizing kobo field names to be SQL-compatible.
 
-        Example of using `reverse_properties_separated_by`:
+        Example of using `reverse_properties_separated_by` and `str_replace`:
         - incoming field => `{"group1/group2/question": "How do you do?"}`
-        - `reverse_properties_separated_by="/"`
-        - SQL column/value => `{"question/group2/group1": "How do you do?"}`
+        - `reverse_properties_separated_by="/"`, `str_replace=[("/", "__")]`
+        - SQL column/value => `{"question__group2__group1": "How do you do?"}`
 
         Parameters
         ----------
@@ -328,10 +330,14 @@ class KoboDBWriter:
             An optional transformation of flat property names: split the name on the
             `reverse_properties_separated_by` character, reverse the parts, then re-concatenate
             them with the same separator.
+        str_replace : list
+            An optional list of tuples specifying string replacements to be applied to the
+            property names.
         """
         self.db_connection_string = db_connection_string
         self.table_name = table_name
         self.reverse_separator = reverse_properties_separated_by
+        self.str_replace = str_replace
 
     def _get_conn(self):
         """
@@ -445,32 +451,76 @@ class KoboDBWriter:
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
         """
-        Safely construct and execute an INSERT query to avoid SQL injection.
+        Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
+        This method also handles conflicts by updating existing records if necessary.
+
+        The function first checks if a row with the same primary key (_id) already exists in the table. If it does,
+        and the existing row's data matches the new values, the operation is skipped. Otherwise, it performs an
+        INSERT operation. If a conflict on the primary key occurs, it updates the existing row with the new values.
 
         Parameters
         ----------
         cursor : psycopg2 cursor
-            The database cursor for executing the query.
+            The database cursor used to execute SQL queries.
         table_name : str
-            The name of the table to insert data into.
+            The name of the table where data will be inserted.
         columns : list of str
-            The list of column names to insert data into.
+            The list of column names corresponding to the values being inserted.
         values : list
-            The values to insert into the table.
+            The list of values to be inserted into the table, aligned with the columns.
 
         Returns
         -------
-        None
+        tuple
+            A tuple containing two integers: the count of rows inserted and the count of rows updated.
         """
+        inserted_count = 0
+        updated_count = 0
+
+        # Check if there is an existing row that is different from the new values
+        # We are doing this in order to keep track of which rows are actually updated
+        # (Otherwise all existing rows would be added to updated_count)
+        id_index = columns.index("_id")
+        values[id_index] = str(values[id_index])
+        select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
+            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
+            table=sql.Identifier(table_name),
+        )
+        cursor.execute(select_query, (values[columns.index("_id")],))
+        existing_row = cursor.fetchone()
+
+        if existing_row and list(existing_row) == values:
+            # No changes, skip the update
+            return inserted_count, updated_count
+
         query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders})"
+            "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
+            "ON CONFLICT (_id) DO UPDATE SET {updates} "
+            # The RETURNING clause is used to determine if the row was inserted or updated.
+            # xmax is a system column in PostgreSQL that stores the transaction ID of the deleting transaction.
+            # If xmax is 0, it means the row was newly inserted and not updated.
+            "RETURNING (xmax = 0) AS inserted"
         ).format(
             table=sql.Identifier(table_name),
             fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
             placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
+            updates=sql.SQL(", ").join(
+                sql.Composed(
+                    [sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)]
+                )
+                for col in columns
+                if col != "_id"
+            ),
         )
 
         cursor.execute(query, values)
+        result = cursor.fetchone()
+        if result and result[0]:
+            inserted_count += 1
+        else:
+            updated_count += 1
+
+        return inserted_count, updated_count
 
     def handle_output(self, all_submissions):
         """
@@ -497,6 +547,7 @@ class KoboDBWriter:
                 submission,
                 existing_columns_map,
                 reverse_properties_separated_by=self.reverse_separator,
+                str_replace=self.str_replace,
             )
             rows.append((sanitized_columns_dict, existing_columns_map))
             original_to_sql.update(updated_columns_map)
@@ -542,7 +593,10 @@ class KoboDBWriter:
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
 
-        logger.info(f"Inserting {len(rows)} submissions into DB.")
+        logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
+
+        inserted_count = 0
+        updated_count = 0
 
         for row, _ in rows:
             try:
@@ -555,14 +609,12 @@ class KoboDBWriter:
                     if isinstance(value, list) or isinstance(value, dict):
                         vals[i] = json.dumps(value)
 
-                self._safe_insert(cursor, table_name, cols, vals)
-
-            except errors.UniqueViolation:
-                logger.debug(
-                    f"Skipping insertion of rows to {table_name} due to UniqueViolation, this _id has been accounted for already in the past."
+                result_inserted_count, result_updated_count = self._safe_insert(
+                    cursor, table_name, cols, vals
                 )
-                conn.rollback()
-                continue
+                inserted_count += result_inserted_count
+                updated_count += result_updated_count
+
             except Exception as e:
                 logger.error(f"Error inserting data: {e}, {type(e).__name__}")
                 conn.rollback()
@@ -572,6 +624,9 @@ class KoboDBWriter:
             except Exception as e:
                 logger.error(f"Error committing transaction: {e}")
                 conn.rollback()
+
+        logger.info(f"Total rows inserted: {inserted_count}")
+        logger.info(f"Total rows updated: {updated_count}")
 
         cursor.close()
         conn.close()

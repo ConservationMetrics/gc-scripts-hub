@@ -1,5 +1,6 @@
 import logging
-import os
+import uuid
+from pathlib import Path
 
 import google.api_core.exceptions
 import psycopg2
@@ -39,7 +40,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
         "100/raster/2023/09/S2_T1_202309900112345671.tif",
     ]
     for filename in alerts_filenames:
-        source_path = os.path.join(assets_directory, os.path.basename(filename))
+        source_path = Path(assets_directory) / Path(filename).name
         _upload_blob(bucket, source_path, filename)
 
     yield storage_client
@@ -62,6 +63,11 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM fake_alerts")
             assert cursor.fetchone()[0] == 1  # Length of assets/alerts.geojson
+
+            # Check that the _id field is a valid UUID
+            cursor.execute("SELECT _id FROM fake_alerts")
+            _id = cursor.fetchone()[0]
+            assert uuid.UUID(_id)
 
             # Count of unique rows in alerts_history.csv based on UUID
             # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
