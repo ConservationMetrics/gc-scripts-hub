@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import logging
 import uuid
 from pathlib import Path
@@ -124,10 +126,6 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         / "100/2023/09/202309900112345671/images/S1_T0_202309900112345671.tif"
     )
 
-    # Log initial timestamp and download time of the file
-    initial_timestamp = tif_file_path.stat().st_mtime
-    initial_download_time = tif_file_path.stat().st_ctime
-
     _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
@@ -137,14 +135,20 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         asset_storage,
     )
 
-    # Check that the file timestamp and download time have not changed, since the file was not updated
-    assert tif_file_path.stat().st_mtime == initial_timestamp
-    assert tif_file_path.stat().st_ctime == initial_download_time
+    # Check that the file MD5 hash has not changed, since the file was not updated
+    with open(tif_file_path, "rb") as f:
+        local_md5_hash = hashlib.md5(f.read()).hexdigest()
 
-    # Simulate an update to the blob on GCS by uploading a new version
     bucket = mock_alerts_storage_client.bucket(MOCK_BUCKET_NAME)
     blob = bucket.blob("100/raster/2023/09/S1_T0_202309900112345671.tif")
+    blob.reload()
+    gcs_md5_hash_base64 = blob.md5_hash
 
+    gcs_md5_hash = base64.b64decode(gcs_md5_hash_base64).hex()
+
+    assert local_md5_hash == gcs_md5_hash
+
+    # Simulate an update to the blob on GCS by uploading a new version
     new_content = b"Updated content to simulate a blob update."
     blob.upload_from_string(new_content)
 
@@ -157,7 +161,13 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         asset_storage,
     )
 
-    # Now, the file timestamp and download time should have changed, since the file was updated
-    updated_timestamp = tif_file_path.stat().st_mtime
-    assert updated_timestamp > initial_timestamp
-    assert tif_file_path.stat().st_ctime > initial_download_time
+    # Now, the file MD5 hash should have changed, since the file was updated
+    with open(tif_file_path, "rb") as f:
+        updated_md5_hash = hashlib.md5(f.read()).hexdigest()
+
+    blob.reload()
+    updated_gcs_md5_hash_base64 = blob.md5_hash
+
+    updated_gcs_md5_hash = base64.b64decode(updated_gcs_md5_hash_base64).hex()
+
+    assert updated_md5_hash == updated_gcs_md5_hash

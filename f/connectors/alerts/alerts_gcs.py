@@ -7,6 +7,8 @@
 # psycopg2-binary
 # requests~=2.32
 
+import base64
+import hashlib
 import json
 import logging
 import uuid
@@ -221,13 +223,17 @@ def sync_gcs_to_local(
 
         if local_file_full_path.exists():
             # Get the local file's last modified time
-            local_last_modified = local_file_full_path.stat().st_mtime
+            with open(local_file_full_path, "rb") as f:
+                local_md5_hash = hashlib.md5(f.read()).hexdigest()
 
-            # Get the GCS file's updated timestamp
+            # Get the GCS file's MD5 hash
             blob.reload()
-            gcs_last_modified = blob.updated.timestamp()
+            gcs_md5_hash_base64 = blob.md5_hash
 
-            if local_last_modified >= gcs_last_modified:
+            # Decode the base64-encoded GCS MD5 hash
+            gcs_md5_hash = base64.b64decode(gcs_md5_hash_base64).hex()
+
+            if local_md5_hash == gcs_md5_hash:
                 logger.info(f"File is up-to-date, skipping download: {filename}")
                 continue
 
