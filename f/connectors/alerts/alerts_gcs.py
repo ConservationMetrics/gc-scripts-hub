@@ -231,6 +231,8 @@ def sync_gcs_to_local(
                 logger.info(f"File is up-to-date, skipping download: {filename}")
                 continue
 
+            blob = bucket.blob(blob_name)
+
         logger.info(f"Downloading file: {filename}")
         if not rel_filepath.exists():
             rel_filepath.mkdir(parents=True, exist_ok=True)

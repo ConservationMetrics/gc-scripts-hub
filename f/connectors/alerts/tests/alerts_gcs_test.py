@@ -146,7 +146,6 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     blob = bucket.blob("100/raster/2023/09/S1_T0_202309900112345671.tif")
 
     new_content = b"Updated content to simulate a blob update."
-    # TODO: Figure out why this just hangs (at least locally)
     blob.upload_from_string(new_content)
 
     _main(
