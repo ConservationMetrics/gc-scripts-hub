@@ -32,6 +32,9 @@ Note that Windmill also designates a `u/` directory for storing code per user on
 
 For information on developing scripts, see the [Windmill Scripts quickstart](https://www.windmill.dev/docs/getting_started/scripts_quickstart).
 
+While it is possible in Windmill to [share common logic across scripts with relative imports](https://www.
+windmill.dev/docs/advanced/sharing_common_logic) we have avoided doing so at this time. This decision aims to keep each script as self-contained as possible, promoting modularity and reducing interdependencies. As a trade-off, there may be some redundancy across common operations, such as writing to a database.
+
 You may develop within Windmill's code editor, or locally.  Developing locally has the advantage
 of being able to run tests.
 

@@ -380,9 +380,6 @@ class AlertsDBWriter:
     Specifically tailored for operations involving geographic data and alerts metadata stored in GeoJSON format.
 
     This class manages database connections using PostgreSQL through psycopg2.
-
-    TODO: DRY with KoboDBWriter and CoMapeoDBWriter
-
     """
 
     def __init__(self, db_connection_string, table_name):
