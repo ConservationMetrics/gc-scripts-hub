@@ -67,12 +67,14 @@ def _download_submission_attachments(
 
     Returns
     -------
-    None
+    int
+        The number of attachments skipped due to already existing on disk.
 
     Notes
     -----
     If the file already exists at the specified path, the function will skip downloading the file.
     """
+    skipped_attachments = 0
     for attachment in submission["_attachments"]:
         if "download_url" in attachment:
             file_name = attachment["filename"]
@@ -83,7 +85,8 @@ def _download_submission_attachments(
                 / Path(file_name).name
             )
             if save_path.exists():
-                logger.info(f"File already exists, skipping download: {save_path}")
+                logger.debug(f"File already exists, skipping download: {save_path}")
+                skipped_attachments += 1
                 continue
 
             response = requests.get(attachment["download_url"], headers=headers)
@@ -96,6 +99,7 @@ def _download_submission_attachments(
                 logger.error(
                     f"Failed downloading attachment: {attachment['download_url']}"
                 )
+    return skipped_attachments
 
 
 def download_form_responses_and_attachments(
@@ -137,19 +141,22 @@ def download_form_responses_and_attachments(
 
     form_submissions = response.json()["results"]
 
+    skipped_attachments = 0
+
     for submission in form_submissions:
         submission["dataset_name"] = form_name
         submission["data_source"] = "KoboToolbox"
 
         # Download attachments for each submission, if they exist
         if "_attachments" in submission:
-            _download_submission_attachments(
+            skipped_attachments += _download_submission_attachments(
                 submission, db_table_name, attachment_root, headers
             )
 
-    logger.info(
-        f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s), including attachments."
-    )
+    if skipped_attachments > 0:
+        logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
+
+    logger.info(f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s).")
     return form_submissions
 
 

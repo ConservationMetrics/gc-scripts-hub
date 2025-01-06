@@ -141,8 +141,10 @@ def download_attachment(url, headers, save_path):
 
     Returns
     -------
-    str or None
-        The name of the file if the download is successful, or None if an error occurs.
+    tuple
+        A tuple containing two values:
+        - The name of the file if the download is successful, or None if an error occurs.
+        - The number of attachments skipped due to already existing on disk.
 
     Notes
     -----
@@ -156,9 +158,11 @@ def download_attachment(url, headers, save_path):
     allowing the caller to handle the download failure gracefully.
 
     """
+    skipped_attachments = 0
     if Path(save_path).exists():
-        logger.info("File already exists, skipping download.")
-        return Path(save_path).name
+        logger.debug("File already exists, skipping download.")
+        skipped_attachments += 1
+        return Path(save_path).name, skipped_attachments
 
     try:
         response = requests.get(url, headers=headers)
@@ -172,11 +176,11 @@ def download_attachment(url, headers, save_path):
         with open(save_path, "wb") as f:
             f.write(response.content)
         logger.info("Download completed.")
-        return file_name
+        return file_name, skipped_attachments
 
     except Exception as e:
         logger.error(f"Exception during download: {e}")
-        return None
+        return None, 1
 
 
 def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
@@ -278,6 +282,8 @@ def download_and_transform_comapeo_data(
             logger.info("Response received: ", response.text)
             raise ValueError("Invalid JSON response received from server.")
 
+        skipped_attachments = 0
+
         for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
             observation["project_id"] = project_id
@@ -307,7 +313,7 @@ def download_and_transform_comapeo_data(
                 for attachment in observation["attachments"]:
                     if "url" in attachment:
                         logger.info(attachment["url"])
-                        file_name = download_attachment(
+                        file_name, skipped = download_attachment(
                             attachment["url"],
                             headers,
                             str(
@@ -318,6 +324,7 @@ def download_and_transform_comapeo_data(
                                 / Path(attachment["url"]).name
                             ),
                         )
+                        skipped_attachments += skipped
                         if file_name is not None:
                             filenames.append(file_name)
                         else:
@@ -337,6 +344,11 @@ def download_and_transform_comapeo_data(
 
         # Store observations in a dictionary with project_id as key
         comapeo_data[final_project_name] = current_project_data
+
+        if skipped_attachments > 0:
+            logger.info(
+                f"Skipped downloading {skipped_attachments} media attachment(s)."
+            )
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
