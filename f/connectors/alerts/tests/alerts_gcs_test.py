@@ -126,7 +126,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
 
     # Log initial timestamp and download time of the file
     initial_timestamp = tif_file_path.stat().st_mtime
-    initial_download_time = os.path.getctime(tif_file_path)
+    initial_download_time = tif_file_path.stat().st_ctime
 
     _main(
         mock_alerts_storage_client,
@@ -139,11 +139,15 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
 
     # Check that the file timestamp and download time have not changed, since the file was not updated
     assert tif_file_path.stat().st_mtime == initial_timestamp
-    assert os.path.getctime(tif_file_path) == initial_download_time
+    assert tif_file_path.stat().st_ctime == initial_download_time
 
-    # Modify the file to simulate an update
-    with open(tif_file_path, "a") as f:
-        f.write("Modified content to simulate a file update.")
+    # Simulate an update to the blob on GCS by uploading a new version
+    bucket = mock_alerts_storage_client.bucket(MOCK_BUCKET_NAME)
+    blob = bucket.blob("100/raster/2023/09/S1_T0_202309900112345671.tif")
+
+    new_content = b"Updated content to simulate a blob update."
+    # TODO: Figure out why this just hangs (at least locally)
+    blob.upload_from_string(new_content)
 
     _main(
         mock_alerts_storage_client,
@@ -157,4 +161,4 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     # Now, the file timestamp and download time should have changed, since the file was updated
     updated_timestamp = tif_file_path.stat().st_mtime
     assert updated_timestamp > initial_timestamp
-    assert os.path.getctime(tif_file_path) > initial_download_time
+    assert tif_file_path.stat().st_ctime > initial_download_time
