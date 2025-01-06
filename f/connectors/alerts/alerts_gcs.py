@@ -230,7 +230,7 @@ def sync_gcs_to_local(
             blob.reload()
             gcs_md5_hash_base64 = blob.md5_hash
 
-            # Decode the base64-encoded GCS MD5 hash
+            # GCP's MD5 hash is base64-encoded and needs to be decoded
             gcs_md5_hash = base64.b64decode(gcs_md5_hash_base64).hex()
 
             if local_md5_hash == gcs_md5_hash:
