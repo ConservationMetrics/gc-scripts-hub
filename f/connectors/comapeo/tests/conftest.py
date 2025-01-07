@@ -5,8 +5,8 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.connectors.comapeo.tests.assets import server_responses
 from f.connectors.comapeo.comapeo_observations import comapeo_server
+from f.connectors.comapeo.tests.assets import server_responses
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def mocked_responses():
 
 
 @pytest.fixture
-def comapeoserver(mocked_responses):
+def comapeoserver_observations(mocked_responses):
     """A mock CoMapeo Server that you can use to provide projects and their observations"""
 
     @dataclass
@@ -51,6 +51,38 @@ def comapeoserver(mocked_responses):
     return CoMapeoServer(
         server,
         comapeo_project_blocklist,
+    )
+
+
+@pytest.fixture
+def comapeoserver_alerts(mocked_responses):
+    """A mock CoMapeo Server that you can use to get and post alerts"""
+
+    @dataclass
+    class CoMapeoServer:
+        comapeo_server: dict
+
+    server_url = "http://comapeo.example.org"
+    access_token = "MapYourWorldTogether!"
+    project_id = "forest_expedition"
+
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/remoteDetectionAlerts",
+        json=server_responses.comapeo_alerts(),
+        status=201,
+    )
+
+    mocked_responses.post(
+        f"{server_url}/projects/{project_id}/remoteDetectionAlerts",
+        status=201,
+    )
+
+    server: comapeo_server = dict(
+        comapeo_alerts_endpoint=server_url, access_token=access_token
+    )
+
+    return CoMapeoServer(
+        server,
     )
 
 
