@@ -27,7 +27,7 @@ from twilio.rest import Client as TwilioClient
 # type names that refer to Windmill Resources
 gcp_service_account = dict
 postgresql = dict
-c_twilio = dict
+c_twilio_message_template = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,7 +47,8 @@ def main(
     territory_id: int,
     db: postgresql,
     db_table_name: str,
-    twilio: c_twilio,
+    territory_name: str,
+    twilio: c_twilio_message_template,
     destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
 ):
     """
@@ -65,6 +66,7 @@ def main(
         db,
         db_table_name,
         destination_path,
+        territory_name,
         twilio,
     )
 
@@ -76,7 +78,8 @@ def _main(
     db: postgresql,
     db_table_name: str,
     destination_path: str,
-    twilio: c_twilio,
+    territory_name: str,
+    twilio: c_twilio_message_template,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
@@ -93,6 +96,8 @@ def _main(
         The name of the database table to write alerts to.
     destination_path : str, optional
         The local directory to save files
+    territory_name : str
+        The name of the territory for which alerts are being processed.
     twilio : dict, optional
         A dictionary containing Twilio configuration parameters.
 
@@ -125,7 +130,7 @@ def _main(
     )
 
     if twilio:
-        send_twilio_message(twilio, alerts_statistics)
+        send_twilio_message(twilio, alerts_statistics, territory_name)
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -350,6 +355,14 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Filter DataFrame based on territory_id
     filtered_df = df.loc[df["territory_id"] == territory_id]
 
+    # Group the DataFrame by month and year, and get the last row for each group
+    filtered_df = (
+        filtered_df.loc[df["territory_id"] == territory_id]
+        .groupby(["month", "year"])
+        .last()
+        .reset_index()
+    )
+
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
     filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
@@ -374,7 +387,16 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     logger.info("Successfully prepared alerts metadata.")
 
-    return prepared_alerts_metadata
+    # Generate alert statistics
+    # This is assuming that the last row (sorted by month and year) in the filtered DataFrame is the most recent alert
+    latest_row = filtered_df.iloc[-1]
+    alert_statistics = {
+        "total_alerts": str(latest_row["total_alerts"]),
+        "month_year": f"{latest_row['month']}/{latest_row['year']}",
+        "description_alerts": latest_row["description_alerts"].replace("_", " "),
+    }
+
+    return prepared_alerts_metadata, alert_statistics
 
 
 def prepare_alerts_data(local_directory, geojson_files):
@@ -769,11 +791,15 @@ class AlertsDBWriter:
             conn.close()
 
 
-def send_twilio_message(twilio, alerts_statistics):
+def send_twilio_message(twilio, alerts_statistics, territory_name):
     """
     Send a Twilio message to alert the user of the script's completion.
     """
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
+
+    logger.info(
+        f"Sending Twilio messages to {len(twilio.get('recipients', []))} recipients."
+    )
 
     for recipient in twilio["recipients"]:
         client.messages.create(
@@ -782,11 +808,13 @@ def send_twilio_message(twilio, alerts_statistics):
                 {
                     "1": alerts_statistics.get("total_alerts"),
                     "2": alerts_statistics.get("month_year"),
-                    "3": alerts_statistics.get("type_alert"),
-                    "4": alerts_statistics.get("alerts_dashboard_url"),
+                    "3": alerts_statistics.get("description_alerts"),
+                    "4": f"https://explorer.{territory_name}.guardianconnector.net/alerts/alerts",
                 }
             ),
             messaging_service_sid=twilio.get("messaging_service_sid"),
             to=recipient,
             from_=twilio["origin_number"],
         )
+
+    logger.info("Twilio messages sent successfully.")
