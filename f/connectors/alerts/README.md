@@ -1,8 +1,10 @@
 # Google Cloud Alerts Change Detection Integration
 
-This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory.
+This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory. 
 
-## API Queries
+Optionally, the script can send a Twilio WhatsApp message with a summary of the latest processed alerts.
+
+## GCP API Queries
 
 Change Detection alerts can be stored in a Google Cloud storage bucket.
 
@@ -14,8 +16,7 @@ Google Cloud storage has a built-in API solution, [GCS JSON API](https://cloud.g
 
 Change detection alert files are currently stored on GCP in this format:
 
-**Vector:**
-```
+**Vector:**```
 <territory_id>/vector/<year_detec>/<month_detec>/alert_<id>.geojson
 ```
 
