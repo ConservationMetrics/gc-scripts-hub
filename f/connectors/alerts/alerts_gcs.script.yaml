@@ -14,6 +14,7 @@ schema:
     - db_table_name
     - destination_path
     - twilio
+    - territory_name
   properties:
     alerts_bucket:
       type: string
@@ -53,6 +54,12 @@ schema:
         The territory ID (areas of interest) for which change detection alerts
         will be retrieved. This ID is used to filter and process relevant
         alerts.
+      default: null
+    territory_name:
+      type: string
+      description: >-
+        The name of the territory for which change detection alerts will be
+        retrieved. This name is used for Twilio.
       default: null
     twilio:
       type: object
