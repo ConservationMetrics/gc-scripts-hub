@@ -8,6 +8,8 @@
 # requests~=2.32
 # twilio~=9.4
 
+import base64
+import hashlib
 import json
 import logging
 import uuid
@@ -188,7 +190,10 @@ def sync_gcs_to_local(
     alerts_metadata : str
         The content of the alerts metadata file.
 
-    FIXME: sync, don't brute-force re-download files that already exist - see #6
+    Notes
+    -----
+    The function checks the last modified timestamps of both the local file and the GCS file.
+    If the local file is up-to-date or newer than the GCS file, it will skip downloading the file.
     """
 
     destination_path = Path(destination_path)
@@ -225,19 +230,37 @@ def sync_gcs_to_local(
         local_file_path = destination_path / blob_name
         filename = local_file_path.name
 
-        logger.info(f"Downloading file: {filename}")
-
         # Generate relative file path for all files
         rel_filepath = destination_path / _get_rel_filepath(
             str(local_file_path), territory_id
         )
 
+        local_file_full_path = rel_filepath / filename
+
+        if local_file_full_path.exists():
+            # Get the local file's last modified time
+            with open(local_file_full_path, "rb") as f:
+                local_md5_hash = hashlib.md5(f.read()).hexdigest()
+
+            # Get the GCS file's MD5 hash
+            blob.reload()
+            gcs_md5_hash_base64 = blob.md5_hash
+
+            # GCP's MD5 hash is base64-encoded and needs to be decoded
+            gcs_md5_hash = base64.b64decode(gcs_md5_hash_base64).hex()
+
+            if local_md5_hash == gcs_md5_hash:
+                logger.info(f"File is up-to-date, skipping download: {filename}")
+                continue
+
+            blob = bucket.blob(blob_name)
+
+        logger.info(f"Downloading file: {filename}")
         if not rel_filepath.exists():
             rel_filepath.mkdir(parents=True, exist_ok=True)
+        blob.download_to_filename(local_file_full_path)
 
-        blob.download_to_filename(rel_filepath / filename)
-
-        file_path_str = str(rel_filepath / filename)
+        file_path_str = str(local_file_full_path)
         if file_path_str.endswith(".geojson"):
             geojson_files.add(file_path_str)
         elif file_path_str.endswith((".tif", ".tiff")):
