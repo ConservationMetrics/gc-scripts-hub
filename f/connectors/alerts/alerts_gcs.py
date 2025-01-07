@@ -234,7 +234,7 @@ def sync_gcs_to_local(
             gcs_md5_hash = base64.b64decode(gcs_md5_hash_base64).hex()
 
             if local_md5_hash == gcs_md5_hash:
-                logger.info(f"File is up-to-date, skipping download: {filename}")
+                logger.debug(f"File is up-to-date, skipping download: {filename}")
                 continue
 
             blob = bucket.blob(blob_name)
