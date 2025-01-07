@@ -97,7 +97,7 @@ def _main(
     destination_path : str, optional
         The local directory to save files
     territory_name : str, optional
-        The name of the territory for which alerts are being processed.
+        The slug of the territory for which alerts are being processed.
     twilio : dict, optional
         A dictionary containing Twilio configuration parameters.
 
@@ -129,7 +129,7 @@ def _main(
         f"Alerts data successfully written to database table: [{db_table_name}]"
     )
 
-    if twilio:
+    if twilio and alerts_statistics and territory_name:
         send_twilio_message(twilio, alerts_statistics, territory_name)
 
 
@@ -355,7 +355,7 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         metadata, including additional columns for geolocation, metadata UUID,
         and alert source.
     dict
-        A dictionary containing alert statistics such as total alerts, month/year,
+        A dictionary containing alert statistics: total alerts, month/year,
         and description of alerts.
     """
     # Convert CSV bytes to DataFrame
@@ -818,7 +818,7 @@ def send_twilio_message(twilio, alerts_statistics, territory_name):
         A dictionary containing statistics about the processed alerts, such as
         the total number of alerts, month and year, and a description.
     territory_name : str
-        The name of the territory for which the alerts were processed.
+        The slug of the territory for which alerts are being processed.
     """
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
 

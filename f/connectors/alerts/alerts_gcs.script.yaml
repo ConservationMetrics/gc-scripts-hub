@@ -58,17 +58,18 @@ schema:
     territory_name:
       type: string
       description: >-
-        The name of the territory for which change detection alerts will be
-        retrieved. This name is used for Twilio.
+        The URL slug for the territory, used to construct a link to the alerts
+        dashboard. This name is used for Twilio and must be provided for messages to
+        be sent.
       default: null
     twilio:
       type: object
       description: >-
         (Optional) Twilio account credentials and phone numbers for sending alerts 
-        after ingesting and writing alerts to the database. Should include at minimum:
-        `account_sid`, `auth_token`, `origin_number`, `recipients`.
+        after ingesting and writing alerts to the database via a Twilio message content 
+        template.
       default: null
-      format: resource-c_twilio
+      format: resource-c_twilio_message_template
   required:
     - gcp_service_acct
     - alerts_bucket

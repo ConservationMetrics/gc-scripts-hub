@@ -12,7 +12,6 @@
 	"required": [
 		"account_sid",
 		"auth_token",
-		"message_service_sid",
 		"content_sid",
 		"origin_number",
 		"forward_numbers"

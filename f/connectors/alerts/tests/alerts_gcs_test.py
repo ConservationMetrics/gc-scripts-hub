@@ -25,6 +25,7 @@ def test_prepare_alerts_metadata():
         alerts_metadata, 100
     )
 
+    # Check that alerts statistics is the latest month and year in the CSV
     assert alert_statistics["month_year"] == "2/2024"
     assert alert_statistics["total_alerts"] == "1"
     assert alert_statistics["description_alerts"] == "fake alert"
