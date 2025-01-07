@@ -4,6 +4,7 @@
 		"account_sid",
 		"auth_token",
 		"message_service_sid",
+		"content_sid",
 		"origin_number",
 		"forward_numbers"
 	],
@@ -29,6 +30,11 @@
 			"type": "string",
 			"default": "",
 			"description": "(Optional) The SID for a messaging service, which is a container that bundle messaging functionality for your specific use cases (such as WhatsApp). It can be found in the Messaging Services menu; each service has their own SID. By including it, you can retrieve usage statistics for the service."
+		},
+		"content_sid": {
+			"type": "string",
+			"default": "",
+			"description": "The SID for the message content template."
 		},
 		"origin_number": {
 			"type": "string",

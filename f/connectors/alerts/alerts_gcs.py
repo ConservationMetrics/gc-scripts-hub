@@ -112,7 +112,9 @@ def _main(
 
     convert_tiffs_to_jpg(tiff_files)
 
-    prepared_alerts_metadata = prepare_alerts_metadata(alerts_metadata, territory_id)
+    prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
+        alerts_metadata, territory_id
+    )
 
     prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
 
@@ -123,7 +125,7 @@ def _main(
     )
 
     if twilio:
-        send_twilio_message(twilio)
+        send_twilio_message(twilio, alerts_statistics)
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -767,24 +769,24 @@ class AlertsDBWriter:
             conn.close()
 
 
-def send_twilio_message(twilio):
+def send_twilio_message(twilio, alerts_statistics):
     """
     Send a Twilio message to alert the user of the script's completion.
     """
-    messaging_service_sid = twilio.get("messaging_service_sid")
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
 
-    message = "Alerts data successfully written to database table."
-
     for recipient in twilio["recipients"]:
-        if messaging_service_sid:
-            client.messages.create(
-                messaging_service_sid=messaging_service_sid,
-                to=recipient,
-                from_=twilio["origin_number"],
-                body=message,
-            )
-        else:
-            client.messages.create(
-                to=recipient, from_=twilio["origin_number"], body=message
-            )
+        client.messages.create(
+            content_sid=twilio.get("content_sid"),
+            content_variables=json.dumps(
+                {
+                    "1": alerts_statistics.get("total_alerts"),
+                    "2": alerts_statistics.get("month_year"),
+                    "3": alerts_statistics.get("type_alert"),
+                    "4": alerts_statistics.get("alerts_dashboard_url"),
+                }
+            ),
+            messaging_service_sid=twilio.get("messaging_service_sid"),
+            to=recipient,
+            from_=twilio["origin_number"],
+        )
