@@ -6,6 +6,7 @@
 # pillow~=10.3
 # psycopg2-binary
 # requests~=2.32
+# twilio~=9.4
 
 import json
 import logging
@@ -19,10 +20,12 @@ from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
+from twilio.rest import Client as TwilioClient
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
 postgresql = dict
+c_twilio = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +45,7 @@ def main(
     territory_id: int,
     db: postgresql,
     db_table_name: str,
+    twilio: c_twilio,
     destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
 ):
     """
@@ -53,7 +57,13 @@ def main(
     )
 
     return _main(
-        storage_client, alerts_bucket, territory_id, db, db_table_name, destination_path
+        storage_client,
+        alerts_bucket,
+        territory_id,
+        db,
+        db_table_name,
+        destination_path,
+        twilio,
     )
 
 
@@ -64,6 +74,7 @@ def _main(
     db: postgresql,
     db_table_name: str,
     destination_path: str,
+    twilio: c_twilio,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
@@ -80,6 +91,8 @@ def _main(
         The name of the database table to write alerts to.
     destination_path : str, optional
         The local directory to save files
+    twilio : dict, optional
+        A dictionary containing Twilio configuration parameters.
 
     Returns
     -------
@@ -106,6 +119,9 @@ def _main(
     logger.info(
         f"Alerts data successfully written to database table: [{db_table_name}]"
     )
+
+    if twilio:
+        send_twilio_message(twilio)
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -726,3 +742,26 @@ class AlertsDBWriter:
             logger.info(f"Total alert rows updated: {updated_count}")
             cursor.close()
             conn.close()
+
+
+def send_twilio_message(twilio):
+    """
+    Send a Twilio message to alert the user of the script's completion.
+    """
+    messaging_service_sid = twilio.get("messaging_service_sid")
+    client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
+
+    message = "Alerts data successfully written to database table."
+
+    for recipient in twilio["recipients"]:
+        if messaging_service_sid:
+            client.messages.create(
+                messaging_service_sid=messaging_service_sid,
+                to=recipient,
+                from_=twilio["origin_number"],
+                body=message,
+            )
+        else:
+            client.messages.create(
+                to=recipient, from_=twilio["origin_number"], body=message
+            )

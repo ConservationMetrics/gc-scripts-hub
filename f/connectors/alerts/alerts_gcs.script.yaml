@@ -13,6 +13,7 @@ schema:
     - db
     - db_table_name
     - destination_path
+    - twilio
   properties:
     alerts_bucket:
       type: string
@@ -53,6 +54,14 @@ schema:
         will be retrieved. This ID is used to filter and process relevant
         alerts.
       default: null
+    twilio:
+      type: object
+      description: >-
+        (Optional) Twilio account credentials and phone numbers for sending alerts 
+        after ingesting and writing alerts to the database. Should include at minimum:
+        `account_sid`, `auth_token`, `origin_number`, `recipients`.
+      default: null
+      format: resource-c_twilio
   required:
     - gcp_service_acct
     - alerts_bucket

@@ -1,0 +1,47 @@
+{
+	"type": "object",
+	"order": [
+		"account_sid",
+		"auth_token",
+		"message_service_sid",
+		"origin_number",
+		"forward_numbers"
+	],
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"required": [
+		"account_sid",
+		"auth_token",
+		"origin_number",
+		"forward_numbers"
+	],
+	"properties": {
+		"account_sid": {
+			"type": "string",
+			"default": "",
+			"description": "The 34 letter SID used to represent a Twilio resource."
+		},
+		"auth_token": {
+			"type": "string",
+			"default": "",
+			"description": "The token used to authenticate Twilio API requests."
+		},
+		"message_service_sid": {
+			"type": "string",
+			"default": "",
+			"description": "(Optional) The SID for a messaging service, which is a container that bundle messaging functionality for your specific use cases (such as WhatsApp). It can be found in the Messaging Services menu; each service has their own SID. By including it, you can retrieve usage statistics for the service."
+		},
+		"origin_number": {
+			"type": "string",
+			"default": "",
+			"description": "The phone number from which messages will originate. This number must be initially approved and authenticated in the Twilio UI before it can be activated and used. If you are sending via a WhatsApp number, prefix your phone number with whatsapp:."
+		},
+		"recipients": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"default": [],
+			"description": "The list of phone numbers to which alerts will be sent. If you are sending to WhatsApp numbers, prefix your phone numbers with whatsapp:."
+		}
+	}
+}
