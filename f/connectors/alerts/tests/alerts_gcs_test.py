@@ -5,14 +5,29 @@ import uuid
 from pathlib import Path
 
 import google.api_core.exceptions
+import pandas as pd
 import psycopg2
 import pytest
 
-from f.connectors.alerts.alerts_gcs import _main
+from f.connectors.alerts.alerts_gcs import _main, prepare_alerts_metadata
 
 logger = logging.getLogger(__name__)
 
 MOCK_BUCKET_NAME = "test-bucket"
+assets_directory = "f/connectors/alerts/tests/assets/"
+
+
+def test_prepare_alerts_metadata():
+    alerts_history_csv = Path(assets_directory, "alerts_history.csv")
+    alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
+
+    prepared_alerts_metadata, alert_statistics = prepare_alerts_metadata(
+        alerts_metadata, 100
+    )
+
+    assert alert_statistics["month_year"] == "2/2024"
+    assert alert_statistics["total_alerts"] == "1"
+    assert alert_statistics["description_alerts"] == "fake alert"
 
 
 @pytest.fixture
@@ -32,7 +47,6 @@ def mock_alerts_storage_client(gcs_emulator_client):
         logger.info(f"Uploaded {source_file_name} -> {destination_blob_name}")
 
     # Upload test files to the emulator
-    assets_directory = "f/connectors/alerts/tests/assets/"
     alerts_filenames = [
         "alerts_history.csv",
         "100/vector/2023/09/alert_202309900112345671.geojson",
@@ -74,7 +88,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             # Count of unique rows in alerts_history.csv based on UUID
             # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert cursor.fetchone()[0] == 5
+            assert cursor.fetchone()[0] == 6
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(

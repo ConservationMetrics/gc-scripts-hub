@@ -47,9 +47,9 @@ def main(
     territory_id: int,
     db: postgresql,
     db_table_name: str,
-    territory_name: str,
-    twilio: c_twilio_message_template,
     destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
+    territory_name: str = None,
+    twilio: c_twilio_message_template = None,
 ):
     """
     Wrapper around _main() that instantiates the GCP client.
@@ -78,8 +78,8 @@ def _main(
     db: postgresql,
     db_table_name: str,
     destination_path: str,
-    territory_name: str,
-    twilio: c_twilio_message_template,
+    territory_name: str = None,
+    twilio: c_twilio_message_template = None,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
@@ -96,7 +96,7 @@ def _main(
         The name of the database table to write alerts to.
     destination_path : str, optional
         The local directory to save files
-    territory_name : str
+    territory_name : str, optional
         The name of the territory for which alerts are being processed.
     twilio : dict, optional
         A dictionary containing Twilio configuration parameters.
@@ -335,6 +335,12 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     a unique UUID for the metadata based on the content hash and includes a
     placeholder geolocation.
 
+    The alert statistics dictionary is generated based on the assumption that
+    the first row (after sorting by month and year in descending order) in the
+    filtered DataFrame represents the most recent alert. In other words, it is
+    assumed that the latest alerts posted by the provider are always for the
+    latest month and year in the dataset.
+
     Parameters
     ----------
     alerts_metadata : str
@@ -348,6 +354,9 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         A list of dictionaries representing the filtered and processed alerts
         metadata, including additional columns for geolocation, metadata UUID,
         and alert source.
+    dict
+        A dictionary containing alert statistics such as total alerts, month/year,
+        and description of alerts.
     """
     # Convert CSV bytes to DataFrame
     df = pd.read_csv(StringIO(alerts_metadata))
@@ -361,6 +370,11 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         .groupby(["month", "year"])
         .last()
         .reset_index()
+    )
+
+    # Sort the DataFrame by year and month in descending order
+    filtered_df = filtered_df.sort_values(
+        by=["year", "month"], ascending=[False, False]
     )
 
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
@@ -388,8 +402,7 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     logger.info("Successfully prepared alerts metadata.")
 
     # Generate alert statistics
-    # This is assuming that the last row (sorted by month and year) in the filtered DataFrame is the most recent alert
-    latest_row = filtered_df.iloc[-1]
+    latest_row = filtered_df.iloc[0]
     alert_statistics = {
         "total_alerts": str(latest_row["total_alerts"]),
         "month_year": f"{latest_row['month']}/{latest_row['year']}",
@@ -793,7 +806,19 @@ class AlertsDBWriter:
 
 def send_twilio_message(twilio, alerts_statistics, territory_name):
     """
-    Send a Twilio message to alert the user of the script's completion.
+    Send a Twilio SMS message with alerts processing completion details.
+
+    Parameters
+    ----------
+    twilio : dict
+        A dictionary containing Twilio configuration parameters, including
+        account credentials, messaging service details, and recipient phone
+        numbers.
+    alerts_statistics : dict
+        A dictionary containing statistics about the processed alerts, such as
+        the total number of alerts, month and year, and a description.
+    territory_name : str
+        The name of the territory for which the alerts were processed.
     """
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
 
