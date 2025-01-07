@@ -808,6 +808,14 @@ def send_twilio_message(twilio, alerts_statistics, territory_name):
     """
     Send a Twilio SMS message with alerts processing completion details.
 
+    The message template is defined in the Twilio console, and is structured as follows:
+    {{1}} new change detection alert(s) have been published on your alerts dashboard for
+    the date of {{2}}. The following activities have been detected in your region: {{3}}.
+    Visit your alerts dashboard here: {{4}}
+
+    In the content_variables below, the placeholders {{1}}, {{2}}, {{3}}, and {{4}} are
+    replaced with the corresponding values from the alerts_statistics dictionary.
+
     Parameters
     ----------
     twilio : dict
@@ -822,6 +830,7 @@ def send_twilio_message(twilio, alerts_statistics, territory_name):
     """
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
 
+    # Send a message to each recipient
     logger.info(
         f"Sending Twilio messages to {len(twilio.get('recipients', []))} recipients."
     )
