@@ -16,8 +16,8 @@ class Alert(NamedTuple):
 @pytest.fixture
 def fake_alerts_table(pg_database):
     alerts = [
-        Alert("abc123", "Hello, world!"),
-        Alert("def456", "Goodbye, world!"),
+        Alert("abc123", "gold_mining"),
+        Alert("def456", "illegal_fishing"),
     ]
 
     conn = psycopg2.connect(**pg_database)
@@ -28,9 +28,9 @@ def fake_alerts_table(pg_database):
         cur.execute("""
             CREATE TABLE fake_alerts (
                 alert_id TEXT PRIMARY KEY,
-                alert_message TEXT
+                alert_type TEXT
             )
-        """)
+        """)  # there are more alert columns than these, but it is not necessary for this test to include them
 
         values = [(a.alert_id, a.alert_message) for a in alerts]
         cur.executemany("INSERT INTO fake_alerts VALUES (%s, %s)", values)
