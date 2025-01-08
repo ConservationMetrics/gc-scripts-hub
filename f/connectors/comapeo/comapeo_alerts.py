@@ -68,14 +68,16 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     Returns
     -------
     list
-        A list of tuples, where each tuple represents an alert row from the database table.
+        A list of dictionaries, where each dictionary represents an alert row from the database table with keys for the column names.
     """
     logger.info("Fetching alerts from database...")
 
     conn = psycopg2.connect(dsn=db_connection_string)
     cur = conn.cursor()
     cur.execute(f"SELECT * FROM {db_table_name}")
-    alerts = cur.fetchall()
+    alerts = [
+        dict(zip([col.name for col in cur.description], row)) for row in cur.fetchall()
+    ]
     cur.close()
     conn.close()
     return alerts
@@ -94,8 +96,8 @@ def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: str)
 
     Returns
     -------
-    list
-        A list of dictionaries, where each dictionary represents an alert retrieved from the CoMapeo API.
+    set
+        A set of alert source IDs for alerts that have been posted to the CoMapeo API.
     """
     logger.info("Fetching alerts from CoMapeo API...")
     response = requests.request(
@@ -105,10 +107,14 @@ def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: str)
     response.raise_for_status()
     alerts = response.json().get("data", [])
 
-    return alerts
+    posted_alert_source_ids = {alert["sourceId"] for alert in alerts}
+
+    return posted_alert_source_ids
 
 
-def filter_alerts(comapeo_alerts_endpoint: str, comapeo_headers: str, alerts):
+def filter_alerts(
+    comapeo_alerts_endpoint: str, comapeo_headers: str, alerts: list[dict]
+):
     """
     Filters a list of alerts to find those that have not been posted to the CoMapeo API.
 
@@ -118,12 +124,12 @@ def filter_alerts(comapeo_alerts_endpoint: str, comapeo_headers: str, alerts):
         The URL endpoint for retrieving alerts from the CoMapeo API.
     comapeo_headers : str
         The headers to be included in the API request, such as authorization tokens.
-    alerts : list
+    alerts : list[dict]
         A list of dictionaries, where each dictionary represents an alert.
 
     Returns
     -------
-    list
+    list[dict]
         A list of dictionaries, where each dictionary represents an alert that has not been posted to the CoMapeo API.
     """
     logger.info("Filtering alerts...")
@@ -131,17 +137,13 @@ def filter_alerts(comapeo_alerts_endpoint: str, comapeo_headers: str, alerts):
     alerts_posted_to_comapeo = _get_alerts_from_comapeo(
         comapeo_alerts_endpoint, comapeo_headers
     )
-    posted_source_ids = {alert["sourceId"] for alert in alerts_posted_to_comapeo}
 
     # alert_id in the database matches sourceId on CoMapeo
     unposted_alerts = [
         alert
         for alert in alerts
-        if alert[0]
-        not in posted_source_ids  # Assuming alert_id is the first element of the tuple
+        if alert.get("alert_id") not in alerts_posted_to_comapeo
     ]
-
-    logger.info(f"Unposted alerts: {unposted_alerts}")
 
     return unposted_alerts
 
