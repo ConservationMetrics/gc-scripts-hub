@@ -133,9 +133,6 @@ def filter_alerts(comapeo_alerts_endpoint: str, comapeo_headers: str, alerts):
     )
     posted_source_ids = {alert["sourceId"] for alert in alerts_posted_to_comapeo}
 
-    logger.error(f"Posted source IDs: {posted_source_ids}")
-    logger.error(f"Alerts: {alerts}")
-
     # alert_id in the database matches sourceId on CoMapeo
     unposted_alerts = [
         alert
