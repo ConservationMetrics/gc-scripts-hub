@@ -70,6 +70,8 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     list
         A list of tuples, where each tuple represents an alert row from the database table.
     """
+    logger.info("Fetching alerts from database...")
+
     conn = psycopg2.connect(dsn=db_connection_string)
     cur = conn.cursor()
     cur.execute(f"SELECT * FROM {db_table_name}")
@@ -124,15 +126,25 @@ def filter_alerts(comapeo_alerts_endpoint: str, comapeo_headers: str, alerts):
     list
         A list of dictionaries, where each dictionary represents an alert that has not been posted to the CoMapeo API.
     """
+    logger.info("Filtering alerts...")
+
     alerts_posted_to_comapeo = _get_alerts_from_comapeo(
         comapeo_alerts_endpoint, comapeo_headers
     )
+    posted_source_ids = {alert["sourceId"] for alert in alerts_posted_to_comapeo}
+
+    logger.error(f"Posted source IDs: {posted_source_ids}")
+    logger.error(f"Alerts: {alerts}")
 
     # alert_id in the database matches sourceId on CoMapeo
-    posted_source_ids = {alert["sourceId"] for alert in alerts_posted_to_comapeo}
     unposted_alerts = [
-        alert for alert in alerts if alert["alert_id"] not in posted_source_ids
+        alert
+        for alert in alerts
+        if alert[0]
+        not in posted_source_ids  # Assuming alert_id is the first element of the tuple
     ]
+
+    logger.info(f"Unposted alerts: {unposted_alerts}")
 
     return unposted_alerts
 

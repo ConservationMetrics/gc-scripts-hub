@@ -63,23 +63,24 @@ def comapeoserver_alerts(mocked_responses):
         comapeo_server: dict
 
     server_url = "http://comapeo.example.org"
-    access_token = "MapYourWorldTogether!"
     project_id = "forest_expedition"
+    comapeo_alerts_endpoint = (
+        f"{server_url}/projects/{project_id}/remoteDetectionAlerts"
+    )
+    access_token = "MapYourWorldTogether!"
 
     mocked_responses.get(
-        f"{server_url}/projects/{project_id}/remoteDetectionAlerts",
+        comapeo_alerts_endpoint,
         json=server_responses.comapeo_alerts(),
         status=201,
     )
 
     mocked_responses.post(
-        f"{server_url}/projects/{project_id}/remoteDetectionAlerts",
+        comapeo_alerts_endpoint,
         status=201,
     )
 
-    server: comapeo_server = dict(
-        comapeo_alerts_endpoint=server_url, access_token=access_token
-    )
+    server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
         server,
