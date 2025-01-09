@@ -1,0 +1,46 @@
+summary: 'Locus Map: Import Points'
+description: This script fetches observations and attachments from the REST API of a CoMapeo archive server.
+lock: '!inline f/connectors/locusmap/locusmap_points.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - file_path
+    - db
+    - db_table_prefix
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where Locus Map attachments will be stored. Attachment
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{db_table_name}/attachments/{filename}`
+      default: /frizzle-persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the form data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    locusmap_tmp_path:
+      type: string
+      description: >-
+        The tmp path to the file exported from Locus Map, including the filename.
+        The script assumes that any attachments are located in a directory with
+        the same name as the file, but with "-attachments" appended. For example,
+        if the export file is "./Favorites.csv", the attachments are expected to be in
+        "./Favorites-attachments/".
+      originalType: string
+  required:
+    - db
+    - db_table_name
+    - locusmap_tmp_path
