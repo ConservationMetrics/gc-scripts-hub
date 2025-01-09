@@ -1,5 +1,5 @@
 summary: 'Locus Map: Import Points'
-description: This script fetches observations and attachments from the REST API of a CoMapeo archive server.
+description: This script imports points from a Locus Map export file into a database table, and stores any attachments in a specified directory.
 lock: '!inline f/connectors/locusmap/locusmap_points.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -7,7 +7,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - file_path
+    - locusmap_points_tmp_path
     - db
     - db_table_prefix
     - attachment_root
@@ -31,7 +31,7 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    locusmap_tmp_path:
+    locusmap_points_tmp_path:
       type: string
       description: >-
         The tmp path to the file exported from Locus Map, including the filename.
@@ -43,4 +43,4 @@ schema:
   required:
     - db
     - db_table_name
-    - locusmap_tmp_path
+    - locusmap_points_tmp_path
