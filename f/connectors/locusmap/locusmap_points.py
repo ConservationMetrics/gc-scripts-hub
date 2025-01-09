@@ -346,10 +346,13 @@ def delete_locusmap_tmp_files(locusmap_points_tmp_path, locusmap_attachments_tmp
     locusmap_attachments_tmp_path : str
         The path to the temporary directory containing Locus Map attachment files.
     """
-    if Path(locusmap_points_tmp_path).exists():
-        Path(locusmap_points_tmp_path).unlink()
+    points_deleted = (
+        Path(locusmap_points_tmp_path).exists()
+        and Path(locusmap_points_tmp_path).unlink()
+    )
+    attachments_deleted = Path(
+        locusmap_attachments_tmp_path
+    ).exists() and shutil.rmtree(locusmap_attachments_tmp_path, ignore_errors=True)
 
-    if Path(locusmap_attachments_tmp_path).exists():
-        shutil.rmtree(locusmap_attachments_tmp_path)
-
-    logger.info("Deleted temporary Locus Map files.")
+    if points_deleted or attachments_deleted:
+        logger.info("Deleted temporary Locus Map files.")
