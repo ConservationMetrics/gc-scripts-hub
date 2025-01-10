@@ -7,7 +7,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - locusmap_points_tmp_path
+    - locusmap_tmp_path
     - db
     - db_table_prefix
     - attachment_root
@@ -31,16 +31,13 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    locusmap_points_tmp_path:
+    locusmap_tmp_path:
       type: string
       description: >-
         The tmp path to the file exported from Locus Map, including the filename.
-        The script assumes that any attachments are located in a directory with
-        the same name as the file, but with "-attachments" appended. For example,
-        if the export file is "./Favorites.csv", the attachments are expected to be in
-        "./Favorites-attachments/".
+        This could be a GPX/KML/CSV file, or a ZIP file also containing attachments.
       originalType: string
   required:
     - db
     - db_table_name
-    - locusmap_points_tmp_path
+    - locusmap_tmp_path

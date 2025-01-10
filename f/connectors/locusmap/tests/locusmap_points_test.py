@@ -6,15 +6,12 @@ import psycopg2
 from f.connectors.locusmap.locusmap_points import main
 
 
-def test_script_e2e(pg_database, tmp_path):
+def test_script_e2e_zip(pg_database, tmp_path):
     fixture_path = "f/connectors/locusmap/tests/assets/"
-    tmp_fixture_path = tmp_path / "Favorites.csv"
+    tmp_fixture_path = tmp_path / "Favorites.zip"
 
     # Copy fixtures to a temp location
-    shutil.copy(fixture_path + "Favorites.csv", tmp_fixture_path)
-    shutil.copytree(
-        fixture_path + "Favorites-attachments", tmp_path / "Favorites-attachments"
-    )
+    shutil.copy(fixture_path + "Favorites.zip", tmp_fixture_path)
 
     asset_storage = tmp_path / "datalake"
 
@@ -58,3 +55,30 @@ def test_script_e2e(pg_database, tmp_path):
     # Check that the temp files were cleaned up
     assert not (tmp_path / "Favorites.csv").exists()
     assert not (tmp_path / "Favorites-attachments").exists()
+
+
+def test_script_e2e_csv(pg_database, tmp_path):
+    fixture_path = "f/connectors/locusmap/tests/assets/"
+    tmp_fixture_path = tmp_path / "My points.csv"
+
+    # Copy fixtures to a temp location
+    shutil.copy(fixture_path + "My points.csv", tmp_fixture_path)
+
+    asset_storage = tmp_path / "datalake"
+
+    main(
+        pg_database,
+        "my_locusmap_points",
+        tmp_fixture_path,
+        asset_storage,
+    )
+
+    # Check that the data was inserted into the database
+    with psycopg2.connect(**pg_database) as conn:
+        # Survey responses from Favorites are written to a SQL Table in expected format
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM my_locusmap_points")
+            assert cursor.fetchone()[0] == 2
+
+    # Check that the temp files were cleaned up
+    assert not (tmp_path / "My points.csv").exists()
