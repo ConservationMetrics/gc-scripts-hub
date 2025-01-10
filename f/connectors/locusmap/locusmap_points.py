@@ -168,11 +168,17 @@ def copy_locusmap_attachments(
     attachment_root : str
         The root directory where the attachment files will be copied.
     """
-    shutil.copytree(
-        locusmap_attachments_tmp_path, Path(attachment_root) / db_table_name
-    )
+    attachment_dest_path = Path(attachment_root) / db_table_name
+    attachment_dest_path.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Copied Locus Map attachments to {attachment_root}/{db_table_name}.")
+    for src_path in Path(locusmap_attachments_tmp_path).glob("*"):
+        dest_path = attachment_dest_path / src_path.name
+        if not dest_path.exists():
+            shutil.copy2(src_path, dest_path)
+        else:
+            logger.warning(f"File {dest_path} already exists, skipping copy.")
+
+    logger.info(f"Copied Locus Map attachments to {attachment_dest_path}.")
 
 
 class LocusMapDbWriter:
