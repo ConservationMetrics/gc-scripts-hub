@@ -10,8 +10,11 @@ Locus Map exports data as a CSV, KML, and GPX. If attachments are included, then
 
 The envisioned way to use this script is:
 
-1. User uploads Locus Map data (either as ZIP or CSV/KML/GPX) to the datalake via a web app that doesn't exist yet.
-2. Upon completion of the upload, the web app triggers a **[run script by path](https://app.windmill.dev/openapi.html#tag/job/POST/w/{workspace}/jobs/run/p/{path}) Windmill API call** to execute this script as a one-time run. The temp path of the uploaded file is provided as a parameter.
+1. User uploads Locus Map data (either as ZIP or CSV/KML/GPX) to the datalake via a web app[^1].
+2. Upon completion of the upload, the web app triggers a **[run script by path](https://app.windmill.dev/openapi.html#tag/job/POST/w/{workspace}/jobs/run/p/{path}) Windmill API request** to execute this script as a one-time run. The temp path of the uploaded file is provided as a parameter.
+
+[^1]: The web app could use something like the [Uppy](https://github.com/transloadit/uppy) JavaScript Library to upload files, and call `uppyDashboard.on('complete', (result) => {}` to POST a Windmill API request after successful file upload.
+
 
 ## Sample curl request for Windmill API
 
