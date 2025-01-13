@@ -1,8 +1,8 @@
-# Locus Map: Import Points
+# Locus Map: Import Data
 
-This script imports points from a Locus Map export file into a database table. It reads a file containing point data, transforms the data into a structured format, and inserts it into a PostgreSQL database table. Additionally, it downloads any attachments associated with the points and saves them to a specified directory. It then deletes the temporary files.
+This script imports data from a Locus Map export file into a database table. It reads a file containing spatial data, transforms the data into a structured format, and inserts it into a PostgreSQL database table. Additionally, it downloads any attachments associated with the spatial data and saves them to a specified directory. It then deletes the temporary files.
 
-Locus Map exports points as a CSV, KML, and GPX. If attachments are included, then the export will be as a ZIP file compressing the point file together with a directory containing the attachment files. (It is also possible to export data as a DXF or Ov2 file, but these are not commonly used formats, so this script does not intend to support them.)
+Locus Map exports data as a CSV, KML, and GPX. If attachments are included, then the export will be as a ZIP file compressing the spatial data file together with a directory containing the attachment files. (It is also possible to export data as a DXF or Ov2 file, but these are not commonly used formats, so this script does not intend to support them.)
 
 
 > [!IMPORTANT]
@@ -17,7 +17,7 @@ The envisioned way to use this script is:
 
 ```
 curl -X POST \
-  https://windmill.demo.guardianconnector.net/api/w/frizzle-demo/jobs/run/p/f/connectors/locusmap/locusmap_points \
+  https://windmill.demo.guardianconnector.net/api/w/frizzle-demo/jobs/run/p/f/connectors/locusmap/locusmap \
   -H 'Authorization: Bearer Your_Access_Token' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -31,4 +31,5 @@ curl -X POST \
 
 ## TODO
 
-Support KML, GPX.
+* Support KML, GPX formats in addition to CSV.
+* Support tracks in addition to points.

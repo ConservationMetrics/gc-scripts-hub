@@ -1,6 +1,6 @@
-summary: 'Locus Map: Import Points'
-description: This script imports points from a Locus Map export file into a database table, and stores any attachments in a specified directory.
-lock: '!inline f/connectors/locusmap/locusmap_points.script.lock'
+summary: 'Locus Map: Import Data'
+description: This script imports data from a Locus Map export file into a database table, and stores any attachments in a specified directory.
+lock: '!inline f/connectors/locusmap/locusmap.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:

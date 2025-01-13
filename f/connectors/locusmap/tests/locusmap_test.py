@@ -3,7 +3,7 @@ import uuid
 
 import psycopg2
 
-from f.connectors.locusmap.locusmap_points import main
+from f.connectors.locusmap.locusmap import main
 
 
 def test_script_e2e_zip(pg_database, tmp_path):
