@@ -111,12 +111,12 @@ def _main(
     prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
 
     db_writer = AlertsDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(prepared_alerts_data, prepared_alerts_metadata)
-    logger.info(
-        f"Alerts data successfully written to database table: [{db_table_name}]"
+    new_alerts_data = db_writer.handle_output(
+        prepared_alerts_data, prepared_alerts_metadata
     )
 
-    return alerts_statistics
+    if new_alerts_data:
+        return alerts_statistics
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -557,6 +557,9 @@ class AlertsDBWriter:
         cursor.execute(select_query, (values[columns.index("_id")],))
         existing_row = cursor.fetchone()
 
+        logger.debug(f"Existing row: {existing_row}")
+        logger.debug(f"List(existing_row): {list(existing_row)}")
+        logger.debug(f"Values: {values}")
         if existing_row and list(existing_row) == values:
             # No changes, skip the update
             return inserted_count, updated_count
@@ -602,8 +605,11 @@ class AlertsDBWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        inserted_count = 0
-        updated_count = 0
+        new_alerts_data = False
+        data_inserted_count = 0
+        data_updated_count = 0
+        metadata_inserted_count = 0
+        metadata_updated_count = 0
 
         try:
             if alerts:
@@ -714,8 +720,8 @@ class AlertsDBWriter:
                             result_inserted_count, result_updated_count = (
                                 self._safe_insert(cursor, table_name, columns, values)
                             )
-                            inserted_count += result_inserted_count
-                            updated_count += result_updated_count
+                            data_inserted_count += result_inserted_count
+                            data_updated_count += result_updated_count
 
                         except Exception:
                             logger.exception(
@@ -771,9 +777,14 @@ class AlertsDBWriter:
                         data_source,
                     ]
 
-                    self._safe_insert(
-                        cursor, f"{table_name}__metadata", columns, values
+                    result_inserted_count, result_updated_count = self._safe_insert(
+                        cursor,
+                        f"{table_name}__metadata",
+                        columns,
+                        values,
                     )
+                    metadata_inserted_count += result_inserted_count
+                    metadata_updated_count += result_updated_count
 
                     conn.commit()
                 except Exception:
@@ -784,7 +795,13 @@ class AlertsDBWriter:
                     raise
 
         finally:
-            logger.info(f"Total alert rows inserted: {inserted_count}")
-            logger.info(f"Total alert rows updated: {updated_count}")
+            logger.info(f"Total alert rows inserted: {data_inserted_count}")
+            logger.info(f"Total alert rows updated: {data_updated_count}")
+            logger.info(f"Total metadata rows inserted: {metadata_inserted_count}")
+            logger.info(f"Total metadata rows updated: {metadata_updated_count}")
             cursor.close()
             conn.close()
+
+        if data_inserted_count > 0 or metadata_inserted_count > 0:
+            new_alerts_data = True
+        return new_alerts_data

@@ -126,6 +126,19 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     # checks the correctness of the metadata, so here we just check that it is not None
     assert alerts_metadata is not None
 
+    # Now, let's run the script again to check if alerts_metadata is returned (it should be None,
+    # since no new alerts data or metadata has been inserted into the database)
+    alerts_metadata = _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        100,
+        pg_database,
+        "fake_alerts",
+        asset_storage,
+    )
+
+    assert alerts_metadata is None
+
 
 def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage = tmp_path / "datalake"
