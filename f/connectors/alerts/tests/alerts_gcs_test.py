@@ -66,7 +66,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
 def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage = tmp_path / "datalake"
 
-    _main(
+    alerts_metadata = _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
         100,
@@ -121,6 +121,10 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
 
     # Alerts metadata is not saved to disk
     assert not (asset_storage / "alerts_history.csv").exists()
+
+    # Check that the alerts metadata is returned by the script. The unit test for prepare_alerts_metadata()
+    # checks the correctness of the metadata, so here we just check that it is not None
+    assert alerts_metadata is not None
 
 
 def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):

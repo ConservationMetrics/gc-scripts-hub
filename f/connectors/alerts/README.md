@@ -2,8 +2,6 @@
 
 This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory. 
 
-Optionally, the script can send a Twilio WhatsApp message with a summary of the latest processed alerts.
-
 ## GCP API Queries
 
 Change Detection alerts can be stored in a Google Cloud storage bucket.
@@ -44,3 +42,7 @@ Currently, we are assuming there to be only four raster images for each change d
 <territory_id>/<year_detec>/<month_detec>/<alert_id>/images/<sat_viz_prefix>_T0_<id>.jpg
 ...
 ```
+
+# Send a Twilio Message 
+
+This script can send a Twilio WhatsApp message with a summary of the latest processed alerts.

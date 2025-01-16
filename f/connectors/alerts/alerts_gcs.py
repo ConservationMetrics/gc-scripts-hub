@@ -6,7 +6,6 @@
 # pillow~=10.3
 # psycopg2-binary
 # requests~=2.32
-# twilio~=9.4
 
 import base64
 import hashlib
@@ -22,12 +21,10 @@ from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
-from twilio.rest import Client as TwilioClient
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
 postgresql = dict
-c_twilio_message_template = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,8 +45,6 @@ def main(
     db: postgresql,
     db_table_name: str,
     destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
-    territory_name: str = None,
-    twilio: c_twilio_message_template = None,
 ):
     """
     Wrapper around _main() that instantiates the GCP client.
@@ -66,8 +61,6 @@ def main(
         db,
         db_table_name,
         destination_path,
-        territory_name,
-        twilio,
     )
 
 
@@ -78,8 +71,6 @@ def _main(
     db: postgresql,
     db_table_name: str,
     destination_path: str,
-    territory_name: str = None,
-    twilio: c_twilio_message_template = None,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
@@ -96,10 +87,6 @@ def _main(
         The name of the database table to write alerts to.
     destination_path : str, optional
         The local directory to save files
-    territory_name : str, optional
-        The slug of the territory for which alerts are being processed.
-    twilio : dict, optional
-        A dictionary containing Twilio configuration parameters.
 
     Returns
     -------
@@ -129,8 +116,7 @@ def _main(
         f"Alerts data successfully written to database table: [{db_table_name}]"
     )
 
-    if twilio and alerts_statistics and territory_name:
-        send_twilio_message(twilio, alerts_statistics, territory_name)
+    return alerts_statistics
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -211,9 +197,9 @@ def sync_gcs_to_local(
     prefix = f"{territory_id}/"
     files_to_download = set(blob.name for blob in bucket.list_blobs(prefix=prefix))
 
-    assert (
-        len(files_to_download) > 0
-    ), f"No files found to download in bucket '{bucket_name}' with that prefix."
+    assert len(files_to_download) > 0, (
+        f"No files found to download in bucket '{bucket_name}' with that prefix."
+    )
 
     logger.info(
         f"Found {len(files_to_download)} files to download from bucket '{bucket_name}'."
@@ -350,11 +336,11 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     Returns
     -------
-    list of dict
+    prepared_alerts_metadata : list of dict
         A list of dictionaries representing the filtered and processed alerts
         metadata, including additional columns for geolocation, metadata UUID,
         and alert source.
-    dict
+    alerts_statistics : dict
         A dictionary containing alert statistics: total alerts, month/year,
         and description of alerts.
     """
@@ -403,13 +389,13 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     # Generate alert statistics
     latest_row = filtered_df.iloc[0]
-    alert_statistics = {
+    alerts_statistics = {
         "total_alerts": str(latest_row["total_alerts"]),
         "month_year": f"{latest_row['month']}/{latest_row['year']}",
         "description_alerts": latest_row["description_alerts"].replace("_", " "),
     }
 
-    return prepared_alerts_metadata, alert_statistics
+    return prepared_alerts_metadata, alerts_statistics
 
 
 def prepare_alerts_data(local_directory, geojson_files):
@@ -802,53 +788,3 @@ class AlertsDBWriter:
             logger.info(f"Total alert rows updated: {updated_count}")
             cursor.close()
             conn.close()
-
-
-def send_twilio_message(twilio, alerts_statistics, territory_name):
-    """
-    Send a Twilio SMS message with alerts processing completion details.
-
-    The message template is defined in the Twilio console, and is structured as follows:
-    {{1}} new change detection alert(s) have been published on your alerts dashboard for
-    the date of {{2}}. The following activities have been detected in your region: {{3}}.
-    Visit your alerts dashboard here: {{4}}
-
-    In the content_variables below, the placeholders {{1}}, {{2}}, {{3}}, and {{4}} are
-    replaced with the corresponding values from the alerts_statistics dictionary.
-
-    Parameters
-    ----------
-    twilio : dict
-        A dictionary containing Twilio configuration parameters, including
-        account credentials, messaging service details, and recipient phone
-        numbers.
-    alerts_statistics : dict
-        A dictionary containing statistics about the processed alerts, such as
-        the total number of alerts, month and year, and a description.
-    territory_name : str
-        The slug of the territory for which alerts are being processed.
-    """
-    client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
-
-    # Send a message to each recipient
-    logger.info(
-        f"Sending Twilio messages to {len(twilio.get('recipients', []))} recipients."
-    )
-
-    for recipient in twilio["recipients"]:
-        client.messages.create(
-            content_sid=twilio.get("content_sid"),
-            content_variables=json.dumps(
-                {
-                    "1": alerts_statistics.get("total_alerts"),
-                    "2": alerts_statistics.get("month_year"),
-                    "3": alerts_statistics.get("description_alerts"),
-                    "4": f"https://explorer.{territory_name}.guardianconnector.net/alerts/alerts",
-                }
-            ),
-            messaging_service_sid=twilio.get("messaging_service_sid"),
-            to=recipient,
-            from_=twilio["origin_number"],
-        )
-
-    logger.info("Twilio messages sent successfully.")

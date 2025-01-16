@@ -13,8 +13,6 @@ schema:
     - db
     - db_table_name
     - destination_path
-    - twilio
-    - territory_name
   properties:
     alerts_bucket:
       type: string
@@ -55,21 +53,6 @@ schema:
         will be retrieved. This ID is used to filter and process relevant
         alerts.
       default: null
-    territory_name:
-      type: string
-      description: >-
-        The URL slug for the territory, used to construct a link to the alerts
-        dashboard. This name is used for Twilio and must be provided for messages to
-        be sent.
-      default: null
-    twilio:
-      type: object
-      description: >-
-        (Optional) Twilio account credentials and phone numbers for sending alerts 
-        after ingesting and writing alerts to the database via a Twilio message content 
-        template.
-      default: null
-      format: resource-c_twilio_message_template
   required:
     - gcp_service_acct
     - alerts_bucket
