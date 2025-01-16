@@ -557,9 +557,6 @@ class AlertsDBWriter:
         cursor.execute(select_query, (values[columns.index("_id")],))
         existing_row = cursor.fetchone()
 
-        logger.debug(f"Existing row: {existing_row}")
-        logger.debug(f"List(existing_row): {list(existing_row)}")
-        logger.debug(f"Values: {values}")
         if existing_row and list(existing_row) == values:
             # No changes, skip the update
             return inserted_count, updated_count
