@@ -2,7 +2,6 @@
 # psycopg2-binary
 # requests~=2.32
 
-import json
 import logging
 from typing import TypedDict
 
@@ -168,11 +167,9 @@ def post_alerts(
     logger.info("Posting alerts to CoMapeo API...")
 
     for alert in unposted_alerts:
-        payload = json.dumps(alert)
-        response = requests.request(
-            "POST", url=comapeo_alerts_endpoint, headers=comapeo_headers, data=payload
+        response = requests.post(
+            url=comapeo_alerts_endpoint, headers=comapeo_headers, json=alert
         )
         response.raise_for_status()
-        logger.info(f"Posted alert: {alert}")
 
-    logger.info("All alerts posted successfully.")
+    logger.info(f"{len(unposted_alerts)} alerts posted successfully.")
