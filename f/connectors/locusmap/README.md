@@ -32,6 +32,8 @@ curl -X POST \
 # => HTTP 201, no response body
 ``` 
 
+You can get an Authorization token [via the Windmill CLI](https://www.windmill.dev/docs/advanced/cli/user#creating-a-token), or by finding one in browser request headers once logged in to the Windmill UI.
+
 ## TODO
 
 * Support KML, GPX formats in addition to CSV.
