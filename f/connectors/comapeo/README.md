@@ -6,9 +6,13 @@ For each project, the observations data is stored in a table prefixed by `table_
 
 ## Endpoints
 
-The request header must include an access token in the format: Authorized: Bearer <token>.
+The request header must include an access token in the format: 
 
-### `GET /projects````json
+    Authorized: Bearer <token>.
+
+### `GET /projects`
+
+```json
 {
   "data": [
     {
@@ -49,7 +53,7 @@ This script fetches alerts data from a database and posts it to a CoMapeo server
 
 The request header must include an access token in the format: Authorized: Bearer <token>.
 
-### `POST /projects/abc123/remoteDetecionAlerts`
+### `POST /projects/abc123/remoteDetectionAlerts`
 
 ```json
 {
@@ -68,14 +72,17 @@ The request header must include an access token in the format: Authorized: Beare
 ### `GET /projects/abc123/remoteDetectionAlerts`
 
 ```json
-{
-  "detectionDateStart": "2024-11-03T04:20:69Z",
-  "detectionDateEnd": "2024-11-04T04:20:69Z",
-  "sourceId": "abc123",
-  "metadata": { "foo": "bar" },
-  "geometry": {
-    "type": "Point",
-    "coordinates": [12, 34]
-  }
-}
+[
+  {
+    "detectionDateStart": "2024-11-03T04:20:69Z",
+    "detectionDateEnd": "2024-11-04T04:20:69Z",
+    "sourceId": "abc123",
+    "metadata": { "foo": "bar" },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [12, 34]
+    }
+  },
+  ...
+]
 ```
