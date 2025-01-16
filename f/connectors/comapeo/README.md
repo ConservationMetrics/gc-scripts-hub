@@ -1,4 +1,4 @@
-# CoMapeo: Fetch Observations
+# `comapeo_observations`: Fetch Observations from CoMapeo API
 
 This script fetches data from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
 
@@ -45,7 +45,7 @@ The request header must include an access token in the format:
 
 This endpoint retrieves the binary data of a specific attachment, such as a photo, associated with a project. The response will contain the raw binary content of the file, which can be saved or processed as needed.
 
-# CoMapeo: Post Alerts
+# `comapeo_alerts`: Post Alerts to CoMapeo API
 
 This script fetches alerts data from a database and posts it to a CoMapeo server.
 
