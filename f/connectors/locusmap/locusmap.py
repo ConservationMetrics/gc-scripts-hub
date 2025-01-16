@@ -27,74 +27,78 @@ def conninfo(db: postgresql):
 def main(
     db: postgresql,
     db_table_name: str,
-    locusmap_tmp_path: str,
+    locusmap_export_path: str,
     attachment_root: str = "/frizzle-persistent-storage/datalake/",
+    delete_locusmap_export_file: bool = False,
 ):
-    if Path(locusmap_tmp_path).suffix.lower() == ".zip":
-        locusmap_points_tmp_path, locusmap_attachments_tmp_path = extract_locusmap_zip(
-            locusmap_tmp_path
+    if Path(locusmap_export_path).suffix.lower() == ".zip":
+        locusmap_points_path, locusmap_attachments_path = extract_locusmap_zip(
+            locusmap_export_path
         )
     else:
-        locusmap_points_tmp_path = Path(locusmap_tmp_path)
-        if locusmap_points_tmp_path.suffix.lower() not in [".kml", ".gpx", ".csv"]:
+        locusmap_points_path = Path(locusmap_export_path)
+        if locusmap_points_path.suffix.lower() not in [".kml", ".gpx", ".csv"]:
             raise ValueError(
                 "Unsupported file format. Only KML, GPX, and CSV are supported."
             )
-        locusmap_attachments_tmp_path = None
+        locusmap_attachments_path = None
 
-    transformed_locusmap_points = transform_locusmap_points(locusmap_points_tmp_path)
+    transformed_locusmap_points = transform_locusmap_points(locusmap_points_path)
 
-    if locusmap_attachments_tmp_path:
+    if locusmap_attachments_path:
         copy_locusmap_attachments(
-            locusmap_attachments_tmp_path, db_table_name, attachment_root
+            locusmap_attachments_path, db_table_name, attachment_root
         )
 
     db_writer = LocusMapDbWriter(conninfo(db), db_table_name)
     db_writer.handle_output(transformed_locusmap_points)
 
-    delete_locusmap_tmp_files(
-        locusmap_tmp_path, locusmap_points_tmp_path, locusmap_attachments_tmp_path
+    delete_locusmap_export_files(
+        locusmap_export_path,
+        locusmap_points_path,
+        locusmap_attachments_path,
+        delete_locusmap_export_file,
     )
 
 
-def extract_locusmap_zip(locusmap_zip_tmp_path):
+def extract_locusmap_zip(locusmap_zip_path):
     """
     Extracts a Locus Map ZIP file containing point data and attachment files.
 
     Parameters
     ----------
-    locusmap_zip_tmp_path : str
-        The path to the temporary ZIP file containing Locus Map data.
+    locusmap_zip_path : str
+        The path to the ZIP file containing Locus Map data.
 
     Returns
     -------
     tuple
         A tuple containing the paths to the extracted Points file and attachments directory.
     """
-    locusmap_zip_tmp_path = Path(locusmap_zip_tmp_path)
-    shutil.unpack_archive(locusmap_zip_tmp_path, locusmap_zip_tmp_path.parent)
+    locusmap_zip_path = Path(locusmap_zip_path)
+    shutil.unpack_archive(locusmap_zip_path, locusmap_zip_path.parent)
     logger.info("Extracted Locus Map ZIP file.")
 
-    locusmap_attachments_tmp_path = locusmap_zip_tmp_path.with_name(
-        locusmap_zip_tmp_path.stem + "-attachments"
+    locusmap_attachments_path = locusmap_zip_path.with_name(
+        locusmap_zip_path.stem + "-attachments"
     )
-    if not locusmap_attachments_tmp_path.exists():
-        locusmap_attachments_tmp_path = None
+    if not locusmap_attachments_path.exists():
+        locusmap_attachments_path = None
 
-    extracted_files = list(locusmap_zip_tmp_path.parent.glob("*.*"))
+    extracted_files = list(locusmap_zip_path.parent.glob("*.*"))
     for file in extracted_files:
         if file.suffix.lower() in [".kml", ".gpx", ".csv"]:
-            locusmap_points_tmp_path = file
+            locusmap_points_path = file
             break
     else:
         raise ValueError(
             "Unsupported file format. Only KML, GPX, and CSV are supported."
         )
 
-    return locusmap_points_tmp_path, locusmap_attachments_tmp_path
+    return locusmap_points_path, locusmap_attachments_path
 
 
-def transform_locusmap_points(locusmap_points_tmp_path):
+def transform_locusmap_points(locusmap_points_path):
     """
     Transforms Locus Map point data from a CSV file into a list of dictionaries.
 
@@ -102,8 +106,8 @@ def transform_locusmap_points(locusmap_points_tmp_path):
 
     Parameters
     ----------
-    locusmap_points_tmp_path : str
-        The path to the temporary CSV file containing LocusMap point data.
+    locusmap_points_path : str
+        The path to the CSV file containing LocusMap point data.
 
     Returns
     -------
@@ -122,7 +126,7 @@ def transform_locusmap_points(locusmap_points_tmp_path):
     transformed_points = []
     points_processed = 0
 
-    with open(locusmap_points_tmp_path, "r") as csvfile:
+    with open(locusmap_points_path, "r") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             points_processed += 1
@@ -154,15 +158,15 @@ def transform_locusmap_points(locusmap_points_tmp_path):
 
 
 def copy_locusmap_attachments(
-    locusmap_attachments_tmp_path, db_table_name, attachment_root
+    locusmap_attachments_path, db_table_name, attachment_root
 ):
     """
-    Copies Locus Map attachment files from a temporary directory to a specified root directory.
+    Copies Locus Map attachment files from the original export directory to a specified root directory.
 
     Parameters
     ----------
-    locusmap_attachments_tmp_path : str
-        The path to the temporary directory containing Locus Map attachment files.
+    locusmap_attachments_path : str
+        The path to the directory containing Locus Map attachment files.
     db_table_name : str
         The name of the database table where the point data will be stored.
     attachment_root : str
@@ -171,7 +175,7 @@ def copy_locusmap_attachments(
     attachment_dest_path = Path(attachment_root) / db_table_name
     attachment_dest_path.mkdir(parents=True, exist_ok=True)
 
-    for src_path in Path(locusmap_attachments_tmp_path).glob("*"):
+    for src_path in Path(locusmap_attachments_path).glob("*"):
         dest_path = attachment_dest_path / src_path.name
         if not dest_path.exists():
             shutil.copy2(src_path, dest_path)
@@ -387,34 +391,48 @@ class LocusMapDbWriter:
         conn.close()
 
 
-def delete_locusmap_tmp_files(
-    locusmap_tmp_path, locusmap_attachments_tmp_path=None, locusmap_points_tmp_path=None
+def delete_locusmap_export_files(
+    locusmap_path,
+    locusmap_attachments_path=None,
+    locusmap_points_path=None,
+    delete_locusmap_export_file=False,
 ):
     """
-    Deletes the temporary files and attachments directory used for Locus Map point data.
+    Clean up the Locus Map export files and attachments directory after processing.
 
     Parameters
     ----------
-    locusmap_tmp_path : str or Path
-        The path to the temporary file containing Locus Map data (CSV, ZIP, etc.).
-    locusmap_points_tmp_path : str or Path, optional
-        The path to the temporary CSV file extracted from the ZIP file, if applicable.
-    locusmap_attachments_tmp_path : str or Path, optional
-        The path to the temporary directory containing Locus Map attachment files.
+    locusmap_path : str or Path
+        The path to the Locus Map export file (CSV, ZIP, etc.).
+    locusmap_points_path : str or Path, optional
+        The path to the spatial data file extracted from the ZIP file, if applicable.
+    locusmap_attachments_path : str or Path, optional
+        The path to the directory containing Locus Map attachment files.
+    delete_locusmap_export_file: bool
+        A boolean flag indicating whether the original Locus Map export file should be
+        deleted after processing.
     """
     from pathlib import Path
 
-    paths = [
-        Path(p)
-        for p in (
-            locusmap_tmp_path,
-            locusmap_attachments_tmp_path,
-            locusmap_points_tmp_path,
-        )
-        if p
-    ]
+    paths_to_delete = []
 
-    for path in paths:
+    # Always delete extracted attachments if they exist
+    if locusmap_attachments_path:
+        paths_to_delete.append(Path(locusmap_attachments_path))
+
+    # Delete extracted points file if it was extracted from a ZIP
+    if locusmap_points_path and locusmap_points_path != locusmap_path:
+        paths_to_delete.append(Path(locusmap_points_path))
+
+    # Delete the original export file if requested
+    if delete_locusmap_export_file and locusmap_points_path != locusmap_path:
+        paths_to_delete.append(Path(locusmap_path))
+
+    if not paths_to_delete:
+        logger.info("No files to delete.")
+        return
+
+    for path in paths_to_delete:
         try:
             if path.is_dir():
                 shutil.rmtree(path, ignore_errors=True)

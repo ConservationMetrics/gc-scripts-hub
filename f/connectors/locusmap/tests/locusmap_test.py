@@ -15,11 +15,14 @@ def test_script_e2e_zip(pg_database, tmp_path):
 
     asset_storage = tmp_path / "datalake"
 
+    delete_locusmap_export_file = False
+
     main(
         pg_database,
         "my_locusmap_points",
         tmp_fixture_path,
         asset_storage,
+        delete_locusmap_export_file,
     )
 
     # Attachments are saved to disk

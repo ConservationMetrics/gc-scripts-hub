@@ -7,9 +7,10 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - locusmap_tmp_path
+    - locusmap_export_path
     - db
     - db_table_prefix
+    - delete_locusmap_export_file
     - attachment_root
   properties:
     attachment_root:
@@ -31,13 +32,18 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    locusmap_tmp_path:
+    delete_locusmap_export_file:
+      type: boolean
+      description: >-
+        Whether to delete the Locus Map export file after processing.
+      default: false
+    locusmap_export_path:
       type: string
       description: >-
-        The tmp path to the file exported from Locus Map, including the filename.
+        The path to the file exported from Locus Map, including the filename.
         This could be a GPX/KML/CSV file, or a ZIP file also containing attachments.
       originalType: string
   required:
     - db
     - db_table_name
-    - locusmap_tmp_path
+    - locusmap_export_path
