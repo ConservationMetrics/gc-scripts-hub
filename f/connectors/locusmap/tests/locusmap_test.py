@@ -5,13 +5,14 @@ import psycopg2
 
 from f.connectors.locusmap.locusmap import main
 
+points_fixture_path = "f/connectors/locusmap/tests/assets/points"
 
-def test_script_e2e_zip(pg_database, tmp_path):
-    fixture_path = "f/connectors/locusmap/tests/assets/"
+
+def test_script_e2e_points_zip(pg_database, tmp_path):
     tmp_fixture_path = tmp_path / "Favorites.zip"
 
     # Copy fixtures to a temp location
-    shutil.copy(fixture_path + "Favorites.zip", tmp_fixture_path)
+    shutil.copy(points_fixture_path + "Favorites.zip", tmp_fixture_path)
 
     asset_storage = tmp_path / "datalake"
 
@@ -60,12 +61,11 @@ def test_script_e2e_zip(pg_database, tmp_path):
     assert not (tmp_path / "Favorites-attachments").exists()
 
 
-def test_script_e2e_csv(pg_database, tmp_path):
-    fixture_path = "f/connectors/locusmap/tests/assets/"
+def test_script_e2e_points_csv(pg_database, tmp_path):
     tmp_fixture_path = tmp_path / "Favorites.csv"
 
     # Copy fixtures to a temp location
-    shutil.copy(fixture_path + "Favorites.csv", tmp_fixture_path)
+    shutil.copy(points_fixture_path + "Favorites.csv", tmp_fixture_path)
 
     asset_storage = tmp_path / "datalake"
 

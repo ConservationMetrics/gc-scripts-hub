@@ -31,15 +31,16 @@ def main(
     attachment_root: str = "/frizzle-persistent-storage/datalake/",
     delete_locusmap_export_file: bool = False,
 ):
+    # TODO: Deal with KMZ
     if Path(locusmap_export_path).suffix.lower() == ".zip":
         locusmap_data_path, locusmap_attachments_path = extract_locusmap_zip(
             locusmap_export_path
         )
     else:
         locusmap_data_path = Path(locusmap_export_path)
-        if locusmap_data_path.suffix.lower() not in [".kml", ".gpx", ".csv"]:
+        if locusmap_data_path.suffix.lower() not in [".kml", ".kmz", ".gpx", ".csv"]:
             raise ValueError(
-                "Unsupported file format. Only KML, GPX, and CSV are supported."
+                "Unsupported file format. Only CSV, GPX, and KML are supported."
             )
         locusmap_attachments_path = None
 
@@ -87,12 +88,12 @@ def extract_locusmap_zip(locusmap_zip_path):
 
     extracted_files = list(locusmap_zip_path.parent.glob("*.*"))
     for file in extracted_files:
-        if file.suffix.lower() in [".kml", ".kmz", ".gpx", ".csv"]:
+        if file.suffix.lower() in [".kml", ".gpx", ".csv"]:
             locusmap_data_path = file
             break
     else:
         raise ValueError(
-            "Unsupported file format. Only KML, GPX, and CSV are supported."
+            "Unsupported file format. Only CSV, GPX, and KML are supported."
         )
 
     return locusmap_data_path, locusmap_attachments_path
@@ -120,6 +121,8 @@ def transform_locusmap_data(locusmap_data_path):
     - Generates a UUID for each feature based on its dictionary contents and assigns it to the '_id' field.
 
     The transformed data  are returned as a list of dictionaries.
+
+    TODO: Add support for other file formats (KML, GPX).
     """
     transformed_data = []
     processed_features = 0
