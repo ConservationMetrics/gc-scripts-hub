@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>2025-01-17_09-19</name>
+	<atom:author><atom:name>Locus (Android)</atom:name></atom:author>
+	<Style id="track001">
+		<LineStyle>
+			<color>c8d700d7</color>
+			<width>3.0</width>
+		</LineStyle>
+	</Style>
+<Placemark>
+	<name>Point 1</name>
+	<description><![CDATA[I think it's a willow]]></description>
+	<ExtendedData xmlns:lc="http://www.locusmap.eu">
+		<lc:attachment>./2025-01-17_09-19-attachments/t_20250117_091904_point_1_20250117_091907.jpg</lc:attachment>
+	</ExtendedData>
+>	<Point>
+		<coordinates>-70.1978286,48.7607616,74.68</coordinates>
+	</Point>
+	<gx:TimeStamp>
+		<when>2025-01-17T09:19:39Z</when>
+	</gx:TimeStamp>
+</Placemark>
+<Placemark>
+	<name>2025-01-17 09:19</name>
+	<description><![CDATA[Willow tree walk]]></description>
+	<styleUrl>#track001</styleUrl>
+	<MultiGeometry>
+		<LineString>
+			<coordinates>
+				-70.1978165,48.7607508,74.72
+				-70.1978239,48.7607574,74.52
+				-70.1978289,48.7607617,74.52
+				-70.1978286,48.7607616,74.52
+				-70.1978286,48.7607615,74.52
+				-70.1978200,48.7607479,74.52
+			</coordinates>
+		</LineString>
+	</MultiGeometry>
+</Placemark>
+</Document>
+</kml>

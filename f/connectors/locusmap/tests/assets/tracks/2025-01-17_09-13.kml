@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>2025-01-17_09-13</name>
+	<atom:author><atom:name>Locus (Android)</atom:name></atom:author>
+	<Style id="track001">
+		<LineStyle>
+			<color>c8d700d7</color>
+			<width>3.0</width>
+		</LineStyle>
+	</Style>
+<Placemark>
+	<name>2025-01-17 09:13</name>
+	<description><![CDATA[A brisk walk]]></description>
+	<styleUrl>#track001</styleUrl>
+	<MultiGeometry>
+		<LineString>
+			<coordinates>
+				-70.1977479,48.7607432,74.52
+				-70.1977483,48.7607424,74.52
+				-70.1977706,48.7607506,74.52
+				-70.1977611,48.7607545,74.52
+				-70.1977602,48.7607620,74.52
+				-70.1977409,48.7607592,74.52
+				-70.1977706,48.7607406,74.52
+			</coordinates>
+		</LineString>
+	</MultiGeometry>
+</Placemark>
+</Document>
+</kml>

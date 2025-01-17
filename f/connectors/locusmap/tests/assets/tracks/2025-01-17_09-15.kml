@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>2025-01-17_09-15</name>
+	<atom:author><atom:name>Locus (Android)</atom:name></atom:author>
+	<Style id="track001">
+		<LineStyle>
+			<color>c8d700d7</color>
+			<width>3.0</width>
+		</LineStyle>
+	</Style>
+<Placemark>
+	<name>2025-01-17 09:15</name>
+	<description><![CDATA[Path to where the trees are]]></description>
+	<styleUrl>#track001</styleUrl>
+	<MultiGeometry>
+		<LineString>
+			<coordinates>
+				-70.1977495,48.7607680,74.52
+				-70.1977522,48.7607524,74.52
+				-70.1977746,48.7607513,74.52
+				-70.1977858,48.7607634,74.52
+				-70.1977794,48.7607604,74.52
+				-70.1977717,48.7607410,74.52
+				-70.1977627,48.7607326,74.52
+				-70.1977785,48.7607402,74.72
+				-70.1977691,48.7607502,74.72
+				-70.1977906,48.7607684,74.52
+				-70.1978155,48.7607612,74.52
+			</coordinates>
+		</LineString>
+	</MultiGeometry>
+</Placemark>
+</Document>
+</kml>
