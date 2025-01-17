@@ -102,6 +102,108 @@ def extract_locusmap_zip(locusmap_zip_path):
     return locusmap_data_path, locusmap_attachments_path
 
 
+def _transform_csv(csv_path):
+    """Transforms CSV data into a list of dictionaries."""
+    transformed_data = []
+    with open(csv_path, "r") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            feature = {
+                k: (
+                    ", ".join(
+                        v.split("|")[-1].split("/")[-1] for v in row[k].split("|")
+                    )
+                    if k == "attachments"
+                    else v
+                )
+                for k, v in row.items()
+            }
+            if "lat" in feature and "lon" in feature:
+                lat, lon = feature.pop("lat"), feature.pop("lon")
+                feature["g__coordinates"] = f"[{lon}, {lat}]"
+                feature["g__type"] = "Point"
+
+            feature_json = json.dumps(feature, sort_keys=True)
+            feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, feature_json))
+            transformed_data.append(feature)
+    return transformed_data
+
+
+def _transform_gpx(gpx_path):
+    """Transforms GPX data into a list of dictionaries."""
+    transformed_data = []
+    tree = etree.parse(gpx_path)
+    namespace = {"default": "http://www.topografix.com/GPX/1/1"}
+
+    for wpt in tree.xpath("//default:wpt", namespaces=namespace):
+        attachments = [
+            link.attrib["href"].split("/")[-1]
+            for link in wpt.xpath("./default:link", namespaces=namespace)
+        ]
+        feature = {
+            "name": wpt.xpath("./default:name/text()", namespaces=namespace)[0]
+            if wpt.xpath("./default:name/text()", namespaces=namespace)
+            else None,
+            "description": wpt.xpath("./default:desc/text()", namespaces=namespace)[0]
+            if wpt.xpath("./default:desc/text()", namespaces=namespace)
+            else None,
+            "attachments": ", ".join(attachments),
+            "g__coordinates": f"[{wpt.attrib['lon']}, {wpt.attrib['lat']}]",
+            "g__type": "Point",
+            "timestamp": wpt.xpath("./default:time/text()", namespaces=namespace)[0]
+            if wpt.xpath("./default:time/text()", namespaces=namespace)
+            else None,
+        }
+        feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, str(feature)))
+        transformed_data.append(feature)
+    return transformed_data
+
+
+def _transform_kml(kml_path):
+    """Transforms KML data into a list of dictionaries."""
+    transformed_data = []
+    tree = etree.parse(kml_path)
+    root = tree.getroot()
+    namespace = {
+        "kml": "http://www.opengis.net/kml/2.2",
+        "lc": "http://www.locusmap.eu",
+    }
+
+    for placemark in root.findall(".//kml:Placemark", namespace):
+        name = placemark.find("kml:name", namespace).text
+        description = (
+            placemark.find("kml:description", namespace).text
+            if placemark.find("kml:description", namespace) is not None
+            else ""
+        )
+        attachments = [
+            attachment.text.split("/")[-1]
+            for attachment in placemark.findall(
+                "kml:ExtendedData/lc:attachment", namespace
+            )
+        ]
+        point = placemark.find("kml:Point/kml:coordinates", namespace)
+        if point is not None:
+            coordinates = point.text.split(",")
+            lon, lat = coordinates[:2]
+            timestamp = (
+                placemark.find("kml:TimeStamp/kml:when", namespace).text
+                if placemark.find("kml:TimeStamp/kml:when", namespace) is not None
+                else None
+            )
+            feature = {
+                "name": name,
+                "description": description,
+                "attachments": ", ".join(attachments),
+                "g__coordinates": f"[{lon}, {lat}]",
+                "g__type": "Point",
+                "timestamp": timestamp,
+            }
+            feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, str(feature)))
+            transformed_data.append(feature)
+    return transformed_data
+
+
 def transform_locusmap_data(locusmap_data_path):
     """
     Transforms Locus Map spatial data from a file into a list of dictionaries.
@@ -118,80 +220,28 @@ def transform_locusmap_data(locusmap_data_path):
 
     Notes
     -----
-    The function reads the file and performs the following transformations for each feature
+    Each helper function reads the file and performs the following transformations for each feature
         - Converts the 'attachments' field from a string to a list of strings.
         - Creates 'g__coordinates' and 'g__type' fields from the 'lat' and 'lon' fields.
         - Generates a UUID for each feature based on its dictionary contents and assigns it to the '_id' field.
 
     The transformed data are returned as a list of dictionaries.
-    """
-    transformed_data = []
-    processed_features = 0
 
+    TODO: Support track data (which will be a LineString type).
+    """
     file_extension = locusmap_data_path.suffix[1:].lower()
+    transformed_data = []
 
     if file_extension == "csv":
-        with open(locusmap_data_path, "r") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                processed_features += 1
-                feature = {
-                    k: (
-                        ", ".join(
-                            v.split("|")[-1].split("/")[-1] for v in row[k].split("|")
-                        )
-                        if k == "attachments"
-                        else v
-                    )
-                    for k, v in row.items()
-                }
-
-                if "lat" in feature and "lon" in feature:
-                    lat, lon = feature.pop("lat"), feature.pop("lon")
-                    feature["g__coordinates"] = f"[{lon}, {lat}]"
-                    feature["g__type"] = "Point"
-
-                feature_json = json.dumps(feature, sort_keys=True)
-                feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, feature_json))
-
-                transformed_data.append(feature)
-
+        transformed_data = _transform_csv(locusmap_data_path)
     elif file_extension == "gpx":
-        with open(locusmap_data_path, "r") as gpx_file:
-            tree = etree.parse(gpx_file)
-            namespace = {"default": "http://www.topografix.com/GPX/1/1"}
-
-            for wpt in tree.xpath("//default:wpt", namespaces=namespace):
-                processed_features += 1
-                attachments = [
-                    link.attrib["href"].split("/")[-1]
-                    for link in wpt.xpath("./default:link", namespaces=namespace)
-                ]
-                feature = {
-                    "name": wpt.xpath("./default:name/text()", namespaces=namespace)[0]
-                    if wpt.xpath("./default:name/text()", namespaces=namespace)
-                    else None,
-                    "description": wpt.xpath(
-                        "./default:desc/text()", namespaces=namespace
-                    )[0]
-                    if wpt.xpath("./default:desc/text()", namespaces=namespace)
-                    else None,
-                    "attachments": ", ".join(attachments),
-                    "g__coordinates": f"[{wpt.attrib['lon']}, {wpt.attrib['lat']}]",
-                    "g__type": "Point",
-                    "timestamp": wpt.xpath(
-                        "./default:time/text()", namespaces=namespace
-                    )[0]
-                    if wpt.xpath("./default:time/text()", namespaces=namespace)
-                    else None,
-                }
-                feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, str(feature)))
-                transformed_data.append(feature)
-
+        transformed_data = _transform_gpx(locusmap_data_path)
+    elif file_extension == "kml":
+        transformed_data = _transform_kml(locusmap_data_path)
     else:
         raise ValueError(f"Unsupported file format: {file_extension}")
 
-    logger.info(f"Processed {processed_features} features from LocusMap.")
+    logger.info(f"Processed {len(transformed_data)} features from LocusMap.")
     return transformed_data
 
 
