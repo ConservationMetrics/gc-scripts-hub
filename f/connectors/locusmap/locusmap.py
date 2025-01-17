@@ -34,14 +34,13 @@ def main(
     attachment_root: str = "/frizzle-persistent-storage/datalake/",
     delete_locusmap_export_file: bool = False,
 ):
-    # TODO: Deal with KMZ
-    if Path(locusmap_export_path).suffix.lower() == ".zip":
-        locusmap_data_path, locusmap_attachments_path = extract_locusmap_zip(
+    if Path(locusmap_export_path).suffix.lower() in [".zip", ".kmz"]:
+        locusmap_data_path, locusmap_attachments_path = extract_locusmap_archive(
             locusmap_export_path
         )
     else:
         locusmap_data_path = Path(locusmap_export_path)
-        if locusmap_data_path.suffix.lower() not in [".kml", ".kmz", ".gpx", ".csv"]:
+        if locusmap_data_path.suffix.lower() not in [".kml", ".gpx", ".csv"]:
             raise ValueError(
                 "Unsupported file format. Only CSV, GPX, and KML are supported."
             )
@@ -65,39 +64,60 @@ def main(
     )
 
 
-def extract_locusmap_zip(locusmap_zip_path):
+def extract_locusmap_archive(archive_path):
     """
-    Extracts a Locus Map ZIP file containing spatial data and attachment files.
+    Extracts a Locus Map ZIP or KMZ archive, returning the KML/GPX/CSV file path
+    and the attachments directory (if applicable).
 
     Parameters
     ----------
-    locusmap_zip_path : str
-        The path to the ZIP file containing Locus Map data.
+    archive_path : str
+        The path to the ZIP or KMZ archive.
 
     Returns
     -------
     tuple
         A tuple containing the paths to the extracted spatial data file and attachments directory.
     """
-    locusmap_zip_path = Path(locusmap_zip_path)
-    shutil.unpack_archive(locusmap_zip_path, locusmap_zip_path.parent)
-    logger.info("Extracted Locus Map ZIP file.")
+    archive_path = Path(archive_path)
+    extract_to = archive_path.parent / archive_path.stem
 
-    locusmap_attachments_path = locusmap_zip_path.with_name(
-        locusmap_zip_path.stem + "-attachments"
-    )
-    if not locusmap_attachments_path.exists():
-        locusmap_attachments_path = None
+    # Handle KMZ by temporarily renaming it to a ZIP
+    temp_archive_path = archive_path
+    if archive_path.suffix.lower() == ".kmz":
+        temp_archive_path = archive_path.with_suffix(".zip")
+        shutil.copyfile(archive_path, temp_archive_path)
 
-    extracted_files = list(locusmap_zip_path.parent.glob("*.*"))
+    try:
+        shutil.unpack_archive(temp_archive_path, extract_to)
+        logger.info(f"Extracted archive: {archive_path}")
+    except shutil.ReadError as e:
+        raise ValueError(f"Unable to extract archive: {e}")
+    finally:
+        # Clean up temporary zip if it was a KMZ
+        if temp_archive_path != archive_path:
+            temp_archive_path.unlink()
+
+    # Find the main spatial data file
+    extracted_files = list(extract_to.glob("*.*"))
     for file in extracted_files:
         if file.suffix.lower() in [".kml", ".gpx", ".csv"]:
             locusmap_data_path = file
             break
     else:
         raise ValueError(
-            "Unsupported file format. Only CSV, GPX, and KML are supported."
+            "Unsupported file format. Only CSV, GPX, and KML are supported in the archive."
         )
+
+    locusmap_attachments_path = None
+    for folder in extract_to.iterdir():
+        if folder.is_dir() and (
+            # LocusMap exports attachments in an '-attachments' suffixed folder when zipped
+            # in a ZIP archive, or as a 'files' folder when zipped in a KMZ archive
+            folder.name.endswith("-attachments") or folder.name == "files"
+        ):
+            locusmap_attachments_path = folder
+            break
 
     return locusmap_data_path, locusmap_attachments_path
 

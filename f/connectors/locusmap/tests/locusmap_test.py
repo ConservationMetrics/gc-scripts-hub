@@ -56,11 +56,12 @@ def test_script_e2e_points(pg_database, tmp_path, file_format):
     assert not tmp_fixture_path.exists()
 
 
-def test_script_e2e_points_zip(pg_database, tmp_path):
-    tmp_fixture_path = tmp_path / "Favorites.zip"
+@pytest.mark.parametrize("file_format", ["zip", "kmz"])
+def test_script_e2e_points_archive(pg_database, tmp_path, file_format):
+    tmp_fixture_path = tmp_path / f"Favorites.{file_format}"
 
     # Copy fixtures to a temp location
-    shutil.copy(points_fixture_path + "Favorites.zip", tmp_fixture_path)
+    shutil.copy(points_fixture_path + f"Favorites.{file_format}", tmp_fixture_path)
 
     asset_storage = tmp_path / "datalake"
 
@@ -85,3 +86,17 @@ def test_script_e2e_points_zip(pg_database, tmp_path):
 
     assert not (tmp_path / "Favorites.csv").exists()
     assert not (tmp_path / "Favorites-attachments").exists()
+
+
+def test_script_e2e_points_unsupported_format(tmp_path):
+    tmp_fixture_path = tmp_path / "Favorites.dxf"
+
+    asset_storage = tmp_path / "datalake"
+
+    with pytest.raises(ValueError):
+        main(
+            {"database": "test_db"},
+            "my_locusmap_points",
+            str(tmp_fixture_path),
+            str(asset_storage),
+        )
