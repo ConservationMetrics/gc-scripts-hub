@@ -62,10 +62,10 @@ def test_script_e2e_zip(pg_database, tmp_path):
 
 def test_script_e2e_csv(pg_database, tmp_path):
     fixture_path = "f/connectors/locusmap/tests/assets/"
-    tmp_fixture_path = tmp_path / "My points.csv"
+    tmp_fixture_path = tmp_path / "Favorites.csv"
 
     # Copy fixtures to a temp location
-    shutil.copy(fixture_path + "My points.csv", tmp_fixture_path)
+    shutil.copy(fixture_path + "Favorites.csv", tmp_fixture_path)
 
     asset_storage = tmp_path / "datalake"
 
@@ -84,4 +84,4 @@ def test_script_e2e_csv(pg_database, tmp_path):
             assert cursor.fetchone()[0] == 2
 
     # Check that the temp files were cleaned up
-    assert not (tmp_path / "My points.csv").exists()
+    assert not (tmp_path / "Favorites.csv").exists()

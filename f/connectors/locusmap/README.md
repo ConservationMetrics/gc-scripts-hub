@@ -29,5 +29,4 @@ You can get an Authorization token [via the Windmill CLI](https://www.windmill.d
 
 ## TODO
 
-* Support KML, GPX formats in addition to CSV.
 * Support tracks in addition to points.
