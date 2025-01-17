@@ -1,5 +1,7 @@
 # requirements:
+# lxml
 # psycopg2-binary
+
 import csv
 import json
 import logging
@@ -7,6 +9,7 @@ import shutil
 import uuid
 from pathlib import Path
 
+from lxml import etree
 from psycopg2 import connect, errors, sql
 
 # type names that refer to Windmill Resources
@@ -106,7 +109,7 @@ def transform_locusmap_data(locusmap_data_path):
     Parameters
     ----------
     locusmap_data_path : str
-        The path to the CSV file containing LocusMap spatial data.
+        The path to the file containing LocusMap spatial data (CSV, GPX, or KML).
 
     Returns
     -------
@@ -115,44 +118,78 @@ def transform_locusmap_data(locusmap_data_path):
 
     Notes
     -----
-    The function reads the file and performs the following transformations:
-    - Converts the 'attachments' field from a string to a list of strings.
-    - Creates 'g__coordinates' and 'g__type' fields from the 'lat' and 'lon' fields.
-    - Generates a UUID for each feature based on its dictionary contents and assigns it to the '_id' field.
+    The function reads the file and performs the following transformations for each feature
+        - Converts the 'attachments' field from a string to a list of strings.
+        - Creates 'g__coordinates' and 'g__type' fields from the 'lat' and 'lon' fields.
+        - Generates a UUID for each feature based on its dictionary contents and assigns it to the '_id' field.
 
-    The transformed data  are returned as a list of dictionaries.
-
-    TODO: Add support for other file formats (KML, GPX).
+    The transformed data are returned as a list of dictionaries.
     """
     transformed_data = []
     processed_features = 0
 
-    with open(locusmap_data_path, "r") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            processed_features += 1
-            feature = {
-                # Transform the 'attachments' field to a string composed of comma-separated filenames
-                k: (
-                    ", ".join(
-                        v.split("|")[-1].split("/")[-1] for v in row[k].split("|")
+    file_extension = locusmap_data_path.suffix[1:].lower()
+
+    if file_extension == "csv":
+        with open(locusmap_data_path, "r") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                processed_features += 1
+                feature = {
+                    k: (
+                        ", ".join(
+                            v.split("|")[-1].split("/")[-1] for v in row[k].split("|")
+                        )
+                        if k == "attachments"
+                        else v
                     )
-                    if k == "attachments"
-                    else v
-                )
-                for k, v in row.items()
-            }
+                    for k, v in row.items()
+                }
 
-            if "lat" in feature and "lon" in feature:
-                lat, lon = feature.pop("lat"), feature.pop("lon")
-                feature["g__coordinates"] = f"[{lon}, {lat}]"
-                feature["g__type"] = "Point"
+                if "lat" in feature and "lon" in feature:
+                    lat, lon = feature.pop("lat"), feature.pop("lon")
+                    feature["g__coordinates"] = f"[{lon}, {lat}]"
+                    feature["g__type"] = "Point"
 
-            # Generate a UUID based on the dictionary contents
-            feature_json = json.dumps(feature, sort_keys=True)
-            feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, feature_json))
+                feature_json = json.dumps(feature, sort_keys=True)
+                feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, feature_json))
 
-            transformed_data.append(feature)
+                transformed_data.append(feature)
+
+    elif file_extension == "gpx":
+        with open(locusmap_data_path, "r") as gpx_file:
+            tree = etree.parse(gpx_file)
+            namespace = {"default": "http://www.topografix.com/GPX/1/1"}
+
+            for wpt in tree.xpath("//default:wpt", namespaces=namespace):
+                processed_features += 1
+                attachments = [
+                    link.attrib["href"].split("/")[-1]
+                    for link in wpt.xpath("./default:link", namespaces=namespace)
+                ]
+                feature = {
+                    "name": wpt.xpath("./default:name/text()", namespaces=namespace)[0]
+                    if wpt.xpath("./default:name/text()", namespaces=namespace)
+                    else None,
+                    "description": wpt.xpath(
+                        "./default:desc/text()", namespaces=namespace
+                    )[0]
+                    if wpt.xpath("./default:desc/text()", namespaces=namespace)
+                    else None,
+                    "attachments": ", ".join(attachments),
+                    "g__coordinates": f"[{wpt.attrib['lon']}, {wpt.attrib['lat']}]",
+                    "g__type": "Point",
+                    "timestamp": wpt.xpath(
+                        "./default:time/text()", namespaces=namespace
+                    )[0]
+                    if wpt.xpath("./default:time/text()", namespaces=namespace)
+                    else None,
+                }
+                feature["_id"] = str(uuid.uuid5(uuid.NAMESPACE_OID, str(feature)))
+                transformed_data.append(feature)
+
+    else:
+        raise ValueError(f"Unsupported file format: {file_extension}")
 
     logger.info(f"Processed {processed_features} features from LocusMap.")
     return transformed_data

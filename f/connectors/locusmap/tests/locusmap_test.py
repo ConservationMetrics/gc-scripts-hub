@@ -5,7 +5,7 @@ import psycopg2
 
 from f.connectors.locusmap.locusmap import main
 
-points_fixture_path = "f/connectors/locusmap/tests/assets/points"
+points_fixture_path = "f/connectors/locusmap/tests/assets/points/"
 
 
 def test_script_e2e_points_zip(pg_database, tmp_path):
@@ -83,5 +83,51 @@ def test_script_e2e_points_csv(pg_database, tmp_path):
             cursor.execute("SELECT COUNT(*) FROM my_locusmap_points")
             assert cursor.fetchone()[0] == 2
 
+        # Check that attachments column for the second point consists of two comma-separated attachments
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT attachments FROM my_locusmap_points ORDER BY attachments LIMIT 1 OFFSET 1"
+            )
+            assert (
+                cursor.fetchone()[0]
+                == "p_2025-01-09_15-_20250109_154929.jpg, p_2025-01-09_15-_20250109_154918.m4a"
+            )
+
     # Check that the temp files were cleaned up
     assert not (tmp_path / "Favorites.csv").exists()
+
+
+def test_script_e2e_points_gpx(pg_database, tmp_path):
+    tmp_fixture_path = tmp_path / "Favorites.gpx"
+
+    # Copy fixtures to a temp location
+    shutil.copy(points_fixture_path + "Favorites.gpx", tmp_fixture_path)
+
+    asset_storage = tmp_path / "datalake"
+
+    main(
+        pg_database,
+        "my_locusmap_points",
+        tmp_fixture_path,
+        asset_storage,
+    )
+
+    # Check that the data was inserted into the database
+    with psycopg2.connect(**pg_database) as conn:
+        # Survey responses from Favorites are written to a SQL Table in expected format
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM my_locusmap_points")
+            assert cursor.fetchone()[0] == 2
+
+        # Check that attachments column for the second point consists of two comma-separated attachments
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT attachments FROM my_locusmap_points ORDER BY attachments LIMIT 1 OFFSET 1"
+            )
+            assert (
+                cursor.fetchone()[0]
+                == "p_2025-01-09_15-_20250109_154929.jpg, p_2025-01-09_15-_20250109_154918.m4a"
+            )
+
+    # Check that the temp files were cleaned up
+    assert not (tmp_path / "Favorites.gpx").exists()
