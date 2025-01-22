@@ -1,2 +1,6 @@
 summary: null
 display_name: connectors
+extra_perms:
+  u/rudo: true
+owners:
+  - u/rudo
