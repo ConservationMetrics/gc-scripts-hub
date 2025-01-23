@@ -1,0 +1,49 @@
+summary: 'Locus Map: Import Data'
+description: This script imports data from a Locus Map export file into a database table, and stores any attachments in a specified directory.
+lock: '!inline f/connectors/locusmap/locusmap.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - locusmap_export_path
+    - db
+    - db_table_prefix
+    - delete_locusmap_export_file
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where Locus Map attachments will be stored. Attachment
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{db_table_name}/attachments/{filename}`
+      default: /frizzle-persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the form data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    delete_locusmap_export_file:
+      type: boolean
+      description: >-
+        Whether to delete the Locus Map export file after processing.
+      default: false
+    locusmap_export_path:
+      type: string
+      description: >-
+        The path to the file exported from Locus Map, including the filename.
+        This could be a GPX/KML/CSV file, or a ZIP file also containing attachments.
+      originalType: string
+  required:
+    - db
+    - db_table_name
+    - locusmap_export_path
