@@ -63,3 +63,17 @@ def comapeo_project_observations(uri, project_id):
             },
         ]
     }
+
+
+def comapeo_alerts():
+    return {
+        "data": [
+            {
+                "detectionDateStart": "2024-11-03T04:20:69Z",
+                "detectionDateEnd": "2024-11-04T04:20:69Z",
+                "sourceId": "abc123",
+                "metadata": {"foo": "bar"},
+                "geometry": {"type": "Point", "coordinates": [12, 34]},
+            }
+        ]
+    }

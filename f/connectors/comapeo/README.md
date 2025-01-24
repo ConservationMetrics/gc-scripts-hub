@@ -1,4 +1,4 @@
-# CoMapeo: Fetch Observations
+# `comapeo_observations`: Fetch Observations from CoMapeo API
 
 This script fetches data from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
 
@@ -6,7 +6,9 @@ For each project, the observations data is stored in a table prefixed by `table_
 
 ## Endpoints
 
-The request header must include an access token in the format: Authorized: Bearer <token>.
+The request header must include an access token in the format: 
+
+    Authorized: Bearer <token>.
 
 ### `GET /projects`
 
@@ -42,3 +44,45 @@ The request header must include an access token in the format: Authorized: Beare
 ### `GET /projects/abc123/attachments/attachment2_hash/photo/blob2_hash`
 
 This endpoint retrieves the binary data of a specific attachment, such as a photo, associated with a project. The response will contain the raw binary content of the file, which can be saved or processed as needed.
+
+# `comapeo_alerts`: Post Alerts to CoMapeo API
+
+This script fetches alerts data from a database and posts it to a CoMapeo server.
+
+## Endpoints
+
+The request header must include an access token in the format: Authorized: Bearer <token>.
+
+### `POST /projects/abc123/remoteDetectionAlerts`
+
+```json
+{
+  "detectionDateStart": "2024-11-03T04:20:69Z",
+  "detectionDateEnd": "2024-11-04T04:20:69Z",
+  "sourceId": "abc123",
+  "metadata": { "foo": "bar" },
+  "geometry": {
+    "type": "Point",
+    "coordinates": [12, 34]
+  }
+}
+# => HTTP 201, no response body
+```
+
+### `GET /projects/abc123/remoteDetectionAlerts`
+
+```json
+[
+  {
+    "detectionDateStart": "2024-11-03T04:20:69Z",
+    "detectionDateEnd": "2024-11-04T04:20:69Z",
+    "sourceId": "abc123",
+    "metadata": { "foo": "bar" },
+    "geometry": {
+      "type": "Point",
+      "coordinates": [12, 34]
+    }
+  },
+  ...
+]
+```
