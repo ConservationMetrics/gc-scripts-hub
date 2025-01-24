@@ -52,6 +52,10 @@ def main(
 
     unposted_alerts = filter_alerts(comapeo_alerts_endpoint, comapeo_headers, alerts)
 
+    if not unposted_alerts:
+        logger.info("No new alerts to post!")
+        return
+
     transformed_unposted_alerts = transform_alerts(unposted_alerts)
 
     post_alerts(comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts)
@@ -83,6 +87,9 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     ]
     cur.close()
     conn.close()
+
+    logger.info(f"{len(alerts)} alerts found in database.")
+
     return alerts
 
 
@@ -112,6 +119,7 @@ def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: dict
 
     posted_alert_source_ids = {alert["sourceId"] for alert in alerts}
 
+    logger.info(f"{len(posted_alert_source_ids)} alerts found on CoMapeo.")
     return posted_alert_source_ids
 
 
@@ -148,6 +156,7 @@ def filter_alerts(
         if alert.get("alert_id") not in alerts_posted_to_comapeo
     ]
 
+    logger.info(f"{len(unposted_alerts)} alerts in database not yet posted to CoMapeo.")
     return unposted_alerts
 
 
