@@ -162,7 +162,7 @@ def filter_alerts(
 
 def transform_alerts(alerts: list[dict]):
     """
-    Transforms a list of alerts into a format that can be posted to the CoMapeo API.
+    Transforms a list of alerts into a format that matches the expected schema on the CoMapeo API.
 
     Parameters
     ----------
@@ -178,6 +178,7 @@ def transform_alerts(alerts: list[dict]):
 
     transformed_alerts = [
         {
+            # CoMapeo API requires these to be ISO 8601 format
             "detectionDateStart": datetime.strptime(
                 alert["date_start_t0"], "%Y-%m-%d"
             ).isoformat(timespec="seconds")
