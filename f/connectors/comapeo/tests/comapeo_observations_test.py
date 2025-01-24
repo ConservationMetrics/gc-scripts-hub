@@ -42,12 +42,12 @@ def test_normalize_and_snakecase_keys():
     assert result == expected_output, f"Expected {expected_output}, but got {result}"
 
 
-def test_script_e2e(comapeoserver, pg_database, tmp_path):
+def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        comapeoserver.comapeo_server,
-        comapeoserver.comapeo_project_blocklist,
+        comapeoserver_observations.comapeo_server,
+        comapeoserver_observations.comapeo_project_blocklist,
         pg_database,
         "comapeo",
         asset_storage,
