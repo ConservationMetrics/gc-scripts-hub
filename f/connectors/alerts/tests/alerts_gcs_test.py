@@ -5,14 +5,30 @@ import uuid
 from pathlib import Path
 
 import google.api_core.exceptions
+import pandas as pd
 import psycopg2
 import pytest
 
-from f.connectors.alerts.alerts_gcs import _main
+from f.connectors.alerts.alerts_gcs import _main, prepare_alerts_metadata
 
 logger = logging.getLogger(__name__)
 
 MOCK_BUCKET_NAME = "test-bucket"
+assets_directory = "f/connectors/alerts/tests/assets/"
+
+
+def test_prepare_alerts_metadata():
+    alerts_history_csv = Path(assets_directory, "alerts_history.csv")
+    alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
+
+    prepared_alerts_metadata, alert_statistics = prepare_alerts_metadata(
+        alerts_metadata, 100
+    )
+
+    # Check that alerts statistics is the latest month and year in the CSV
+    assert alert_statistics["month_year"] == "2/2024"
+    assert alert_statistics["total_alerts"] == "1"
+    assert alert_statistics["description_alerts"] == "fake alert"
 
 
 @pytest.fixture
@@ -32,7 +48,6 @@ def mock_alerts_storage_client(gcs_emulator_client):
         logger.info(f"Uploaded {source_file_name} -> {destination_blob_name}")
 
     # Upload test files to the emulator
-    assets_directory = "f/connectors/alerts/tests/assets/"
     alerts_filenames = [
         "alerts_history.csv",
         "100/vector/2023/09/alert_202309900112345671.geojson",
@@ -51,7 +66,7 @@ def mock_alerts_storage_client(gcs_emulator_client):
 def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage = tmp_path / "datalake"
 
-    _main(
+    alerts_metadata = _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
         100,
@@ -74,7 +89,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             # Count of unique rows in alerts_history.csv based on UUID
             # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert cursor.fetchone()[0] == 5
+            assert cursor.fetchone()[0] == 6
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(
@@ -106,6 +121,23 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
 
     # Alerts metadata is not saved to disk
     assert not (asset_storage / "alerts_history.csv").exists()
+
+    # Check that the alerts metadata is returned by the script. The unit test for prepare_alerts_metadata()
+    # checks the correctness of the metadata, so here we just check that it is not None
+    assert alerts_metadata is not None
+
+    # Now, let's run the script again to check if alerts_metadata is returned (it should be None,
+    # since no new alerts data or metadata has been inserted into the database)
+    alerts_metadata = _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        100,
+        pg_database,
+        "fake_alerts",
+        asset_storage,
+    )
+
+    assert alerts_metadata is None
 
 
 def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):

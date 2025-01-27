@@ -55,7 +55,12 @@ def main(
     )
 
     return _main(
-        storage_client, alerts_bucket, territory_id, db, db_table_name, destination_path
+        storage_client,
+        alerts_bucket,
+        territory_id,
+        db,
+        db_table_name,
+        destination_path,
     )
 
 
@@ -99,15 +104,19 @@ def _main(
 
     convert_tiffs_to_jpg(tiff_files)
 
-    prepared_alerts_metadata = prepare_alerts_metadata(alerts_metadata, territory_id)
+    prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
+        alerts_metadata, territory_id
+    )
 
     prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
 
     db_writer = AlertsDBWriter(conninfo(db), db_table_name)
-    db_writer.handle_output(prepared_alerts_data, prepared_alerts_metadata)
-    logger.info(
-        f"Alerts data successfully written to database table: [{db_table_name}]"
+    new_alerts_data = db_writer.handle_output(
+        prepared_alerts_data, prepared_alerts_metadata
     )
+
+    if new_alerts_data:
+        return alerts_statistics
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -188,9 +197,9 @@ def sync_gcs_to_local(
     prefix = f"{territory_id}/"
     files_to_download = set(blob.name for blob in bucket.list_blobs(prefix=prefix))
 
-    assert (
-        len(files_to_download) > 0
-    ), f"No files found to download in bucket '{bucket_name}' with that prefix."
+    assert len(files_to_download) > 0, (
+        f"No files found to download in bucket '{bucket_name}' with that prefix."
+    )
 
     logger.info(
         f"Found {len(files_to_download)} files to download from bucket '{bucket_name}'."
@@ -312,6 +321,12 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     a unique UUID for the metadata based on the content hash and includes a
     placeholder geolocation.
 
+    The alert statistics dictionary is generated based on the assumption that
+    the first row (after sorting by month and year in descending order) in the
+    filtered DataFrame represents the most recent alert. In other words, it is
+    assumed that the latest alerts posted by the provider are always for the
+    latest month and year in the dataset.
+
     Parameters
     ----------
     alerts_metadata : str
@@ -321,16 +336,26 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     Returns
     -------
-    list of dict
+    prepared_alerts_metadata : list of dict
         A list of dictionaries representing the filtered and processed alerts
         metadata, including additional columns for geolocation, metadata UUID,
         and alert source.
+    alerts_statistics : dict
+        A dictionary containing alert statistics: total alerts, month/year,
+        and description of alerts.
     """
     # Convert CSV bytes to DataFrame
     df = pd.read_csv(StringIO(alerts_metadata))
 
     # Filter DataFrame based on territory_id
     filtered_df = df.loc[df["territory_id"] == territory_id]
+
+    # Group the DataFrame by month and year, and get the last row for each group
+    filtered_df = (
+        filtered_df.loc[df["territory_id"] == territory_id]
+        .groupby(["month", "year"], as_index=False)
+        .last()
+    )
 
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
@@ -356,7 +381,17 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     logger.info("Successfully prepared alerts metadata.")
 
-    return prepared_alerts_metadata
+    # Generate alert statistics based on the latest row in the filtered DataFrame
+    latest_row = filtered_df.sort_values(
+        by=["year", "month"], ascending=[False, False]
+    ).iloc[0]
+    alerts_statistics = {
+        "total_alerts": str(latest_row["total_alerts"]),
+        "month_year": f"{latest_row['month']}/{latest_row['year']}",
+        "description_alerts": latest_row["description_alerts"].replace("_", " "),
+    }
+
+    return prepared_alerts_metadata, alerts_statistics
 
 
 def prepare_alerts_data(local_directory, geojson_files):
@@ -563,8 +598,11 @@ class AlertsDBWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        inserted_count = 0
-        updated_count = 0
+        new_alerts_data = False
+        data_inserted_count = 0
+        data_updated_count = 0
+        metadata_inserted_count = 0
+        metadata_updated_count = 0
 
         try:
             if alerts:
@@ -675,8 +713,8 @@ class AlertsDBWriter:
                             result_inserted_count, result_updated_count = (
                                 self._safe_insert(cursor, table_name, columns, values)
                             )
-                            inserted_count += result_inserted_count
-                            updated_count += result_updated_count
+                            data_inserted_count += result_inserted_count
+                            data_updated_count += result_updated_count
 
                         except Exception:
                             logger.exception(
@@ -732,9 +770,14 @@ class AlertsDBWriter:
                         data_source,
                     ]
 
-                    self._safe_insert(
-                        cursor, f"{table_name}__metadata", columns, values
+                    result_inserted_count, result_updated_count = self._safe_insert(
+                        cursor,
+                        f"{table_name}__metadata",
+                        columns,
+                        values,
                     )
+                    metadata_inserted_count += result_inserted_count
+                    metadata_updated_count += result_updated_count
 
                     conn.commit()
                 except Exception:
@@ -745,7 +788,13 @@ class AlertsDBWriter:
                     raise
 
         finally:
-            logger.info(f"Total alert rows inserted: {inserted_count}")
-            logger.info(f"Total alert rows updated: {updated_count}")
+            logger.info(f"Total alert rows inserted: {data_inserted_count}")
+            logger.info(f"Total alert rows updated: {data_updated_count}")
+            logger.info(f"Total metadata rows inserted: {metadata_inserted_count}")
+            logger.info(f"Total metadata rows updated: {metadata_updated_count}")
             cursor.close()
             conn.close()
+
+        if data_inserted_count > 0 or metadata_inserted_count > 0:
+            new_alerts_data = True
+        return new_alerts_data
