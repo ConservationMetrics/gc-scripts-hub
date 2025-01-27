@@ -353,14 +353,8 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Group the DataFrame by month and year, and get the last row for each group
     filtered_df = (
         filtered_df.loc[df["territory_id"] == territory_id]
-        .groupby(["month", "year"])
+        .groupby(["month", "year"], as_index=False)
         .last()
-        .reset_index()
-    )
-
-    # Sort the DataFrame by year and month in descending order
-    filtered_df = filtered_df.sort_values(
-        by=["year", "month"], ascending=[False, False]
     )
 
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
@@ -387,8 +381,10 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     logger.info("Successfully prepared alerts metadata.")
 
-    # Generate alert statistics
-    latest_row = filtered_df.iloc[0]
+    # Generate alert statistics based on the latest row in the filtered DataFrame
+    latest_row = filtered_df.sort_values(
+        by=["year", "month"], ascending=[False, False]
+    ).iloc[0]
     alerts_statistics = {
         "total_alerts": str(latest_row["total_alerts"]),
         "month_year": f"{latest_row['month']}/{latest_row['year']}",
