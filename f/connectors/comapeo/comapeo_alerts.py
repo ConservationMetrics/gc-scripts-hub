@@ -178,7 +178,7 @@ def transform_alerts(alerts: list[dict]):
 
     transformed_alerts = [
         {
-            # CoMapeo API requires these to be ISO 8601 format
+            # CoMapeo API requires these to be ISO 8601 datetime format
             "detectionDateStart": datetime.strptime(
                 alert["date_start_t0"], "%Y-%m-%d"
             ).isoformat(timespec="seconds")
