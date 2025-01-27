@@ -1,0 +1,38 @@
+summary: 'Alerts: Send a Twilio Message'
+description: Send a Twilio WhatsApp message with a summary of the latest processed alerts.
+lock: '!inline f/connectors/alerts/alerts_twilio.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - alerts_statistics
+    - twilio
+    - community_slug
+  properties:
+    alerts_statistics:
+      type: object
+      description: >-
+        An object containing alert statistics: total alerts, month/year,
+        and description of alerts.
+      default: {}
+    community_slug:
+      type: string
+      description: >-
+        The URL slug for the community, used to construct a link to the alerts
+        dashboard. This name is used for Twilio and must be provided for messages to
+        be sent.
+      default: null
+    twilio:
+      type: object
+      description: >-
+        Twilio account credentials and phone numbers for sending alerts 
+        after ingesting and writing alerts to the database via a Twilio message content 
+        template.
+      default: null
+      format: resource-c_twilio_message_template
+  required:
+    - alerts_statistics
+    - twilio
+    - community_slug
