@@ -2,7 +2,9 @@
 # psycopg2-binary
 # requests~=2.32
 
+import json
 import logging
+from datetime import datetime
 from typing import TypedDict
 
 import psycopg2
@@ -50,7 +52,13 @@ def main(
 
     unposted_alerts = filter_alerts(comapeo_alerts_endpoint, comapeo_headers, alerts)
 
-    post_alerts(comapeo_alerts_endpoint, comapeo_headers, unposted_alerts)
+    if not unposted_alerts:
+        logger.info("No new alerts to post!")
+        return
+
+    transformed_unposted_alerts = transform_alerts(unposted_alerts)
+
+    post_alerts(comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts)
 
 
 def get_alerts_from_db(db_connection_string, db_table_name: str):
@@ -79,10 +87,13 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     ]
     cur.close()
     conn.close()
+
+    logger.info(f"{len(alerts)} alerts found in database.")
+
     return alerts
 
 
-def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: str):
+def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: dict):
     """
     Fetches alerts from the CoMapeo API.
 
@@ -90,7 +101,7 @@ def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: str)
     ----------
     comapeo_alerts_endpoint : str
         The URL endpoint for retrieving alerts from the CoMapeo API.
-    comapeo_headers : str
+    comapeo_headers : dict
         The headers to be included in the API request, such as authorization tokens.
 
     Returns
@@ -108,6 +119,7 @@ def _get_alerts_from_comapeo(comapeo_alerts_endpoint: str, comapeo_headers: str)
 
     posted_alert_source_ids = {alert["sourceId"] for alert in alerts}
 
+    logger.info(f"{len(posted_alert_source_ids)} alerts found on CoMapeo.")
     return posted_alert_source_ids
 
 
@@ -144,13 +156,56 @@ def filter_alerts(
         if alert.get("alert_id") not in alerts_posted_to_comapeo
     ]
 
+    logger.info(f"{len(unposted_alerts)} alerts in database not yet posted to CoMapeo.")
     return unposted_alerts
+
+
+def transform_alerts(alerts: list[dict]):
+    """
+    Transforms a list of alerts into a format that matches the expected schema on the CoMapeo API.
+
+    Parameters
+    ----------
+    alerts : list[dict]
+        A list of dictionaries, where each dictionary represents an alert.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries, where each dictionary represents an alert in a format that can be posted to the CoMapeo API.
+    """
+    logger.info("Transforming alerts...")
+
+    transformed_alerts = [
+        {
+            # CoMapeo API requires these to be ISO 8601 datetime format
+            "detectionDateStart": datetime.strptime(alert["date_start_t0"], "%Y-%m-%d")
+            .replace(hour=15, minute=0, second=0)
+            .isoformat(timespec="seconds")
+            + "Z",
+            "detectionDateEnd": datetime.strptime(alert["date_end_t0"], "%Y-%m-%d")
+            .replace(hour=15, minute=0, second=0)
+            .isoformat(timespec="seconds")
+            + "Z",
+            "geometry": {
+                "type": alert["g__type"],
+                "coordinates": json.loads(alert["g__coordinates"]),
+            },
+            "metadata": {
+                "alert_type": alert["alert_type"],
+            },
+            "sourceId": alert["alert_id"],
+        }
+        for alert in alerts
+    ]
+
+    return transformed_alerts
 
 
 def post_alerts(
     comapeo_alerts_endpoint: str,
-    comapeo_headers: str,
-    unposted_alerts,
+    comapeo_headers: dict,
+    alerts: list[dict],
 ):
     """
     Posts a list of alerts to the CoMapeo API.
@@ -159,17 +214,17 @@ def post_alerts(
     ----------
     comapeo_alerts_endpoint : str
         The URL endpoint for posting alerts to the CoMapeo API.
-    comapeo_headers : str
+    comapeo_headers : dict
         The headers to be included in the API request, such as authorization tokens.
-    unposted_alerts : list
+    alerts : list[dict]
         A list of dictionaries, where each dictionary represents an alert to be posted to the CoMapeo API.
     """
     logger.info("Posting alerts to CoMapeo API...")
 
-    for alert in unposted_alerts:
+    for alert in alerts:
         response = requests.post(
             url=comapeo_alerts_endpoint, headers=comapeo_headers, json=alert
         )
         response.raise_for_status()
 
-    logger.info(f"{len(unposted_alerts)} alerts posted successfully.")
+    logger.info(f"{len(alerts)} alerts posted successfully.")
