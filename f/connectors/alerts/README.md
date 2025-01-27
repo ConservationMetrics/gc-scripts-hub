@@ -50,5 +50,5 @@ Currently, we are assuming there to be only four raster images for each change d
 This script leverages Twilio to send a WhatsApp message to recipients with a summary of the latest processed alerts. Below is the message template, with values from an `alerts_statistics` object:
 
 ```javascript
-`${total_alerts} new change detection alert(s) have been published on your alerts dashboard for the date of ${month_year}. The following activities have been detected in your region: ${description_alerts}. Visit your alerts dashboard here: https://explorer.${territory_name}.guardianconnector.net/alerts/alerts`
+`${total_alerts} new change detection alert(s) have been published on your alerts dashboard for the date of ${month_year}. The following activities have been detected in your region: ${description_alerts}. Visit your alerts dashboard here: https://explorer.${community_slug}.guardianconnector.net/alerts/alerts`
 ```

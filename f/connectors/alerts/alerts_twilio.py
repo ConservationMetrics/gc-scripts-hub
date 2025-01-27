@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 def main(
     alerts_statistics: dict,
-    territory_name: str,
+    community_slug: str,
     twilio: c_twilio_message_template,
 ):
-    send_twilio_message(twilio, alerts_statistics, territory_name)
+    send_twilio_message(twilio, alerts_statistics, community_slug)
 
 
-def send_twilio_message(twilio, alerts_statistics, territory_name):
+def send_twilio_message(twilio, alerts_statistics, community_slug):
     """
     Send a Twilio SMS message with alerts processing completion details.
 
@@ -41,8 +41,8 @@ def send_twilio_message(twilio, alerts_statistics, territory_name):
     alerts_statistics : dict
         A dictionary containing statistics about the processed alerts, such as
         the total number of alerts, month and year, and a description.
-    territory_name : str
-        The slug of the territory for which alerts are being processed.
+    community_slug : str
+        The slug of the community for which alerts are being processed.
     """
     client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
 
@@ -59,7 +59,7 @@ def send_twilio_message(twilio, alerts_statistics, territory_name):
                     "1": alerts_statistics.get("total_alerts"),
                     "2": alerts_statistics.get("month_year"),
                     "3": alerts_statistics.get("description_alerts"),
-                    "4": f"https://explorer.{territory_name}.guardianconnector.net/alerts/alerts",
+                    "4": f"https://explorer.{community_slug}.guardianconnector.net/alerts/alerts",
                 }
             ),
             messaging_service_sid=twilio.get("messaging_service_sid"),

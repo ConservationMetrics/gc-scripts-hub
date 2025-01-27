@@ -9,7 +9,7 @@ schema:
   order:
     - alerts_statistics
     - twilio
-    - territory_name
+    - community_slug
   properties:
     alerts_statistics:
       type: object
@@ -17,10 +17,10 @@ schema:
         An object containing alert statistics: total alerts, month/year,
         and description of alerts.
       default: {}
-    territory_name:
+    community_slug:
       type: string
       description: >-
-        The URL slug for the territory, used to construct a link to the alerts
+        The URL slug for the community, used to construct a link to the alerts
         dashboard. This name is used for Twilio and must be provided for messages to
         be sent.
       default: null
@@ -35,4 +35,4 @@ schema:
   required:
     - alerts_statistics
     - twilio
-    - territory_name
+    - community_slug
