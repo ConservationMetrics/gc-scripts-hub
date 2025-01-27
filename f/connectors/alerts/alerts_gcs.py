@@ -470,7 +470,7 @@ class AlertsDBWriter:
                     confidence real,
                     description_alerts text,
                     month bigint,
-                    territory_id text,
+                    territory_id bigint,
                     total_alerts bigint,
                     type_alert bigint,
                     year bigint,
