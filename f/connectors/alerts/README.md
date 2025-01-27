@@ -1,6 +1,11 @@
+This README introduces two scripts that live in this folder:
+
+- `alerts_gcs`: Google Cloud Alerts Change Detection Integration
+- `alerts_twilio`: Send a Twilio Message
+
 # `alerts_gcs`: Google Cloud Alerts Change Detection Integration
 
-This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory. 
+This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory.
 
 ## GCP API Queries
 
