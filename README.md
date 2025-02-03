@@ -61,6 +61,8 @@ To run tests for only one folder, specify the folder as an `-e «environment»` 
 
     tox -e alerts
 
+Note that the versions of package dependencies must be the same for scripts across a tox environment,
+or you will get an error about conflicting dependencies.
 
 # Running Windmill
 
