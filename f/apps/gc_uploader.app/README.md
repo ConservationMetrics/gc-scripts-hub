@@ -11,6 +11,13 @@ The app uses state management, inline scripts, and three UI components to accomp
 * Several frontline scripts are triggered along the way to update state variables such as `uploadProcessing` and `uploadSuccess`.
 * `resultMessage` (Text) will show a status message of "Processing...", "File uploaded successfully!", or nothing depending on the value of the state variables.
 
+## Configuration
+
+To configure this app for usage, ensure that the right input values are provided for the runnable and background runnable scripts:
+
+* The default `tmp_dir` value across the scripts is `/persistent-storage/tmp`. If this is different for your deployment, change this value accordingly.
+* For the "Locus Map: Import Data" script, provide a postgresql resource object.
+
 ## TODO
 
 * Allowing the user to change the name of their database table; for now, it is taking the filename point blank.

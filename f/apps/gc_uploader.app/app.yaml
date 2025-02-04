@@ -464,7 +464,6 @@ value:
           fieldType: string
         db:
           type: static
-          value: '$res:f/frizzle/bcmdemo_db'
           fieldType: object
           format: resource-postgresql
         db_table_name:
@@ -689,8 +688,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
-        attachment_root: /frizzle-persistent-storage/datalake
-        db: '$res:f/frizzle/bcmdemo_db'
+        attachment_root: /persistent-storage/datalake
         delete_locusmap_export_file: true
     'bg_1:rawscript/75680a5e96c31082b2eac6745fda4454fa917497f23e5150a445949265d92dd9':
       allow_user_resources: []
