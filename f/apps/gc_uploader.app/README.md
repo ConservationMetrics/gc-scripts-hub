@@ -13,7 +13,7 @@ The app uses state management, inline scripts, and three UI components to accomp
 
 ## Configuration
 
-To configure this app for usage, ensure that the right input values are provided for the runnable and background runnable scripts:
+To configure this app for usage, ensure that the right input values are provided for the runnable and background runnable scripts in the Windmill app builder UI:
 
 * The default `tmp_dir` value across the scripts is `/persistent-storage/tmp`. If this is different for your deployment, change this value accordingly.
 * For the "Locus Map: Import Data" script, provide a postgresql resource object.
