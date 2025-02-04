@@ -227,7 +227,7 @@ value:
           fields:
             tmp_dir:
               type: static
-              value: /frizzle-persistent-storage/tmp
+              value: /persistent-storage/tmp
               fieldType: string
             uploaded_file:
               type: evalv2
@@ -254,7 +254,7 @@ value:
                   tmp_dir:
                     type: string
                     description: ''
-                    default: /frizzle-persistent-storage/tmp
+                    default: /persistent-storage/tmp
                     originalType: string
                   uploaded_file:
                     type: object
@@ -460,7 +460,7 @@ value:
       fields:
         attachment_root:
           type: static
-          value: /frizzle-persistent-storage/datalake
+          value: /persistent-storage/datalake
           fieldType: string
         db:
           type: static
@@ -507,7 +507,7 @@ value:
               A path where Locus Map attachments will be stored. Attachment
               files will be stored in the following directory schema: 
               `{attachment_root}/{db_table_name}/attachments/{filename}`
-            default: /frizzle-persistent-storage/datalake
+            default: /persistent-storage/datalake
             originalType: string
           db:
             type: object
@@ -620,7 +620,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: Guardian Connector Uploader
+            eval: Guardian Connector Uploader (Locus Maps)
             fieldType: template
           configuration:
             copyButton:
@@ -716,4 +716,4 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
-        tmp_dir: /frizzle-persistent-storage/tmp
+        tmp_dir: /persistent-storage/tmp
