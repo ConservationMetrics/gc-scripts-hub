@@ -19,7 +19,7 @@ schema:
         A path where CoMapeo attachments will be stored. Attachment files (e.g.,
         photos and audio) will be stored in the following directory schema: 
         `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
-      default: /frizzle-persistent-storage/datalake
+      default: /persistent-storage/datalake
       originalType: string
     comapeo:
       type: object

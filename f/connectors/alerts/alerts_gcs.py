@@ -44,7 +44,7 @@ def main(
     territory_id: int,
     db: postgresql,
     db_table_name: str,
-    destination_path: str = "/frizzle-persistent-storage/datalake/change_detection/alerts",
+    destination_path: str = "/persistent-storage/datalake/change_detection/alerts",
 ):
     """
     Wrapper around _main() that instantiates the GCP client.

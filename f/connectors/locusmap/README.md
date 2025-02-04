@@ -17,10 +17,10 @@ curl -X POST \
   -H 'Authorization: Bearer Your_Access_Token' \
   -H 'Content-Type: application/json' \
   -d '{
-    "db": "$res:f/frizzle/bcmdemo_db",
+    "db": "$res:f/connectors/bcmdemo_db",
     "db_table_name": "my_locusmap_points",
-    "locusmap_tmp_path": "/frizzle-persistent-storage/tmp/Favorites.zip",
-    "attachment_root": "/frizzle-persistent-storage/datalake"
+    "locusmap_tmp_path": "/persistent-storage/tmp/Favorites.zip",
+    "attachment_root": "/persistent-storage/datalake"
 }
 # => HTTP 201, no response body
 ``` 
