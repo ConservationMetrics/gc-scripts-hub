@@ -1,8 +1,8 @@
 # Guardian Connector Scripts Hub
 
-This repository contains scripts and flows to help communities guard and manage their land.
+This repository contains scripts, flows and apps to help communities guard and manage their land.
 
-The scripts and flows are intended to run on [Windmill](https://www.windmill.dev/), a platform that
+The code is intended to run on [Windmill](https://www.windmill.dev/), a platform that
 can turn scripts into workflows and UIs.  It empowers semi-technical users to access and edit code
 without being overwhelmed by the usual barriers to entry (git, IDE, local environments, secrets
 managements, etc).
@@ -22,7 +22,7 @@ because otherwise Windmill tries to make the tests (as with ALL python files) in
 
 ### Development
 
-In Windmill, scripts and flows can be written in Python, TypeScript, Go, and a number of other languages.
+In Windmill, scripts can be written in Python, TypeScript, Go, and a number of other languages. Flows and apps can be built through the Windmill UI.
 
 The `f/` directory is designated for storing code in a workspace folder, and will be used when synchronizing the contents of this repository with a server.
 
