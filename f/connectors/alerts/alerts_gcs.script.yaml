@@ -35,7 +35,7 @@ schema:
       description: >-
         A string specifying the local directory path where files will be
         downloaded and processed.
-      default: /frizzle-persistent-storage/datalake/change_detection/alerts
+      default: /persistent-storage/datalake/change_detection/alerts
       originalType: string
     gcp_service_acct:
       type: object

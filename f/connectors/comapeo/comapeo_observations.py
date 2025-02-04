@@ -39,7 +39,7 @@ def main(
     comapeo_project_blocklist: list,
     db: postgresql,
     db_table_prefix: str = "comapeo",
-    attachment_root: str = "/frizzle-persistent-storage/datalake",
+    attachment_root: str = "/persistent-storage/datalake",
 ):
     server_url = comapeo["server_url"]
     access_token = comapeo["access_token"]

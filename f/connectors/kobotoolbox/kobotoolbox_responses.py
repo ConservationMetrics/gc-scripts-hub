@@ -33,7 +33,7 @@ def main(
     form_id: str,
     db: postgresql,
     db_table_name: str,
-    attachment_root: str = "/frizzle-persistent-storage/datalake",
+    attachment_root: str = "/persistent-storage/datalake",
 ):
     kobo_server_base_url = kobotoolbox["server_url"]
     kobo_api_key = kobotoolbox["api_key"]

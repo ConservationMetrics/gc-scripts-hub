@@ -31,7 +31,7 @@ def main(
     db: postgresql,
     db_table_name: str,
     locusmap_export_path: str,
-    attachment_root: str = "/frizzle-persistent-storage/datalake/",
+    attachment_root: str = "/persistent-storage/datalake/",
     delete_locusmap_export_file: bool = False,
 ):
     if Path(locusmap_export_path).suffix.lower() in [".zip", ".kmz"]:

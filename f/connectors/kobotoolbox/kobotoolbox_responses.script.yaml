@@ -19,7 +19,7 @@ schema:
         A path where KoboToolbox attachments will be stored. Attachment
         files will be stored in the following directory schema: 
         `{attachment_root}/{db_table_name}/attachments/{filename}`
-      default: /frizzle-persistent-storage/datalake
+      default: /persistent-storage/datalake
       originalType: string
     db:
       type: object

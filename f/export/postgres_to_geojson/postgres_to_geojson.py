@@ -3,10 +3,9 @@
 
 import json
 import logging
-
 from pathlib import Path
 
-from psycopg2 import sql, connect, Error
+from psycopg2 import Error, connect, sql
 
 # type names that refer to Windmill Resources
 postgresql = dict
@@ -26,7 +25,7 @@ def conninfo(db: postgresql):
 def main(
     db: postgresql,
     db_table_name: str,
-    storage_path: str = "/frizzle-persistent-storage/datalake/export",
+    storage_path: str = "/persistent-storage/datalake/export",
 ):
     data = fetch_data_from_postgres(conninfo(db), db_table_name)
 
