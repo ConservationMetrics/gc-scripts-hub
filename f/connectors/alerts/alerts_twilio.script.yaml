@@ -14,25 +14,27 @@ schema:
     alerts_statistics:
       type: object
       description: >-
-        An object containing alert statistics: total alerts, month/year,
-        and description of alerts.
-      default: {}
+        An object containing alert statistics: total alerts, month/year, and
+        description of alerts.
+      default: null
+      properties: {}
     community_slug:
       type: string
       description: >-
         The URL slug for the community, used to construct a link to the alerts
-        dashboard. This name is used for Twilio and must be provided for messages to
-        be sent.
+        dashboard. This name is used for Twilio and must be provided for
+        messages to be sent.
       default: null
+      originalType: string
     twilio:
       type: object
       description: >-
-        Twilio account credentials and phone numbers for sending alerts 
-        after ingesting and writing alerts to the database via a Twilio message content 
-        template.
+        Twilio account credentials and phone numbers for sending alerts  after
+        ingesting and writing alerts to the database via a Twilio message
+        content  template.
       default: null
       format: resource-c_twilio_message_template
   required:
     - alerts_statistics
-    - twilio
     - community_slug
+    - twilio

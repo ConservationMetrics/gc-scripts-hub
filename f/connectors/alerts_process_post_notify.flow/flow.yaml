@@ -1,0 +1,154 @@
+summary: 'Alerts: Process, Post, and Notify'
+description: >-
+  This flow connects three scripts: (1) Alerts: Fetch alerts from Google Cloud
+  Storage (2) CoMapeo: Post Alerts (3) Alerts: Send a Twilio Message
+value:
+  modules:
+    - id: a
+      value:
+        type: script
+        input_transforms:
+          alerts_bucket:
+            type: javascript
+            expr: flow_input.alerts_bucket
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          destination_path:
+            type: javascript
+            expr: flow_input.destination_path
+          gcp_service_acct:
+            type: javascript
+            expr: flow_input.gcp_service_acct
+          territory_id:
+            type: javascript
+            expr: flow_input.territory_id
+        is_trigger: false
+        path: f/connectors/alerts/alerts_gcs
+    - id: b
+      value:
+        type: script
+        input_transforms:
+          comapeo:
+            type: javascript
+            expr: flow_input.comapeo
+          comapeo_project:
+            type: javascript
+            expr: flow_input.comapeo_project
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+        is_trigger: false
+        path: f/connectors/comapeo/comapeo_alerts
+    - id: d
+      value:
+        type: script
+        input_transforms:
+          alerts_statistics:
+            type: javascript
+            expr: results.a
+          community_slug:
+            type: javascript
+            expr: flow_input.community_slug
+          twilio:
+            type: static
+            expr: flow_input.twilio
+        is_trigger: false
+        path: f/connectors/alerts/alerts_twilio
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - gcp_service_acct
+    - alerts_bucket
+    - territory_id
+    - db
+    - db_table_name
+    - destination_path
+    - comapeo
+    - comapeo_project
+    - community_slug
+    - twilio
+  properties:
+    alerts_bucket:
+      type: string
+      description: The name of the Google Cloud Storage bucket where the alerts are stored.
+      default: ''
+      originalType: string
+    comapeo:
+      type: object
+      description: >
+        A server URL and access token pair to connect to a CoMapeo archive
+        server.
+      format: resource-comapeo_server
+      nullable: false
+    comapeo_project:
+      type: string
+      description: A project ID on the CoMapeo server where the alerts will be posted.
+      default: ''
+      nullable: false
+    community_slug:
+      type: string
+      description: >-
+        The URL slug for the community, used to construct a link to the alerts
+        dashboard. This name is used for Twilio and must be provided for
+        messages to be sent.
+      default: ''
+      nullable: false
+    db:
+      type: object
+      description: The database connection parameters for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where alerts will be stored.
+      default: ''
+      originalType: string
+      pattern: '^.{1,53}$'
+    destination_path:
+      type: string
+      description: >-
+        A string specifying the local directory path where files will be
+        downloaded and processed.
+      default: /persistent-storage/datalake/change_detection/alerts
+      originalType: string
+    gcp_service_acct:
+      type: object
+      description: >-
+        Google Cloud service account credentials. This should reference the
+        contents of a `service.json` file provided by the alerts publisher. For
+        more information on setting up and retrieving GCP credentials, see:
+        https://cloud.google.com/docs/authentication/provide-credentials-adc#on-prem
+      format: resource-gcp_service_account
+    territory_id:
+      type: integer
+      description: >-
+        The territory ID (areas of interest) for which change detection alerts
+        will be retrieved. This ID is used to filter and process relevant
+        alerts.
+      format: ''
+    twilio:
+      type: object
+      description: >-
+        Twilio account credentials and phone numbers for sending alerts after
+        ingesting and writing alerts to the database via a Twilio message
+        content template.
+      format: resource-c_twilio_message_template
+      nullable: false
+  required:
+    - gcp_service_acct
+    - alerts_bucket
+    - territory_id
+    - db
+    - db_table_name
+    - comapeo
+    - comapeo_project
+    - community_slug
+    - twilio
