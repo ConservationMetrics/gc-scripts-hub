@@ -1,4 +1,4 @@
-summary: 'Alerts: Process, Post, and Notify'
+summary: 'Alerts: Download, Post, and Notify'
 description: >-
   This flow connects three scripts: (1) Alerts: Fetch alerts from Google Cloud
   Storage (2) CoMapeo: Post Alerts (3) Alerts: Send a Twilio Message
@@ -46,6 +46,9 @@ value:
             expr: flow_input.db_table_name
         is_trigger: false
         path: f/connectors/comapeo/comapeo_alerts
+      continue_on_error: false
+      skip_if:
+        expr: '!flow_input.comapeo || !flow_input.comapeo_project'
     - id: d
       value:
         type: script
@@ -57,10 +60,13 @@ value:
             type: javascript
             expr: flow_input.community_slug
           twilio:
-            type: static
+            type: javascript
             expr: flow_input.twilio
         is_trigger: false
         path: f/connectors/alerts/alerts_twilio
+      continue_on_error: false
+      skip_if:
+        expr: '!flow_input.twilio || !flow_input.community_slug || !results.a'
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
@@ -148,7 +154,3 @@ schema:
     - territory_id
     - db
     - db_table_name
-    - comapeo
-    - comapeo_project
-    - community_slug
-    - twilio
