@@ -29,9 +29,9 @@ schema:
     twilio:
       type: object
       description: >-
-        Twilio account credentials and phone numbers for sending alerts  after
+        Twilio account credentials and phone numbers for sending alerts after
         ingesting and writing alerts to the database via a Twilio message
-        content  template.
+        content template.
       default: null
       format: resource-c_twilio_message_template
   required:
