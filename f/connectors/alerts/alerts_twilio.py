@@ -1,4 +1,5 @@
 # twilio~=9.4
+# requests~=2.32.3
 
 import json
 import logging
