@@ -34,12 +34,11 @@ def odkserver(mocked_responses):
 
     form_id = "My_monitoring_form"
 
-    # This appears to not be needed.
-    # mocked_responses.post(
-    #     f"{base_url}/v1/sessions",
-    #     json={"token": "mocked_token"},
-    #     status=200,
-    # )
+    mocked_responses.post(
+        f"{base_url}/v1/sessions",
+        json={"token": "mocked_token"},
+        status=200,
+    )
 
     mocked_responses.get(
         f"{base_url}/v1/users/current", json=server_responses.odk_users(), status=200
