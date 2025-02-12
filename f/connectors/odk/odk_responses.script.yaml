@@ -1,0 +1,50 @@
+summary: 'ODK: Fetch Survey Responses'
+description: Uses PyODK to download all form submissions
+lock: '!inline f/connectors/odk/odk_responses.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - odk_config
+    - form_id
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where ODK attachments will be stored. Attachment
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{db_table_name}/attachments/{filename}`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the form data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    form_id:
+      type: string
+      description: The unique identifier of the form to fetch submissions from.
+      default: null
+      originalType: string
+    odk_config:
+      type: object
+      description: An ODK Central server URL, username, password, and project ID for an ODK project.
+      default: null
+      format: resource-c_odk_config
+      originalType: string
+  required:
+    - odk_project
+    - form_id
+    - db
+    - db_table_name
