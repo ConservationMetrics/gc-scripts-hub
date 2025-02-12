@@ -1,0 +1,11 @@
+summary: 'Shared logic for database connection'
+description: ''
+lock: '!inline f/common_logic/db_connection.script.lock'
+has_preprocessor: false
+kind: script
+no_main_func: true
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties: {}
+  required: []
