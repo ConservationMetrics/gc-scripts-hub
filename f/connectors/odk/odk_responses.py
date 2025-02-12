@@ -31,7 +31,25 @@ def conninfo(db: postgresql):
 
 
 def get_temp_config(odk_config: c_odk_config) -> Path:
-    """Create a temporary config file for PyODK and return its path."""
+    """Create a temporary TOML configuration file for PyODK and return its path.
+
+    This configuration file is used by PyODK to set up a Client for interacting
+    with ODK Central. The file includes necessary connection details such as
+    base URL, username, password, and default project ID.
+
+    The structure of the TOML file is as follows:
+
+    [central]
+    base_url = "<ODK Central Base URL>"
+    username = "<ODK Central Username>"
+    password = "<ODK Central Password>"
+    default_project_id = <ODK Central Default Project ID>
+
+    Returns
+    -------
+    Path
+        The file path to the temporary TOML configuration file.
+    """
     temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".toml")
     temp_file.write(f"""
 [central]
