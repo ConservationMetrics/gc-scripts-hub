@@ -40,6 +40,9 @@ def odkserver(mocked_responses):
         status=200,
     )
 
+    # Unsure why pyODK crafts the server HTTP request differently for submissions than
+    # the others, with this `.svc/Submissions` suffix. This is a bit of a hack to get the
+    # mocked response to match the test request.
     mocked_responses.get(
         f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}.svc/Submissions",
         json=server_responses.odk_form_submissions(),
