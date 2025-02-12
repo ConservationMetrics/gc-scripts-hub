@@ -16,8 +16,8 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where ODK attachments will be stored. Attachment
-        files will be stored in the following directory schema: 
+        A path where ODK attachments will be stored. Attachment files will be
+        stored in the following directory schema: 
         `{attachment_root}/{db_table_name}/attachments/{filename}`
       default: /persistent-storage/datalake
       originalType: string
@@ -39,12 +39,14 @@ schema:
       originalType: string
     odk_config:
       type: object
-      description: An ODK Central server URL, username, password, and project ID for an ODK project.
+      description: >-
+        An ODK Central server URL, username, password, and project ID for an ODK
+        project.
       default: null
       format: resource-c_odk_config
       originalType: string
   required:
-    - odk_project
+    - odk_config
     - form_id
     - db
     - db_table_name
