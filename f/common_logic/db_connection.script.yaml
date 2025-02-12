@@ -1,4 +1,4 @@
-summary: 'Shared logic for database connection'
+summary: ''
 description: ''
 lock: '!inline f/common_logic/db_connection.script.lock'
 has_preprocessor: false
