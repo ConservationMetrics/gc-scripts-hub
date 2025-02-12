@@ -41,10 +41,6 @@ def odkserver(mocked_responses):
     )
 
     mocked_responses.get(
-        f"{base_url}/v1/users/current", json=server_responses.odk_users(), status=200
-    )
-
-    mocked_responses.get(
         f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}.svc/Submissions",
         json=server_responses.odk_form_submissions(),
         status=200,
