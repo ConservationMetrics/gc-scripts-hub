@@ -4,14 +4,14 @@
 		"base_url",
 		"username",
 		"password",
-		"project_id"
+		"default_project_id"
 	],
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"required": [
 		"base_url",
 		"username",
 		"password",
-		"project_id"
+		"default_project_id"
 	],
 	"properties": {
 		"base_url": {
@@ -34,11 +34,11 @@
 			"nullable": true,
 			"description": "The password to authenticate with the ODK server"
 		},
-		"project_id": {
+		"default_project_id": {
 			"type": "integer",
 			"default": "",
 			"nullable": false,
-			"description": "The project ID of the ODK project"
+			"default_project_id": "The default project ID of your ODK project"
 		}
 	}
 }
