@@ -59,5 +59,11 @@ def main(
         submissions = client.submissions.get_table(form_id)
         logger.info(f"Submissions: {submissions}")
 
+        # Get attachments
+        attachments = client.get(
+            f"projects/1/forms/{form_id}/submissions/uuid:24951a9e-db46-4e22-9bce-910377c9dd22/attachments"
+        )
+        logger.info(f"Attachments: {attachments.json()}")
+
     finally:
         config_path.unlink(missing_ok=True)
