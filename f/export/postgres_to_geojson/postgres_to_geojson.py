@@ -7,19 +7,10 @@ from pathlib import Path
 
 from psycopg2 import Error, connect, sql
 
-# type names that refer to Windmill Resources
-postgresql = dict
+from f.common_logic.db_connection import conninfo, postgresql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def conninfo(db: postgresql):
-    """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
-    # password is optional
-    password_part = f" password={db['password']}" if "password" in db else ""
-    conn = "dbname={dbname} user={user} host={host} port={port}".format(**db)
-    return conn + password_part
 
 
 def main(
