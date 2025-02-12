@@ -38,7 +38,7 @@ def get_temp_config(odk_config: c_odk_config) -> Path:
 base_url = "{odk_config["base_url"]}"
 username = "{odk_config["username"]}"
 password = "{odk_config["password"]}"
-default_project_id = {odk_config["project_id"]}
+default_project_id = {odk_config["default_project_id"]}
 """)
     temp_file.close()
     return Path(temp_file.name)
@@ -54,7 +54,7 @@ def main(
     config_path = get_temp_config(odk_config)
 
     try:
-        project_id = odk_config["project_id"]
+        project_id = odk_config["default_project_id"]
         client = Client(config_path=str(config_path))
 
         form_data = download_form_responses_and_attachments(
@@ -161,7 +161,6 @@ def download_form_responses_and_attachments(
         A list of form submissions data.
     """
 
-    # get_table returns {'value': []} so we need to access what's inside the value key
     form_submissions = client.submissions.get_table(form_id)["value"]
 
     skipped_attachments = 0
@@ -207,7 +206,7 @@ def format_geometry_fields(form_data):
                 coordinates = location_data["coordinates"]
 
                 # Extract latitude and longitude only
-                lat, lon = coordinates[:2]
+                lon, lat = coordinates[:2]
 
                 submission.update(
                     {
@@ -643,8 +642,6 @@ class ODKDBWriter:
         updated_count = 0
 
         for row, _ in rows:
-            logger.info(f"Writing row to DB: {row}")
-
             try:
                 cols, vals = zip(*row.items())
 

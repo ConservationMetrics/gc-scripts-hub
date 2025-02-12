@@ -17,7 +17,7 @@
 		"base_url": {
 			"type": "string",
 			"default": "",
-      "placeholder": "https://your-odk-central-instance.org",
+      		"placeholder": "https://your-odk-central-instance.org",
 			"pattern": "^(https?://)([^/]+)$",
 			"nullable": false,
 			"description": "The base URL of your ODK server"
