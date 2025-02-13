@@ -1,0 +1,44 @@
+{
+	"type": "object",
+	"order": [
+		"base_url",
+		"username",
+		"password",
+		"default_project_id"
+	],
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"required": [
+		"base_url",
+		"username",
+		"password",
+		"default_project_id"
+	],
+	"properties": {
+		"base_url": {
+			"type": "string",
+			"default": "",
+      		"placeholder": "https://your-odk-central-instance.org",
+			"pattern": "^(https?://)([^/]+)$",
+			"nullable": false,
+			"description": "The base URL of your ODK server"
+		},
+		"username": {
+			"type": "string",
+			"default": "",
+			"nullable": true,
+			"description": "The username to authenticate with the ODK server"
+		},
+		"password": {
+			"type": "string",
+			"default": "",
+			"nullable": true,
+			"description": "The password to authenticate with the ODK server"
+		},
+		"default_project_id": {
+			"type": "integer",
+			"default": "",
+			"nullable": false,
+			"default_project_id": "The default project ID of your ODK project"
+		}
+	}
+}
