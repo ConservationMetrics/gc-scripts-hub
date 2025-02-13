@@ -1,11 +1,11 @@
+import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 import responses
 import testing.postgresql
-
-from f.connectors.odk.tests.assets import server_responses
 
 
 @pytest.fixture
@@ -40,18 +40,24 @@ def odkserver(mocked_responses):
         status=200,
     )
 
+    with open(Path("f/connectors/odk/tests/assets/submissions.json")) as f:
+        submissions_json = json.load(f)
+
+    with open(Path("f/connectors/odk/tests/assets/attachments.json")) as f:
+        attachments_json = json.load(f)
+
     # Unsure why pyODK crafts the server HTTP request differently for submissions than
     # the others, with this `.svc/Submissions` suffix. This is a bit of a hack to get the
     # mocked response to match the test request.
     mocked_responses.get(
         f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}.svc/Submissions",
-        json=server_responses.odk_form_submissions(),
+        json=submissions_json,
         status=200,
     )
 
     mocked_responses.get(
         f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}/submissions/uuid:24951a9e-db46-4e22-9bce-910377c9dd22/attachments",
-        json=server_responses.odk_form_submission_attachments(),
+        json=attachments_json,
         status=200,
     )
 
