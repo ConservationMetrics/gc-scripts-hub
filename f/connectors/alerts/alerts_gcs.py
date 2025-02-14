@@ -22,20 +22,13 @@ from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
 
+from f.common_logic.db_connection import conninfo, postgresql
+
 # type names that refer to Windmill Resources
 gcp_service_account = dict
-postgresql = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def conninfo(db: postgresql):
-    """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
-    # password is optional
-    password_part = f" password={db['password']}" if "password" in db else ""
-    conn = "dbname={dbname} user={user} host={host} port={port}".format(**db)
-    return conn + password_part
 
 
 def main(
