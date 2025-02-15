@@ -3,12 +3,23 @@
 This repository contains scripts, flows and apps to help communities guard and manage their land.
 
 The code is intended to run on [Windmill](https://www.windmill.dev/), a platform that
-can turn scripts into workflows and UIs.  It empowers semi-technical users to access and edit code
-without being overwhelmed by the usual barriers to entry (git, IDE, local environments, secrets
-managements, etc).
+can turn scripts into workflows and UIs.  It empowers semi-technical users to access, edit and schedule code 
+to run on a given interval without being overwhelmed by the usual barriers to entry (git, IDE, local environments,
+secrets managements, etc).
 
+## Available scripts, flows, and apps
 
-## Deploying these scripts to a Windmill workspace
+Some of the tools available in the Guardian Connector Scripts Hub are:
+
+* Connector scripts to ingest data from data collection tools such as KoboToolbox, ODK, CoMapeo, and Locus Map, 
+  and store this data (tabular and media attachments) in a data lake. 
+* A flow to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server 
+  API, and send a message to WhatsApp recipients via Twilio.
+* Scripts to export data from a database into a specific format (e.g., GeoJSON).
+
+![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
+
+## Deploying the code to a Windmill workspace
 
 [Install the Windmill CLI](https://www.windmill.dev/docs/advanced/cli), and
 [set it up to talk to your deployed Workspace](https://www.windmill.dev/docs/advanced/cli/workspace-management).
@@ -20,15 +31,20 @@ Then push the code in this Git repo your workspace:
 Folders named `./tests/` are excluded by `wmill.yml` from syncing to Windmill —
 because otherwise Windmill tries to make the tests (as with ALL python files) into bona-fide Windmill scripts.
 
-### Development
+## Development
 
-In Windmill, scripts can be written in Python, TypeScript, Go, and a number of other languages. Flows and apps can be built through the Windmill UI.
+In Windmill, scripts can be written in Python, TypeScript, Go, and a number of other languages. Flows and apps can 
+be built through the Windmill UI.
 
-The `f/` directory is designated for storing code in a workspace folder, and will be used when synchronizing the contents of this repository with a server.
+The `f/` directory is designated for storing code in a workspace folder, and will be used when synchronizing the contents 
+of this repository with a server.
 
-Within the `f/` directory, we store code in directories that represent a specific set of tasks. For example, the `f/connectors/` directory contains scripts for data ETL and pipelining tasks.
+Within the `f/` directory, we store code in directories that represent a specific set of tasks. For example, the 
+`f/connectors/` directory contains scripts for data ETL and pipelining tasks.
 
-Note that Windmill also designates a `u/` directory for storing code per user on a workspace. We are not using this convention in this repository. See [Windmill's local development guide](https://www.windmill.dev/docs/advanced/local_development) for more information on these directories and how they are synchronized with a server.
+Note that Windmill also designates a `u/` directory for storing code per user on a workspace. We are not using this 
+convention in this repository. See [Windmill's local development guide](https://www.windmill.dev/docs/advanced/local_development) 
+for more information on these directories and how they are synchronized with a server.
 
 For information on developing scripts, see the [Windmill Scripts quickstart](https://www.windmill.dev/docs/getting_started/scripts_quickstart).
 
