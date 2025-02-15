@@ -18,6 +18,7 @@ Some of the tools available in the Guardian Connector Scripts Hub are:
 * Scripts to export data from a database into a specific format (e.g., GeoJSON).
 
 ![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
+_A Windmill Workspace populated with the tools in this repository._
 
 ## Deploying the code to a Windmill workspace
 
