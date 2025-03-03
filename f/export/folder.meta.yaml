@@ -1,1 +1,8 @@
+summary: ''
 display_name: export
+extra_perms:
+  g/all: true
+  u/rudo: true
+owners:
+  - u/rudo
+  - g/all
