@@ -1,8 +1,2 @@
-summary: ''
+summary: null
 display_name: connectors
-extra_perms:
-  g/all: true
-  u/rudo: true
-owners:
-  - u/rudo
-  - g/all
