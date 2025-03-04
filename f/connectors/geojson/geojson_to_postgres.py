@@ -31,13 +31,28 @@ def main(
 
 
 def transform_geojson_data(geojson_path):
+    """
+    Transforms GeoJSON data from a file into a list of dictionaries suitable for database insertion.
+
+    Args:
+        geojson_path (str or Path): The file path to the GeoJSON file.
+
+    Returns:
+        list: A list of dictionaries where each dictionary represents a GeoJSON feature with keys:
+              '_id' for the feature's unique identifier,
+              'g__type' for the geometry type,
+              'g__coordinates' for the geometry coordinates,
+              and any additional properties from the feature.
+    """
     with open(geojson_path, "r") as f:
         geojson_data = json.load(f)
 
     transformed_geojson_data = []
     for feature in geojson_data["features"]:
         transformed_feature = {
-            "_id": feature["id"],
+            "_id": feature[
+                "id"
+            ],  # Assuming that the GeoJSON feature has unique "id" field that can be used as the primary key
             "g__type": feature["geometry"]["type"],
             "g__coordinates": feature["geometry"]["coordinates"],
             **feature.get("properties", {}),
@@ -48,7 +63,7 @@ def transform_geojson_data(geojson_path):
 
 class GeoJSONDbWriter:
     """
-    Converts unstructured GeoJSON spatial data to structured SQL tables.
+    Converts GeoJSON spatial data to structured SQL tables.
     """
 
     def __init__(self, db_connection_string, table_name):
