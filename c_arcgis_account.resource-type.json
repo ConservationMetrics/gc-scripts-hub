@@ -1,0 +1,25 @@
+{
+	"type": "object",
+	"order": [
+		"username",
+		"password"
+	],
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"required": [
+		"server_url"
+	],
+	"properties": {
+		"username": {
+			"type": "string",
+			"default": "",
+			"nullable": false,
+			"description": "The username of your ArcGIS account"
+		},
+		"password": {
+			"type": "string",
+			"default": "",
+            "nullable": false,
+			"description": "The password of your ArcGIS account"
+		}
+	}
+}
