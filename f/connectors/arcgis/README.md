@@ -1,5 +1,9 @@
 # `arcgis_feature_layer`: Fetch Feature Layer from ArcGIS REST API
 
+This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database.
+
+Usage of this script requires you to have an ArcGIS account, in order to generate a token.
+
 The feature layer URL can be found on the item details page of your layer on ArcGIS Online:
 
 ![Screenshot of a feature layer item page](arcgis.jpg)
