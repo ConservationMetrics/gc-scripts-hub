@@ -1,6 +1,6 @@
-# `arcgis_feature_layer`: Fetch Feature Layer from ArcGIS REST API
+# `arcgis_feature_layer`: Download Feature Layer from ArcGIS REST API
 
-This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database.
+This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database. Additionally, it downloads any attachments and saves them to a specified directory.
 
 Usage of this script requires you to have an ArcGIS account, in order to generate a token.
 

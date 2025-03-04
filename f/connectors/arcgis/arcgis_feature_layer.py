@@ -1,4 +1,5 @@
 # requirements:
+# psycopg2-binary
 # requests~=2.32
 
 import json
@@ -9,6 +10,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_connection import postgresql
+from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 # type names that refer to Windmill Resources
 c_arcgis_account = dict
@@ -41,6 +43,13 @@ def main(
     # At this point, the ArcGIS data is GeoJSON-compliant, and we don't need anything
     # from the REST API anymore. The data can therefore be handled further using the
     # existing GeoJSON connector.
+    save_geojson_to_postgres(
+        db,
+        db_table_name,
+        str(storage_path / "data.geojson"),
+        storage_path,
+        False,
+    )
 
 
 def get_arcgis_token(arcgis_account: c_arcgis_account):
@@ -172,7 +181,7 @@ def download_feature_attachments(
                 attachment_content_type
             )
 
-            attachment_path = Path(storage_path) / attachment_name
+            attachment_path = Path(storage_path) / "attachments" / attachment_name
 
             if attachment_path.exists():
                 logger.debug(

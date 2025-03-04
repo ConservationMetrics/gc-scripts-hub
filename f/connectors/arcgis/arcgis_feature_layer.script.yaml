@@ -1,4 +1,4 @@
-summary: 'ArcGIS: Fetch Feature Layer'
+summary: 'ArcGIS: Download Feature Layer'
 description: This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database.
 lock: '!inline f/connectors/arcgis/arcgis_feature_layer.script.lock'
 concurrency_time_window_s: 0
