@@ -71,6 +71,11 @@ def get_arcgis_token(arcgis_account: c_arcgis_account):
     arcgis_username = arcgis_account["username"]
     arcgis_password = arcgis_account["password"]
 
+    # According to the ArcGIS REST API documentation, you can set `client to `requestip`
+    # to generate a token based on the IP address of the request. However, this does not
+    # seem to work well, neither in local development nor in production. Therefore, we use
+    # `referer` as the client type, and use the base URL of the Windmill app as the referer.
+    # https://developers.arcgis.com/rest/services-reference/enterprise/generate-token/
     token_response = requests.post(
         "https://www.arcgis.com/sharing/rest/generateToken",
         data={
