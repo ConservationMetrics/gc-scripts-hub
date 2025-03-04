@@ -48,7 +48,9 @@ def main(
         db_table_name,
         str(storage_path / "data.geojson"),
         storage_path,
-        False,
+        False,  # to not delete the GeoJSON file after its contents are written to the database.
+        # Users might like to have access to the GeoJSON file directly, in addition to the data
+        # in the database.
     )
 
 
