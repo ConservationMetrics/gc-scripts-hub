@@ -374,6 +374,8 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     )
 
     # Filter for rows matching the latest month and year
+    # (This could be more than one row if there are are multiple
+    # types of alert for the same month and year)
     latest_rows = filtered_df[
         (filtered_df["month"] == latest_month_year["month"])
         & (filtered_df["year"] == latest_month_year["year"])
