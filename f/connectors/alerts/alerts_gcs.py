@@ -335,27 +335,21 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         and description of alerts.
     """
     # Convert CSV bytes to DataFrame and filter based on territory_id
-    filtered_df = pd.read_csv(StringIO(alerts_metadata)).query(
-        "territory_id == @territory_id"
-    )
+    df = pd.read_csv(StringIO(alerts_metadata))
+    filtered_df = df.loc[df["territory_id"] == territory_id].copy()
 
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
-    filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
-        filtered_df[
-            [
-                "territory_id",
-                "month",
-                "year",
-                "description_alerts",
-            ]
-        ].sort_index(axis=1),
+    filtered_df.loc[:, "metadata_uuid"] = pd.util.hash_pandas_object(
+        filtered_df[["territory_id", "month", "year", "description_alerts"]].sort_index(
+            axis=1
+        ),
         index=False,
     )
 
     # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
     # Also, if this changes for future alerts, we will need to ensure that existing records are not overwritten.
-    filtered_df["data_source"] = "terras"
+    filtered_df.loc[:, "data_source"] = "terras"
 
     # Replace all NaN values with None
     filtered_df.replace({float("nan"): None}, inplace=True)
