@@ -28,7 +28,7 @@ def test_prepare_alerts_metadata():
     # Check that alerts statistics is the latest month and year in the CSV
     assert alert_statistics["month_year"] == "2/2024"
     assert alert_statistics["total_alerts"] == "1"
-    assert alert_statistics["description_alerts"] == "fake alert"
+    assert alert_statistics["description_alerts"] == "ghostly barrow noises"
 
 
 @pytest.fixture
@@ -87,9 +87,28 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             assert uuid.UUID(_id)
 
             # Count of unique rows in alerts_history.csv based on UUID
-            # The last row in the CSV is a duplicate of the one before it, but updates the confidence field, hence shares the same UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
-            assert cursor.fetchone()[0] == 6
+            assert cursor.fetchone()[0] == 8
+
+            # Ensure that both types of alerts are present for the month of 09/2023
+            cursor.execute(
+                "SELECT COUNT(*) FROM fake_alerts__metadata WHERE year = 2023 AND month = 9 AND description_alerts = 'ghostly_barrow_noises'"
+            )
+            assert cursor.fetchone()[0] == 1
+            cursor.execute(
+                "SELECT COUNT(*) FROM fake_alerts__metadata WHERE year = 2023 AND month = 9 AND description_alerts = 'unexpected_carrot_theft'"
+            )
+            assert cursor.fetchone()[0] == 1
+
+            # Ensure that for month of 01/2024, there are two rows with different confidence levels
+            cursor.execute(
+                "SELECT COUNT(*) FROM fake_alerts__metadata WHERE year = 2024 AND month = 1 AND confidence = 1"
+            )
+            assert cursor.fetchone()[0] == 1
+            cursor.execute(
+                "SELECT COUNT(*) FROM fake_alerts__metadata WHERE year = 2024 AND month = 1 AND confidence = 0"
+            )
+            assert cursor.fetchone()[0] == 1
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(
