@@ -344,9 +344,9 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
     filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
-        filtered_df[["territory_id", "month", "year", "description_alerts"]].sort_index(
-            axis=1
-        ),
+        filtered_df[
+            ["territory_id", "month", "year", "description_alerts", "confidence"]
+        ].sort_index(axis=1),
         index=False,
     )
 
