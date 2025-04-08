@@ -86,8 +86,13 @@ def format_data_as_geojson(data):
         for col, value in zip(columns, row):
             if col == "_id":
                 feature_id = value
-            elif col.startswith("g__"):
-                geometry[col[3:]] = value
+            elif col == "g__coordinates":
+                if value:
+                    geometry["coordinates"] = json.loads(value)
+                else:
+                    geometry["coordinates"] = None
+            elif col == "g__type":
+                geometry["type"] = value
             else:
                 properties[col] = value
 
