@@ -1,5 +1,6 @@
-from f.export.postgres_to_geojson.postgres_to_geojson import main
 import json
+
+from f.export.postgres_to_geojson.postgres_to_geojson import main
 
 
 def test_script_e2e(pg_database, database_mock_data, tmp_path):
@@ -22,5 +23,5 @@ def test_script_e2e(pg_database, database_mock_data, tmp_path):
             assert "properties" in feature
 
         assert data["features"][0]["id"] == "doc_id_1"
-        assert data["features"][0]["geometry"]["coordinates"] == "[151.2093, -33.8688]"
+        assert data["features"][0]["geometry"]["coordinates"] == [151.2093, -33.8688]
         assert data["features"][0]["properties"]["project_name"] == "Forest Expedition"
