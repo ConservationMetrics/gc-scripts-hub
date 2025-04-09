@@ -333,6 +333,21 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     alerts_statistics : dict
         A dictionary containing alert statistics: total alerts, month/year,
         and description of alerts.
+
+    Notes
+    -----
+    The UUID for each alert metadata record is generated using a hash of the
+    following columns:
+    - territory_id: The unique identifier assigned to the territory.
+    - month: The month when the alert was detected.
+    - year: The year when the alert was detected.
+    - description_alerts: A description of the type of alert.
+    - confidence: A fixed value (either 0 or 1) indicating the confidence level
+      of the alert provider that the alert is a true positive. This value is
+      immutable once set, serving as a historical record. For instance, an alert
+      with confidence level 0 in March may have a new alert with confidence level
+      1 in April, but the March data remains unchanged to preserve a record
+      of the alert's original confidence level.
     """
     # c.f. https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
     pd.options.mode.copy_on_write = True
@@ -344,9 +359,9 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
     filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
-        filtered_df[["territory_id", "month", "year", "description_alerts"]].sort_index(
-            axis=1
-        ),
+        filtered_df[
+            ["territory_id", "month", "year", "description_alerts", "confidence"]
+        ].sort_index(axis=1),
         index=False,
     )
 
