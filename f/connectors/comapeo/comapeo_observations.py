@@ -163,7 +163,10 @@ def download_attachment(url, headers, save_path):
         extension = mimetypes.guess_extension(content_type) or ""
 
         file_name = Path(url).name + extension
-        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+
+        save_path = Path(str(save_path) + extension)
+
+        save_path.parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(response.content)
         logger.info("Download completed.")
