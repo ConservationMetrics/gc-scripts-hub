@@ -1,0 +1,50 @@
+summary: 'ArcGIS: Download Feature Layer'
+description: This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database.
+lock: '!inline f/connectors/arcgis/arcgis_feature_layer.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - arcgis_account
+    - feature_layer_url
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    arcgis_account:
+      type: object
+      description: The name of the ArcGIS account to use for fetching the feature layer.
+      default: null
+      format: resource-c_arcgis_account
+      originalType: string
+    attachment_root:
+      type: string
+      description: >-
+        A path where ArcGIS attachments (e.g., from Survey123) will be stored. Attachment 
+        files like photo and audio will be stored in the following directory schema: 
+        `{attachment_root}/{db_table_name}/attachments/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    feature_layer_url:
+      type: string
+      description: The URL of the ArcGIS feature layer to fetch.
+      default: null
+      originalType: string
+  required:
+    - arcgis_account
+    - feature_layer_url
+    - db
+    - db_table_name

@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-105.01621, 39.57422]
+      },
+      "properties": {
+        "name": "Pine Tree",
+        "height": 30,
+        "age": 50,
+        "species": "Pinus ponderosa"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "2",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.01621, 39.57422],
+          [-105.01621, 39.57423],
+          [-105.01622, 39.57424]
+        ]
+      },
+      "properties": {
+        "name": "River Stream",
+        "length": 2.5,
+        "flow_rate": "moderate",
+        "water_type": "freshwater"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "3",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-105.01621, 39.57422],
+            [-105.01621, 39.57423],
+            [-105.01622, 39.57423],
+            [-105.01622, 39.57422],
+            [-105.01621, 39.57422]
+          ]
+        ]
+      },
+      "properties": {
+        "name": "Meadow",
+        "area": 1.2,
+        "flora": ["wildflowers", "grasses"],
+        "fauna": ["deer", "rabbits"]
+      }
+    }
+  ]
+}

@@ -11,14 +11,14 @@ secrets managements, etc).
 
 Some of the tools available in the Guardian Connector Scripts Hub are:
 
-* Connector scripts to ingest data from data collection tools such as KoboToolbox, ODK, CoMapeo, and Locus Map, 
+* Connector scripts to ingest data from data collection tools such as KoboToolbox, ODK, CoMapeo, ArcGIS, and Locus Map, 
   and store this data (tabular and media attachments) in a data lake. 
 * A flow to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server 
   API, and send a message to WhatsApp recipients via Twilio.
 * Scripts to export data from a database into a specific format (e.g., GeoJSON).
 
 ![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
-_A Windmill Workspace populated with the tools in this repository._
+_A Windmill Workspace populated with some of the tools in this repository._
 
 ## Deploying the code to a Windmill workspace
 

@@ -1,0 +1,45 @@
+summary: 'GeoJSON: Upload to Postgres'
+description: This script uploads GeoJSON data to a Postgres database.
+lock: '!inline f/connectors/geojson/geojson_to_postgres.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - geojson_path
+    - db
+    - db_table_name
+    - delete_geojson_file
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where to find the GeoJSON file.
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    delete_geojson_file:
+      type: boolean
+      description: Whether to delete the GeoJSON file file after processing.
+      default: false
+    geojson_path:
+      type: string
+      description: The path to the GeoJSON file to upload, including the filename.
+      default: null
+      originalType: string
+  required:
+    - geojson_path
+    - db
+    - db_table_name
