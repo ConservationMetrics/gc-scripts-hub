@@ -1,4 +1,4 @@
-summary: 'Export: Postgres to GeoJSON'
+summary: 'Export: Postgres to CSV'
 description: >-
   This script connects to a PostgreSQL database, retrieves all entries from a
   specified table, and converts the data into a CSV file.

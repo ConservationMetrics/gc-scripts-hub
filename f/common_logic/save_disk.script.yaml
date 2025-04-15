@@ -1,4 +1,4 @@
-summary: 'Shared logic for saving disk data'
+summary: 'Shared logic for saving files to disk'
 description: ''
 lock: '!inline f/common_logic/save_disk.script.lock'
 has_preprocessor: false
