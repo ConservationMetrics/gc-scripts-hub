@@ -14,6 +14,7 @@ def main(
 ):
     columns, rows = fetch_data_from_postgres(conninfo(db), db_table_name)
 
+    # Convert rows to lists to ensure compatibility with CSV writer, which requires iterable rows
     data = [columns, *map(list, rows)]
 
     save_export_file(data, db_table_name, storage_path, file_type="csv")
