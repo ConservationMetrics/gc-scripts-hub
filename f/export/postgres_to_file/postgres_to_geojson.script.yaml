@@ -3,7 +3,7 @@ description: >-
   This script connects to a PostgreSQL database, retrieves all entries from a
   specified table, and converts the data into GeoJSON format. The script assumes
   that the geometry fields are properly formatted for GeoJSON.
-lock: '!inline f/export/postgres_to_geojson/postgres_to_geojson.script.lock'
+lock: '!inline f/export/postgres_to_file/postgres_to_geojson.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
