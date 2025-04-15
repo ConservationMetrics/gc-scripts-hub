@@ -22,7 +22,7 @@ from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict

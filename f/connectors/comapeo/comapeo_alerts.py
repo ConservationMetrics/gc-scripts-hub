@@ -10,7 +10,7 @@ from typing import TypedDict
 import psycopg2
 import requests
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 
 
 class comapeo_server(TypedDict):

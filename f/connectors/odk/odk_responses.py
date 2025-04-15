@@ -13,7 +13,7 @@ import psycopg2
 from psycopg2 import errors, sql
 from pyodk.client import Client
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 from f.common_logic.db_transformations import sanitize
 
 # type names that refer to Windmill Resources

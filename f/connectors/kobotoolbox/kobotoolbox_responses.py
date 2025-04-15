@@ -11,7 +11,7 @@ import psycopg2
 import requests
 from psycopg2 import errors, sql
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 from f.common_logic.db_transformations import sanitize
 
 # type names that refer to Windmill Resources
