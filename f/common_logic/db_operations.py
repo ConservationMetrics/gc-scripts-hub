@@ -17,7 +17,7 @@ def conninfo(db: postgresql):
     return conn + password_part
 
 
-def fetch_data_from_postgres(db_connection_string, table_name: str):
+def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     """
     Fetches all data from a specified PostgreSQL table.
 
