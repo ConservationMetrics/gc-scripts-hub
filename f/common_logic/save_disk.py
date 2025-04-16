@@ -22,7 +22,7 @@ def save_export_file(
     storage_path : str
         The directory path where the file will be saved.
     file_type : str
-        The format to save the file as: "json" or "csv".
+        The format to save the file as: "json", "geojson", or "csv".
     """
     storage_path = Path(storage_path)
     storage_path.mkdir(parents=True, exist_ok=True)
