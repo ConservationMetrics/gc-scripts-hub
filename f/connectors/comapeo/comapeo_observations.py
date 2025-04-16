@@ -13,7 +13,7 @@ import psycopg2
 import requests
 from psycopg2 import errors, sql
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 
 
 class comapeo_server(TypedDict):

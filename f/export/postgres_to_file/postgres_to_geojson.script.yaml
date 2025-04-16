@@ -1,0 +1,37 @@
+summary: 'Export: Postgres to GeoJSON'
+description: >-
+  This script connects to a PostgreSQL database, retrieves all entries from a
+  specified table, and converts the data into GeoJSON format. The script assumes
+  that the geometry fields are properly formatted for GeoJSON.
+lock: '!inline f/export/postgres_to_file/postgres_to_geojson.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - db
+    - db_table_name
+    - storage_path
+  properties:
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table to export to GeoJSON.
+      default: null
+      originalType: string
+    storage_path:
+      type: string
+      description: >-
+        The path to the directory where the GeoJSON file will be stored. The
+        file will be named after the database table name.
+      default: /persistent-storage/datalake/exports
+      originalType: string
+  required:
+    - db
+    - db_table_name
+    - storage_path

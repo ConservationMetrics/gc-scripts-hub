@@ -12,7 +12,7 @@ from pathlib import Path
 from lxml import etree
 from psycopg2 import connect, errors, sql
 
-from f.common_logic.db_connection import conninfo, postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

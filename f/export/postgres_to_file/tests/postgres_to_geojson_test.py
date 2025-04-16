@@ -1,6 +1,6 @@
 import json
 
-from f.export.postgres_to_geojson.postgres_to_geojson import main
+from f.export.postgres_to_file.postgres_to_geojson import main
 
 
 def test_script_e2e(pg_database, database_mock_data, tmp_path):
