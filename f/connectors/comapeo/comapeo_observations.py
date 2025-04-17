@@ -2,18 +2,17 @@
 # psycopg2-binary
 # requests~=2.32
 
-import json
 import logging
 import mimetypes
 import re
 from pathlib import Path
 from typing import TypedDict
 
-import psycopg2
 import requests
-from psycopg2 import errors, sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import postgresql
+from f.common_logic.save_disk import save_data_to_file
+from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 
 class comapeo_server(TypedDict):
@@ -48,23 +47,31 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_data, attachment_failed = download_and_transform_comapeo_data(
+    comapeo_projects_geojson, attachment_failed = download_and_transform_comapeo_data(
         server_url,
         access_token,
         comapeo_projects,
         db_table_prefix,
         attachment_root,
     )
+
     logger.info(
-        f"Downloaded {sum(len(observations) for observations in comapeo_data.values())} observations from {len(comapeo_data)} projects."
+        f"Downloaded CoMapeo data for {len(comapeo_projects_geojson)} projects. Saving data..."
     )
 
-    db_writer = CoMapeoDBWriter(conninfo(db))
-    db_writer.handle_output(comapeo_data)
+    for project_id, geojson in comapeo_projects_geojson.items():
+        storage_path = Path(attachment_root) / db_table_prefix / project_id
+        rel_geojson_path = Path(db_table_prefix) / project_id / f"{project_id}.geojson"
 
-    logging.info(
-        f"Wrote response content to database table(s) with prefix [{db_table_prefix}]"
-    )
+        save_data_to_file(geojson, project_id, storage_path, file_type="geojson")
+
+        save_geojson_to_postgres(
+            db,
+            project_id,
+            rel_geojson_path,
+            attachment_root,
+            False,  # do not delete the file after saving to Postgres
+        )
 
     if attachment_failed:
         raise RuntimeError("Some attachments failed to download.")
@@ -228,7 +235,7 @@ def download_and_transform_comapeo_data(
     attachment_root,
 ):
     """
-    Downloads and transforms CoMapeo project data from the API, converting it into a structured format and downloading any associated attachments.
+    Downloads and transforms CoMapeo project data from the API, converting it into a GeoJSON FeatureCollection format and downloading any associated attachments.
 
     Parameters
     ----------
@@ -246,7 +253,7 @@ def download_and_transform_comapeo_data(
     tuple
         A tuple containing:
         - comapeo_data : dict
-            A dictionary where keys are project names and values are lists of observations.
+            A dictionary where keys are project names and values are GeoJSON FeatureCollections.
         - attachment_failed : bool
             A flag indicating if any attachment downloads failed.
     """
@@ -277,29 +284,38 @@ def download_and_transform_comapeo_data(
             raise ValueError("Invalid JSON response received from server.")
 
         skipped_attachments = 0
+        features = []
 
         for i, observation in enumerate(current_project_data):
-            observation["project_name"] = project_name
-            observation["project_id"] = project_id
-            observation["data_source"] = "CoMapeo"
-
             # Create k/v pairs for each tag
             for key, value in observation.pop("tags", {}).items():
                 observation[key] = value
 
             # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
-            # docId will be written to the database as _id (primary key)
             special_case_keys = set(["docId"])
             observation = normalize_and_snakecase_keys(observation, special_case_keys)
 
-            # Create g__coordinates and g__type fields
+            # Add project-specific information to properties
+            observation["project_name"] = project_name
+            observation["project_id"] = project_id
+            observation["data_source"] = "CoMapeo"
+
+            # Create GeoJSON Feature
             # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
             # Other geometry types and formats may be added in the future
-            if "lat" in observation and "lon" in observation:
-                observation["g__coordinates"] = (
-                    f"[{observation['lon']}, {observation['lat']}]"
-                )
-                observation["g__type"] = "Point"
+            feature = {
+                "type": "Feature",
+                "id": observation.pop("docId"),
+                "properties": {
+                    k: str(v) for k, v in observation.items() if k not in ["lat", "lon"]
+                },
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [observation["lon"], observation["lat"]],
+                }
+                if "lat" in observation and "lon" in observation
+                else None,
+            }
 
             # Download attachments
             if "attachments" in observation:
@@ -327,17 +343,15 @@ def download_and_transform_comapeo_data(
                             )
                             attachment_failed = True
 
-                observation["attachments"] = ", ".join(filenames)
+                feature["properties"]["attachments"] = ", ".join(filenames)
 
-                # Convert all values to strings, except for special cases
-                for key in observation:
-                    if key not in special_case_keys:
-                        observation[key] = str(observation[key])
+            features.append(feature)
 
-            current_project_data[i] = observation
-
-        # Store observations in a dictionary with project_id as key
-        comapeo_data[final_project_name] = current_project_data
+        # Store observations as a GeoJSON FeatureCollection
+        comapeo_data[final_project_name] = {
+            "type": "FeatureCollection",
+            "features": features,
+        }
 
         if skipped_attachments > 0:
             logger.info(
@@ -348,211 +362,3 @@ def download_and_transform_comapeo_data(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
         )
     return comapeo_data, attachment_failed
-
-
-class CoMapeoDBWriter:
-    """
-    Converts unstructured CoMapeo observations data to structured SQL tables.
-    """
-
-    def __init__(self, db_connection_string):
-        """
-        Initializes the CoMapeoIOManager with the provided connection string and form response table to be used.
-        """
-        self.db_connection_string = db_connection_string
-
-    def _get_conn(self):
-        """
-        Establishes a connection to the PostgreSQL database using the class's configured connection string.
-        """
-        return psycopg2.connect(dsn=self.db_connection_string)
-
-    def _inspect_schema(self, table_name):
-        """
-        Fetches the column names of the given table.
-        """
-        conn = self._get_conn()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-            (table_name,),
-        )
-        columns = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return columns
-
-    def _create_missing_fields(self, table_name, missing_columns):
-        """
-        Generates and executes SQL statements to add missing fields to the table.
-        """
-        table_name = sql.Identifier(table_name)
-        try:
-            with self._get_conn() as conn, conn.cursor() as cursor:
-                query = sql.SQL(
-                    "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
-                ).format(table_name=table_name)
-                cursor.execute(query)
-
-                for sanitized_column in missing_columns:
-                    if sanitized_column == "_id":
-                        continue
-                    try:
-                        query = sql.SQL(
-                            "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
-                        ).format(
-                            table_name=table_name,
-                            colname=sql.Identifier(sanitized_column),
-                        )
-                        cursor.execute(query)
-                    except errors.DuplicateColumn:
-                        logger.debug(
-                            f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
-                        )
-                        continue
-                    except Exception as e:
-                        logger.error(
-                            f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
-                        )
-                        raise
-        finally:
-            conn.close()
-
-    @staticmethod
-    def _safe_insert(cursor, table_name, columns, values):
-        """
-        Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
-        This method also handles conflicts by updating existing records if necessary.
-
-        The function first checks if a row with the same primary key (_id) already exists in the table. If it does,
-        and the existing row's data matches the new values, the operation is skipped. Otherwise, it performs an
-        INSERT operation. If a conflict on the primary key occurs, it updates the existing row with the new values.
-
-        Parameters
-        ----------
-        cursor : psycopg2 cursor
-            The database cursor used to execute SQL queries.
-        table_name : str
-            The name of the table where data will be inserted.
-        columns : list of str
-            The list of column names corresponding to the values being inserted.
-        values : list
-            The list of values to be inserted into the table, aligned with the columns.
-
-        Returns
-        -------
-        tuple
-            A tuple containing two integers: the count of rows inserted and the count of rows updated.
-        """
-        inserted_count = 0
-        updated_count = 0
-
-        # Check if there is an existing row that is different from the new values
-        # We are doing this in order to keep track of which rows are actually updated
-        # (Otherwise all existing rows would be added to updated_count)
-        id_index = columns.index("_id")
-        values[id_index] = str(values[id_index])
-        select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
-            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
-            table=sql.Identifier(table_name),
-        )
-        cursor.execute(select_query, (values[columns.index("_id")],))
-        existing_row = cursor.fetchone()
-
-        if existing_row and list(existing_row) == values:
-            # No changes, skip the update
-            return inserted_count, updated_count
-
-        query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
-            "ON CONFLICT (_id) DO UPDATE SET {updates} "
-            # The RETURNING clause is used to determine if the row was inserted or updated.
-            # xmax is a system column in PostgreSQL that stores the transaction ID of the deleting transaction.
-            # If xmax is 0, it means the row was newly inserted and not updated.
-            "RETURNING (xmax = 0) AS inserted"
-        ).format(
-            table=sql.Identifier(table_name),
-            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
-            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
-            updates=sql.SQL(", ").join(
-                sql.Composed(
-                    [sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)]
-                )
-                for col in columns
-                if col != "_id"
-            ),
-        )
-
-        cursor.execute(query, values)
-        result = cursor.fetchone()
-        if result and result[0]:
-            inserted_count += 1
-        else:
-            updated_count += 1
-
-        return inserted_count, updated_count
-
-    def handle_output(self, outputs):
-        """
-        Inserts CoMapeo project data into a PostgreSQL database. For each project, it checks the database schema and adds any missing fields. It then constructs and executes SQL insert queries to store the data in separate tables for each project. After processing all data, it commits the transaction and closes the database connection.
-        """
-        conn = self._get_conn()
-        cursor = conn.cursor()
-
-        comapeo_projects = outputs
-
-        for project_name, project_data in comapeo_projects.items():
-            # Safely truncate each project_name to 63 characters
-            # TODO: ...while retaining uniqueness
-            project_db_table_name = project_name[:63]
-            existing_fields = self._inspect_schema(project_db_table_name)
-            rows = []
-            for entry in project_data:
-                sanitized_entry = {
-                    ("_id" if k == "docId" else k): v for k, v in entry.items()
-                }
-                rows.append(sanitized_entry)
-
-            missing_field_keys = set()
-            for row in rows:
-                missing_field_keys.update(set(row.keys()).difference(existing_fields))
-
-            if missing_field_keys:
-                self._create_missing_fields(project_db_table_name, missing_field_keys)
-
-            logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
-
-            inserted_count = 0
-            updated_count = 0
-
-            for row in rows:
-                try:
-                    cols, vals = zip(*row.items())
-
-                    # Serialize lists, dict values to JSON text
-                    vals = list(vals)
-                    for i in range(len(vals)):
-                        value = vals[i]
-                        if isinstance(value, list) or isinstance(value, dict):
-                            vals[i] = json.dumps(value)
-
-                    result_inserted_count, result_updated_count = self._safe_insert(
-                        cursor, project_name, cols, vals
-                    )
-                    inserted_count += result_inserted_count
-                    updated_count += result_updated_count
-                except Exception as e:
-                    logger.error(f"Error inserting data: {e}, {type(e).__name__}")
-                    conn.rollback()
-
-                try:
-                    conn.commit()
-                except Exception as e:
-                    logger.error(f"Error committing transaction: {e}")
-                    conn.rollback()
-
-        logger.info(f"Total rows inserted: {inserted_count}")
-        logger.info(f"Total rows updated: {updated_count}")
-
-        cursor.close()
-        conn.close()
