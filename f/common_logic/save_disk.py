@@ -21,7 +21,7 @@ def get_safe_file_path(storage_path: str, db_table_name: str, file_type: str):
     return file_path
 
 
-def save_export_file(
+def save_data_to_file(
     data, db_table_name: str, storage_path: str, file_type: str = "json"
 ):
     """

@@ -2,7 +2,6 @@
 # psycopg2-binary
 # requests~=2.32
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -10,6 +9,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_operations import postgresql
+from f.common_logic.save_disk import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 # type names that refer to Windmill Resources
@@ -38,19 +38,26 @@ def main(
 
     features_with_global_ids = set_global_id(features_with_attachments)
 
-    save_geojson_file_to_disk(features_with_global_ids, storage_path)
+    geojson = {"type": "FeatureCollection", "features": features_with_global_ids}
 
     # At this point, the ArcGIS data is GeoJSON-compliant, and we don't need anything
-    # from the REST API anymore. The data can therefore be handled further using the
-    # existing GeoJSON connector.
+    # from the REST API anymore. We can save the data to a file and then to Postgres.
+
+    save_data_to_file(
+        geojson,
+        db_table_name,
+        storage_path,
+        file_type="geojson",
+    )
+
+    geojson_path = Path(storage_path) / f"{db_table_name}.geojson"
+
     save_geojson_to_postgres(
         db,
         db_table_name,
-        str(storage_path / "data.geojson"),
+        geojson_path,
         storage_path,
-        False,  # to not delete the GeoJSON file after its contents are written to the database.
-        # Users might like to have access to the GeoJSON file directly, in addition to the data
-        # in the database.
+        False,  # do not delete the file after saving to Postgres
     )
 
 
@@ -246,29 +253,3 @@ def set_global_id(features: list):
         feature["id"] = feature["properties"]["globalid"]
 
     return features
-
-
-def save_geojson_file_to_disk(
-    features: list,
-    storage_path: str,
-):
-    """
-    Save the GeoJSON file to disk.
-
-    Parameters
-    ----------
-    features : list
-        A list of features to save.
-    storage_path : str
-        The directory where the GeoJSON file should be saved.
-    """
-    geojson = {"type": "FeatureCollection", "features": features}
-
-    geojson_filename = Path(storage_path) / "data.geojson"
-
-    geojson_filename.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(geojson_filename, "w") as f:
-        json.dump(geojson, f)
-
-    logger.info(f"GeoJSON file saved to: {geojson_filename}")
