@@ -50,13 +50,13 @@ def main(
         file_type="geojson",
     )
 
-    geojson_path = Path(storage_path) / f"{db_table_name}.geojson"
+    rel_geojson_path = Path(db_table_name) / f"{db_table_name}.geojson"
 
     save_geojson_to_postgres(
         db,
         db_table_name,
-        geojson_path,
-        storage_path,
+        rel_geojson_path,
+        attachment_root,
         False,  # do not delete the file after saving to Postgres
     )
 
