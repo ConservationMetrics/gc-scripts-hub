@@ -51,7 +51,6 @@ def main(
         server_url,
         access_token,
         comapeo_projects,
-        db_table_prefix,
         attachment_root,
     )
 
@@ -59,15 +58,17 @@ def main(
         f"Downloaded CoMapeo data for {len(comapeo_projects_geojson)} projects. Saving data..."
     )
 
-    for project_id, geojson in comapeo_projects_geojson.items():
-        storage_path = Path(attachment_root) / db_table_prefix / project_id
-        rel_geojson_path = Path(db_table_prefix) / project_id / f"{project_id}.geojson"
+    for project_name, geojson in comapeo_projects_geojson.items():
+        storage_path = Path(attachment_root) / db_table_prefix / project_name
+        rel_geojson_path = (
+            Path(db_table_prefix) / project_name / f"{project_name}.geojson"
+        )
 
-        save_data_to_file(geojson, project_id, storage_path, file_type="geojson")
+        save_data_to_file(geojson, project_name, storage_path, file_type="geojson")
 
         save_geojson_to_postgres(
             db,
-            project_id,
+            db_table_prefix + "_" + project_name,
             rel_geojson_path,
             attachment_root,
             False,  # do not delete the file after saving to Postgres
@@ -231,7 +232,6 @@ def download_and_transform_comapeo_data(
     server_url,
     access_token,
     comapeo_projects,
-    db_table_prefix,
     attachment_root,
 ):
     """
@@ -243,8 +243,6 @@ def download_and_transform_comapeo_data(
         A dictionary containing the 'server_url' and 'access_token' keys for the CoMapeo server.
     comapeo_projects : list
         A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
-    db_table_prefix : str
-        The prefix to be used for database table names.
     attachment_root : str
         The root directory where attachments will be saved.
 
@@ -264,7 +262,6 @@ def download_and_transform_comapeo_data(
         project_id = project["project_id"]
         project_name = project["project_name"]
         sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
-        final_project_name = f"{db_table_prefix + '_' if db_table_prefix else ''}{sanitized_project_name}"
 
         # Download the project data
         url = f"{server_url}/projects/{project_id}/observations"
@@ -348,7 +345,7 @@ def download_and_transform_comapeo_data(
             features.append(feature)
 
         # Store observations as a GeoJSON FeatureCollection
-        comapeo_data[final_project_name] = {
+        comapeo_data[sanitized_project_name] = {
             "type": "FeatureCollection",
             "features": features,
         }
