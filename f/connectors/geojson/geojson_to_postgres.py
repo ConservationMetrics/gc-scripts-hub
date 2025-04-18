@@ -217,7 +217,9 @@ class GeoJSONDbWriter:
         cursor = conn.cursor()
 
         # Safely truncate the table to 63 characters
+        # TODO: ...while retaining uniqueness
         table_name = table_name[:63]
+
         existing_fields = self._inspect_schema(table_name)
         rows = []
         for entry in outputs:
