@@ -302,7 +302,9 @@ def download_and_transform_comapeo_data(
             # Other geometry types and formats may be added in the future
             feature = {
                 "type": "Feature",
-                "id": observation.pop("docId"),
+                # docId is the unique identifier for the observation. We'll use it as the ID for the feature
+                # and also include it in the properties
+                "id": observation["docId"],
                 "properties": {
                     k: str(v) for k, v in observation.items() if k not in ["lat", "lon"]
                 },
