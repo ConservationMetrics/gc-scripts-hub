@@ -1,8 +1,10 @@
 #!/bin/bash
-
 set -e
 
-source .env
+if [ -z "$WORKSPACES" ]; then
+  echo "Error: No workspaces defined in WORKSPACES environment variable."
+  exit 1
+fi
 
 IFS=',' read -ra WORKSPACE_LIST <<< "$WORKSPACES"
 

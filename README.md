@@ -32,19 +32,13 @@ Then push the code in this Git repo to your workspace:
 Folders named `./tests/` are excluded by `wmill.yml` from syncing to Windmill —
 because otherwise Windmill tries to make the tests (as with ALL python files) into bona-fide Windmill scripts.
 
-This repo also provides a shell script to batch push changes to a number of workspaces at once. To use this:
+This repo also provides a shell script to batch push changes to a number of workspaces at once. To use this, set the `WORKSPACES` environment variable with a list of workspace names. You can do this directly in the command line:
 
-1. Ensure the script is executable:
+       WORKSPACES=gc-windmill,gc-testing-server bin/push.sh
 
-       chmod +x bin/push.sh
+   Alternatively, use a subshell to load a WORKSPACES variable from a `.env` file without affecting your current shell environment:
 
-2. Populate a list of workspace names in a `.env` file, like so:
-
-       WORKSPACES=gc-windmill,gc-testing-server,...
-
-3. Run:
-
-       bin/push.sh
+       (set -a; source .env; set +a; bin/push.sh)
 
 ## Development
 
