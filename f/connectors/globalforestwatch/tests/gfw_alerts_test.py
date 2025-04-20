@@ -9,7 +9,7 @@ def test_script_e2e(gfw_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        gfw_server.api_key,
+        gfw_server.gfw_api,
         "[[[-73.9731, 40.7644], [-73.9819, 40.7681], [-73.9580, 40.8003], [-73.9493, 40.7967], [-73.9731, 40.7644]]]",
         "gfw_integrated_alerts",
         "2025-01-01",

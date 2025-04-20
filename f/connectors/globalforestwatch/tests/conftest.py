@@ -19,7 +19,7 @@ def gfw_server(mocked_responses):
 
     @dataclass
     class GFWAPI:
-        api_key: str
+        gfw_api: dict
 
     mocked_responses.post(
         "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/query",
@@ -27,9 +27,9 @@ def gfw_server(mocked_responses):
         status=200,
     )
 
-    api_key = dict(api_key="my-api-key")
+    gfw_api = dict(api_key="my-api-key")
 
-    return GFWAPI(api_key)
+    return GFWAPI(gfw_api)
 
 
 @pytest.fixture

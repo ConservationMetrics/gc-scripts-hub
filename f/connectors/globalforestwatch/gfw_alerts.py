@@ -14,14 +14,14 @@ from f.common_logic.save_disk import save_export_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 # type names that refer to Windmill Resources
-c_gfw_api_key = dict
+c_gfw_api = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    api_key: c_gfw_api_key,
+    gfw_api: c_gfw_api,
     bounding_box: str,
     type_of_alert: str,
     minimum_date: str,
@@ -32,7 +32,7 @@ def main(
     storage_path = Path(attachment_root) / db_table_name
 
     alerts = fetch_alerts_from_gfw(
-        api_key["api_key"], bounding_box, type_of_alert, minimum_date
+        gfw_api["api_key"], bounding_box, type_of_alert, minimum_date
     )
 
     alerts_geojson = format_alerts_as_geojson(alerts, type_of_alert)
@@ -57,7 +57,7 @@ def main(
 
 
 def fetch_alerts_from_gfw(
-    api_key: c_gfw_api_key, bounding_box: str, type_of_alert: str, minimum_date: str
+    api_key: c_gfw_api, bounding_box: str, type_of_alert: str, minimum_date: str
 ):
     """
     Get alerts from GFW API using the provided API key and bounding box.
@@ -74,7 +74,7 @@ def fetch_alerts_from_gfw(
         The minimum date for filtering alerts.
 
     # GFW API documentation: https://www.globalforestwatch.org/help/developers/guides/query-data-for-a-custom-geometry/
-    # TODO: Handle maximum allowed payload size of 6291556 bytes
+    # TODO: Figure out a workaround for the maximum allowed payload size of 6291556 bytes
 
     Returns
     -------
