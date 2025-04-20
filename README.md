@@ -20,17 +20,25 @@ Some of the tools available in the Guardian Connector Scripts Hub are:
 ![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
 _A Windmill Workspace populated with some of the tools in this repository._
 
-## Deploying the code to a Windmill workspace
+## Deploying the code to Windmill workspaces
 
 [Install the Windmill CLI](https://www.windmill.dev/docs/advanced/cli), and
 [set it up to talk to your deployed Workspace](https://www.windmill.dev/docs/advanced/cli/workspace-management).
 
-Then push the code in this Git repo your workspace:
+Then push the code in this Git repo to your workspace:
 
     wmill sync push --skip-variables
 
 Folders named `./tests/` are excluded by `wmill.yml` from syncing to Windmill —
 because otherwise Windmill tries to make the tests (as with ALL python files) into bona-fide Windmill scripts.
+
+This repo also provides a shell script to batch push changes to a number of workspaces at once. To use this, set the `WORKSPACES` environment variable with a list of workspace names. You can do this directly in the command line:
+
+       WORKSPACES=gc-windmill,gc-testing-server bin/push.sh
+
+   Alternatively, use a subshell to load a WORKSPACES variable from a `.env` file without affecting your current shell environment:
+
+       (set -a; source .env; set +a; bin/push.sh)
 
 ## Development
 
