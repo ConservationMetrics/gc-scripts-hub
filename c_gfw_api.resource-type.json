@@ -1,0 +1,18 @@
+{
+	"type": "object",
+	"order": [
+		"api_key"
+	],
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"required": [
+		"server_url"
+	],
+	"properties": {
+		"api_key": {
+			"type": "string",
+			"default": "",
+			"nullable": false,
+			"description": "The API key to authenticate with the GFW API."
+		}
+	}
+}
