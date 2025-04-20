@@ -1,0 +1,78 @@
+summary: 'Global Forest Watch: Fetch Alerts'
+description: Fetch alerts from the Global Forest Watch API
+lock: '!inline f/connectors/alerts/alerts_twilio.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - type_of_alert
+    - gfw_api_key
+    - bounding_box
+    - mininum_date
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    type_of_alert:
+      type: string
+      description: >-
+        The type of alert to fetch from the Global Forest Watch API. This can
+        be one of the following:  `gfw_integrated_alerts` (recommended), 
+        `gfw_radd_alerts`, `umd_glad_landsat_alerts`, or `umd_glad_sentinel2_alerts.
+      default: null
+      originalType: string
+    gfw_api_key:
+      type: object
+      description: >-
+        The API key for accessing the Global Forest Watch API. Please note that 
+        this year expires after 1 year. For now, you can obtain a new API key from 
+        the Global Forest Watch API.
+      default: null
+      format: resource-c_gfw_api_key
+    bounding_box:
+      type: array
+      description: >-
+        A bounding box defining the geographical area of interest for fetching
+        alerts. This should be a list of coordinates forming a closed polygon,
+        for example:
+        [-73.993896, 40.735863],
+        [-73.980522, 40.741404],
+        [-73.986220, 40.753312],
+        [-73.999283, 40.748088],
+        [-73.993896, 40.735863]
+      default: null
+    mininum_date:
+      type: string
+      description: >-
+        The minimum date for fetching alerts. This should be in the format
+        YYYY-MM-DD. For example, to fetch alerts from January 1, 2023, use
+        "2023-01-01".
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: The database connection parameters for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where alerts will be stored.
+      default: null
+      originalType: string
+    attachment_root:
+      type: string
+      description: A path where a GeoJSON file will be stored. This is used for
+        storing the alerts in a GeoJSON format.
+      default: null
+      originalType: string
+
+  required:
+    - type_of_alert
+    - gfw_api_key
+    - bounding_box
+    - mininum_date
+    - db
+    - db_table_name
+    - attachment_root
