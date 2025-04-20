@@ -2,6 +2,7 @@
 # psycopg2-binary
 # requests~=2.32
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -9,7 +10,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_operations import postgresql
-from f.common_logic.save_disk import save_data_to_file
+from f.common_logic.save_disk import save_export_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 # type names that refer to Windmill Resources
@@ -30,11 +31,13 @@ def main(
 ):
     storage_path = Path(attachment_root) / db_table_name
 
-    alerts = fetch_alerts_from_gfw(api_key, bounding_box, type_of_alert, minimum_date)
+    alerts = fetch_alerts_from_gfw(
+        api_key["api_key"], bounding_box, type_of_alert, minimum_date
+    )
 
     alerts_geojson = format_alerts_as_geojson(alerts, type_of_alert)
 
-    save_data_to_file(
+    save_export_file(
         alerts_geojson,
         db_table_name,
         storage_path,
@@ -50,7 +53,7 @@ def main(
         attachment_root,
         False,  # to not delete the GeoJSON file after its contents are written to the database.
     )
-    logger.info(f"GeoJSON data saved to PostgreSQL table {db_table_name}.")
+    logger.info(f"GeoJSON data saved to PostgreSQL table [{db_table_name}].")
 
 
 def fetch_alerts_from_gfw(
@@ -61,7 +64,7 @@ def fetch_alerts_from_gfw(
 
     Parameters
     ----------
-    api_key : c_gfw_api_key
+    api_key : str
         API key for authenticating with the GFW API.
     bounding_box : str
         The bounding box coordinates for the area of interest.
@@ -84,8 +87,10 @@ def fetch_alerts_from_gfw(
         "x-api-key": api_key,
         "Content-Type": "application/json",
     }
+    bbox_array = json.loads(bounding_box)
+
     data = {
-        "geometry": {"type": "Polygon", "coordinates": bounding_box},
+        "geometry": {"type": "Polygon", "coordinates": bbox_array},
         "sql": f"SELECT latitude, longitude, {type_of_alert}__date, {type_of_alert}__confidence FROM results WHERE {type_of_alert}__date >= '{minimum_date}'",
     }
 
@@ -94,6 +99,7 @@ def fetch_alerts_from_gfw(
     results = response.json().get("data", [])
 
     logger.info(f"Received {len(results)} alerts from GFW API.")
+    logger.info(results)
     return results
 
 

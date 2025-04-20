@@ -21,8 +21,13 @@ schema:
         The type of alert to fetch from the Global Forest Watch API. This can
         be one of the following:  `gfw_integrated_alerts` (recommended), 
         `gfw_radd_alerts`, `umd_glad_landsat_alerts`, or `umd_glad_sentinel2_alerts.
-      default: null
-      originalType: string
+      default: "gfw_integrated_alerts"
+      enum:
+        - gfw_integrated_alerts
+        - gfw_radd_alerts
+        - umd_glad_landsat_alerts
+        - umd_glad_sentinel2_alerts
+      originalType: string  
     gfw_api_key:
       type: object
       description: >-
@@ -32,16 +37,11 @@ schema:
       default: null
       format: resource-c_gfw_api_key
     bounding_box:
-      type: array
+      type: string
       description: >-
         A bounding box defining the geographical area of interest for fetching
         alerts. This should be a list of coordinates forming a closed polygon,
-        for example:
-        [-73.993896, 40.735863],
-        [-73.980522, 40.741404],
-        [-73.986220, 40.753312],
-        [-73.999283, 40.748088],
-        [-73.993896, 40.735863]
+        for example: `[[[-55.2308,5.6945],[-55.2158,5.6945],[-55.2158,5.7055],[-55.2308,5.7055],[-55.2308,5.6945]]]`
       default: null
     mininum_date:
       type: string
@@ -59,13 +59,13 @@ schema:
     db_table_name:
       type: string
       description: The name of the database table where alerts will be stored.
-      default: null
+      default: "gfw-alerts"
       originalType: string
     attachment_root:
       type: string
       description: A path where a GeoJSON file will be stored. This is used for
         storing the alerts in a GeoJSON format.
-      default: null
+      default: /persistent-storage/datalake
       originalType: string
 
   required:
