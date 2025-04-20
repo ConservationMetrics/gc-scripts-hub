@@ -99,7 +99,7 @@ def fetch_alerts_from_gfw(
     results = response.json().get("data", [])
 
     logger.info(f"Received {len(results)} alerts from GFW API.")
-    logger.info(results)
+
     return results
 
 
