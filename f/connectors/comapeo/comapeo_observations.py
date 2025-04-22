@@ -118,7 +118,7 @@ def fetch_comapeo_projects(server_url, access_token, comapeo_project_blocklist):
     return comapeo_projects
 
 
-def build_existing_file_map(directory):
+def build_existing_file_set(directory):
     """
     Builds a set of existing file names (without extensions) in the specified directory.
     This is used to check for existing files before downloading new ones.
@@ -299,7 +299,7 @@ def download_and_transform_comapeo_data(
         attachment_dir = (
             Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
         )
-        existing_file_stems = build_existing_file_map(attachment_dir)
+        existing_file_stems = build_existing_file_set(attachment_dir)
 
         for i, observation in enumerate(current_project_data):
             observation["project_name"] = project_name
