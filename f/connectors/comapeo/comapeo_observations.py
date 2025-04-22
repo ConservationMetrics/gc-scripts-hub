@@ -5,6 +5,7 @@
 import logging
 import mimetypes
 import re
+from os import listdir
 from pathlib import Path
 from typing import TypedDict
 
@@ -125,7 +126,16 @@ def fetch_comapeo_projects(server_url, access_token, comapeo_project_blocklist):
     return comapeo_projects
 
 
-def download_attachment(url, headers, save_path):
+def build_existing_file_set(directory):
+    """
+    Builds a set of existing file names (without extensions) in the specified directory.
+    This is used to check for existing files before downloading new ones.
+    """
+    files = listdir(directory) if Path(directory).exists() else []
+    return {Path(f).stem for f in files}  # just base names, no extensions
+
+
+def download_attachment(url, headers, save_path, existing_file_stems):
     """
     Downloads a file from a specified URL and saves it to a given path.
 
@@ -137,6 +147,8 @@ def download_attachment(url, headers, save_path):
         A dictionary of HTTP headers to send with the request, such as authentication tokens.
     save_path : str
         The file system path where the downloaded file will be saved.
+    existing_file_stems : set
+        A set of existing file names (without extensions) to check against before downloading.
 
     Returns
     -------
@@ -158,10 +170,16 @@ def download_attachment(url, headers, save_path):
 
     """
     skipped_attachments = 0
-    if Path(save_path).exists():
-        logger.debug("File already exists, skipping download.")
+    base_name = Path(save_path).name
+
+    if base_name in existing_file_stems:
+        logger.debug(f"{base_name} already exists, skipping download.")
         skipped_attachments += 1
-        return Path(save_path).name, skipped_attachments
+        # Try to find matching full filename (with extension)
+        full_path = next(
+            (f for f in Path(save_path).parent.glob(f"{base_name}.*")), None
+        )
+        return (full_path.name if full_path else base_name), skipped_attachments
 
     try:
         response = requests.get(url, headers=headers)
@@ -170,8 +188,7 @@ def download_attachment(url, headers, save_path):
         content_type = response.headers.get("Content-Type", "")
         extension = mimetypes.guess_extension(content_type) or ""
 
-        file_name = Path(url).name + extension
-
+        file_name = base_name + extension
         save_path = Path(str(save_path) + extension)
 
         save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -258,6 +275,7 @@ def download_and_transform_comapeo_data(
 
     comapeo_data = {}
     attachment_failed = False
+
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
@@ -282,6 +300,11 @@ def download_and_transform_comapeo_data(
 
         skipped_attachments = 0
         features = []
+
+        attachment_dir = (
+            Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
+        )
+        existing_file_stems = build_existing_file_set(attachment_dir)
 
         for i, observation in enumerate(current_project_data):
             # Create k/v pairs for each tag
@@ -321,17 +344,11 @@ def download_and_transform_comapeo_data(
                 filenames = []
                 for attachment in observation["attachments"]:
                     if "url" in attachment:
-                        logger.info(attachment["url"])
                         file_name, skipped = download_attachment(
                             attachment["url"],
                             headers,
-                            str(
-                                Path(attachment_root)
-                                / "comapeo"
-                                / sanitized_project_name
-                                / "attachments"
-                                / Path(attachment["url"]).name
-                            ),
+                            str(attachment_dir / Path(attachment["url"]).name),
+                            existing_file_stems,
                         )
                         skipped_attachments += skipped
                         if file_name is not None:
