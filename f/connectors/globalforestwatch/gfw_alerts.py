@@ -90,6 +90,9 @@ def fetch_alerts_from_gfw(
     bbox_array = json.loads(bounding_box)
 
     data = {
+        # Note: we can also provide a GeoJSON feature collection here.
+        # The advantage would be that the geometry can be more complex than a simple bounding box.
+        # Let's decide whether to do this or not after this script gets some usage.
         "geometry": {"type": "Polygon", "coordinates": bbox_array},
         "sql": f"SELECT latitude, longitude, {type_of_alert}__date, {type_of_alert}__confidence FROM results WHERE {type_of_alert}__date >= '{minimum_date}'",
     }
