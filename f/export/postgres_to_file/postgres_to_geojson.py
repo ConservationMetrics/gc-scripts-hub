@@ -2,7 +2,7 @@ import json
 import logging
 
 from f.common_logic.db_operations import conninfo, fetch_data_from_postgres, postgresql
-from f.common_logic.save_disk import save_export_file
+from f.common_logic.save_disk import save_data_to_file
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def main(
 
     feature_collection = format_data_as_geojson(data)
 
-    save_export_file(
+    save_data_to_file(
         feature_collection, db_table_name, storage_path, file_type="geojson"
     )
 

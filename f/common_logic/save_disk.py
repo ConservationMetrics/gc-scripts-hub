@@ -21,9 +21,7 @@ def get_safe_file_path(storage_path: str, db_table_name: str, file_type: str):
     return file_path
 
 
-def save_export_file(
-    data, db_table_name: str, storage_path: str, file_type: str = "json"
-):
+def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "json"):
     """
     Saves the provided data to a file in the specified format and storage path.
 
@@ -31,8 +29,8 @@ def save_export_file(
     ----------
     data : list or dict
         The data to be saved. For CSV, should be a list of rows including a header.
-    db_table_name : str
-        The name of the database table, used to name the output file.
+    filename : str
+        The name of the file to save the data to, without extension.
     storage_path : str
         The directory path where the file will be saved.
     file_type : str
@@ -40,7 +38,7 @@ def save_export_file(
     """
     storage_path = Path(storage_path)
     storage_path.mkdir(parents=True, exist_ok=True)
-    file_path = get_safe_file_path(storage_path, db_table_name, file_type)
+    file_path = get_safe_file_path(storage_path, filename, file_type)
 
     if file_type in {"geojson", "json"}:
         with file_path.open("w") as f:

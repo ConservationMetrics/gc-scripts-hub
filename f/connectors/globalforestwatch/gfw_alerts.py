@@ -10,7 +10,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_operations import postgresql
-from f.common_logic.save_disk import save_export_file
+from f.common_logic.save_disk import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 # type names that refer to Windmill Resources
@@ -37,7 +37,7 @@ def main(
 
     alerts_geojson = format_alerts_as_geojson(alerts, type_of_alert)
 
-    save_export_file(
+    save_data_to_file(
         alerts_geojson,
         db_table_name,
         storage_path,

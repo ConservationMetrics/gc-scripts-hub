@@ -216,6 +216,10 @@ class GeoJSONDbWriter:
         conn = self._get_conn()
         cursor = conn.cursor()
 
+        # Safely truncate the table to 63 characters
+        # TODO: ...while retaining uniqueness
+        table_name = table_name[:63]
+
         existing_fields = self._inspect_schema(table_name)
         rows = []
         for entry in outputs:
@@ -229,7 +233,9 @@ class GeoJSONDbWriter:
         if missing_field_keys:
             self._create_missing_fields(table_name, missing_field_keys)
 
-        logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
+        logger.info(
+            f"Attempting to write {len(rows)} submissions to the DB to table {table_name}"
+        )
 
         inserted_count = 0
         updated_count = 0
