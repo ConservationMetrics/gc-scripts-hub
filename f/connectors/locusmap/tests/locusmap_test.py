@@ -55,9 +55,24 @@ def test_script_e2e_points(pg_database, tmp_path, file_format):
 
     assert not tmp_fixture_path.exists()
 
+    assert (
+        asset_storage / "my_locusmap_points" / f"my_locusmap_points.{file_format}"
+    ).exists()
+    assert (
+        asset_storage / "my_locusmap_points" / "my_locusmap_points.geojson"
+    ).exists()
 
-@pytest.mark.parametrize("file_format", ["zip", "kmz"])
-def test_script_e2e_points_archive(pg_database, tmp_path, file_format):
+
+@pytest.mark.parametrize(
+    "file_format,expected_extracted_filename",
+    [
+        ("zip", "my_locusmap_points.csv"),
+        ("kmz", "my_locusmap_points.kml"),
+    ],
+)
+def test_script_e2e_points_archive(
+    pg_database, tmp_path, file_format, expected_extracted_filename
+):
     tmp_fixture_path = tmp_path / f"Favorites.{file_format}"
 
     # Copy fixtures to a temp location
@@ -86,6 +101,11 @@ def test_script_e2e_points_archive(pg_database, tmp_path, file_format):
 
     assert not (tmp_path / "Favorites.csv").exists()
     assert not (tmp_path / "Favorites-attachments").exists()
+
+    assert (asset_storage / "my_locusmap_points" / expected_extracted_filename).exists()
+    assert (
+        asset_storage / "my_locusmap_points" / "my_locusmap_points.geojson"
+    ).exists()
 
 
 def test_script_e2e_points_unsupported_format(tmp_path):
