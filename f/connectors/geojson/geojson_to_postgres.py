@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 
-from f.common_logic.db_operations import FormDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def main(
     geojson_path = Path(attachment_root) / Path(geojson_path)
     transformed_geojson_data = transform_geojson_data(geojson_path)
 
-    db_writer = FormDBWriter(
+    db_writer = StructuredDBWriter(
         conninfo(db),
         db_table_name,
         use_mapping_table=False,

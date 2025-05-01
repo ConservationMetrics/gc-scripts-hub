@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pyodk.client import Client
 
-from f.common_logic.db_operations import FormDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
 # type names that refer to Windmill Resources
 c_odk_config = dict
@@ -69,7 +69,7 @@ def main(
 
         transformed_form_data = format_geometry_fields(form_data)
 
-        db_writer = FormDBWriter(
+        db_writer = StructuredDBWriter(
             conninfo(db),
             db_table_name,
             use_mapping_table=True,
