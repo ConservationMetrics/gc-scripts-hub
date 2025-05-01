@@ -102,6 +102,7 @@ def _main(
 
     prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
 
+    logger.info(f"Writing alerts to the database table [{db_table_name}].")
     alerts_writer = StructuredDBWriter(
         conninfo(db),
         db_table_name,
@@ -109,9 +110,13 @@ def _main(
     )
     alerts_data_written = alerts_writer.handle_output(prepared_alerts_data)
 
+    alerts_metadata_table_name = f"{db_table_name}__metadata"
+    logger.info(
+        f"Writing alerts metadata to the database table [{alerts_metadata_table_name}]."
+    )
     metadata_writer = StructuredDBWriter(
         conninfo(db),
-        f"{db_table_name}__metadata",
+        alerts_metadata_table_name,
         predefined_schema=create_metadata_table,
     )
     metadata_written = metadata_writer.handle_output(prepared_alerts_metadata)

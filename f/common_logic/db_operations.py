@@ -291,14 +291,16 @@ class StructuredDBWriter:
 
     def handle_output(self, submissions):
         table_name = self.table_name
-        columns_table_name = f"{table_name[:54]}__columns"
 
-        existing_fields = self._get_existing_cols(table_name, columns_table_name)
-        existing_mappings = (
-            self._get_existing_mappings(columns_table_name)
-            if self.use_mapping_table
-            else {}
-        )
+        if self.use_mapping_table:
+            columns_table_name = f"{table_name[:54]}__columns"
+            existing_fields = self._get_existing_cols_with_mapping_table(
+                table_name, columns_table_name
+            )
+            existing_mappings = self._get_existing_mappings(columns_table_name)
+        else:
+            existing_fields = self._inspect_schema(table_name)
+            existing_mappings = {}
 
         rows = []
         original_to_sql = {}
