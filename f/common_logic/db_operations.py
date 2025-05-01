@@ -56,9 +56,10 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     return columns, rows
 
 
-class FormDBWriter:
+class StructuredDBWriter:
     """
-    Converts form or GeoJSON-like data into structured SQL tables with optional key sanitization and column mapping.
+    StructuredDBWriter writes structured or semi-structured data (e.g., form submissions, GeoJSON features)
+    into a PostgreSQL table. It optionally supports dynamic schema evolution, key sanitization, and column mapping, or can rely on a predefined schema setup.
 
     Parameters
     ----------
@@ -67,16 +68,22 @@ class FormDBWriter:
     table_name : str
         Destination table name for the data.
     use_mapping_table : bool
-        If True, maintains a separate mapping table to map original keys to SQL-safe column names.
+      If True, maintains a mapping table that maps original keys to SQL-safe column names.
     sanitize_keys : bool
-        If True, applies sanitization and string replacement to keys before inserting.
+      If True, applies transformations to make keys SQL-compatible, including optional string replacements.
     reverse_properties_separated_by : str or None
-        If set and sanitization is enabled, reverses nested key parts using this separator.
+      If provided, splits keys on this character, reverses segments, and rejoins — useful for nested property flattening.
+    str_replace : list of tuple, optional
+        List of (old, new) strings to apply to keys during sanitization.
+    predefined_schema : callable or None, optional
+        If provided, this function is executed to create or validate the schema before inserting any data.
+        Signature: `(cursor, table_name) -> None`
 
-    Methods
-    -------
-    handle_output(outputs)
-        Inserts the list of dicts (form/geojson entries) into the SQL table, updating schema if needed.
+    Typical Use Cases
+    -----------------
+    - Writing cleaned KoboToolbox or ODK form data to a SQL table.
+    - Ingesting GeoJSON features with flattened geometry and properties.
+    - Storing alert data with a strict, predefined schema.
     """
 
     def __init__(
@@ -87,6 +94,7 @@ class FormDBWriter:
         sanitize_keys=False,
         reverse_properties_separated_by=None,
         str_replace=[("/", "__")],
+        predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string
         # Safely truncate the table to 63 characters
@@ -96,6 +104,7 @@ class FormDBWriter:
         self.sanitize_keys = sanitize_keys
         self.reverse_separator = reverse_properties_separated_by
         self.str_replace = str_replace
+        self.predefined_schema = predefined_schema
 
     def _get_conn(self):
         """
@@ -292,7 +301,6 @@ class FormDBWriter:
         )
 
         rows = []
-        # Iterate over each submission to collect the full set of columns needed
         original_to_sql = {}
 
         for submission in submissions:
@@ -312,8 +320,8 @@ class FormDBWriter:
         missing_field_keys = set()
 
         for sanitized, mappings in rows:
-            colnames = mappings.values() if self.use_mapping_table else sanitized.keys()
             # Identify keys in the sanitized data that are not currently supported by existing mappings
+            colnames = mappings.values() if self.use_mapping_table else sanitized.keys()
             missing_map_keys.update(set(sanitized.keys()) - set(mappings.values()))
             # Identify keys in existing mappings that do not exist in the database table
             # NOTE: This can occur when the database is newly created based on legacy mappings
@@ -341,18 +349,22 @@ class FormDBWriter:
             self._create_missing_mappings(columns_table_name, missing_mappings)
             time.sleep(10)
 
-        if missing_field_keys:
-            logger.info(
-                f"New incoming field keys missing from db: {len(missing_field_keys)}"
-            )
-            self._create_missing_fields(table_name, missing_field_keys)
-
-        logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
-
         inserted_count = 0
         updated_count = 0
 
         with self._get_conn() as conn, conn.cursor() as cursor:
+            # Use predefined schema if provided, else mutate schema dynamically
+            if self.predefined_schema:
+                self.predefined_schema(cursor, table_name)
+                conn.commit()
+            elif missing_field_keys:
+                logger.info(
+                    f"New incoming field keys missing from db: {len(missing_field_keys)}"
+                )
+                self._create_missing_fields(table_name, missing_field_keys)
+
+            logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
+
             for row, _ in rows:
                 try:
                     cols, vals = zip(*row.items())
@@ -380,8 +392,11 @@ class FormDBWriter:
                     logger.error(f"Error committing transaction: {e}")
                     conn.rollback()
 
-        logger.info(f"Total rows inserted: {inserted_count}")
-        logger.info(f"Total rows updated: {updated_count}")
+            logger.info(f"Total rows inserted: {inserted_count}")
+            logger.info(f"Total rows updated: {updated_count}")
 
-        cursor.close()
-        conn.close()
+            # cursor.close()
+            # conn.close()
+
+        # Return True if there were new inserts
+        return inserted_count > 0
