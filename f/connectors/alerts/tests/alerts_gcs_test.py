@@ -208,6 +208,12 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             )  # This is the only row in the CSV that does not have a confidence value
             assert cursor.fetchone()[0] is None
 
+            # Check that there is no __columns table created
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'fake_alerts__columns'"
+            )
+            assert cursor.fetchone() is None
+
     # GeoJSON is saved to disk
     assert (
         asset_storage

@@ -36,3 +36,9 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
                 "SELECT \"instanceID__meta\" FROM kobo_responses WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("uuid:e58da38d-3eee-4bd7-8512-4a97ea8fbb01",)
+
+            # Check that the mapping column was created
+            cursor.execute(
+                "SELECT COUNT(*) FROM kobo_responses__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
+            )
+            assert cursor.fetchone()[0] == 1
