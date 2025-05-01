@@ -9,7 +9,11 @@ import pandas as pd
 import psycopg2
 import pytest
 
-from f.connectors.alerts.alerts_gcs import _main, prepare_alerts_metadata
+from f.connectors.alerts.alerts_gcs import (
+    _main,
+    prepare_alerts_data,
+    prepare_alerts_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +33,32 @@ def test_prepare_alerts_metadata():
     assert alert_statistics["month_year"] == "2/2024"
     assert alert_statistics["total_alerts"] == "1"
     assert alert_statistics["description_alerts"] == "ghostly barrow noises"
+
+
+def test_metadata_id_stability():
+    alerts_history_csv = Path(assets_directory, "alerts_history.csv")
+    alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
+
+    first, _ = prepare_alerts_metadata(alerts_metadata, 100)
+    second, _ = prepare_alerts_metadata(alerts_metadata, 100)
+
+    # Order shouldn't matter but just to be safe, sort by _id
+    first_ids = sorted(r["_id"] for r in first)
+    second_ids = sorted(r["_id"] for r in second)
+
+    assert first_ids == second_ids
+    assert len(set(first_ids)) == len(first_ids)  # No duplicates
+
+
+def test_alert_id_generation(tmp_path):
+    file_path = Path(assets_directory, "alert_202309900112345671.geojson")
+    geojson_files = [str(file_path)]
+    prepared = prepare_alerts_data(tmp_path, geojson_files)
+
+    assert len(prepared) > 0
+    for row in prepared:
+        assert "_id" in row
+        uuid.UUID(row["_id"])  # will raise ValueError if invalid
 
 
 @pytest.fixture
@@ -86,9 +116,71 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             _id = cursor.fetchone()[0]
             assert uuid.UUID(_id)
 
+            # Check that the _id field is unique
+            cursor.execute("SELECT _id FROM fake_alerts")
+            ids = [row[0] for row in cursor.fetchall()]
+            assert len(ids) == len(set(ids)), "Duplicate _id values found in alerts"
+
+            # Schema assertions for alerts table
+            cursor.execute("SELECT * FROM fake_alerts LIMIT 1")
+            alerts_desc = [col.name for col in cursor.description]
+            expected_alerts_fields = {
+                "_id",
+                "alert_id",
+                "alert_type",
+                "area_alert_ha",
+                "basin_id",
+                "confidence",
+                "count",
+                "date_end_t0",
+                "date_end_t1",
+                "date_start_t0",
+                "date_start_t1",
+                "grid",
+                "label",
+                "month_detec",
+                "sat_detect_prefix",
+                "sat_viz_prefix",
+                "satellite",
+                "territory_id",
+                "territory_name",
+                "year_detec",
+                "length_alert_km",
+                "g__type",
+                "g__coordinates",
+                "data_source",
+                "source_file_name",
+            }
+            assert expected_alerts_fields.issubset(set(alerts_desc)), (
+                f"Missing fields in alerts table: {expected_alerts_fields - set(alerts_desc)}"
+            )
+
+            # Check that the _id field is unique in the metadata table
+            cursor.execute("SELECT _id FROM fake_alerts__metadata")
+            ids = [row[0] for row in cursor.fetchall()]
+            assert len(ids) == len(set(ids)), "Duplicate _id values found in metadata"
+
             # Count of unique rows in alerts_history.csv based on UUID
             cursor.execute("SELECT COUNT(*) FROM fake_alerts__metadata")
             assert cursor.fetchone()[0] == 8
+
+            # Schema assertions for metadata table
+            cursor.execute("SELECT * FROM fake_alerts__metadata LIMIT 1")
+            metadata_desc = [col.name for col in cursor.description]
+            expected_metadata_fields = {
+                "_id",
+                "confidence",
+                "description_alerts",
+                "month",
+                "territory_id",
+                "total_alerts",
+                "type_alert",
+                "year",
+                "data_source",
+            }
+            assert expected_metadata_fields.issubset(set(metadata_desc)), (
+                f"Missing fields in metadata table: {expected_metadata_fields - set(metadata_desc)}"
+            )
 
             # Ensure that both types of alerts are present for the month of 09/2023
             cursor.execute(
