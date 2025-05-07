@@ -4,20 +4,20 @@ This script ingests annotated camera trap data from a [Timelapse](https://timela
 
 The script writes data to PostgreSQL and handles fully dynamic schemas, since Timelapse allows all field names and folder levels to be customized by the user.
 
+> [!NOTE]
+> The Timelapse database schema may change in future versions. This script was developed against Timelapse version 2.3.3.0.
+> 
 ## Notes
 
-The script ingests the `DataTable` (containing annotations) and dynamically detects and processes folder-level metadata tables (`Level1`, `Level2`, etc.). These tables represent user-defined folder hierarchies such as **project → station → deployment** and are described in the `FolderDataInfo` table, which maps level numbers to user-facing names. There can be any number of folder levels (`n`), but in practice only a few (typically 2–3) are commonly used.
+The script ingests the `DataTable` (containing annotations) and folder-level metadata tables (`Level1`, `Level2`, etc.). These tables represent user-defined folder hierarchies such as **project → station → deployment** and are described in the `FolderDataInfo` table, which maps level numbers to user-facing names. There can be any number of folder levels (`n`), but in practice only a few (typically 2–3) are commonly used.
 
 Because both field names and folder levels can be customized in Timelapse, this script does not assume any fixed schema. Instead, it introspects the database at runtime to construct tables accordingly.
 
-> [!NOTE]
-> The Timelapse database schema may change in future versions. This script was developed against Timelapse version 2.3.3.0.
+### Why not use Timelapse CSV export?
 
-### Why not use the CSV export?
+Although Timelapse offers a one-click CSV export option, the `.ddb` database includes richer metadata — including user-defined tooltips, field properties, and folder-level metadata. This enables more complete ingestion for long-term archival, analysis, and future reconstruction of the Timelapse project if needed.
 
-We **intentionally do not support** ingestion via Timelapse's CSV export. Although Timelapse does offer a one-click CSV export option, the `.ddb` database includes richer metadata — including user-defined tooltips, field properties, and folder-level metadata. This enables more complete ingestion for long-term archival, analysis, and future reconstruction of the Timelapse project if needed.
-
-Additionally, filenames and field order in the CSV can vary based on user-defined folder levels and field configurations. This makes the CSV format brittle and inconsistent across projects. In contrast, the `.ddb` provides a stable and comprehensive source of truth.
+Additionally, filenames and field order in the CSV can vary based on user-defined folder levels and field configurations. This makes the CSV format inconsistent across projects. In contrast, the `.ddb` provides a stable and comprehensive source of truth.
 
 Users must access the project root folder anyway to retrieve media files, so zipping and uploading the full folder (including the `.ddb`) adds no additional burden.
 
@@ -44,7 +44,8 @@ Below is a sample Timelapse project directory structure:
 │   └── Deployment2a
 │       └── IMG_001.jpg
 └── TimelapseData.ddb
-└── TimelapseTemplate.tdb
+└── TimelapseTemplate.tdb (NOT USED)
+└── Backups (NOT USED)
 ```
 
 AS mentioned above, this folder structure is **user-defined** and will vary depending on how folder levels (e.g., station, deployment) are configured within Timelapse. The actual folder schema and names are defined by the user via the Timelapse UI; the application then stores these in the `.ddb` database.
