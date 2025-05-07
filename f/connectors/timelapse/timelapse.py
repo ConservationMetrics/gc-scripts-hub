@@ -108,8 +108,8 @@ def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
 def read_timelapse_db_tables(storage_path: str, db_table_prefix: str):
     """
     Reads tables from a SQLite database file located at the specified storage path and returns
-    a dictionary of DataFrames. The tables are transformed and prefixed with the given database
-    table prefix.
+    a dictionary where keys are table names prefixed with the given database table prefix and
+    values are lists of dictionaries representing the transformed rows of each table.
 
     Parameters
     ----------
@@ -122,8 +122,10 @@ def read_timelapse_db_tables(storage_path: str, db_table_prefix: str):
     -------
     dict
         A dictionary where keys are table names prefixed with `db_table_prefix` and values are
-        the corresponding transformed DataFrames.
+        lists of dictionaries, each representing a row in the corresponding transformed DataFrame.
     """
+    logger.info(f"Reading Timelapse database from {storage_path}")
+
     timelapse_db = Path(storage_path) / "TimelapseData.ddb"
 
     if not timelapse_db.exists():
@@ -168,6 +170,8 @@ def read_timelapse_db_tables(storage_path: str, db_table_prefix: str):
                 continue
 
     conn.close()
+
+    logger.info(f"Extracted tables: {list(output.keys())}")
 
     return {
         table_name: df.to_dict(orient="records") for table_name, df in output.items()
