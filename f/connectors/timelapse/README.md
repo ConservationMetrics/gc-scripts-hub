@@ -21,10 +21,6 @@ Additionally, filenames and field order in the CSV can vary based on user-define
 
 Users must access the project root folder anyway to retrieve media files, so zipping and uploading the full folder (including the `.ddb`) adds no additional burden.
 
-### What about the `.tdb` file?
-
-We ignore the `.tdb` template file. All necessary template metadata is duplicated in the `.ddb` and does not need to be ingested separately.
-
 ### What about the `backups/` subdirectory?
 
 This subdirectory, which is sometimes automatically created by Timelapse, is ignored. To save space and speed up uploads, it is recommended not to **include** the `backups/` folder in your ZIP archive.

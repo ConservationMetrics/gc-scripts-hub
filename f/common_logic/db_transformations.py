@@ -119,3 +119,8 @@ def sanitize(
         updated_column_renames[original_key] = key
         sanitized_sql_message[key] = value
     return sanitized_sql_message, updated_column_renames
+
+
+def camel_to_snake(name: str) -> str:
+    """Convert CamelCase string to snake_case."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
