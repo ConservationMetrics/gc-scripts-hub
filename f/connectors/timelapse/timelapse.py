@@ -1,4 +1,5 @@
 # requirements:
+# pandas~=2.2
 # psycopg2-binary
 
 import logging
@@ -70,13 +71,13 @@ def extract_timelapse_archive(
                 timelapse_zip_path,
                 extract_to,
             )
-            logger.info(f"Extracted archive: {timelapse_zip_path} to {extract_to}")
+            logger.info(f"Extracted Timelapse archive: {timelapse_zip_path}")
         except shutil.ReadError as e:
             raise ValueError(f"Unable to extract archive: {e}")
 
         if delete_timelapse_zip:
             timelapse_zip_path.unlink()
-            logger.info(f"Deleted archive: {timelapse_zip_path}")
+            logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
 
         storage_path = Path(storage_path)
         storage_path.mkdir(parents=True, exist_ok=True)
@@ -89,7 +90,7 @@ def extract_timelapse_archive(
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(file, target_path)
 
-        logger.info(f"Copied files to: {storage_path}")
+        logger.info(f"Copied contents of Timelapse archive to: {storage_path}")
 
 
 def _transform_df(df: pd.DataFrame) -> pd.DataFrame:

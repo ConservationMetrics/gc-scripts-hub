@@ -9,7 +9,7 @@ schema:
   order:
     - timelapse_zip
     - db
-    - db_table_name
+    - db_table_prefix
     - delete_timelapse_zip
     - attachment_root
   properties:
@@ -26,17 +26,17 @@ schema:
       description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
-    db_table_name:
+    db_table_prefix:
       type: string
-      description: The name of the database table where the form data will be stored.
-      default: null
+      description: >-
+        This is a prefix added to the database table names created by this script.
+      default: timelapse
       originalType: string
-      pattern: '^.{1,54}$'
     delete_timelapse_zip:
       type: boolean
       description: >-
         Whether to delete the Timelapse ZIP file after processing.
-      default: false
+      default: true
     timelapse_zip:
       type: string
       description: >-
@@ -44,9 +44,9 @@ schema:
         file should contain a root folder with the TimeLapseData.ddb file and
         subdirectories with images and videos.
       originalType: string
-      pattern: '^.+\\.zip$'
+      pattern: '^.+\.zip$'
   required:
     - timelapse_zip
     - attachment_root
     - db
-    - db_table_name
+    - db_table_prefix
