@@ -18,6 +18,14 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     # Attachments are saved to disk
     assert (asset_storage / table_name / "attachments" / "1637241249813.jpg").exists()
 
+    # Metadata is saved to disk
+    assert (asset_storage / table_name / f"{table_name}_metadata.json").exists()
+    with open(asset_storage / table_name / f"{table_name}_metadata.json") as f:
+        metadata = f.read()
+    assert all(
+        key in metadata for key in ["name", "uid", "owner__username", "data", "content"]
+    )
+
     # Survey responses are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
