@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.save_disk import save_data_to_file
 
 # type names that refer to Windmill Resources
 c_kobotoolbox_account = dict
@@ -109,7 +110,9 @@ def download_form_responses_and_attachments(
         The API key for authenticating requests to the KoboToolbox server.
     form_id : str
         The unique identifier of the form to download.
-    attachment_root : str
+    db_table_name : str
+        The name of the database table where the form responses will be stored.
+     attachment_root : str
         The root directory where attachments will be saved.
 
     Returns
@@ -121,10 +124,20 @@ def download_form_responses_and_attachments(
         "Authorization": f"Token {kobo_api_key}",
         "Accept": "application/json, text/javascript, */*; q=0.01",
     }
-    # First get the name of the form. You have to hit a different endpoint just for this.
+    # First let's download the form metadata
     form_uri = f"{server_base_url}/api/v2/assets/{form_id}/"
     response = requests.get(form_uri, headers=headers)
     response.raise_for_status()
+
+    # Save the form metadata to a JSON file on the datalake
+    save_path = Path(attachment_root) / db_table_name
+    save_data_to_file(
+        response.json(),
+        f"{db_table_name}_metadata",
+        save_path,
+        "json",
+    )
+
     data_uri = response.json()["data"]
     form_name = response.json().get("name")
 
