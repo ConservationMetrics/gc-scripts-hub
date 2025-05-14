@@ -1,5 +1,5 @@
 summary: 'KoboToolbox: Fetch Survey Responses'
-description: Uses KoboToolbox REST API to download all form submissions
+description: Uses KoboToolbox REST API to download form submissions, attachments, and metadata
 lock: '!inline f/connectors/kobotoolbox/kobotoolbox_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
