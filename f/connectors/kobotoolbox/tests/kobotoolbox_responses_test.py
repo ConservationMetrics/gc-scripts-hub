@@ -50,3 +50,53 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
                 "SELECT COUNT(*) FROM kobo_responses__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
             )
             assert cursor.fetchone()[0] == 1
+
+    # Form translations are written to a SQL Table
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM kobo_responses__translations")
+            assert cursor.fetchone()[0] == 8
+
+            # Verify specific translations for survey items
+            cursor.execute(
+                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'Record_your_current_location'"
+            )
+            assert cursor.fetchone() == (
+                "Record your current location",
+                "Registre la ubicación actual",
+                "Registre a localização atual",
+            )
+
+            cursor.execute(
+                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'Estimate_height_of_your_tree_in_meters'"
+            )
+            assert cursor.fetchone() == (
+                "Estimate the height of your tree (in meters)",
+                "Estime la altura de su árbol (en metros)",
+                "Estime a altura da sua árvore (em metros)",
+            )
+
+            # Verify specific translations for choice items
+            cursor.execute(
+                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'shade'"
+            )
+            assert cursor.fetchone() == ("Shade", "Sombra", "Sombra")
+
+            cursor.execute(
+                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'wildlife_habitat'"
+            )
+            assert cursor.fetchone() == (
+                "Wildlife Habitat",
+                "Hábitat de vida silvestre",
+                "Habitat da vida selvagem",
+            )
+
+            # Check that the type is set for survey / choice items
+            cursor.execute(
+                "SELECT type FROM kobo_responses__translations WHERE name = 'Record_your_current_location'"
+            )
+            assert cursor.fetchone() == ("survey",)
+            cursor.execute(
+                "SELECT type FROM kobo_responses__translations WHERE name = 'shade'"
+            )
+            assert cursor.fetchone() == ("choices",)
