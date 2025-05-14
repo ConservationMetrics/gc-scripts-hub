@@ -38,7 +38,7 @@ def main(
         kobo_server_base_url, headers, form_id, db_table_name, attachment_root
     )
 
-    form_translations = extract_form_translations(form_metadata)
+    form_labels = extract_form_labels(form_metadata)
 
     form_responses = download_form_responses_and_attachments(
         headers, form_metadata, db_table_name, attachment_root
@@ -58,13 +58,13 @@ def main(
         f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
     )
 
-    if form_translations:
+    if form_labels:
         kobo_translations_writer = StructuredDBWriter(
-            conninfo(db), f"{db_table_name}__translations"
+            conninfo(db), f"{db_table_name}__labels"
         )
-        kobo_translations_writer.handle_output(form_translations)
+        kobo_translations_writer.handle_output(form_labels)
         logger.info(
-            f"KoboToolbox translations successfully written to database table: [{db_table_name}__translations]"
+            f"KoboToolbox form labels successfully written to database table: [{db_table_name}__labels]"
         )
 
 
@@ -112,34 +112,53 @@ def download_form_metadata(
     return form_metadata
 
 
-def extract_form_translations(form_metadata):
+def extract_form_labels(form_metadata):
     """
-    Extracts translated labels for form questions and choices. The purpose is to
-    prepare a lookup table for form translations.
+    Extracts and prepares labels for form questions and choices from the provided form metadata.
+    This function is designed to create a lookup table for form translations, supporting both
+    multilingual and single-language forms.
 
     Parameters
     ----------
     form_metadata : dict
+        A dictionary containing metadata of the form, including content and translations.
 
     Returns
     -------
     list of dict
-        Each dict has keys: '_id', 'type', 'name', and 'translation_<lang_code>'.
+        A list of dictionaries, each representing a form item with the following keys:
+        - '_id': A unique identifier for the item, generated using an MD5 hash.
+        - 'type': The type of the item, either 'survey' or 'choices'.
+        - 'name': The name of the form item.
+        - 'label': The label of the item in the default language if no translations exist.
+        - 'translation_<lang_code>': The label of the item in specific languages, if translations exist.
     """
     content = form_metadata.get("content", {})
     translations = content.get("translations", [])
 
-    if not translations:
-        return []
+    if not translations or translations == [None]:
+        # No multilingual translations, so just write plain 'label'
+        rows = []
+        for section in ["survey", "choices"]:
+            for item in content.get(section, []):
+                row = {
+                    "type": section,
+                    "name": item["name"],
+                    "label": item.get("label", [None])[0],
+                }
+                hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
+                row["_id"] = hashlib.md5(hash_input).hexdigest()
+                rows.append(row)
+        return rows
 
+    # Real translations exist
     lang_codes = [
         lang[lang.find("(") + 1 : lang.find(")")]
         for lang in translations
-        if "(" in lang and ")" in lang
+        if isinstance(lang, str) and "(" in lang and ")" in lang
     ]
 
     rows = []
-
     for section in ["survey", "choices"]:
         for item in content.get(section, []):
             row = {
@@ -149,12 +168,10 @@ def extract_form_translations(form_metadata):
             labels = item.get("label", [])
             for i, code in enumerate(lang_codes):
                 if i < len(labels):
-                    row[f"translation_{code}"] = labels[i]
+                    row[f"label_{code}"] = labels[i]
 
-            # Deterministic _id based on row content
             hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
             row["_id"] = hashlib.md5(hash_input).hexdigest()
-
             rows.append(row)
 
     return rows

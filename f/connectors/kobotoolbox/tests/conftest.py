@@ -58,7 +58,7 @@ def koboserver(mocked_responses):
 @pytest.fixture
 def koboserver_no_translations(mocked_responses):
     metadata = server_responses.kobo_form(server_url, form_id, form_name)
-    metadata["content"].pop("translations", None)
+    metadata["content"]["translations"] = [None]
 
     _register_common_mocks(mocked_responses, form_id, metadata)
 

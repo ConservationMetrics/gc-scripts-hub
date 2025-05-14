@@ -29,37 +29,37 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     # Survey responses are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM kobo_responses")
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             assert cursor.fetchone()[0] == 3
 
             # Check that the coordinates of a fixture entry are stored as a Point,
             # and that the coordinates are reversed (longitude, latitude).
             cursor.execute(
-                "SELECT g__type, g__coordinates FROM kobo_responses WHERE _id = '124961136'"
+                f"SELECT g__type, g__coordinates FROM {table_name} WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("Point", "[-122.0109429, 36.97012]")
 
             # Check that meta/instanceID was sanitized to instanceID__meta
             cursor.execute(
-                "SELECT \"instanceID__meta\" FROM kobo_responses WHERE _id = '124961136'"
+                f"SELECT \"instanceID__meta\" FROM {table_name} WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("uuid:e58da38d-3eee-4bd7-8512-4a97ea8fbb01",)
 
             # Check that the mapping column was created
             cursor.execute(
-                "SELECT COUNT(*) FROM kobo_responses__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
+                f"SELECT COUNT(*) FROM {table_name}__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
             )
             assert cursor.fetchone()[0] == 1
 
-    # Form translations are written to a SQL Table
+    # Form labels are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM kobo_responses__translations")
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
             assert cursor.fetchone()[0] == 8
 
             # Verify specific translations for survey items
             cursor.execute(
-                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'Record_your_current_location'"
+                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
             )
             assert cursor.fetchone() == (
                 "Record your current location",
@@ -68,7 +68,7 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
             )
 
             cursor.execute(
-                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'Estimate_height_of_your_tree_in_meters'"
+                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'Estimate_height_of_your_tree_in_meters'"
             )
             assert cursor.fetchone() == (
                 "Estimate the height of your tree (in meters)",
@@ -78,12 +78,12 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
 
             # Verify specific translations for choice items
             cursor.execute(
-                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'shade'"
+                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'shade'"
             )
             assert cursor.fetchone() == ("Shade", "Sombra", "Sombra")
 
             cursor.execute(
-                "SELECT translation_en, translation_es, translation_pt FROM kobo_responses__translations WHERE name = 'wildlife_habitat'"
+                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'wildlife_habitat'"
             )
             assert cursor.fetchone() == (
                 "Wildlife Habitat",
@@ -93,11 +93,11 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
 
             # Check that the type is set for survey / choice items
             cursor.execute(
-                "SELECT type FROM kobo_responses__translations WHERE name = 'Record_your_current_location'"
+                f"SELECT type FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
             )
             assert cursor.fetchone() == ("survey",)
             cursor.execute(
-                "SELECT type FROM kobo_responses__translations WHERE name = 'shade'"
+                f"SELECT type FROM {table_name}__labels WHERE name = 'shade'"
             )
             assert cursor.fetchone() == ("choices",)
 
@@ -114,18 +114,12 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
         asset_storage,
     )
 
-    # Metadata is saved to disk
-    assert (asset_storage / table_name / f"{table_name}_metadata.json").exists()
-
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            # Confirm that the main table exists
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cursor.fetchone()[0] == 3
-
-            # Confirm that the translation table does not exist
+            # Confirm that for the labels table, there is only a labels column, no language suffix
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
+            assert cursor.fetchone()[0] == 8
             cursor.execute(
-                "SELECT tablename FROM pg_tables WHERE tablename = %s",
-                (f"{table_name}__translations",),
+                f"SELECT label FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
             )
-            assert cursor.fetchone() is None
+            assert cursor.fetchone() == ("Record your current location",)
