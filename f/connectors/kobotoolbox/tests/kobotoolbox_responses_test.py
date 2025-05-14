@@ -100,3 +100,32 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
                 "SELECT type FROM kobo_responses__translations WHERE name = 'shade'"
             )
             assert cursor.fetchone() == ("choices",)
+
+
+def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_no_translations"
+
+    main(
+        koboserver_no_translations.account,
+        koboserver_no_translations.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    # Metadata is saved to disk
+    assert (asset_storage / table_name / f"{table_name}_metadata.json").exists()
+
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            # Confirm that the main table exists
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cursor.fetchone()[0] == 3
+
+            # Confirm that the translation table does not exist
+            cursor.execute(
+                "SELECT tablename FROM pg_tables WHERE tablename = %s",
+                (f"{table_name}__translations",),
+            )
+            assert cursor.fetchone() is None
