@@ -29,11 +29,22 @@ def main(
     kobo_server_base_url = kobotoolbox["server_url"]
     kobo_api_key = kobotoolbox["api_key"]
 
-    form_data, form_translations = download_form_data_and_attachments(
-        kobo_server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
+    headers = {
+        "Authorization": f"Token {kobo_api_key}",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+    }
+
+    form_metadata = download_form_metadata(
+        kobo_server_base_url, headers, form_id, db_table_name, attachment_root
     )
 
-    transformed_form_data = format_geometry_fields(form_data)
+    form_translations = extract_form_translations(form_metadata)
+
+    form_responses = download_form_responses_and_attachments(
+        headers, form_metadata, db_table_name, attachment_root
+    )
+
+    transformed_form_responses = format_geometry_fields(form_responses)
 
     kobo_response_writer = StructuredDBWriter(
         conninfo(db),
@@ -42,7 +53,7 @@ def main(
         sanitize_keys=True,
         reverse_properties_separated_by="/",
     )
-    kobo_response_writer.handle_output(transformed_form_data)
+    kobo_response_writer.handle_output(transformed_form_responses)
     logger.info(
         f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
     )
@@ -57,7 +68,51 @@ def main(
         )
 
 
-def _extract_form_translations(form_metadata):
+def download_form_metadata(
+    server_base_url, headers, form_id, db_table_name, attachment_root
+):
+    """
+    Downloads form metadata from the KoboToolbox server and saves it to a JSON file.
+
+    Parameters
+    ----------
+    server_base_url : str
+        The base URL of the KoboToolbox server.
+    headers : dict
+        HTTP headers for the request, including authorization.
+    form_id : str
+        The unique identifier of the form.
+    db_table_name : str
+        The name of the database table where metadata will be associated.
+    attachment_root : str
+        The root directory path where the metadata JSON file will be saved.
+
+    Returns
+    -------
+    dict
+        The form metadata as a dictionary.
+    """
+    form_uri = f"{server_base_url}/api/v2/assets/{form_id}/"
+    form_metadata_response = requests.get(form_uri, headers=headers)
+    form_metadata_response.raise_for_status()
+    form_metadata = form_metadata_response.json()
+
+    # Save the form metadata to a JSON file on the datalake
+    save_path = Path(attachment_root) / db_table_name
+    save_data_to_file(
+        form_metadata,
+        f"{db_table_name}_metadata",
+        save_path,
+        "json",
+    )
+
+    logger.info
+    f"Form metadata extracted, and saved to: {save_path}/{db_table_name}_metadata.json"
+
+    return form_metadata
+
+
+def extract_form_translations(form_metadata):
     """
     Extracts translated labels for form questions and choices. The purpose is to
     prepare a lookup table for form translations.
@@ -156,23 +211,17 @@ def _download_submission_attachments(
     return skipped_attachments
 
 
-def download_form_data_and_attachments(
-    server_base_url, kobo_api_key, form_id, db_table_name, attachment_root
+def download_form_responses_and_attachments(
+    headers, form_metadata, db_table_name, attachment_root
 ):
-    """Fetch and store form metadata, responses, and attachments from the KoboToolbox API.
-
-    This function retrieves form metadata, including translations, and saves it to a specified directory.
-    It then downloads form responses and their associated attachments, storing them in the specified
-    directory structure. If attachments already exist, they are skipped.
+    """Download form responses and attachments from the KoboToolbox API.
 
     Parameters
     ----------
-    server_base_url : str
-        The base URL of the KoboToolbox server.
-    kobo_api_key : str
-        The API key for authenticating requests to the KoboToolbox server.
-    form_id : str
-        The unique identifier of the form to download.
+    headers : dict
+        HTTP headers required for authentication and content type.
+    form_metadata : dict
+        Metadata of the form, including the data URI and translations.
     db_table_name : str
         The name of the database table where the form responses will be stored.
     attachment_root : str
@@ -180,38 +229,14 @@ def download_form_data_and_attachments(
 
     Returns
     -------
-    tuple
-        A tuple containing a list of form submissions data and a list of form translations.
+    list
+        A list of form submissions downloaded from the KoboToolbox API.
     """
-    headers = {
-        "Authorization": f"Token {kobo_api_key}",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-    }
-    # First let's download the form metadata. The form metadata contains the form
-    # name and the data URI that we need to download the form responses.
-    # We also want to save the form metadata itself and compile the translations
-    # for the form.
-    form_uri = f"{server_base_url}/api/v2/assets/{form_id}/"
-    form_metadata_response = requests.get(form_uri, headers=headers)
-    form_metadata_response.raise_for_status()
-
-    # Save the form metadata to a JSON file on the datalake
-    save_path = Path(attachment_root) / db_table_name
-    save_data_to_file(
-        form_metadata_response.json(),
-        f"{db_table_name}_metadata",
-        save_path,
-        "json",
-    )
-
     # Extract the data URI, form name, and translations from the metadata
-    data_uri = form_metadata_response.json()["data"]
-    form_name = form_metadata_response.json().get("name")
-    languages = form_metadata_response.json().get("content", {}).get("translations", [])
+    data_uri = form_metadata["data"]
+    form_name = form_metadata.get("name")
+    languages = form_metadata.get("content", {}).get("translations", [])
     form_languages = ",".join(filter(None, languages)) if languages != [None] else None
-
-    form_metadata = form_metadata_response.json()
-    form_translations = _extract_form_translations(form_metadata)
 
     # Next download the form responses.
     # FIXME: need to paginate. Maximum results per page is 30000.
@@ -237,8 +262,8 @@ def download_form_data_and_attachments(
     if skipped_attachments > 0:
         logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
 
-    logger.info(f"[Form {form_id}] Downloaded {len(form_submissions)} submission(s).")
-    return form_submissions, form_translations
+    logger.info(f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s).")
+    return form_submissions
 
 
 def format_geometry_fields(form_data):
