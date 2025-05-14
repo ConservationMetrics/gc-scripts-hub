@@ -5,7 +5,91 @@ def kobo_form(uri, form_id, form_name):
     return {
         "name": form_name,
         "uid": form_id,
+        "owner__username": "kobo_admin",
         "data": posixpath.join(uri, "api/v2/assets", form_id, "data/"),
+        "content": {
+            "schema": "1",
+            "survey": [
+                {
+                    "name": "Record_your_current_location",
+                    "type": "geopoint",
+                    "label": [
+                        "Record your current location",
+                        "Registre la ubicación actual",
+                        "Registre a localização atual",
+                    ],
+                    "$qpath": "Record_your_current_location",
+                    "$xpath": "Record_your_current_location",
+                    "$autoname": "Record_your_current_location",
+                },
+                {
+                    "name": "Estimate_height_of_your_tree_in_meters",
+                    "type": "integer",
+                    "label": [
+                        "Estimate the height of your tree (in meters)",
+                        "Estime la altura de su árbol (en metros)",
+                        "Estime a altura da sua árvore (em metros)",
+                    ],
+                    "$qpath": "Estimate_height_of_your_tree_in_meters",
+                    "$xpath": "Estimate_height_of_your_tree_in_meters",
+                    "$autoname": "Estimate_height_of_your_tree_in_meters",
+                },
+                {
+                    "name": "I_like_this_tree_because",
+                    "type": "select_multiple",
+                    "label": [
+                        "Why do you like this tree?",
+                        "¿Por qué te gusta este árbol?",
+                        "Por que você gosta desta árvore?",
+                    ],
+                    "select_from_list_name": "tree_reasons",
+                    "$qpath": "I_like_this_tree_because",
+                    "$xpath": "I_like_this_tree_because",
+                    "$autoname": "I_like_this_tree_because",
+                },
+                {
+                    "name": "Take_a_photo_of_this_tree",
+                    "type": "image",
+                    "label": [
+                        "Take a photo of this tree",
+                        "Toma una foto de este árbol",
+                        "Tire uma foto desta árvore",
+                    ],
+                    "$qpath": "Take_a_photo_of_this_tree",
+                    "$xpath": "Take_a_photo_of_this_tree",
+                    "$autoname": "Take_a_photo_of_this_tree",
+                },
+            ],
+            "choices": [
+                {
+                    "list_name": "tree_reasons",
+                    "name": "shade",
+                    "label": ["Shade", "Sombra", "Sombra"],
+                },
+                {
+                    "list_name": "tree_reasons",
+                    "name": "food",
+                    "label": ["Food", "Comida", "Comida"],
+                },
+                {
+                    "list_name": "tree_reasons",
+                    "name": "wildlife_habitat",
+                    "label": [
+                        "Wildlife Habitat",
+                        "Hábitat de vida silvestre",
+                        "Habitat da vida selvagem",
+                    ],
+                },
+                {
+                    "list_name": "tree_reasons",
+                    "name": "beauty",
+                    "label": ["Beauty", "Belleza", "Beleza"],
+                },
+            ],
+            "settings": {"version": "1", "default_language": "English (en)"},
+            "translated": ["label"],
+            "translations": ["English (en)", "Spanish (es)", "Portuguese (pt)"],
+        },
     }
 
 
