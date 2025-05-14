@@ -137,7 +137,7 @@ def extract_form_labels(form_metadata):
     translations = content.get("translations", [])
 
     if not translations or translations == [None]:
-        # No multilingual translations, so just write plain 'label'
+        # No multilingual translations are provided in the form, so just write plain 'label'
         rows = []
         for section in ["survey", "choices"]:
             for item in content.get(section, []):
@@ -151,7 +151,10 @@ def extract_form_labels(form_metadata):
                 rows.append(row)
         return rows
 
-    # Real translations exist
+    # Extract the language codes from the translations
+    # Example: "English (en)", "Spanish (es)", etc.
+    # We assume that the language code is always in parentheses
+    # and is the last part of the string.
     lang_codes = [
         lang[lang.find("(") + 1 : lang.find(")")]
         for lang in translations
