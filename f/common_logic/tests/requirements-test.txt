@@ -1,1 +1,3 @@
+psycopg[binary]
 pytest
+testing.postgresql

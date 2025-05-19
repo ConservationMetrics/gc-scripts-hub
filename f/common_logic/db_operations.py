@@ -2,7 +2,7 @@ import json
 import logging
 import time
 
-from psycopg2 import Error, connect, errors, sql
+from psycopg import Error, connect, errors, sql
 
 from f.common_logic.db_transformations import sanitize
 
@@ -110,7 +110,7 @@ class StructuredDBWriter:
         """
         Establishes a connection to the PostgreSQL database using the class's configured connection string.
         """
-        return connect(dsn=self.db_connection_string)
+        return connect(self.db_connection_string)
 
     def _inspect_schema(self, table_name):
         """Fetches the column names of the given table."""
@@ -227,7 +227,7 @@ class StructuredDBWriter:
 
         Parameters
         ----------
-        cursor : psycopg2 cursor
+        cursor : psycopg cursor
             The database cursor used to execute SQL queries.
         table_name : str
             The name of the table where data will be inserted.
