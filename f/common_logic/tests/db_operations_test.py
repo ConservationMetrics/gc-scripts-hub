@@ -32,6 +32,28 @@ def test_mapping_table_creation(mock_db_connection):
     assert mappings["complex.field"] == "complexfield"
 
 
+def test_no_mapping_table_creation(mock_db_connection):
+    writer = StructuredDBWriter(mock_db_connection, "test_forms")
+
+    submissions = [
+        {"_id": "1", "complex.field": "value1"},
+        {"_id": "2", "complex.field": "value2"},
+    ]
+    writer.handle_output(submissions)
+
+    # Check the mapping table does not exist
+    with writer._get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT * FROM information_schema.tables WHERE table_name = %s",
+            (f"{writer.table_name}__columns",),
+        )
+        assert cursor.fetchone() is None
+
+    # Check that the fields were sanitized
+    columns = writer._inspect_schema(writer.table_name)
+    assert "complexfield" in columns
+
+
 def test_reverse_properties_handling(mock_db_connection):
     writer = StructuredDBWriter(
         mock_db_connection,
