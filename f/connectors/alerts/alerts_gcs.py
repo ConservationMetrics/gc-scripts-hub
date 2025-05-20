@@ -16,13 +16,12 @@ from io import StringIO
 from pathlib import Path
 
 import pandas as pd
-import psycopg2
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
@@ -103,13 +102,26 @@ def _main(
 
     prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
 
-    db_writer = AlertsDBWriter(conninfo(db), db_table_name)
-    new_alerts_data = db_writer.handle_output(
-        prepared_alerts_data, prepared_alerts_metadata
+    logger.info(f"Writing alerts to the database table [{db_table_name}].")
+    alerts_writer = StructuredDBWriter(
+        conninfo(db),
+        db_table_name,
+        predefined_schema=create_alerts_table,
     )
+    alerts_data_written = alerts_writer.handle_output(prepared_alerts_data)
 
-    if new_alerts_data:
-        return alerts_statistics
+    alerts_metadata_table_name = f"{db_table_name}__metadata"
+    logger.info(
+        f"Writing alerts metadata to the database table [{alerts_metadata_table_name}]."
+    )
+    metadata_writer = StructuredDBWriter(
+        conninfo(db),
+        alerts_metadata_table_name,
+        predefined_schema=create_metadata_table,
+    )
+    metadata_written = metadata_writer.handle_output(prepared_alerts_metadata)
+
+    return alerts_statistics if alerts_data_written or metadata_written else None
 
 
 def _get_rel_filepath(local_file_path, territory_id):
@@ -358,7 +370,7 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
 
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
-    filtered_df["metadata_uuid"] = pd.util.hash_pandas_object(
+    filtered_df["_id"] = pd.util.hash_pandas_object(
         filtered_df[
             ["territory_id", "month", "year", "description_alerts", "confidence"]
         ].sort_index(axis=1),
@@ -411,6 +423,9 @@ def prepare_alerts_data(local_directory, geojson_files):
     """
     Prepare alerts data by reading GeoJSON files from a local directory.
 
+    This function flattens each Feature into a single dictionary, extracting both
+    geometry and properties, and generating a stable UUID from the alert's ID.
+
     Parameters
     ----------
     local_directory : str
@@ -421,393 +436,114 @@ def prepare_alerts_data(local_directory, geojson_files):
     Returns
     -------
     list of dict
-        A list of dictionaries containing the source file name, the GeoJSON data,
-        and the alert source.
+        A list of dictionaries containing flattened alert data, ready for DB insertion.
     """
     prepared_alerts_data = []
 
-    for file_name in geojson_files:
-        file_path = Path(local_directory) / file_name
-        if file_path.exists():
-            logger.info(f"Storing GeoJSON file: {file_name}")
-            with file_path.open("r") as f:
-                geojson_data = json.load(f)
-                # TODO: See comment above about data source
-                prepared_alerts_data.append(
-                    {
-                        "data": geojson_data,
-                        "data_source": "terras",
-                        "source_file_name": file_name,
-                    }
-                )
+    for file_path in geojson_files:
+        full_path = Path(file_path)
+        if not full_path.exists():
+            continue
 
-    logger.info("Successfully prepared alerts data.")
+        with full_path.open("r") as f:
+            geojson_data = json.load(f)
+
+        for feature in geojson_data.get("features", []):
+            # Extract feature-level properties and geometry
+            props = feature.get("properties", {})
+            geom = feature.get("geometry", {})
+
+            # Use the alert ID to generate a stable UUID for _id
+            alert_id = props.get("id")
+            if not alert_id:
+                continue
+
+            prepared_alerts_data.append(
+                {
+                    "_id": str(uuid.uuid5(uuid.NAMESPACE_DNS, alert_id)),
+                    "alert_id": alert_id,
+                    "alert_type": props.get("alert_type"),
+                    "area_alert_ha": props.get("area_alert_ha"),
+                    "basin_id": props.get("basin_id"),
+                    "confidence": props.get("confidence"),
+                    "count": props.get("count"),
+                    "date_end_t0": props.get("date_end_t0"),
+                    "date_end_t1": props.get("date_end_t1"),
+                    "date_start_t0": props.get("date_start_t0"),
+                    "date_start_t1": props.get("date_start_t1"),
+                    "grid": props.get("grid"),
+                    "label": props.get("label"),
+                    "month_detec": props.get("month_detec"),
+                    "sat_detect_prefix": props.get("sat_detect_prefix"),
+                    "sat_viz_prefix": props.get("sat_viz_prefix"),
+                    "satellite": props.get("satellite"),
+                    "territory_id": props.get("territory_id"),
+                    "territory_name": props.get("territory_name"),
+                    "year_detec": props.get("year_detec"),
+                    "length_alert_km": props.get("length_alert_km"),
+                    # Geometry flattening
+                    "g__type": geom.get("type"),
+                    "g__coordinates": json.dumps(geom.get("coordinates")),
+                    # Metadata
+                    "data_source": "terras",
+                    "source_file_name": file_path,
+                }
+            )
+
+    logger.info("Successfully prepared flattened alerts data.")
     return prepared_alerts_data
 
 
-class AlertsDBWriter:
-    """
-    AlertsDBWriter converts GeoJSON data and alert metadata into structured SQL tables.
-    Specifically tailored for operations involving geographic data and alerts metadata stored in GeoJSON format.
+def create_alerts_table(cursor, table_name):
+    cursor.execute(
+        sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {table} (
+            _id uuid PRIMARY KEY,
+            -- These are found in "properties" of an alert Feature:
+            alert_id text,
+            alert_type text,
+            area_alert_ha double precision, -- only present for polygon
+            basin_id bigint,
+            confidence real,
+            count bigint,
+            date_end_t0 text,
+            date_end_t1 text,
+            date_start_t0 text,
+            date_start_t1 text,
+            grid bigint,
+            label bigint,
+            month_detec text,
+            sat_detect_prefix text,
+            sat_viz_prefix text,
+            satellite text,
+            territory_id bigint,
+            territory_name text,
+            year_detec text,
+            length_alert_km double precision,  -- only present for linestring
+            -- Deconstruct the "geometry" of a Feature:            
+            g__type text,
+            g__coordinates text,
+            -- Added by us
+            data_source text,
+            source_file_name text
+        );
+    """).format(table=sql.Identifier(table_name))
+    )
 
-    This class manages database connections using PostgreSQL through psycopg2.
 
-    TODO: DRY with KoboDBWriter and CoMapeoDBWriter
-
-    """
-
-    def __init__(self, db_connection_string, table_name):
-        """
-        Initializes the AlertsDBWriter with the provided connection string and form response table to be used.
-        """
-        self.db_connection_string = db_connection_string
-        self.table_name = table_name
-
-    def _get_conn(self):
-        """
-        Establishes a connection to the PostgreSQL database using the class's configured connection string.
-        """
-        return psycopg2.connect(dsn=self.db_connection_string)
-
-    def _create_alerts_metadata_table(self, table_name):
-        metadata_table_name = f"{table_name[:53]}__metadata"
-
-        with self._get_conn() as conn, conn.cursor() as cursor:
-            query = sql.SQL("""
-                CREATE TABLE IF NOT EXISTS {metadata_table_name} (
-                    _id character varying(36) NOT NULL PRIMARY KEY,
-                    confidence real,
-                    description_alerts text,
-                    month bigint,
-                    territory_id bigint,
-                    total_alerts bigint,
-                    type_alert bigint,
-                    year bigint,
-                    data_source text
-                );
-                """).format(metadata_table_name=sql.Identifier(metadata_table_name))
-            cursor.execute(query)
-            conn.commit()
-
-    def _create_alerts_table(self, table_name):
-        with self._get_conn() as conn, conn.cursor() as cursor:
-            query = sql.SQL("""
-            CREATE TABLE IF NOT EXISTS {table_name}
-            (
-                _id uuid PRIMARY KEY,
-                -- These are found in "properties" of an alert Feature:
-                alert_id text,
-                alert_type text,
-                area_alert_ha double precision,  -- only present for polygon
-                basin_id bigint,
-                confidence real,
-                count bigint,
-                date_end_t0 text,
-                date_end_t1 text,
-                date_start_t0 text,
-                date_start_t1 text,
-                grid bigint,
-                label bigint,
-                month_detec text,
-                sat_detect_prefix text,
-                sat_viz_prefix text,
-                satellite text,
-                territory_id bigint,
-                territory_name text,
-                year_detec text,
-                length_alert_km double precision,  -- only present for linestring
-                -- Deconstruct the "geometry" of a Feature:
-                g__type text,
-                g__coordinates text,
-                -- Added by us
-                data_source text,
-                source_file_name text
-            );
-            """).format(table_name=sql.Identifier(table_name))
-            cursor.execute(query)
-            conn.commit()
-
-    @staticmethod
-    def _safe_insert(cursor, table_name, columns, values):
-        """
-        Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
-        This method also handles conflicts by updating existing records if necessary.
-
-        The function first checks if a row with the same primary key (_id) already exists in the table. If it does,
-        and the existing row's data matches the new values, the operation is skipped. Otherwise, it performs an
-        INSERT operation. If a conflict on the primary key occurs, it updates the existing row with the new values.
-
-        Parameters
-        ----------
-        cursor : psycopg2 cursor
-            The database cursor used to execute SQL queries.
-        table_name : str
-            The name of the table where data will be inserted.
-        columns : list of str
-            The list of column names corresponding to the values being inserted.
-        values : list
-            The list of values to be inserted into the table, aligned with the columns.
-
-        Returns
-        -------
-        tuple
-            A tuple containing two integers: the count of rows inserted and the count of rows updated.
-        """
-        inserted_count = 0
-        updated_count = 0
-
-        # Check if there is an existing row that is different from the new values
-        id_index = columns.index("_id")
-        values[id_index] = str(values[id_index])
-        select_query = sql.SQL("SELECT {fields} FROM {table} WHERE _id = %s").format(
-            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
-            table=sql.Identifier(table_name),
-        )
-        cursor.execute(select_query, (values[columns.index("_id")],))
-        existing_row = cursor.fetchone()
-
-        if existing_row and list(existing_row) == values:
-            # No changes, skip the update
-            return inserted_count, updated_count
-
-        query = sql.SQL(
-            "INSERT INTO {table} ({fields}) VALUES ({placeholders}) "
-            "ON CONFLICT (_id) DO UPDATE SET {updates} "
-            "RETURNING (xmax = 0) AS inserted"
-        ).format(
-            table=sql.Identifier(table_name),
-            fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
-            placeholders=sql.SQL(", ").join(sql.Placeholder() for _ in values),
-            updates=sql.SQL(", ").join(
-                sql.Composed(
-                    [sql.Identifier(col), sql.SQL(" = EXCLUDED."), sql.Identifier(col)]
-                )
-                for col in columns
-                if col != "_id"
-            ),
-        )
-
-        cursor.execute(query, values)
-        result = cursor.fetchone()
-        if result and result[0]:
-            inserted_count += 1
-        else:
-            updated_count += 1
-
-        return inserted_count, updated_count
-
-    def handle_output(self, alerts, alerts_metadata):
-        """
-        Inserts alerts and metadata from GeoJSON data into a PostgreSQL database.
-
-        This method processes a list of alerts and their corresponding metadata, extracting relevant features and properties from each GeoJSON object. It constructs and executes SQL queries to insert these data into the appropriate database tables. The method ensures that each alert and metadata entry is processed within a transaction, committing the transaction upon successful insertion or rolling back in case of errors.
-
-        Parameters
-        ----------
-        alerts (list): A list of alert objects, each containing GeoJSON data with features and properties to be inserted into the database.
-        alerts_metadata (list): A list of metadata objects associated with the alerts, containing additional information to be stored in a separate metadata table.
-        """
-        table_name = self.table_name
-        conn = self._get_conn()
-        cursor = conn.cursor()
-
-        new_alerts_data = False
-        data_inserted_count = 0
-        data_updated_count = 0
-        metadata_inserted_count = 0
-        metadata_updated_count = 0
-
-        try:
-            if alerts:
-                self._create_alerts_table(table_name)
-            else:
-                logger.info("No alerts data to store.")
-
-            for alert in alerts:
-                try:
-                    cursor.execute("BEGIN")
-
-                    for feature in alert["data"]["features"]:
-                        try:
-                            if "properties" in feature:
-                                properties_str = json.dumps(feature["properties"])
-                                properties = json.loads(properties_str)
-                            else:
-                                properties = None
-
-                            # Generate a UUID for the alert based on the alert's ID
-                            _id = str(
-                                uuid.uuid5(uuid.NAMESPACE_DNS, properties.get("id"))
-                            )
-                            alert_id = properties.get("id")
-                            alert_type = properties.get("alert_type")
-                            area_alert_ha = properties.get("area_alert_ha")
-                            basin_id = properties.get("basin_id")
-                            confidence = properties.get("confidence")
-                            count = properties.get("count")
-                            date_end_t0 = properties.get("date_end_t0")
-                            date_end_t1 = properties.get("date_end_t1")
-                            date_start_t0 = properties.get("date_start_t0")
-                            date_start_t1 = properties.get("date_start_t1")
-                            grid = properties.get("grid")
-                            label = properties.get("label")
-                            length_alert_km = properties.get("length_alert_km")
-                            month_detec = properties.get("month_detec")
-                            sat_detect_prefix = properties.get("sat_detect_prefix")
-                            sat_viz_prefix = properties.get("sat_viz_prefix")
-                            satellite = properties.get("satellite")
-                            territory_id = properties.get("territory_id")
-                            territory_name = properties.get("territory_name")
-                            year_detec = properties.get("year_detec")
-                            # In lieu of, say, PostGIS, use `g__*` columns to represent the Feature's geometry.
-                            g__type = feature["geometry"].get("type")
-                            g__coordinates = json.dumps(
-                                feature["geometry"]["coordinates"]
-                            )
-                            data_source = alert["data_source"]
-                            source_file_name = alert["source_file_name"]
-
-                            columns = [
-                                "_id",
-                                "alert_id",
-                                "alert_type",
-                                "area_alert_ha",
-                                "basin_id",
-                                "confidence",
-                                "count",
-                                "date_end_t0",
-                                "date_end_t1",
-                                "date_start_t0",
-                                "date_start_t1",
-                                "grid",
-                                "label",
-                                "month_detec",
-                                "sat_detect_prefix",
-                                "sat_viz_prefix",
-                                "satellite",
-                                "territory_id",
-                                "territory_name",
-                                "year_detec",
-                                "g__type",
-                                "g__coordinates",
-                                "length_alert_km",
-                                "data_source",
-                                "source_file_name",
-                            ]
-
-                            values = [
-                                _id,
-                                alert_id,
-                                alert_type,
-                                area_alert_ha,
-                                basin_id,
-                                confidence,
-                                count,
-                                date_end_t0,
-                                date_end_t1,
-                                date_start_t0,
-                                date_start_t1,
-                                grid,
-                                label,
-                                month_detec,
-                                sat_detect_prefix,
-                                sat_viz_prefix,
-                                satellite,
-                                territory_id,
-                                territory_name,
-                                year_detec,
-                                g__type,
-                                g__coordinates,
-                                length_alert_km,
-                                data_source,
-                                source_file_name,
-                            ]
-
-                            result_inserted_count, result_updated_count = (
-                                self._safe_insert(cursor, table_name, columns, values)
-                            )
-                            data_inserted_count += result_inserted_count
-                            data_updated_count += result_updated_count
-
-                        except Exception:
-                            logger.exception(
-                                "An unexpected error occurred while processing feature"
-                            )
-                            raise
-                    conn.commit()
-                except Exception:
-                    logger.exception("An error occurred while processing GeoJSON")
-                    conn.rollback()
-                    raise
-
-            if alerts_metadata:
-                self._create_alerts_metadata_table(table_name)
-            else:
-                logger.info("No alerts metadata to store.")
-
-            for metadata in alerts_metadata:
-                try:
-                    cursor.execute("BEGIN")
-
-                    _id = metadata.get("metadata_uuid")
-                    confidence = metadata.get("confidence")
-                    description_alerts = metadata.get("description_alerts")
-                    month = metadata.get("month")
-                    territory_id = metadata.get("territory_id")
-                    total_alerts = metadata.get("total_alerts")
-                    type_alert = metadata.get("type_alert")
-                    year = metadata.get("year")
-                    data_source = metadata.get("data_source")
-
-                    columns = [
-                        "_id",
-                        "territory_id",
-                        "type_alert",
-                        "month",
-                        "year",
-                        "total_alerts",
-                        "description_alerts",
-                        "confidence",
-                        "data_source",
-                    ]
-
-                    values = [
-                        _id,
-                        territory_id,
-                        type_alert,
-                        month,
-                        year,
-                        total_alerts,
-                        description_alerts,
-                        confidence,
-                        data_source,
-                    ]
-
-                    result_inserted_count, result_updated_count = self._safe_insert(
-                        cursor,
-                        f"{table_name}__metadata",
-                        columns,
-                        values,
-                    )
-                    metadata_inserted_count += result_inserted_count
-                    metadata_updated_count += result_updated_count
-
-                    conn.commit()
-                except Exception:
-                    logger.exception(
-                        "An error occurred while processing alerts metadata."
-                    )
-                    conn.rollback()
-                    raise
-
-        finally:
-            logger.info(f"Total alert rows inserted: {data_inserted_count}")
-            logger.info(f"Total alert rows updated: {data_updated_count}")
-            logger.info(f"Total metadata rows inserted: {metadata_inserted_count}")
-            logger.info(f"Total metadata rows updated: {metadata_updated_count}")
-            cursor.close()
-            conn.close()
-
-        if data_inserted_count > 0 or metadata_inserted_count > 0:
-            new_alerts_data = True
-        return new_alerts_data
+def create_metadata_table(cursor, table_name):
+    cursor.execute(
+        sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {metadata_table} (
+            _id character varying(36) NOT NULL PRIMARY KEY,
+            confidence real,
+            description_alerts text,
+            month bigint,
+            territory_id bigint,
+            total_alerts bigint,
+            type_alert bigint,
+            year bigint,
+            data_source text
+        );
+    """).format(metadata_table=sql.Identifier(table_name))
+    )

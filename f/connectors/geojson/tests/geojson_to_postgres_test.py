@@ -51,3 +51,9 @@ def test_script_e2e(pg_database):
                 '["wildflowers", "grasses"]',
                 '["deer", "rabbits"]',
             )
+
+            # Check that there is no __columns table created
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'my_geojson_data__columns'"
+            )
+            assert cursor.fetchone() is None
