@@ -106,7 +106,6 @@ def test_truncated_table_name_retains_suffix(mock_db_connection):
         mock_db_connection,
         very_long_name,
         suffix=suffix,
-        sanitize_keys=True,
         use_mapping_table=False,
     )
 
