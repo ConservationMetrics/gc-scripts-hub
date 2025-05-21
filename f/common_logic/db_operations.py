@@ -67,6 +67,10 @@ class StructuredDBWriter:
         PostgreSQL connection string.
     table_name : str
         Destination table name for the data.
+    suffix : bool
+        If provided, appends `__<suffix>` to the table name. The full name will be truncated
+        to 63 characters to satisfy PostgreSQL’s identifier length limit. This is useful for
+        creating auxiliary tables (e.g., labels, columns) associated with a primary data table.
     use_mapping_table : bool
       If True, maintains a mapping table that maps original keys to SQL-safe column names.
     sanitize_keys : bool
@@ -90,6 +94,7 @@ class StructuredDBWriter:
         self,
         db_connection_string,
         table_name,
+        suffix=None,
         use_mapping_table=False,
         sanitize_keys=False,
         reverse_properties_separated_by=None,
@@ -98,8 +103,16 @@ class StructuredDBWriter:
     ):
         self.db_connection_string = db_connection_string
         # Safely truncate the table to 63 characters
+        # If suffix is provided (e.g., "labels"), create a derived table name.
         # TODO: ...while retaining uniqueness
-        self.table_name = table_name[:63]
+        self.base_table_name = table_name
+        self.suffix = suffix
+
+        if suffix:
+            combined = f"{table_name}__{suffix}"
+            self.table_name = combined[:63]
+        else:
+            self.table_name = table_name[:63]
         self.use_mapping_table = use_mapping_table
         self.sanitize_keys = sanitize_keys
         self.reverse_separator = reverse_properties_separated_by

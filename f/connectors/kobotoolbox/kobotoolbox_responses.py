@@ -61,7 +61,7 @@ def main(
     # If form_labels is empty, there were no translatable labels found in metadata
     if form_labels:
         kobo_translations_writer = StructuredDBWriter(
-            conninfo(db), f"{db_table_name}__labels"
+            conninfo(db), db_table_name, suffix="labels"
         )
         kobo_translations_writer.handle_output(form_labels)
         logger.info(
