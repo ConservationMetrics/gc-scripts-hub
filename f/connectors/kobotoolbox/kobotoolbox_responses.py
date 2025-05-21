@@ -50,7 +50,6 @@ def main(
         conninfo(db),
         db_table_name,
         use_mapping_table=True,
-        sanitize_keys=True,
         reverse_properties_separated_by="/",
     )
     kobo_response_writer.handle_output(transformed_form_responses)
