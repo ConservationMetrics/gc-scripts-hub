@@ -1,6 +1,6 @@
 # KoboToolbox: Fetch Survey Responses
 
-This script fetches form metadata and survey submissions from the KoboToolbox REST API.  Field translations are extracted from metadata and written to a PostgreSQL `labels` lookup table. The structured part of survey submissions are written to a PostgreSQL table, while media attachments are downloaded to disk in a specified directory.
+This script fetches form metadata and survey submissions from the KoboToolbox REST API.  Field translations are extracted from metadata and written to a PostgreSQL `labels` lookup table. The structured part of survey submissions are written to a PostgreSQL table, while media attachments are downloaded to disk in a specified directory. Form metadata is also saved to disk as a JSON file.
 
 ## Label Lookup Table (`__labels`)
 

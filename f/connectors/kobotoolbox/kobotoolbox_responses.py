@@ -74,6 +74,14 @@ def download_form_metadata(
     """
     Downloads form metadata from the KoboToolbox server and saves it to a JSON file.
 
+    The metadata is saved to disk intentionally (not as a temporary artifact),
+    as it may have value for future processes beyond immediate label extraction.
+    The saved file includes additional metadata information about the form such as sector,
+    country, field properties, and more.
+
+    This file does **not** contain sensitive secrets. The only identifiers it includes are the
+    KoboToolbox username (typically public-facing) and the form ID.
+
     Parameters
     ----------
     server_base_url : str
