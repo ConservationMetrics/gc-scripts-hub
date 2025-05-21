@@ -95,3 +95,26 @@ def test_long_table_name_truncation(mock_db_connection):
     # Verify both tables exist and are accessible
     assert writer._inspect_schema(writer.table_name)
     assert writer._inspect_schema(mapping_table)
+
+
+def test_truncated_table_name_retains_suffix(mock_db_connection):
+    very_long_name = (
+        "this_is_an_extremely_long_table_name_that_should_truncate_properly"
+    )
+    suffix = "labels"
+    writer = StructuredDBWriter(
+        mock_db_connection,
+        very_long_name,
+        suffix=suffix,
+        sanitize_keys=True,
+        use_mapping_table=False,
+    )
+
+    # Table name should end with __labels and be max 63 chars
+    assert writer.table_name.endswith(f"__{suffix}")
+    assert len(writer.table_name) <= 63
+
+    # Actual table should be creatable and inspectable
+    submissions = [{"_id": "1", "field": "value"}]
+    writer.handle_output(submissions)
+    assert writer._inspect_schema(writer.table_name)
