@@ -114,9 +114,8 @@ def download_form_metadata(
 
 def extract_form_labels(form_metadata):
     """
-    Extracts and prepares labels for form questions and choices from the provided form metadata.
-    This function is designed to create a lookup table for form translations, supporting both
-    multilingual and single-language forms.
+    Extracts and prepares normalized labels for form questions and choices from the provided form metadata.
+    This function is designed to create a lookup table for form translations.
 
     Parameters
     ----------
@@ -126,56 +125,55 @@ def extract_form_labels(form_metadata):
     Returns
     -------
     list of dict
-        A list of dictionaries, each representing a form item with the following keys:
-        - '_id': A unique identifier for the item, generated using an MD5 hash.
+        A list of dictionaries, each representing a label for a form item with the following keys:
+        - '_id': A unique identifier for the item-language tuple, generated using an MD5 hash.
         - 'type': The type of the item, either 'survey' or 'choices'.
         - 'name': The name of the form item.
-        - 'label': The label of the item in the default language if no translations exist.
-        - 'translation_<lang_code>': The label of the item in specific languages, if translations exist.
+        - 'language': The language code of the label (e.g., 'en', 'es').
+        - 'label': The label text in the specified language.
     """
     content = form_metadata.get("content", {})
     translations = content.get("translations", [])
 
+    rows = []
+
     if not translations or translations == [None]:
-        # No multilingual translations are provided in the form, so just write plain 'label'
-        rows = []
+        # Single-language form, only one label per item
         for section in ["survey", "choices"]:
             for item in content.get(section, []):
+                label = item.get("label", [None])[0]
                 row = {
                     "type": section,
                     "name": item["name"],
-                    "label": item.get("label", [None])[0],
+                    "language": None,
+                    "label": label,
                 }
                 hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
                 row["_id"] = hashlib.md5(hash_input).hexdigest()
                 rows.append(row)
         return rows
 
-    # Extract the language codes from the translations
-    # Example: "English (en)", "Spanish (es)", etc.
-    # We assume that the language code is always in parentheses
-    # and is the last part of the string.
+    # Parse language codes from translations (assumes format "Name (xx)")
     lang_codes = [
         lang[lang.find("(") + 1 : lang.find(")")]
         for lang in translations
         if isinstance(lang, str) and "(" in lang and ")" in lang
     ]
 
-    rows = []
     for section in ["survey", "choices"]:
         for item in content.get(section, []):
-            row = {
-                "type": section,
-                "name": item["name"],
-            }
             labels = item.get("label", [])
             for i, code in enumerate(lang_codes):
                 if i < len(labels):
-                    row[f"label_{code}"] = labels[i]
-
-            hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
-            row["_id"] = hashlib.md5(hash_input).hexdigest()
-            rows.append(row)
+                    row = {
+                        "type": section,
+                        "name": item["name"],
+                        "language": code,
+                        "label": labels[i],
+                    }
+                    hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
+                    row["_id"] = hashlib.md5(hash_input).hexdigest()
+                    rows.append(row)
 
     return rows
 

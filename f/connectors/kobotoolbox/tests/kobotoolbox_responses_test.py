@@ -54,52 +54,78 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     # Form labels are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
+            # (4 survey + 4 choices) × 3 languages = 24 rows
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
-            assert cursor.fetchone()[0] == 8
+            assert cursor.fetchone()[0] == 24
 
             # Verify specific translations for survey items
             cursor.execute(
-                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'en'
+                """
             )
-            assert cursor.fetchone() == (
-                "Record your current location",
-                "Registre la ubicación actual",
-                "Registre a localização atual",
-            )
+            assert cursor.fetchone()[0] == "Record your current location"
 
             cursor.execute(
-                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'Estimate_height_of_your_tree_in_meters'"
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'es'
+                """
             )
-            assert cursor.fetchone() == (
-                "Estimate the height of your tree (in meters)",
-                "Estime la altura de su árbol (en metros)",
-                "Estime a altura da sua árvore (em metros)",
+            assert cursor.fetchone()[0] == "Registre la ubicación actual"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'pt'
+                """
+            )
+            assert cursor.fetchone()[0] == "Registre a localização atual"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Estimate_height_of_your_tree_in_meters' AND language = 'en'
+                """
+            )
+            assert (
+                cursor.fetchone()[0] == "Estimate the height of your tree (in meters)"
             )
 
             # Verify specific translations for choice items
             cursor.execute(
-                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'shade'"
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'shade' AND language = 'es'
+                """
             )
-            assert cursor.fetchone() == ("Shade", "Sombra", "Sombra")
+            assert cursor.fetchone()[0] == "Sombra"
 
             cursor.execute(
-                f"SELECT label_en, label_es, label_pt FROM {table_name}__labels WHERE name = 'wildlife_habitat'"
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'wildlife_habitat' AND language = 'pt'
+                """
             )
-            assert cursor.fetchone() == (
-                "Wildlife Habitat",
-                "Hábitat de vida silvestre",
-                "Habitat da vida selvagem",
-            )
+            assert cursor.fetchone()[0] == "Habitat da vida selvagem"
 
             # Check that the type is set for survey / choice items
             cursor.execute(
-                f"SELECT type FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
+                f"""
+                SELECT DISTINCT type FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location'
+                """
             )
-            assert cursor.fetchone() == ("survey",)
+            assert cursor.fetchone()[0] == "survey"
+
             cursor.execute(
-                f"SELECT type FROM {table_name}__labels WHERE name = 'shade'"
+                f"""
+                SELECT DISTINCT type FROM {table_name}__labels 
+                WHERE name = 'shade'
+                """
             )
-            assert cursor.fetchone() == ("choices",)
+            assert cursor.fetchone()[0] == "choices"
 
 
 def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tmp_path):

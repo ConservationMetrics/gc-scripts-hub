@@ -1,23 +1,22 @@
 # KoboToolbox: Fetch Survey Responses
 
-This script fetches survey submissions from the KoboToolbox REST API, transforms them for SQL compatibility, and writes the results to a PostgreSQL database. It also downloads any media attachments and saves the form metadata to disk.
+This script fetches form metadata and survey submissions from the KoboToolbox REST API.  Field translations are extracted from metadata and written to a PostgreSQL `labels` lookup table. The structured part of survey submissions are written to a PostgreSQL table, while media attachments are downloaded to disk in a specified directory.
 
 ## Label Lookup Table (`__labels`)
 
-The script creates a secondary table named `<table_name>__labels` to store question and choice labels from the form definition. If the form metadata includes translations (via the `translations` field), the table will include one column per language (e.g. `label_en`, `label_es`, etc.). If no translations are provided (e.g., `translations: [null]`), only the default label is included as a single `label` column.
+The script creates a secondary table named `<table_name>__labels` to store question and choice labels from the form definition. If the form metadata includes translations (via the `translations` field), each translation is stored as a separate row—one per language—for each form element.
 
-Each row represents one form element (from either the `survey` or `choices` section), with the following structure:
+Each row represents one label for a form element (from either the `survey` or `choices` section), with the following structure: 
 
+| Column     | Type    | Description                                                                 |
+|------------|---------|-----------------------------------------------------------------------------|
+| `type`     | TEXT    | Either `"survey"` or `"choices"` indicating the form section               |
+| `name`     | TEXT    | The name of the form element (question or choice)                          |
+| `language` | TEXT    | The language of the label (e.g., `"en"`, `"es"`, `"pt"`)                    |
+| `label`    | TEXT    | The label text in the specified language                                   |
+| `_id`      | TEXT    | Deterministic hash based on the row content (used as a unique key)         |
 
-| Column             | Description                                                           |
-|--------------------|-----------------------------------------------------------------------|
-| `type`             | Either `"survey"` or `"choices"` indicating the form section          |
-| `name`             | The name of the form element (question or choice)                     |
-| `label_<lang>`     | The label text in each language (e.g. `label_en`, `label_es`, etc.)   |
-| `label`            | The default label (only present if no translations are defined)       |
-| `_id`              | Deterministic hash based on the row content (used as a unique key)    |
-
-This table can be used for rendering field translations on downstream front ends or clients.
+This table can be used for rendering field translations in downstream clients, selecting the appropriate label by language, or falling back gracefully when a translation is missing.
 
 ## 📚 Reference
 
