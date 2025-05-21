@@ -109,8 +109,9 @@ class StructuredDBWriter:
         self.suffix = suffix
 
         if suffix:
-            combined = f"{table_name}__{suffix}"
-            self.table_name = combined[:63]
+            max_base_length = 63 - len(f"__{suffix}")
+            base = table_name[:max_base_length]
+            self.table_name = f"{base}__{suffix}"
         else:
             self.table_name = table_name[:63]
         self.use_mapping_table = use_mapping_table
