@@ -58,6 +58,7 @@ def main(
         f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
     )
 
+    # If form_labels is empty, there were no translatable labels found in metadata
     if form_labels:
         kobo_translations_writer = StructuredDBWriter(
             conninfo(db), f"{db_table_name}__labels"
@@ -124,6 +125,8 @@ def extract_form_labels(form_metadata):
     """
     Extracts and prepares normalized labels for form questions and choices from the provided form metadata.
     This function is designed to create a lookup table for form translations.
+
+    If no labels are found in the metadata, returns an empty list.
 
     Parameters
     ----------
