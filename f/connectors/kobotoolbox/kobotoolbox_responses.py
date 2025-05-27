@@ -154,7 +154,7 @@ def extract_form_labels(form_metadata):
                 label = item.get("label", [None])[0]
                 row = {
                     "type": section,
-                    "name": item["name"],
+                    "name": item.get("name", item.get("$autoname")),
                     "language": None,
                     "label": label,
                 }
@@ -177,7 +177,7 @@ def extract_form_labels(form_metadata):
                 if i < len(labels):
                     row = {
                         "type": section,
-                        "name": item["name"],
+                        "name": item.get("name", item.get("$autoname")),
                         "language": code,
                         "label": labels[i],
                     }
