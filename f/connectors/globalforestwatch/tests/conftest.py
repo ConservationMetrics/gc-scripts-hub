@@ -26,6 +26,11 @@ def gfw_server(mocked_responses):
         json=server_responses.gfw_integrated_alerts(),
         status=200,
     )
+    mocked_responses.post(
+        "https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query",
+        json=server_responses.gfw_viirs_fire_alerts(),
+        status=200,
+    )
 
     gfw_api = dict(api_key="my-api-key")
 

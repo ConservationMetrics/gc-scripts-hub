@@ -20,11 +20,13 @@ schema:
       description: >-
         The type of alert to fetch from the Global Forest Watch API. This can
         be one of the following:  `gfw_integrated_alerts` (recommended), 
-        `gfw_radd_alerts`, `umd_glad_landsat_alerts`, or `umd_glad_sentinel2_alerts.
+        `nasa_viirs_fire_alerts`, `gfw_radd_alerts`, `umd_glad_landsat_alerts`, 
+        or `umd_glad_sentinel2_alerts.
       default: "gfw_integrated_alerts"
       enum:
         - gfw_integrated_alerts
         - gfw_radd_alerts
+        - nasa_viirs_fire_alerts
         - umd_glad_landsat_alerts
         - umd_glad_sentinel2_alerts
       originalType: string  

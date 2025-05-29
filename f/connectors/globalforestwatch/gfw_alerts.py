@@ -94,7 +94,13 @@ def fetch_alerts_from_gfw(
         # The advantage would be that the geometry can be more complex than a simple bounding box.
         # Let's decide whether to do this or not after this script gets some usage.
         "geometry": {"type": "Polygon", "coordinates": bbox_array},
-        "sql": f"SELECT latitude, longitude, {type_of_alert}__date, {type_of_alert}__confidence FROM results WHERE {type_of_alert}__date >= '{minimum_date}'",
+        # Note that VIIRS fire alerts have a different schema than the other alerts.
+        "sql": (
+            f"SELECT latitude, longitude, "
+            f"{'alert__date, confidence__cat' if type_of_alert == 'nasa_viirs_fire_alerts' else f'{type_of_alert}__date, {type_of_alert}__confidence'} "
+            f"FROM results WHERE "
+            f"{'alert__date' if type_of_alert == 'nasa_viirs_fire_alerts' else f'{type_of_alert}__date'} >= '{minimum_date}'"
+        ),
     }
 
     response = requests.post(url, headers=headers, json=data)
@@ -127,13 +133,21 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
     for alert in alerts:
         lat = alert["latitude"]
         lon = alert["longitude"]
-        date = alert["gfw_integrated_alerts__date"]
-        confidence = alert["gfw_integrated_alerts__confidence"]
+        # Again, VIIRS fire alerts have a different schema than the other alerts.
+        if type_of_alert == "nasa_viirs_fire_alerts":
+            date = alert["alert__date"]
+            confidence_map = {"n": "nominal", "l": "low", "h": "high"}
+            confidence = confidence_map.get(
+                alert["confidence__cat"], alert["confidence__cat"]
+            )
+        else:
+            date = alert[f"{type_of_alert}__date"]
+            confidence = alert[f"{type_of_alert}__confidence"]
         # GFW alerts do not have IDs. So, let's create a unique id by combining date, latitude, and longitude, and removing non-integer characters.
         id = re.sub(
             r"\D",
             "",
-            f"{alert['gfw_integrated_alerts__date']}{alert['latitude']}{alert['longitude']}",
+            f"{date}{lat}{lon}",
         )
 
         feature = {
@@ -141,7 +155,7 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
             "id": id,
             "geometry": {
                 "type": "Point",
-                "coordinates": [lon, lat],
+                "coordinates": [float(lon), float(lat)],
             },
             # TODO: Converge on a minimal set of common standards for alerts properties from this script and `alerts_gcs`
             # TODO: Ensure that the front end (GuardianConnector Explorer) can work with this format
