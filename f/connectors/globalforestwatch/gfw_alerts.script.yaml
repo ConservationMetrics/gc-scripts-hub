@@ -1,6 +1,6 @@
 summary: 'Global Forest Watch: Fetch Alerts'
 description: Fetch alerts from the Global Forest Watch API
-lock: '!inline f/connectors/alerts/alerts_twilio.script.lock'
+lock: '!inline f/connectors/globalforestwatch/gfw_alerts.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
@@ -10,7 +10,7 @@ schema:
     - type_of_alert
     - gfw_api
     - bounding_box
-    - mininum_date
+    - minimum_date
     - db
     - db_table_name
     - attachment_root
@@ -46,13 +46,13 @@ schema:
         for example: 
         `[[[-55.2308,5.6945],[-55.2158,5.6945],[-55.2158,5.7055],[-55.2308,5.7055],[-55.2308,5.6945]]]`
       default: null
-    mininum_date:
+    minimum_date:
       type: string
       description: >-
         The minimum date for fetching alerts. This should be in the format
-        YYYY-MM-DD. For example, to fetch alerts from January 1, 2023, use
-        "2023-01-01".
-      default: null
+        YYYY-MM-DD. For example, to fetch alerts from January 1, 2025, use
+        `2025-01-01`.
+      default: "2025-01-01"
       originalType: string
     db:
       type: object
@@ -62,7 +62,7 @@ schema:
     db_table_name:
       type: string
       description: The name of the database table where alerts will be stored.
-      default: "gfw-alerts"
+      default: "gfw_alerts"
       originalType: string
     attachment_root:
       type: string
@@ -75,7 +75,7 @@ schema:
     - type_of_alert
     - gfw_api
     - bounding_box
-    - mininum_date
+    - minimum_date
     - db
     - db_table_name
     - attachment_root
