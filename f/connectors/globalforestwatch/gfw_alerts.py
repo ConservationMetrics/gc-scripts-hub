@@ -136,7 +136,10 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
         # Again, VIIRS fire alerts have a different schema than the other alerts.
         if type_of_alert == "nasa_viirs_fire_alerts":
             date = alert["alert__date"]
-            confidence = alert["confidence__cat"]
+            confidence_map = {"n": "nominal", "l": "low", "h": "high"}
+            confidence = confidence_map.get(
+                alert["confidence__cat"], alert["confidence__cat"]
+            )
         else:
             date = alert[f"{type_of_alert}__date"]
             confidence = alert[f"{type_of_alert}__confidence"]
