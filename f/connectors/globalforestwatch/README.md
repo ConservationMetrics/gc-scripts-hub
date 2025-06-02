@@ -47,3 +47,7 @@ curl -X POST "https://data-api.globalforestwatch.org/auth/apikey" \
 
 > [!NOTE] 
 > The API key expires after one year. You will need to retrieve a new key afterwards. In the future, we can look at doing this programmatically.
+
+## 📚 Reference
+
+* Available datasets from the GFW API Documentation: https://data-api.globalforestwatch.org/datasets
