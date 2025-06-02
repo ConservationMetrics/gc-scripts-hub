@@ -63,3 +63,11 @@ def test_script_e2e(gfw_server, pg_database, tmp_path):
 
             cursor.execute("SELECT confidence FROM gfw_viirs_alerts LIMIT 1 OFFSET 1")
             assert cursor.fetchone()[0] == "low"
+
+            cursor.execute(
+                "SELECT date_start_t0 FROM gfw_viirs_alerts LIMIT 1 OFFSET 1"
+            )
+            assert cursor.fetchone()[0] == "2024-10-31"
+
+            cursor.execute("SELECT date_end_t0 FROM gfw_viirs_alerts LIMIT 1 OFFSET 1")
+            assert cursor.fetchone()[0] == "2024-10-31"
