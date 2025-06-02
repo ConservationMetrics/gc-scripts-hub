@@ -157,15 +157,18 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
                 "type": "Point",
                 "coordinates": [float(lon), float(lat)],
             },
-            # TODO: Converge on a minimal set of common standards for alerts properties from this script and `alerts_gcs`
-            # TODO: Ensure that the front end (GuardianConnector Explorer) can work with this format
             "properties": {
                 "alert_id": id,
                 "alert_type": type_of_alert,
                 "confidence": confidence,
-                "date": date,
+                "date_start_t0": date,
+                "date_end_t0": date,
+                "date_start_t1": date,
+                "date_end_t1": date,
+                "year_detec": date.split("-")[0],
+                "month_detec": date.split("-")[1],
                 "data_source": "Global Forest Watch",
-            },
+            },  # Note: GFW alerts do not have date start and end. So, we set them to the same value.
         }
         features.append(feature)
 
