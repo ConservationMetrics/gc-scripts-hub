@@ -1,86 +1,6 @@
 import psycopg2
 
-from f.connectors.kobotoolbox.kobotoolbox_responses import main, sanitize
-
-
-def test_sanitize():
-    message = {
-        "col.1": 1,
-        "col?2": 2,
-        "Cultura/col3": 3,
-        "col_002": 4,
-        "x": 5,
-    }
-    global_mapping = {"x": "X"}
-
-    sql_message, updated_global_mapping = sanitize(
-        message, global_mapping, "/", [("/", "__")]
-    )
-    assert sql_message == {
-        "col1": 1,
-        "col2": 2,
-        "col3__Cultura": 3,
-        "col_002": 4,
-        "X": 5,
-    }
-    assert updated_global_mapping == {
-        "x": "X",
-        "col.1": "col1",
-        "col?2": "col2",
-        "Cultura/col3": "col3__Cultura",
-        "col_002": "col_002",
-    }
-
-
-def test_sanitize__same_letters():
-    message = {"foo[bar]test": 1, "foo{bar}test": 2}
-
-    sql_message, _ = sanitize(message, {}, maxlen=12)
-    assert sql_message == {
-        "foobartest": 1,
-        "foobarte_001": 2,
-    }
-
-
-def test_sanitize_column_names__long():
-    message = {
-        "column.1": 1,
-        "column12": 2,
-        "column13": 3,
-        "col_002": 4,
-        "x": 5,
-    }
-
-    sql_message, updated_global_mapping = sanitize(message, {}, maxlen=7)
-    print(sql_message)
-    assert sql_message == {
-        "column1": 1,
-        "col_001": 2,
-        "col_002": 3,  # Note that column13 got assigned another actual column's name!
-        "col_003": 4,  # Note that col_002 got renamed to col_003!
-        "x": 5,
-    }
-    assert updated_global_mapping == {
-        "column.1": "column1",
-        "column12": "col_001",
-        "column13": "col_002",  # !!
-        "col_002": "col_003",  # !!
-        "x": "x",
-    }
-
-
-def test_sanitize_with_nesting():
-    """sanitize() JSON-serializes deeply nested types."""
-    message = {
-        "group1": {"group2": {"question": "How ya doin?"}},
-        "url": "gopher://example.net",
-    }
-
-    sql_message, _ = sanitize(message, {})
-    assert sql_message == {
-        "group1": '{"group2": {"question": "How ya doin?"}}',
-        "url": "gopher://example.net",
-    }
+from f.connectors.kobotoolbox.kobotoolbox_responses import main
 
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
@@ -98,21 +18,134 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     # Attachments are saved to disk
     assert (asset_storage / table_name / "attachments" / "1637241249813.jpg").exists()
 
+    # Metadata is saved to disk
+    assert (asset_storage / table_name / f"{table_name}_metadata.json").exists()
+    with open(asset_storage / table_name / f"{table_name}_metadata.json") as f:
+        metadata = f.read()
+    assert all(
+        key in metadata for key in ["name", "uid", "owner__username", "data", "content"]
+    )
+
     # Survey responses are written to a SQL Table
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM kobo_responses")
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             assert cursor.fetchone()[0] == 3
 
             # Check that the coordinates of a fixture entry are stored as a Point,
             # and that the coordinates are reversed (longitude, latitude).
             cursor.execute(
-                "SELECT g__type, g__coordinates FROM kobo_responses WHERE _id = '124961136'"
+                f"SELECT g__type, g__coordinates FROM {table_name} WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("Point", "[-122.0109429, 36.97012]")
 
             # Check that meta/instanceID was sanitized to instanceID__meta
             cursor.execute(
-                "SELECT \"instanceID__meta\" FROM kobo_responses WHERE _id = '124961136'"
+                f"SELECT \"instanceID__meta\" FROM {table_name} WHERE _id = '124961136'"
             )
             assert cursor.fetchone() == ("uuid:e58da38d-3eee-4bd7-8512-4a97ea8fbb01",)
+
+            # Check that the mapping column was created
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {table_name}__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
+            )
+            assert cursor.fetchone()[0] == 1
+
+    # Form labels are written to a SQL Table
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            # (4 survey + 4 choices) × 3 languages = 24 rows
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
+            assert cursor.fetchone()[0] == 24
+
+            # Verify specific translations for survey items
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'en'
+                """
+            )
+            assert cursor.fetchone()[0] == "Record your current location"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'es'
+                """
+            )
+            assert cursor.fetchone()[0] == "Registre la ubicación actual"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location' AND language = 'pt'
+                """
+            )
+            assert cursor.fetchone()[0] == "Registre a localização atual"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'Estimate_height_of_your_tree_in_meters' AND language = 'en'
+                """
+            )
+            assert (
+                cursor.fetchone()[0] == "Estimate the height of your tree (in meters)"
+            )
+
+            # Verify specific translations for choice items
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'shade' AND language = 'es'
+                """
+            )
+            assert cursor.fetchone()[0] == "Sombra"
+
+            cursor.execute(
+                f"""
+                SELECT label FROM {table_name}__labels 
+                WHERE name = 'wildlife_habitat' AND language = 'pt'
+                """
+            )
+            assert cursor.fetchone()[0] == "Habitat da vida selvagem"
+
+            # Check that the type is set for survey / choice items
+            cursor.execute(
+                f"""
+                SELECT DISTINCT type FROM {table_name}__labels 
+                WHERE name = 'Record_your_current_location'
+                """
+            )
+            assert cursor.fetchone()[0] == "survey"
+
+            cursor.execute(
+                f"""
+                SELECT DISTINCT type FROM {table_name}__labels 
+                WHERE name = 'shade'
+                """
+            )
+            assert cursor.fetchone()[0] == "choices"
+
+
+def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_no_translations"
+
+    main(
+        koboserver_no_translations.account,
+        koboserver_no_translations.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            # Confirm that for the labels table, there is only a labels column, no language suffix
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
+            assert cursor.fetchone()[0] == 8
+            cursor.execute(
+                f"SELECT label FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
+            )
+            assert cursor.fetchone() == ("Record your current location",)

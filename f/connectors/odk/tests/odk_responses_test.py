@@ -29,3 +29,9 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
                 "SELECT g__type, g__coordinates FROM odk_responses WHERE _id = 'uuid:cb7955d8-dc7c-480f-9699-20555a155c92'"
             )
             assert cursor.fetchone() == ("Point", "[-77.9867385, 40.322394]")
+
+            # Check that a __columns table is created
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'odk_responses__columns'"
+            )
+            assert cursor.fetchone() is not None

@@ -65,15 +65,21 @@ def main(
             Path(db_table_prefix) / project_name / f"{project_name}.geojson"
         )
 
-        save_data_to_file(geojson, project_name, storage_path, file_type="geojson")
+        if geojson.get("features"):
+            logger.info(f"Saving data for project {project_name}...")
+            save_data_to_file(geojson, project_name, storage_path, file_type="geojson")
 
-        save_geojson_to_postgres(
-            db,
-            db_table_prefix + "_" + project_name,
-            rel_geojson_path,
-            attachment_root,
-            False,  # do not delete the file after saving to Postgres
-        )
+            save_geojson_to_postgres(
+                db,
+                db_table_prefix + "_" + project_name,
+                rel_geojson_path,
+                attachment_root,
+                False,
+            )  # Do not delete the file after saving to Postgres
+        else:
+            logger.info(
+                f"No features found in project {project_name}. Nothing to save."
+            )
 
     if attachment_failed:
         raise RuntimeError("Some attachments failed to download.")
