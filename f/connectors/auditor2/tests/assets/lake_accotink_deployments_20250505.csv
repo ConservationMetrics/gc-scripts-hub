@@ -1,4 +1,4 @@
-sensor_name,sensor_type,Deployment_DateTime,Retrieval_DateTime,site_id,deployment_id
+sensor_name,sensor_type,deployment_datetime,retrieval_datetime,site_id,deployment_id
 2453AC0263FB8D4C,Hydromoth,2023-08-19T21:40:00Z,2023-11-07T20:30:00Z,1,
 7987,SoundTrap,2023-08-19T21:40:00Z,2023-11-07T20:30:00Z,1,
 reefos-02,Custom,2023-10-01T15:50:00Z,2024-07-11T22:00:00Z,1,

@@ -1,11 +1,11 @@
-site_id,site_name,Latitude,Longitude,Depth_meters,Reef_Type,Site_Type
+site_id,site_name,latitude,longitude,depth_meters,habitat,site_type
 1,Coral Gardeners Control Site,38.7881,-77.2264,,control,algal
 2,Coral Gardeners Experimental Site,38.7883,-77.2265,,experimental,algal
 3,LTER 1 Backreef,38.7885,-77.2267,1,back_reef,algal
 4,LTER 1 Forereef,38.7882,-77.2269,10,fore_reef,algal
 5,LTER 1 Fringing reef,38.7884,-77.2271,5,fringing_reef,algal
 6,LTER 2 Backreef,38.7886,-77.2268,1,back_reef,algal
-7,LTER 2 Forereef,38.7880,-77.2270,10,fore_reef,algal
+7,LTER 2 Forereef,38.788,-77.227,10,fore_reef,algal
 8,LTER 2 Fringing reef,38.7887,-77.2272,4,fringing_reef,algal
 9,LTER 3 Backreef,38.7889,-77.2266,1,back_reef,algal
 10,LTER 3 Forereef,38.7888,-77.2273,10,fore_reef,algal
@@ -15,7 +15,7 @@ site_id,site_name,Latitude,Longitude,Depth_meters,Reef_Type,Site_Type
 14,LTER 4 Fringing reef,38.7882,-77.2277,5,fringing_reef,coral
 15,LTER 5 Backreef,38.7884,-77.2278,1,back_reef,coral
 16,LTER 5 Forereef,38.7886,-77.2279,10,fore_reef,coral
-17,LTER 5 Fringing reef,38.7880,-77.2280,4,fringing_reef,coral
+17,LTER 5 Fringing reef,38.788,-77.228,4,fringing_reef,coral
 18,LTER 6 Backreef,38.7887,-77.2281,1,back_reef,coral
 19,LTER 6 Forereef,38.7889,-77.2282,10,fore_reef,coral
 20,LTER 6 Fringing reef,38.7888,-77.2283,3,fringing_reef,coral
