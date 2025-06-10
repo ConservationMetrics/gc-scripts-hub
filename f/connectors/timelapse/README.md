@@ -4,9 +4,11 @@ This script ingests annotated camera trap data from a [Timelapse](https://timela
 
 The script writes data to PostgreSQL and handles fully dynamic schemas, since Timelapse allows all field names and folder levels to be customized by the user.
 
+TODO: Figure out how the ZIP file makes it to blob storage, and what calls this script.
+
 > [!NOTE]
 > The Timelapse database schema may change in future versions. This script was developed against Timelapse version 2.3.3.0.
-> 
+
 ## Notes
 
 The script reads the `TimelapseData.ddb` Timelapse database and ingests the `DataTable` (containing annotations) and folder-level metadata tables (`Level1`, `Level2`, etc.). These tables represent user-defined folder hierarchies such as **project → station → deployment** and are described in the `FolderDataInfo` table, which maps level numbers to user-facing names. There can be any number of folder levels (`n`), but in practice only a few (typically 2–3) are commonly used.
