@@ -26,7 +26,8 @@ def main(
 ):
     storage_path = Path(attachment_root) / "Timelapse" / db_table_prefix
 
-    extract_timelapse_archive(timelapse_zip, storage_path, delete_timelapse_zip)
+    timelapse_zip_path = Path(timelapse_zip)
+    extract_timelapse_archive(timelapse_zip_path, storage_path)
 
     timelapse_tables = read_timelapse_db_tables(storage_path, db_table_prefix)
 
@@ -42,25 +43,27 @@ def main(
             f"Timelapse data from table '{table_name}' successfully written to the database."
         )
 
+    if delete_timelapse_zip:
+        # Now that we've extracted the archive and written the data to the database,
+        # we can delete the original ZIP file.
+        timelapse_zip_path.unlink()
+        logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
+
 
 def extract_timelapse_archive(
-    timelapse_zip: str,
+    timelapse_zip_path: Path,
     storage_path: str,
-    delete_timelapse_zip: bool = True,
 ):
     """
-    Extracts a Timelapse ZIP archive to a specified root directory and optionally deletes the original ZIP file.
+    Extracts a Timelapse ZIP archive to a specified root directory.
 
     Parameters
     ----------
-    timelapse_zip : str
+    timelapse_zip_path : Path
         The path to the Timelapse ZIP file.
     storage_path : str
         The path to the root directory where the ZIP file will be extracted.
-    delete_timelapse_zip : bool, optional
-        Whether to delete the original ZIP file after extraction, by default True.
     """
-    timelapse_zip_path = Path(timelapse_zip)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         extract_to = Path(tmpdir)
@@ -73,10 +76,6 @@ def extract_timelapse_archive(
             logger.info(f"Extracted Timelapse archive: {timelapse_zip_path}")
         except shutil.ReadError as e:
             raise ValueError(f"Unable to extract archive: {e}")
-
-        if delete_timelapse_zip:
-            timelapse_zip_path.unlink()
-            logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
 
         storage_path = Path(storage_path)
         storage_path.mkdir(parents=True, exist_ok=True)
