@@ -1,4 +1,4 @@
-from f.common_logic.db_transformations import sanitize
+from f.common_logic.db_transformations import camel_to_snake, sanitize
 
 
 def test_sanitize():
@@ -79,3 +79,11 @@ def test_sanitize_with_nesting():
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",
     }
+
+
+def test_camel_to_snake():
+    assert camel_to_snake("CamelCase") == "camel_case"
+    assert camel_to_snake("camelCase") == "camel_case"
+    assert camel_to_snake("camel_case") == "camel_case"
+    assert camel_to_snake("camel_case_") == "camel_case_"
+    assert camel_to_snake("camel_case_") == "camel_case_"
