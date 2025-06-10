@@ -24,12 +24,14 @@ def main(
     delete_timelapse_zip: bool = True,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    storage_path = Path(attachment_root) / "Timelapse" / db_table_prefix
+    base_storage_path = Path(attachment_root) / "Timelapse" / db_table_prefix
 
     timelapse_zip_path = Path(timelapse_zip)
-    extract_timelapse_archive(timelapse_zip_path, storage_path)
+    actual_storage_path = extract_timelapse_archive(
+        timelapse_zip_path, base_storage_path
+    )
 
-    timelapse_tables = read_timelapse_db_tables(storage_path, db_table_prefix)
+    timelapse_tables = read_timelapse_db_tables(actual_storage_path, db_table_prefix)
 
     for table_name, rows in timelapse_tables.items():
         db_writer = StructuredDBWriter(
@@ -49,13 +51,18 @@ def main(
         timelapse_zip_path.unlink()
         logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
 
+    return actual_storage_path
+
 
 def extract_timelapse_archive(
     timelapse_zip_path: Path,
-    storage_path: str,
-):
+    storage_path: Path,
+) -> Path:
     """
-    Extracts a Timelapse ZIP archive to a specified root directory.
+    Extracts a Timelapse ZIP archive to a uniquely named subdirectory under `storage_path`.
+
+    The final target path is: storage_path / <zip_stem>[_n]
+    where `_n` ensures uniqueness if a folder with the same name already exists.
 
     Parameters
     ----------
@@ -63,6 +70,11 @@ def extract_timelapse_archive(
         The path to the Timelapse ZIP file.
     storage_path : str
         The path to the root directory where the ZIP file will be extracted.
+
+    Returns
+    -------
+    Path
+        The full path to the directory where the archive was extracted.
     """
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -77,18 +89,34 @@ def extract_timelapse_archive(
         except shutil.ReadError as e:
             raise ValueError(f"Unable to extract archive: {e}")
 
-        storage_path = Path(storage_path)
-        storage_path.mkdir(parents=True, exist_ok=True)
+        zip_name = timelapse_zip_path.stem
+        base_target_path = storage_path / zip_name
+        final_target_path = base_target_path
+        counter = 1
+
+        # Guarantee a clean, non-conflicting destination folder e.g. "timelapse_export"
+        # or "timelapse_export_1" if the first one already exists.
+        while final_target_path.exists():
+            final_target_path = storage_path / f"{zip_name}_{counter}"
+            counter += 1
+
+        final_target_path.mkdir(parents=True)
 
         for file in extract_to.rglob("*"):
             # Skip files in the "Backups" directory, as these are redundant
             if file.is_file() and "Backups" not in file.parts:
+                # relative_path represents the file's full internal path *within the ZIP archive*
+                # This is preserved so we don't flatten or lose folder structure during extraction
                 relative_path = file.relative_to(extract_to)
-                target_path = storage_path / relative_path
+                target_path = final_target_path / relative_path
+                # This mkdir with exist_ok=True is safe:
+                # multiple files may share parent directories within the archive (e.g. Station1/Deployment1a/)
+                # so we *do* want to reuse existing folders during file copy
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(file, target_path)
 
-        logger.info(f"Copied contents of Timelapse archive to: {storage_path}")
+        logger.info(f"Copied contents of Timelapse archive to: {final_target_path}")
+        return final_target_path
 
 
 def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
