@@ -1,0 +1,52 @@
+summary: 'Timelapse: Import Annotated Camera Trap Data'
+description: Import annotated camera trap data from a Timelapse root folder.
+lock: '!inline f/connectors/timelapse/timelapse.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - timelapse_zip
+    - db
+    - db_table_prefix
+    - delete_timelapse_zip
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where Timelapse images will be stored. Attachment files (e.g.,
+        photos and video) will be stored in the following directory schema: 
+        `{attachment_root}/timelapse/{project_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_prefix:
+      type: string
+      description: >-
+        This is a prefix added to the database table names created by this script.
+      default: timelapse
+      originalType: string
+    delete_timelapse_zip:
+      type: boolean
+      description: >-
+        Whether to delete the Timelapse ZIP file after processing.
+      default: true
+    timelapse_zip:
+      type: string
+      description: >-
+        The path to the Timelapse ZIP file, including the filename. This ZIP
+        file should contain a root folder with the TimeLapseData.ddb file and
+        subdirectories with images and videos.
+      originalType: string
+      pattern: '^.+\.zip$'
+  required:
+    - timelapse_zip
+    - attachment_root
+    - db
+    - db_table_prefix
