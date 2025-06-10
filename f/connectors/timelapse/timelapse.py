@@ -99,9 +99,17 @@ def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
 
     TODO: convert id to uuid?
     """
-    df = df.rename(
-        columns=lambda col: "_id" if col.lower() == "id" else camel_to_snake(col)
+    new_columns = df.columns.map(
+        lambda col: "_id" if col.lower() == "id" else camel_to_snake(col)
     )
+
+    if len(new_columns) != len(set(new_columns)):
+        raise ValueError("Column name collision detected")
+
+    logger.error(f"New columns: {new_columns}")
+    logger.error(f"Original columns: {df.columns}")
+
+    df.columns = new_columns
     return df
 
 

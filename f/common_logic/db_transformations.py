@@ -122,5 +122,11 @@ def sanitize(
 
 
 def camel_to_snake(name: str) -> str:
-    """Convert CamelCase string to snake_case."""
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+    """
+    Convert CamelCase string to snake_case.
+
+    c.f. https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
+    """
+    pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+    return pattern.sub("_", name).lower()
