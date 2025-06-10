@@ -35,7 +35,6 @@ def main(
             conninfo(db),
             table_name,
             use_mapping_table=False,
-            sanitize_keys=True,
             reverse_properties_separated_by=None,
         )
         db_writer.handle_output(rows)
