@@ -58,50 +58,60 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
 
 class StructuredDBWriter:
     """
-    StructuredDBWriter writes structured or semi-structured data (e.g., form submissions, GeoJSON features)
-    into a PostgreSQL table. It optionally supports dynamic schema evolution, key sanitization, and column mapping, or can rely on a predefined schema setup.
+     StructuredDBWriter writes structured or semi-structured data (e.g., form submissions, GeoJSON features)
+     into a PostgreSQL table. It optionally supports dynamic schema evolution and column mapping, or can rely on a predefined schema setup.
 
-    Parameters
-    ----------
-    db_connection_string : str
-        PostgreSQL connection string.
-    table_name : str
-        Destination table name for the data.
+     Parameters
+     ----------
+     db_connection_string : str
+         PostgreSQL connection string.
+     table_name : str
+         Destination table name for the data.
+     suffix : bool
+        If provided, appends `__<suffix>` to the table name. The full name will be truncated
+        to 63 characters to satisfy PostgreSQL’s identifier length limit. This is useful for
+        creating auxiliary tables (e.g., labels, columns) associated with a primary data table.
     use_mapping_table : bool
-      If True, maintains a mapping table that maps original keys to SQL-safe column names.
-    sanitize_keys : bool
-      If True, applies transformations to make keys SQL-compatible, including optional string replacements.
+       If True, maintains a mapping table that maps original keys to SQL-safe column names.
     reverse_properties_separated_by : str or None
-      If provided, splits keys on this character, reverses segments, and rejoins — useful for nested property flattening.
-    str_replace : list of tuple, optional
-        List of (old, new) strings to apply to keys during sanitization.
-    predefined_schema : callable or None, optional
-        If provided, this function is executed to create or validate the schema before inserting any data.
-        Signature: `(cursor, table_name) -> None`
+       If provided, splits keys on this character, reverses segments, and rejoins — useful for nested property flattening.
+     str_replace : list of tuple, optional
+         List of (old, new) strings to apply to keys during sanitization.
+     predefined_schema : callable or None, optional
+         If provided, this function is executed to create or validate the schema before inserting any data.
+         Signature: `(cursor, table_name) -> None`
 
-    Typical Use Cases
-    -----------------
-    - Writing cleaned KoboToolbox or ODK form data to a SQL table.
-    - Ingesting GeoJSON features with flattened geometry and properties.
-    - Storing alert data with a strict, predefined schema.
+     Typical Use Cases
+     -----------------
+     - Writing cleaned KoboToolbox or ODK form data to a SQL table.
+     - Ingesting GeoJSON features with flattened geometry and properties.
+     - Storing alert data with a strict, predefined schema.
     """
 
     def __init__(
         self,
         db_connection_string,
         table_name,
+        suffix=None,
         use_mapping_table=False,
-        sanitize_keys=False,
         reverse_properties_separated_by=None,
         str_replace=[("/", "__")],
         predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string
         # Safely truncate the table to 63 characters
+        # If suffix is provided (e.g., "labels"), create a derived table name.
         # TODO: ...while retaining uniqueness
-        self.table_name = table_name[:63]
+        self.base_table_name = table_name
+        self.suffix = suffix
+
+        if suffix:
+            max_base_length = 63 - len(f"__{suffix}")
+            base = table_name[:max_base_length]
+            self.table_name = f"{base}__{suffix}"
+        else:
+            self.table_name = table_name[:63]
         self.use_mapping_table = use_mapping_table
-        self.sanitize_keys = sanitize_keys
         self.reverse_separator = reverse_properties_separated_by
         self.str_replace = str_replace
         self.predefined_schema = predefined_schema
@@ -304,17 +314,14 @@ class StructuredDBWriter:
         original_to_sql = {}
 
         for submission in submissions:
-            if self.sanitize_keys:
-                sanitized, updated = sanitize(
-                    submission,
-                    existing_mappings,
-                    reverse_properties_separated_by=self.reverse_separator,
-                    str_replace=self.str_replace,
-                )
-                rows.append((sanitized, existing_mappings))
-                original_to_sql.update(updated)
-            else:
-                rows.append((submission, {}))
+            sanitized, updated = sanitize(
+                submission,
+                existing_mappings,
+                reverse_properties_separated_by=self.reverse_separator,
+                str_replace=self.str_replace,
+            )
+            rows.append((sanitized, existing_mappings))
+            original_to_sql.update(updated)
 
         missing_map_keys = set()
         missing_field_keys = set()

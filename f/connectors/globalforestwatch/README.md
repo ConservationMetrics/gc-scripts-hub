@@ -7,6 +7,7 @@ Currently, we support fetching the following alerts from GFW:
 * [Integrated deforestation alerts](https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about)
 * [GLAD alerts](https://glad.umd.edu/dataset/glad-forest-alerts) - either Landsat or Sentinel-2
 * [RADD alerts](https://data.globalforestwatch.org/datasets/gfw::deforestation-alerts-radd/about)
+* [NASA VIIRS fire alerts](https://data.globalforestwatch.org/documents/gfw::viirs-active-fires/about)
 
 > [!NOTE]
 > This script makes a query request to conduct on-the-fly data analysis. This means that for large areas, it may take a while for the GFW API to return the result. Additionally, there is a **maximum allowed payload size of 6291556 bytes**.
@@ -46,3 +47,7 @@ curl -X POST "https://data-api.globalforestwatch.org/auth/apikey" \
 
 > [!NOTE] 
 > The API key expires after one year. You will need to retrieve a new key afterwards. In the future, we can look at doing this programmatically.
+
+## 📚 Reference
+
+* Available datasets from the GFW API Documentation: https://data-api.globalforestwatch.org/datasets

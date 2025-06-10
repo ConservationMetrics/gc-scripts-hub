@@ -38,6 +38,14 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
     """
     storage_path = Path(storage_path)
     storage_path.mkdir(parents=True, exist_ok=True)
+
+    if not data or (
+        # Extra check for geojson files to avoid saving empty files
+        file_type in {"geojson"} and isinstance(data, dict) and not data.get("features")
+    ):
+        logger.warning(f"No data to save for file: {filename}.{file_type}")
+        return
+
     file_path = get_safe_file_path(storage_path, filename, file_type)
 
     if file_type in {"geojson", "json"}:
