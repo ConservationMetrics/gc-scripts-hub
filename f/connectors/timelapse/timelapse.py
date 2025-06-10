@@ -98,6 +98,7 @@ def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
     to '_id' and converts other column names from camelCase to snake_case.
 
     TODO: convert id to uuid?
+    TODO: Does this transformation need to maintain column mapping over time?
     """
     new_columns = df.columns.map(
         lambda col: "_id" if col.lower() == "id" else camel_to_snake(col)
