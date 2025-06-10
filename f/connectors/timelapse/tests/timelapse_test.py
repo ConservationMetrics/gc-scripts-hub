@@ -1,29 +1,45 @@
 import zipfile
 from pathlib import Path
 
+import pandas as pd
 import psycopg2
+import pytest
 
-from f.connectors.timelapse.timelapse import main
+from f.connectors.timelapse.timelapse import _transform_df, main
 
 
-def test_script_e2e(pg_database, tmp_path):
-    tmp_fixture_path = tmp_path / "timelapse.zip"
+def test_transform_df_column_name_collision():
+    # Create a DataFrame with columns that will collide after transformation
+    df = pd.DataFrame({"SomeColumn": [1, 2, 3], "Some_Column": [4, 5, 6]})
+
+    with pytest.raises(ValueError, match="Column name collision detected"):
+        _transform_df(df)
+
+
+@pytest.fixture
+def timelapse_zip(tmp_path):
+    """
+    Simulate the timelapse.zip file as input.
+
+    Creates a .zip of everything under tests/assets/ and returns its path.
+    We keep the assets uncompressed in the repo so they can be easily inspected
+    without needing to unzip a binary archive every time.
+    """
+    zip_path = tmp_path / "timelapse.zip"
     source_dir = Path("f/connectors/timelapse/tests/assets/")
-
-    # Zip up the contents of f/connectors/locusmap/tests/assets/ into tmp_fixture_path
-    # to simulate the timelapse.zip file as input.
-    # We keep the assets uncompressed in the repo so they can be easily inspected
-    # without needing to unzip a binary archive every time.
-    with zipfile.ZipFile(tmp_fixture_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in source_dir.rglob("*"):
             if file.is_file():
                 arcname = file.relative_to(source_dir)
                 zipf.write(file, arcname)
+    return zip_path
 
+
+def test_script_e2e(pg_database, tmp_path, timelapse_zip):
     asset_storage = tmp_path / "datalake"
 
     main(
-        tmp_fixture_path,
+        timelapse_zip,
         pg_database,
         "timelapse_test",
         delete_timelapse_zip=True,
