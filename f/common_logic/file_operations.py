@@ -3,6 +3,9 @@ import json
 import logging
 from pathlib import Path
 
+import pandas as pd
+from lxml import etree
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -59,3 +62,63 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
         raise ValueError(f"Unsupported file type: {file_type}")
 
     logger.info(f"{file_type.upper()} file saved to {file_path}")
+
+
+def detect_file_type(file_path: str) -> str:
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File does not exist: {file_path}")
+
+    def is_json(path):
+        with path.open() as f:
+            json.load(f)
+        return True
+
+    def is_geojson(path):
+        with path.open() as f:
+            data = json.load(f)
+        return isinstance(data, dict) and data.get("type") == "FeatureCollection"
+
+    def is_csv(path):
+        with path.open(newline="") as f:
+            sample = f.read(1024)
+            try:
+                dialect = csv.Sniffer().sniff(sample)
+            except csv.Error:
+                return False
+            f.seek(0)
+            reader = csv.reader(f, dialect)
+            headers = next(reader, None)
+            return headers is not None and all(h.strip() for h in headers)
+
+    def is_excel(path):
+        pd.read_excel(path)
+        return True
+
+    def is_gpx(p):
+        tree = etree.parse(str(p))
+        root = tree.getroot()
+        return "http://www.topografix.com/GPX/1/1" in root.nsmap.values()
+
+    def is_kml(p):
+        tree = etree.parse(str(p))
+        root = tree.getroot()
+        return "http://www.opengis.net/kml/2.2" in root.nsmap.values()
+
+    validators = [
+        ("geojson", is_geojson),
+        ("json", is_json),
+        ("xls", is_excel),
+        ("gpx", is_gpx),
+        ("kml", is_kml),
+        ("csv", is_csv),
+    ]
+
+    for format, checker in validators:
+        try:
+            if checker(path):
+                return format
+        except Exception:
+            continue
+
+    return "unknown"
