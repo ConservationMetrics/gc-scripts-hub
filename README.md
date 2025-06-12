@@ -7,6 +7,9 @@ can turn scripts into workflows and UIs.  It empowers semi-technical users to ac
 to run on a given interval without being overwhelmed by the usual barriers to entry (git, IDE, local environments,
 secrets managements, etc).
 
+🌱 [Read a blog post about Windmill is being used in this repository for supporting Indigenous communities](https://www.windmill.dev/blog/conservation-metrics-case-study)
+
+
 ## Available scripts, flows, and apps
 
 Some of the tools available in the Guardian Connector Scripts Hub are:
