@@ -1,3 +1,7 @@
+"""
+This module provides functions and classes for interacting with PostgreSQL databases.
+"""
+
 import json
 import logging
 import time
@@ -19,6 +23,25 @@ def conninfo(db: postgresql):
     password_part = f" password={db['password']}" if "password" in db else ""
     conn = "dbname={dbname} user={user} host={host} port={port}".format(**db)
     return conn + password_part
+
+
+def check_if_table_exists(
+    db_connection_string: str, table_name: str, schema: str = "public"
+):
+    """Check if a table exists in the database, returns a boolean. Default schema is public."""
+    conn = connect(db_connection_string)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = %s AND table_name = %s
+        )
+        """,
+        (schema, table_name),
+    )
+    return cursor.fetchone()[0]
 
 
 def fetch_data_from_postgres(db_connection_string: str, table_name: str):

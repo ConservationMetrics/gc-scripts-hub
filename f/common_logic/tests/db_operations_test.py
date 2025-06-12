@@ -1,7 +1,11 @@
 import pytest
 import testing.postgresql
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo
+from f.common_logic.db_operations import (
+    StructuredDBWriter,
+    check_if_table_exists,
+    conninfo,
+)
 
 
 @pytest.fixture
@@ -12,6 +16,18 @@ def mock_db_connection():
     dsn["dbname"] = dsn.pop("database")
     yield conninfo(dsn)
     db.stop()
+
+
+def test_check_if_table_exists(mock_db_connection):
+    writer = StructuredDBWriter(mock_db_connection, "existing_table")
+
+    submissions = [
+        {"_id": "1", "field": "value"},
+    ]
+    writer.handle_output(submissions)
+
+    assert check_if_table_exists(mock_db_connection, "existing_table")
+    assert not check_if_table_exists(mock_db_connection, "nonexistent_table")
 
 
 def test_mapping_table_creation(mock_db_connection):
