@@ -1,9 +1,13 @@
 import csv
 import json
+import logging
 from pathlib import Path
 
 import pandas as pd
 from lxml import etree
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def detect_structured_data_type(file_path: str) -> str:
@@ -50,6 +54,9 @@ def detect_structured_data_type(file_path: str) -> str:
     }
 
     suffix = path.suffix.lower()
+
+    logger.debug(f"Checking file {file_path} with suffix {suffix}")
+
     if suffix not in suffix_map:
         return "unsupported"
 
@@ -131,8 +138,15 @@ def detect_structured_data_type(file_path: str) -> str:
 
     try:
         if validators[expected_type](path):
+            logger.info(f"File {file_path.name} validated as {expected_type}")
             return expected_type
     except Exception:
+        logger.warning(
+            f"File {file_path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
+        )
         return "unsupported"
 
+    logger.warning(
+        f"File {file_path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
+    )
     return "unsupported"
