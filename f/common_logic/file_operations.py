@@ -2,6 +2,7 @@ import base64
 import csv
 import json
 import logging
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -65,7 +66,7 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
 
 def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storage/tmp"):
     """
-    Saves an uploaded file to a temp directory and extracts it if it's a zip.
+    Saves an uploaded file to a temp directory and extracts it if it's a ZIP or KMZ.
 
     Note: we accept ZIP files to support uploading data with attachments,
     or in the future, data types that consist of multiple files like
@@ -101,13 +102,32 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
 
         logger.debug(f"Saved file to temp: {file_path}")
 
-        if zipfile.is_zipfile(file_path):
+        is_kmz = file_path.suffix.lower() == ".kmz"
+        is_zip = zipfile.is_zipfile(file_path)
+
+        if is_kmz or is_zip:
             extract_dir = file_path.with_suffix("")
-            with zipfile.ZipFile(file_path, "r") as zip_ref:
+
+            # A KMZ file is essentially a ZIP archive
+            # https://developers.google.com/kml/documentation/kmzarchives
+            archive_path = file_path
+            if is_kmz:
+                with tempfile.NamedTemporaryFile(
+                    suffix=".zip", delete=False
+                ) as tmp_zip:
+                    tmp_zip.write(file_path.read_bytes())
+                    archive_path = Path(tmp_zip.name)
+
+            with zipfile.ZipFile(archive_path, "r") as zip_ref:
                 zip_ref.extractall(extract_dir)
                 file_paths = [str(p) for p in extract_dir.rglob("*") if p.is_file()]
                 logger.debug(f"Extracted {len(file_paths)} files to {extract_dir}")
-            file_path.unlink()
+
+            if is_kmz:
+                archive_path.unlink()  # clean up temp .zip
+
+            file_path.unlink()  # remove original .kmz or .zip
+
         else:
             file_paths = [str(file_path)]
         return {"file_paths": file_paths}

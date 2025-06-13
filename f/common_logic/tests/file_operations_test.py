@@ -129,3 +129,27 @@ def test_save_uploaded_file_to_temp__zip_with_subdir(
     for p in paths:
         assert p.exists()
     assert not zip_with_subdir.exists()
+
+
+def test_save_uploaded_file_to_temp__kmz_with_subdir(
+    zip_with_subdir: Path, tmp_path: Path
+):
+    kmz_path = tmp_path / "bundle.kmz"
+    kmz_path.write_bytes(zip_with_subdir.read_bytes())  # clone the zip as .kmz
+
+    encoded = base64.b64encode(kmz_path.read_bytes()).decode()
+
+    result = save_uploaded_file_to_temp(
+        [{"name": "bundle.kmz", "data": encoded}], tmp_dir=str(tmp_path)
+    )
+
+    assert "file_paths" in result
+    paths = [Path(p) for p in result["file_paths"]]
+    # OK, a KMZ should contain a KML file and not GeoJSON, but we're not
+    # testing that here
+    assert any("observations.geojson" in str(p) for p in paths)
+    assert any("attachments/photo1.jpg" in str(p) for p in paths)
+    assert any("attachments/photo2.jpg" in str(p) for p in paths)
+    for p in paths:
+        assert p.exists()
+    assert not kmz_path.exists()
