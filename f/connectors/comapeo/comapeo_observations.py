@@ -12,7 +12,7 @@ from typing import TypedDict
 import requests
 
 from f.common_logic.db_operations import postgresql
-from f.common_logic.save_disk import save_data_to_file
+from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 
