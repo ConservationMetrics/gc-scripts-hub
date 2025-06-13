@@ -67,6 +67,10 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
     """
     Saves an uploaded file to a temp directory and extracts it if it's a zip.
 
+    Note: we accept ZIP files to support uploading data with attachments,
+    or in the future, data types that consist of multiple files like
+    ESRI shapefiles.
+
     Parameters
     ----------
     uploaded_file : list of dict
@@ -106,7 +110,6 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
             file_path.unlink()
         else:
             file_paths = [str(file_path)]
-
         return {"file_paths": file_paths}
 
     except Exception as e:

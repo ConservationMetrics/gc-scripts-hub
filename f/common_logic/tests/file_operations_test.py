@@ -2,6 +2,8 @@ import base64
 import zipfile
 from pathlib import Path
 
+import pytest
+
 from f.common_logic.file_operations import save_data_to_file, save_uploaded_file_to_temp
 
 
@@ -88,3 +90,42 @@ def test_save_uploaded_file_to_temp__bad_input(tmp_path: Path):
         [{"name": "corrupt.txt", "data": "!!!not base64!!!"}], tmp_dir=str(tmp_path)
     )
     assert "error" in result
+
+
+@pytest.fixture
+def zip_with_subdir(tmp_path: Path):
+    zip_path = tmp_path / "bundle.zip"
+    data_dir = tmp_path / "attachments"
+    data_dir.mkdir()
+
+    (tmp_path / "observations.geojson").write_text(
+        '{"type": "FeatureCollection", "features": []}'
+    )
+    (data_dir / "photo1.jpg").write_text("fake jpg data 1")
+    (data_dir / "photo2.jpg").write_text("fake jpg data 2")
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        zipf.write(tmp_path / "observations.geojson", arcname="observations.geojson")
+        zipf.write(data_dir / "photo1.jpg", arcname="attachments/photo1.jpg")
+        zipf.write(data_dir / "photo2.jpg", arcname="attachments/photo2.jpg")
+
+    return zip_path
+
+
+def test_save_uploaded_file_to_temp__zip_with_subdir(
+    zip_with_subdir: Path, tmp_path: Path
+):
+    encoded = base64.b64encode(zip_with_subdir.read_bytes()).decode()
+
+    result = save_uploaded_file_to_temp(
+        [{"name": "bundle.zip", "data": encoded}], tmp_dir=str(tmp_path)
+    )
+
+    assert "file_paths" in result
+    paths = [Path(p) for p in result["file_paths"]]
+    assert any("observations.geojson" in str(p) for p in paths)
+    assert any("attachments/photo1.jpg" in str(p) for p in paths)
+    assert any("attachments/photo2.jpg" in str(p) for p in paths)
+    for p in paths:
+        assert p.exists()
+    assert not zip_with_subdir.exists()
