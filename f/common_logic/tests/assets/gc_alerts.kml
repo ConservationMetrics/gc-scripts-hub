@@ -1,1 +1,65 @@
-<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><ExtendedData><Data name="territory"><value>Mountain Valley</value></Data><Data name="alertID"><value>202401009669524</value></Data><Data name="alertDetectionRange"><value>2024-01-01 to 2024-01-31</value></Data><Data name="monthDetected"><value>01-2024</value></Data><Data name="YYYYMM"><value>202401</value></Data><Data name="dataProvider"><value>Undefined</value></Data><Data name="alertType"><value>gold mining</value></Data><Data name="alertAreaHectares"><value>0.85</value></Data><Data name="geographicCentroid"><value>37.455389, -80.803918</value></Data><Data name="satelliteUsedForDetection"><value>Sentinel-1</value></Data><Data name="t0_url"><value>alerts/300/2024/01/202401009669524/images/S2_T0_202401009669524.jpg</value></Data><Data name="t1_url"><value>alerts/300/2024/01/202401009669524/images/S2_T1_202401009669524.jpg</value></Data><Data name="previewImagerySource"><value>Sentinel-2</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-80.78537592903848,37.446658040122884 -80.81410795543034,37.452268462305675 -80.80634360415627,37.4655781235064 -80.82838688698578,37.46578398873958 -80.78537592903848,37.446658040122884</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark><Placemark><ExtendedData><Data name="territory"><value>Mountain Valley</value></Data><Data name="alertID"><value>202401005043082</value></Data><Data name="alertDetectionRange"><value>2024-01-01 to 2024-01-31</value></Data><Data name="monthDetected"><value>01-2024</value></Data><Data name="YYYYMM"><value>202401</value></Data><Data name="dataProvider"><value>Undefined</value></Data><Data name="alertType"><value>wildlife trafficking</value></Data><Data name="alertAreaHectares"><value>2.74</value></Data><Data name="geographicCentroid"><value>36.628647, -77.074239</value></Data><Data name="satelliteUsedForDetection"><value>Sentinel-1</value></Data><Data name="t0_url"><value>alerts/300/2024/01/202401005043082/images/S2_T0_202401005043082.jpg</value></Data><Data name="t1_url"><value>alerts/300/2024/01/202401005043082/images/S2_T1_202401005043082.jpg</value></Data><Data name="previewImagerySource"><value>Sentinel-2</value></Data></ExtendedData><Polygon><outerBoundaryIs><LinearRing><coordinates>-77.06349244348142,36.61160725153107 -77.06597751392289,36.646651140334555 -77.11075178510592,36.658805540398 -77.06747941647211,36.61456275050021 -77.06349244348142,36.61160725153107</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <ExtendedData>
+        <Data name="territory"><value>Mountain Valley</value></Data>
+        <Data name="alertID"><value>202401009669524</value></Data>
+        <Data name="alertDetectionRange"><value>2024-01-01 to 2024-01-31</value></Data>
+        <Data name="monthDetected"><value>01-2024</value></Data>
+        <Data name="YYYYMM"><value>202401</value></Data>
+        <Data name="dataProvider"><value>Undefined</value></Data>
+        <Data name="alertType"><value>gold mining</value></Data>
+        <Data name="alertAreaHectares"><value>0.85</value></Data>
+        <Data name="geographicCentroid"><value>37.455389, -80.803918</value></Data>
+        <Data name="satelliteUsedForDetection"><value>Sentinel-1</value></Data>
+        <Data name="t0_url"><value>alerts/300/2024/01/202401009669524/images/S2_T0_202401009669524.jpg</value></Data>
+        <Data name="t1_url"><value>alerts/300/2024/01/202401009669524/images/S2_T1_202401009669524.jpg</value></Data>
+        <Data name="previewImagerySource"><value>Sentinel-2</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -80.78537592903848,37.446658040122884
+              -80.81410795543034,37.452268462305675
+              -80.80634360415627,37.4655781235064
+              -80.82838688698578,37.46578398873958
+              -80.78537592903848,37.446658040122884
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <ExtendedData>
+        <Data name="territory"><value>Mountain Valley</value></Data>
+        <Data name="alertID"><value>202401005043082</value></Data>
+        <Data name="alertDetectionRange"><value>2024-01-01 to 2024-01-31</value></Data>
+        <Data name="monthDetected"><value>01-2024</value></Data>
+        <Data name="YYYYMM"><value>202401</value></Data>
+        <Data name="dataProvider"><value>Undefined</value></Data>
+        <Data name="alertType"><value>wildlife trafficking</value></Data>
+        <Data name="alertAreaHectares"><value>2.74</value></Data>
+        <Data name="geographicCentroid"><value>36.628647, -77.074239</value></Data>
+        <Data name="satelliteUsedForDetection"><value>Sentinel-1</value></Data>
+        <Data name="t0_url"><value>alerts/300/2024/01/202401005043082/images/S2_T0_202401005043082.jpg</value></Data>
+        <Data name="t1_url"><value>alerts/300/2024/01/202401005043082/images/S2_T1_202401005043082.jpg</value></Data>
+        <Data name="previewImagerySource"><value>Sentinel-2</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              -77.06349244348142,36.61160725153107
+              -77.06597751392289,36.646651140334555
+              -77.11075178510592,36.658805540398
+              -77.06747941647211,36.61456275050021
+              -77.06349244348142,36.61160725153107
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>
