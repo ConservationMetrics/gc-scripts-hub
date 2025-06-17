@@ -288,6 +288,9 @@ def gpx_to_geojson(path: Path):
                     }
                 )
 
+    if not features:
+        raise ValueError("No valid features found in input file")
+
     return {"type": "FeatureCollection", "features": features}
 
 
@@ -314,11 +317,29 @@ def kml_to_geojson(path: Path):
     for placemark in root.findall(".//kml:Placemark", namespace):
         props = {}
 
-        # Dynamically pull all direct metadata fields under Placemark (not nested elements)
+        # Extract all relevant properties from Placemark and children
         for el in placemark:
             tag = el.tag.split("}")[-1]
-            if el.text and not list(el):  # Skip children like ExtendedData
+
+            if tag in {"name", "description", "visibility", "styleUrl"} and el.text:
                 props[tag] = el.text.strip()
+
+            elif tag == "LookAt":
+                for look_el in el:
+                    look_tag = look_el.tag.split("}")[-1]
+                    if look_el.text:
+                        props[f"lookat_{look_tag}"] = look_el.text.strip()
+
+            elif tag == "Style":
+                for style_child in el.iter():
+                    style_tag = style_child.tag.split("}")[-1]
+                    if style_child.text:
+                        props[f"style_{style_tag}"] = style_child.text.strip()
+
+            elif tag == "IconStyle":
+                href_el = el.find(".//kml:href", namespace)
+                if href_el is not None and href_el.text:
+                    props["icon_href"] = href_el.text.strip()
 
         # Add <ExtendedData><Data name="..."><value>...</value></Data>
         for data_el in placemark.findall(".//kml:ExtendedData/kml:Data", namespace):
@@ -375,7 +396,10 @@ def kml_to_geojson(path: Path):
                     geometry = {"type": "Point", "coordinates": [lon, lat]}
 
         if geometry is None:
-            raise ValueError("Placemark is missing <Point>, <LineString>, or <Polygon>")
+            logger.warning(
+                "Skipping Placemark without geometry: %s", props.get("name", "Unnamed")
+            )
+            continue
 
         features.append(
             {
@@ -384,5 +408,8 @@ def kml_to_geojson(path: Path):
                 "properties": props,
             }
         )
+
+    if not features:
+        raise ValueError("No valid features found in input file")
 
     return {"type": "FeatureCollection", "features": features}

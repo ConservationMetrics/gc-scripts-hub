@@ -116,6 +116,11 @@ def geojson_with_invalid_top_level_structure_file(tmp_path):
 
 
 @pytest.fixture
+def googleearth_sample_kml_file():
+    return Path(__file__).parent / "assets" / "googleearth_sample.kml"
+
+
+@pytest.fixture
 def alerts_kml_file():
     return Path(__file__).parent / "assets" / "gc_alerts.kml"
 

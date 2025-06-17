@@ -249,6 +249,50 @@ def test_normalize_data__geojson_with_invalid_top_level(
         normalize_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
 
 
+def test_normalize_data__googleearth_sample_kml(googleearth_sample_kml_file):
+    result = normalize_data(str(googleearth_sample_kml_file), "kml")
+    assert result["type"] == "FeatureCollection"
+    assert len(result["features"]) == 19
+
+    for feat in result["features"]:
+        geom = feat["geometry"]
+        props = feat["properties"]
+
+        assert geom["type"] in [
+            "Point",
+            "LineString",
+            "Polygon",
+        ]
+        assert isinstance(geom["coordinates"], list)
+
+        if geom["type"] == "Point":
+            assert len(geom["coordinates"]) == 2  # basic sanity: lon, lat
+        elif geom["type"] == "LineString":
+            assert (
+                len(geom["coordinates"]) >= 2
+            )  # basic sanity: at least 2 coords for a line
+        elif geom["type"] == "Polygon":
+            assert (
+                len(geom["coordinates"][0]) >= 3
+            )  # basic sanity: at least 3 coords for a polygon
+
+        assert "name" in props
+
+    sample = next(
+        f
+        for f in result["features"]
+        if f["properties"].get("name") == "Floating placemark"
+    )
+    props = sample["properties"]
+
+    assert props["description"] == "Floats a defined distance above the ground."
+    assert props["visibility"] == "0"
+    assert props["styleUrl"] == "#downArrowIcon"
+    assert "lookat_longitude" in props
+    assert "lookat_heading" in props
+    assert "lookat_tilt" in props
+
+
 def test_normalize_data__gc_alerts_kml(alerts_kml_file):
     result = normalize_data(str(alerts_kml_file), "kml")
     assert result["type"] == "FeatureCollection"
@@ -269,7 +313,7 @@ def test_normalize_data__gc_alerts_kml(alerts_kml_file):
 
 
 def test_normalize_data__kml_missing_geometry(kml_with_missing_geometry_file):
-    with pytest.raises(ValueError, match="Placemark is missing"):
+    with pytest.raises(ValueError, match="No valid features found in input file"):
         normalize_data(str(kml_with_missing_geometry_file), "kml")
 
 
