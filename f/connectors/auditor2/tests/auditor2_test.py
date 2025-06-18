@@ -73,31 +73,34 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
             # Basic row count checks for the imported tables
-            cursor.execute(
-                "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_deployments_20250505"
-            )
+            cursor.execute("SELECT COUNT(*) FROM my_auditor2_project_deployments")
             assert cursor.fetchone()[0] == 56
-            cursor.execute(
-                "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_sites_20250505"
-            )
+            cursor.execute("SELECT COUNT(*) FROM my_auditor2_project_sites")
             assert cursor.fetchone()[0] == 20
             cursor.execute(
-                "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_human_readable_labels_20250505"
+                "SELECT COUNT(*) FROM my_auditor2_project_human_readable_labels"
             )
             assert cursor.fetchone()[0] == 28
             cursor.execute(
-                "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_sound_file_summary_20250505"
+                "SELECT COUNT(*) FROM my_auditor2_project_sound_file_summary"
             )
             assert cursor.fetchone()[0] == 56
-            cursor.execute(
-                "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_labels_20250505"
-            )
+            cursor.execute("SELECT COUNT(*) FROM my_auditor2_project_labels")
             assert cursor.fetchone()[0] == 95
+
+            # Check that the sites table has g__coordinates and g__type fields
+            cursor.execute(
+                "SELECT g__coordinates, g__type FROM my_auditor2_project_sites LIMIT 1"
+            )
+            site_row = cursor.fetchone()
+            assert len(site_row) == 2
+            assert site_row[0] == "[-77.2264, 38.7881]"
+            assert site_row[1] == "Point"
 
             # Check that the media files were copied correctly and match the database entries
             cursor.execute(
                 f"SELECT filename, sound_path_wav, spectrogram_path "
-                f"FROM {project_name}_lake_accotink_labels_20250505 "
+                f"FROM {project_name}_labels "
                 f"ORDER BY clip_id ASC LIMIT 3"
             )
             rows = cursor.fetchall()
@@ -133,3 +136,34 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
 
     # Check to see that the ZIP file was deleted
     assert not auditor2_zip.exists(), "Auditor2 ZIP file was not deleted as expected."
+
+
+def test_missing_csv_raises_error(pg_database, tmp_path, auditor2_zip):
+    asset_storage = tmp_path / "datalake"
+    project_name = "my_auditor2_project"
+
+    # Extract original zip to a temp dir
+    extracted_dir = tmp_path / "extracted_assets"
+    with zipfile.ZipFile(auditor2_zip, "r") as zip_ref:
+        zip_ref.extractall(extracted_dir)
+
+    # Remove the 'labels' CSV file
+    (extracted_dir / "lake_accotink_labels_20250505.csv").unlink()
+
+    # Recreate the zip without the missing CSV
+    incomplete_zip_path = tmp_path / "incomplete_auditor2_20250505.zip"
+    with zipfile.ZipFile(incomplete_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file in extracted_dir.rglob("*"):
+            if file.is_file():
+                arcname = file.relative_to(extracted_dir)
+                zipf.write(file, arcname)
+
+    # Run the main function and expect a ValueError
+    with pytest.raises(ValueError, match="Missing required CSV"):
+        main(
+            incomplete_zip_path,
+            pg_database,
+            project_name,
+            delete_auditor2_zip=True,
+            attachment_root=asset_storage,
+        )

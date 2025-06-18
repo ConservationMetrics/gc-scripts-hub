@@ -26,9 +26,11 @@ def main(
     auditor2_zip_path = Path(auditor2_zip)
     actual_storage_path = extract_auditor2_archive(auditor2_zip_path, base_storage_path)
 
-    auditor2_tables = read_auditor2_db_tables(actual_storage_path, db_table_prefix)
+    auditor2_data = read_auditor2_csvs(actual_storage_path)
 
-    for table_name, rows in auditor2_tables.items():
+    transformed_auditor2_data = transform_auditor2_data(auditor2_data, db_table_prefix)
+
+    for table_name, rows in transformed_auditor2_data.items():
         db_writer = StructuredDBWriter(
             conninfo(db),
             table_name,
@@ -103,41 +105,90 @@ def extract_auditor2_archive(
         return final_target_path
 
 
-def read_auditor2_db_tables(
-    base_storage_path: Path, db_table_prefix: str
-) -> dict[str, list[dict[str, str]]]:
+def read_auditor2_csvs(base_storage_path: Path) -> dict[str, list[dict[str, str]]]:
     """
-    Reads Auditor 2 database tables from the extracted files and returns them as a dictionary.
+    Reads specific Auditor 2 CSVs from the extracted files and returns them as a dictionary.
+
+    The extracted directory should contain 5 CSV files, each with names including these substrings:
+    - deployments
+    - human_readable_labels
+    - labels
+    - sites
+    - sound_file_summary
 
     Parameters
     ----------
     base_storage_path : Path
         The path to the directory where the Auditor 2 files were extracted.
+
+    Returns
+    -------
+    dict[str, list[dict[str, str]]]
+        A dictionary where keys are file stems and values are lists of dictionaries containing the CSV data.
+    """
+    required_keys = [
+        "deployments",
+        "human_readable_labels",
+        "labels",
+        "sites",
+        "sound_file_summary",
+    ]
+
+    csv_files = list(base_storage_path.glob("*.csv"))
+    auditor2_tables = {}
+    found_keys = {}
+
+    for file in csv_files:
+        for key in required_keys:
+            if key in file.stem:
+                with file.open("r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+                auditor2_tables[key] = rows
+                found_keys[key] = True
+                break
+
+    missing = set(required_keys) - found_keys.keys()
+    if missing:
+        raise ValueError(
+            f"Missing required CSV file(s) for: {', '.join(sorted(missing))}"
+        )
+
+    logger.info(f"Found {len(auditor2_tables)} Auditor 2 CSV files.")
+    return auditor2_tables
+
+
+def transform_auditor2_data(
+    auditor2_data: dict[str, list[dict[str, str]]], db_table_prefix: str
+) -> dict[str, list[dict[str, str]]]:
+    """
+    Transforms the Auditor 2 CSV data by assigning an `_id` field to each row.
+
+    Parameters
+    ----------
+    auditor2_data : dict[str, list[dict[str, str]]]
+        The raw CSV data read from the files.
     db_table_prefix : str
         The prefix to use for the database table names.
 
     Returns
     -------
-    dict[str, list[list[str]]]
-        A dictionary where keys are table names and values are lists of lists containing the CSV data.
+    dict[str, list[dict[str, str]]]
+        A dictionary where keys are table names and values are lists of dictionaries containing the transformed CSV data.
     """
-    auditor2_tables = {}
+    id_fields = {
+        "deployments": "deployment_id",
+        "human_readable_labels": None,
+        "labels": None,
+        "sites": "site_id",
+        "sound_file_summary": "deployment_id",
+    }
 
-    for file in base_storage_path.glob("*.csv"):
-        table_name = f"{db_table_prefix}_{file.stem}"
-        with file.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
+    transformed_data = {}
 
-        # Assign _id field based on the table name and the available ID field (if any)
-        if "summary" in table_name or "deployments" in table_name:
-            id_field = "deployment_id"
-        elif "sites" in table_name:
-            id_field = "site_id"
-        elif "labels" in table_name:
-            id_field = None
-        else:
-            continue
+    for table_key, rows in auditor2_data.items():
+        table_name = f"{db_table_prefix}_{table_key}"
+        id_field = id_fields.get(table_key)
 
         for index, row in enumerate(rows):
             if id_field:
@@ -145,6 +196,18 @@ def read_auditor2_db_tables(
             else:
                 row["_id"] = str(index)
 
-        auditor2_tables[table_name] = rows
+            # Add geo fields for `sites`
+            if table_key == "sites":
+                try:
+                    lat = float(row.get("Latitude", "").strip())
+                    lon = float(row.get("Longitude", "").strip())
+                    row["g__coordinates"] = f"[{lon}, {lat}]"
+                    row["g__type"] = "Point"
+                except (ValueError, TypeError):
+                    row["g__coordinates"] = None
+                    row["g__type"] = None
 
-    return auditor2_tables
+        transformed_data[table_name] = rows
+
+    logger.info(f"Transformed Auditor 2 data with {len(transformed_data)} tables.")
+    return transformed_data
