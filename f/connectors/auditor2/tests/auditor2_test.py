@@ -72,6 +72,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
 
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
+            # Basic row count checks for the imported tables
             cursor.execute(
                 "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_deployments_20250505"
             )
@@ -88,7 +89,6 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
                 "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_sound_file_summary_20250505"
             )
             assert cursor.fetchone()[0] == 56
-
             cursor.execute(
                 "SELECT COUNT(*) FROM my_auditor2_project_lake_accotink_labels_20250505"
             )

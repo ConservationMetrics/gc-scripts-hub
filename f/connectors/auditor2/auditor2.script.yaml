@@ -16,9 +16,9 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where Auditor 2 media will be stored. Attachment files (e.g.,
-        spectogram images and audio) will be stored in the following directory 
-        schema: `{attachment_root}/auditor2/{project_name}/...`
+        A path where Auditor 2 original CSVs and media will be stored, in 
+        the following directory schema: 
+        `{attachment_root}/auditor2/{project_name}/{zip_filename}/...`
       default: /persistent-storage/datalake
       originalType: string
     db:
@@ -41,7 +41,8 @@ schema:
       type: string
       description: >-
         The path to the Auditor 2 ZIP file, including the filename. This ZIP
-        file should contain a root folder with...
+        file should contain five Auditor 2 export CSVs, and a directory
+        containing spectrogram images and audio files.
       originalType: string
       pattern: '^.+\.zip$'
   required:
