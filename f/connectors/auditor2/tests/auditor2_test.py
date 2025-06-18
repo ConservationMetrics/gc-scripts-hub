@@ -112,3 +112,24 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
                         / rel_path
                     )
                     assert full_path.exists(), f"Missing file: {full_path}"
+
+    # Check that the CSVs were copied to the expected location
+    expected_csvs = [
+        "lake_accotink_deployments_20250505.csv",
+        "lake_accotink_human_readable_labels_20250505.csv",
+        "lake_accotink_labels_20250505.csv",
+        "lake_accotink_sites_20250505.csv",
+        "lake_accotink_sound_file_summary_20250505.csv",
+    ]
+    for csv_name in expected_csvs:
+        csv_path = (
+            asset_storage
+            / "Auditor2"
+            / project_name
+            / Path(auditor2_zip).stem
+            / csv_name
+        )
+        assert csv_path.exists(), f"Expected CSV not found: {csv_path}"
+
+    # Check to see that the ZIP file was deleted
+    assert not auditor2_zip.exists(), "Auditor2 ZIP file was not deleted as expected."
