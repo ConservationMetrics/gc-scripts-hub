@@ -4,7 +4,7 @@ This script ingests annotated camera trap data from a [Timelapse](https://timela
 
 The script writes data to PostgreSQL and handles fully dynamic schemas, since Timelapse allows all field names and folder levels to be customized by the user.
 
-TODO: Figure out how the ZIP file makes it to blob storage, and what calls this script.
+TODO: Figure out how the ZIP file makes it to blob storage, and what calls this script. c.f. https://github.com/ConservationMetrics/gc-scripts-hub/issues/106
 
 > [!NOTE]
 > The Timelapse database schema may change in future versions. This script was developed against Timelapse version 2.3.3.0.
