@@ -34,6 +34,7 @@ schema:
         Auditor 2 ZIP file and as a prefix for the database table names.
       default: timelapse
       originalType: string
+      pattern: '^[a-zA-Z0-9_-]+$'
     delete_auditor2_zip:
       type: boolean
       description: >-
