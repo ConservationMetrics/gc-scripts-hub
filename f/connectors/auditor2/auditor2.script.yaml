@@ -31,7 +31,8 @@ schema:
       description: >-
         The name of the project to which the data will be imported. This will
         be used to create a subdirectory under the `attachment_root` for the
-        Auditor 2 ZIP file and as a prefix for the database table names.
+        Auditor 2 ZIP file, and to name the project in the database in the following way:
+        `auditor2_{project_name}_deployments` (and same for the other tables).
       default: timelapse
       originalType: string
       pattern: '^[a-zA-Z0-9_-]+$'
