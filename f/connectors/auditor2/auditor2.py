@@ -221,8 +221,8 @@ def transform_auditor2_data(
             # logic will need to change.)
             if table_key == "sites":
                 try:
-                    lat = float(row.get("Latitude", "").strip())
-                    lon = float(row.get("Longitude", "").strip())
+                    lat = float(row.get("latitude", "").strip())
+                    lon = float(row.get("longitude", "").strip())
                     row["g__coordinates"] = f"[{lon}, {lat}]"
                     row["g__type"] = "Point"
                 except (ValueError, TypeError):
