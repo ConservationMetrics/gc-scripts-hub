@@ -107,13 +107,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
 
             for row in rows:
                 for rel_path in row:
-                    full_path = (
-                        asset_storage
-                        / "Auditor2"
-                        / project_name
-                        / Path(auditor2_zip).stem
-                        / rel_path
-                    )
+                    full_path = asset_storage / "Auditor2" / project_name / rel_path
                     assert full_path.exists(), f"Missing file: {full_path}"
 
     # Check that the CSVs were copied to the expected location
@@ -125,13 +119,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip):
         "lake_accotink_sound_file_summary_20250505.csv",
     ]
     for csv_name in expected_csvs:
-        csv_path = (
-            asset_storage
-            / "Auditor2"
-            / project_name
-            / Path(auditor2_zip).stem
-            / csv_name
-        )
+        csv_path = asset_storage / "Auditor2" / project_name / csv_name
         assert csv_path.exists(), f"Expected CSV not found: {csv_path}"
 
     # Check to see that the ZIP file was deleted

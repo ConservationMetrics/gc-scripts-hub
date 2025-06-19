@@ -9,7 +9,7 @@ schema:
   order:
     - auditor2_zip
     - db
-    - db_table_prefix
+    - project_name
     - delete_auditor2_zip
     - attachment_root
   properties:
@@ -18,7 +18,7 @@ schema:
       description: >-
         A path where Auditor 2 original CSVs and media will be stored, in 
         the following directory schema: 
-        `{attachment_root}/auditor2/{project_name}/{zip_filename}/...`
+        `{attachment_root}/auditor2/{project_name}/...`
       default: /persistent-storage/datalake
       originalType: string
     db:
@@ -26,10 +26,12 @@ schema:
       description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
-    db_table_prefix:
+    project_name:
       type: string
       description: >-
-        This is a prefix added to the database table names created by this script.
+        The name of the project to which the data will be imported. This will
+        be used to create a subdirectory under the `attachment_root` for the
+        Auditor 2 ZIP file and as a prefix for the database table names.
       default: timelapse
       originalType: string
     delete_auditor2_zip:
@@ -49,4 +51,4 @@ schema:
     - auditor2_zip
     - attachment_root
     - db
-    - db_table_prefix
+    - project_name

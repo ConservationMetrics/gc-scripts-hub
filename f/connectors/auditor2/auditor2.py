@@ -5,10 +5,14 @@
 import csv
 import logging
 import shutil
-import tempfile
 from pathlib import Path
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    StructuredDBWriter,
+    check_if_table_exists,
+    conninfo,
+    postgresql,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,18 +21,20 @@ logger = logging.getLogger(__name__)
 def main(
     auditor2_zip: str,
     db: postgresql,
-    db_table_prefix: str,
+    project_name: str,
     delete_auditor2_zip: bool = True,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    base_storage_path = Path(attachment_root) / "Auditor2" / db_table_prefix
+    check_if_auditor2_tables_exist(project_name)
 
+    storage_path = Path(attachment_root) / "Auditor2" / project_name
     auditor2_zip_path = Path(auditor2_zip)
-    actual_storage_path = extract_auditor2_archive(auditor2_zip_path, base_storage_path)
 
-    auditor2_data = read_auditor2_csvs(actual_storage_path)
+    actual_storage_path = extract_auditor2_archive(auditor2_zip_path, storage_path)
 
-    transformed_auditor2_data = transform_auditor2_data(auditor2_data, db_table_prefix)
+    auditor2_data = read_auditor2_csvs(storage_path)
+
+    transformed_auditor2_data = transform_auditor2_data(auditor2_data, project_name)
 
     for table_name, rows in transformed_auditor2_data.items():
         db_writer = StructuredDBWriter(
@@ -51,15 +57,39 @@ def main(
     return actual_storage_path
 
 
+def check_if_auditor2_tables_exist(project_name: str) -> None:
+    """
+    Checks if the Auditor 2 tables already exist in the database for the given project name.
+
+    Parameters
+    ----------
+    project_name : str
+        The name of the project to check for existing Auditor 2 tables.
+
+    Raises
+    ------
+    ValueError
+        If any of the required Auditor 2 tables already exist.
+    """
+    required_tables = [
+        f"auditor2_{project_name}_deployments",
+        f"auditor2_{project_name}_human_readable_labels",
+        f"auditor2_{project_name}_labels",
+        f"auditor2_{project_name}_sites",
+        f"auditor2_{project_name}_sound_file_summary",
+    ]
+
+    for table in required_tables:
+        if check_if_table_exists(table):
+            raise ValueError(f"Table '{table}' already exists in the database.")
+
+
 def extract_auditor2_archive(
     auditor2_zip_path: Path,
     storage_path: Path,
-) -> Path:
+) -> None:
     """
-    Extracts a Auditor 2 ZIP archive to a uniquely named subdirectory under `storage_path`.
-
-    The final target path is: storage_path / <zip_stem>[_n]
-    where `_n` ensures uniqueness if a folder with the same name already exists.
+    Extracts a Auditor 2 ZIP archive to `storage_path`.
 
     Parameters
     ----------
@@ -67,45 +97,15 @@ def extract_auditor2_archive(
         The path to the Auditor 2 ZIP file.
     storage_path : str
         The path to the root directory where the ZIP file will be extracted.
-
-    Returns
-    -------
-    Path
-        The full path to the directory where the archive was extracted.
     """
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        extract_to = Path(tmpdir)
-
-        try:
-            shutil.unpack_archive(
-                auditor2_zip_path,
-                extract_to,
-            )
-            logger.info(f"Extracted Auditor 2 archive: {auditor2_zip_path}")
-        except shutil.ReadError as e:
-            raise ValueError(f"Unable to extract archive: {e}")
-
-        zip_name = auditor2_zip_path.stem
-        base_target_path = storage_path / zip_name
-        final_target_path = base_target_path
-        counter = 1
-
-        # Guarantee a clean, non-conflicting destination folder e.g. "auditor2_export"
-        # or "auditor2_export_1" if the first one already exists.
-        while final_target_path.exists():
-            final_target_path = storage_path / f"{zip_name}_{counter}"
-            counter += 1
-
-        final_target_path.mkdir(parents=True)
-
-        shutil.copytree(extract_to, final_target_path, dirs_exist_ok=True)
-
-        logger.info(f"Copied contents of Auditor 2 archive to: {final_target_path}")
-        return final_target_path
+    try:
+        shutil.unpack_archive(auditor2_zip_path, storage_path)
+        logger.info(f"Extracted Auditor 2 archive to: {storage_path}")
+    except shutil.ReadError as e:
+        raise ValueError(f"Unable to extract archive: {e}")
 
 
-def read_auditor2_csvs(base_storage_path: Path) -> dict[str, list[dict[str, str]]]:
+def read_auditor2_csvs(storage_path: Path) -> dict[str, list[dict[str, str]]]:
     """
     Reads specific Auditor 2 CSVs from the extracted files and returns them as a dictionary.
 
@@ -118,7 +118,7 @@ def read_auditor2_csvs(base_storage_path: Path) -> dict[str, list[dict[str, str]
 
     Parameters
     ----------
-    base_storage_path : Path
+    storage_path : Path
         The path to the directory where the Auditor 2 files were extracted.
 
     Returns
@@ -134,7 +134,7 @@ def read_auditor2_csvs(base_storage_path: Path) -> dict[str, list[dict[str, str]
         "sound_file_summary",
     ]
 
-    csv_files = list(base_storage_path.glob("*.csv"))
+    csv_files = list(storage_path.glob("*.csv"))
     auditor2_tables = {}
     found_keys = {}
 
