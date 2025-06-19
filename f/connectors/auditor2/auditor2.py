@@ -1,5 +1,4 @@
 # requirements:
-# pandas~=2.2
 # psycopg2-binary
 
 import csv
