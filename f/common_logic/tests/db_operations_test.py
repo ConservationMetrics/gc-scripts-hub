@@ -5,6 +5,7 @@ from f.common_logic.db_operations import (
     StructuredDBWriter,
     check_if_table_exists,
     conninfo,
+    fetch_tables_from_postgres,
 )
 
 
@@ -16,6 +17,23 @@ def mock_db_connection():
     dsn["dbname"] = dsn.pop("database")
     yield conninfo(dsn)
     db.stop()
+
+
+def test_fetch_tables_from_postgres(mock_db_connection):
+    table_names = ["test_forms", "test_forms_2"]
+    writers = [StructuredDBWriter(mock_db_connection, name) for name in table_names]
+
+    with writers[0]._get_conn() as conn, conn.cursor() as cursor:
+        for writer in writers:
+            cursor.execute(
+                f"CREATE TABLE {writer.table_name} (_id VARCHAR PRIMARY KEY, field VARCHAR)"
+            )
+
+    tables = fetch_tables_from_postgres(mock_db_connection)
+
+    assert isinstance(tables, list)
+    for writer in writers:
+        assert writer.table_name in tables
 
 
 def test_check_if_table_exists(mock_db_connection):

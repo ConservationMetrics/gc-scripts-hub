@@ -3,9 +3,12 @@ import shutil
 import tempfile
 from pathlib import Path
 
-import psycopg2
-
-from f.common_logic.db_operations import check_if_table_exists, conninfo, postgresql
+from f.common_logic.db_operations import (
+    check_if_table_exists,
+    conninfo,
+    fetch_tables_from_postgres,
+    postgresql,
+)
 from f.export.postgres_to_file.postgres_to_csv import main as postgres_to_csv
 
 logging.basicConfig(level=logging.INFO)
@@ -27,37 +30,8 @@ def main(
     logger.info(f"Found {len(tables)} tables: {tables}")
 
     zip_path = export_tables_to_zip(db, db_connection_string, tables, storage_path)
+
     logger.info(f"Export completed. Archive saved to {zip_path}")
-
-
-def fetch_tables_from_postgres(db_connection_string: str):
-    """
-    Fetch all table names from the public schema of the PostgreSQL database.
-
-    Parameters
-    ----------
-    db_connection_string : str
-        The connection string for the PostgreSQL database.
-
-    Returns
-    -------
-    list
-        A list of table names from the public schema.
-    """
-    try:
-        conn = psycopg2.connect(db_connection_string)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = 'public'
-        """)
-        tables = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return tables
-    except Exception as e:
-        logger.error(f"Error fetching tables: {e}")
-        return []
 
 
 def export_tables_to_zip(
