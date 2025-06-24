@@ -64,6 +64,9 @@ def export_tables_to_zip(
         tmp_dir_path = Path(tmp_dir)
 
         for table in tables:
+            # Somewhat trivial to check if the table exists since we already fetched the list of tables,
+            # but still good practice in case the code is modified in the future
+            # or if the database happens to be modified concurrently.
             if check_if_table_exists(db_connection_string, table):
                 logger.debug(f"Exporting table {table} to CSV")
                 postgres_to_csv(db, table, str(tmp_dir_path))
