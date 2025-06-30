@@ -20,7 +20,7 @@ def detect_structured_data_type(file_path: str) -> str:
 
     This function is intended to identify structured datasets used in environmental,
     geographic, and tabular data pipelines. It supports:
-    - Geospatial formats: geojson, kml, gpx
+    - Spatial formats: geojson, kml, gpx
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
@@ -68,7 +68,6 @@ def detect_structured_data_type(file_path: str) -> str:
             return tag[1:].split("}")[0]
         return ""
 
-    # Try validators in priority order; first match wins
     def is_json(path):
         with path.open() as f:
             json.load(f)
@@ -127,18 +126,28 @@ def detect_structured_data_type(file_path: str) -> str:
         except Exception:
             return False
 
-    validators = {
-        "geojson": is_geojson,
-        "json": is_json,
-        "xlsx": is_excel,
-        "xls": is_excel,
-        "gpx": is_gpx,
-        "kml": is_kml,
-        "csv": is_csv,
+    # Map file suffix to (type name, validator function)
+    type_map = {
+        ".geojson": ("geojson", is_geojson),
+        ".json": ("json", is_json),
+        ".xlsx": ("xlsx", is_excel),
+        ".xls": ("xls", is_excel),
+        ".gpx": ("gpx", is_gpx),
+        ".kml": ("kml", is_kml),
+        ".csv": ("csv", is_csv),
     }
 
+    suffix = path.suffix.lower()
+
+    logger.debug(f"Checking file {file_path} with suffix {suffix}")
+
+    if suffix not in type_map:
+        return "unsupported"
+
+    expected_type, validator = type_map[suffix]
+
     try:
-        if validators[expected_type](path):
+        if validator(path):
             logger.info(f"File {file_path.name} validated as {expected_type}")
             return expected_type
     except Exception:
@@ -146,8 +155,3 @@ def detect_structured_data_type(file_path: str) -> str:
             f"File {file_path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
         )
         return "unsupported"
-
-    logger.warning(
-        f"File {file_path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
-    )
-    return "unsupported"
