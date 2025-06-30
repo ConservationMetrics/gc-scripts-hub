@@ -30,7 +30,7 @@ def test_structured_data_type__valid_csv(tmp_path: Path):
 def test_structured_data_type__invalid_csv(tmp_path: Path):
     file_path = tmp_path / "test.csv"
     file_path.write_text("key:value,value,more\n1:2:3\nnot,really,a,csv")
-    assert not detect_structured_data_type(file_path) == "csv"
+    assert detect_structured_data_type(file_path) != "csv"
 
 
 def test_structured_data_type__valid_json(tmp_path: Path):
