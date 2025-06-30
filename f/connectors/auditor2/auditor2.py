@@ -212,7 +212,7 @@ def transform_auditor2_data(
 
         for index, row in enumerate(rows):
             if id_field:
-                row["_id"] = row.get(id_field, "").strip()
+                row["_id"] = row.get(id_field).strip()
             else:
                 row["_id"] = str(index)
 
