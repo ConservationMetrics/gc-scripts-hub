@@ -109,6 +109,7 @@ def extract_auditor2_archive(
     try:
         shutil.unpack_archive(auditor2_zip_path, storage_path)
         logger.info(f"Extracted Auditor 2 archive to: {storage_path}")
+        return storage_path
     except shutil.ReadError as e:
         raise ValueError(f"Unable to extract archive: {e}")
 
