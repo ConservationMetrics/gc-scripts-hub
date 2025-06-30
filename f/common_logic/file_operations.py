@@ -76,7 +76,8 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
     ----------
     uploaded_file : list of dict
         List with one dict: {"name": str, "data": base64-encoded str}
-        (This is the format in which files are uploaded to a Windmill app.)
+        This is the currently used format in which files are uploaded to a
+        Windmill app. See https://www.windmill.dev/docs/core_concepts/files_binary_data
     tmp_dir : str
         Directory to save file(s). Default: /persistent-storage/tmp
 
