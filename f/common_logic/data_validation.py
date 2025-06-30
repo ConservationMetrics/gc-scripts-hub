@@ -24,7 +24,8 @@ def detect_structured_data_type(file_path: str) -> str:
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
-    TODO: Add support for ESRI shapefiles
+    TODO: Add support for ESRI shapefiles, which requires a different approach as a
+    collection of files rather than a single file.
 
     Parameters
     ----------
