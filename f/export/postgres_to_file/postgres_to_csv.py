@@ -1,7 +1,7 @@
 import logging
 
 from f.common_logic.db_operations import conninfo, fetch_data_from_postgres, postgresql
-from f.common_logic.save_disk import save_data_to_file
+from f.common_logic.file_operations import save_data_to_file
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
