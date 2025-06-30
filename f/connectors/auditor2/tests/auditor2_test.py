@@ -118,7 +118,7 @@ project_name = "lake_accotink_biacoustics"
 def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
     asset_storage = tmp_path / "datalake"
 
-    main(
+    actual_storage_path = main(
         auditor2_zip_with_media,
         pg_database,
         project_name,
@@ -182,6 +182,10 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
     assert not auditor2_zip_with_media.exists(), (
         "Auditor2 ZIP file was not deleted as expected."
     )
+
+    # Check that actual_storage_path is correctly returned
+    expected_storage_path = asset_storage / "Auditor2" / project_name
+    assert actual_storage_path == expected_storage_path
 
 
 def test_raise_if_project_name_exists(
