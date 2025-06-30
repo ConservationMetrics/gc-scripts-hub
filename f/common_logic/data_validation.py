@@ -3,6 +3,8 @@ import json
 import logging
 from pathlib import Path
 
+# pandas requires openpyxl installed separately to write .xlsx files
+import openpyxl  # noqa: F401
 import pandas as pd
 from lxml import etree
 
@@ -108,10 +110,9 @@ def detect_structured_data_type(file_path: str) -> str:
 
     def is_csv(path):
         # CSV detection is a bit more complex than the other formats
-        # because it's overly permissive. We use csv.reader to cheaply
-        # validate structure without reading the full file into memory.
-        # In the future, we could consider using pd.read_csv for more
-        # robust validation at the cost of performance and tolerance.
+        # because it's overly permissive. Currently, we use csv.reader
+        # to cheaply validate structure without reading the full file
+        # into memory.
         try:
             with path.open(newline="") as f:
                 reader = csv.reader(f)
@@ -159,10 +160,10 @@ def detect_structured_data_type(file_path: str) -> str:
 
     try:
         if validator(path):
-            logger.info(f"File {file_path.name} validated as {expected_type}")
+            logger.info(f"File {path.name} validated as {expected_type}")
             return expected_type
     except Exception:
         logger.warning(
-            f"File {file_path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
+            f"File {path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
         )
         return "unsupported"
