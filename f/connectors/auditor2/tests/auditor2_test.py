@@ -6,7 +6,49 @@ from pathlib import Path
 import psycopg2
 import pytest
 
-from f.connectors.auditor2.auditor2 import main
+from f.connectors.auditor2.auditor2 import main, read_auditor2_csvs
+
+
+def test_read_auditor2_csvs_basic(tmp_path):
+    # Setup fake CSVs with expected keys
+    keys = [
+        "deployments",
+        "human_readable_labels",
+        "labels",
+        "sites",
+        "sound_file_summary",
+    ]
+
+    for key in keys:
+        file_path = tmp_path / f"project_{key}_20250505.csv"
+        file_path.write_text("col1,col2\nval1,val2", encoding="utf-8")
+
+    result = read_auditor2_csvs(tmp_path)
+
+    assert set(result.keys()) == set(keys)
+    for table in result.values():
+        assert isinstance(table, list)
+        assert len(table) == 1
+        assert table[0]["col1"] == "val1"
+
+
+def test_read_auditor2_csvs_raises_on_duplicate(tmp_path):
+    # Create two files that both match "labels"
+    (tmp_path / "project_labels_20250505.csv").write_text(
+        "col1,col2\nval1,val2", encoding="utf-8"
+    )
+    (tmp_path / "another_labels_file.csv").write_text(
+        "col1,col2\nval3,val4", encoding="utf-8"
+    )
+
+    # Also create the other required CSVs
+    for key in ["deployments", "human_readable_labels", "sites", "sound_file_summary"]:
+        (tmp_path / f"dummy_{key}_file.csv").write_text(
+            "col1,col2\nval1,val2", encoding="utf-8"
+        )
+
+    with pytest.raises(ValueError, match="Multiple CSV files found matching 'labels'"):
+        read_auditor2_csvs(tmp_path)
 
 
 def _prepare_auditor2_assets(tmp_path, with_media: bool):

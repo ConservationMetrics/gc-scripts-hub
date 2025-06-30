@@ -149,19 +149,21 @@ def read_auditor2_csvs(storage_path: Path) -> dict[str, list[dict[str, str]]]:
 
     csv_files = list(storage_path.glob("*.csv"))
     auditor2_tables = {}
-    found_keys = {}
+    found_keys = set()
 
     for file in csv_files:
         for key in required_keys:
             if key in file.stem:
+                if key in found_keys:
+                    raise ValueError(f"Multiple CSV files found matching '{key}'")
                 with file.open("r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
                     rows = list(reader)
                 auditor2_tables[key] = rows
-                found_keys[key] = True
+                found_keys.add(key)
                 break
 
-    missing = set(required_keys) - found_keys.keys()
+    missing = set(required_keys) - found_keys
     if missing:
         raise ValueError(
             f"Missing required CSV file(s) for: {', '.join(sorted(missing))}"
