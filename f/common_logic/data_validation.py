@@ -27,6 +27,13 @@ def detect_structured_data_type(file_path: str) -> str:
     TODO: Add support for ESRI shapefiles, which requires a different approach as a
     collection of files rather than a single file.
 
+    Validation is intentionally lightweight. We avoid fully loading large or malformed
+    files where possible. For tabular data, we use pandas selectively (e.g., Excel files)
+    and simpler parsers for CSV. In the future, we could consider a more robust approach
+    by consistently using `pandas` for tabular formats and something like `fiona` for
+    spatial vector formats, including shapefiles. For now, this function errs on the side
+    of speed and minimal side effects.
+
     Parameters
     ----------
     file_path : str
@@ -79,6 +86,9 @@ def detect_structured_data_type(file_path: str) -> str:
         return isinstance(data, dict) and data.get("type") == "FeatureCollection"
 
     def is_excel(path):
+        # Excel is a binary format and there's no lightweight parser,
+        # so we use pd.read_excel despite its overhead. If needed,
+        # we could explore faster or more granular validation later.
         pd.read_excel(path)
         return True
 
@@ -97,10 +107,11 @@ def detect_structured_data_type(file_path: str) -> str:
         return ns.startswith("http://www.opengis.net/kml")
 
     def is_csv(path):
-        # CSV detection is a bit more complex than the other formats,
-        # because it's overly permissive.
-        # We need to check that the file is actually a CSV,
-        # and not just a file with commas in it.
+        # CSV detection is a bit more complex than the other formats
+        # because it's overly permissive. We use csv.reader to cheaply
+        # validate structure without reading the full file into memory.
+        # In the future, we could consider using pd.read_csv for more
+        # robust validation at the cost of performance and tolerance.
         try:
             with path.open(newline="") as f:
                 reader = csv.reader(f)
