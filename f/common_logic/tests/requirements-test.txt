@@ -1,4 +1,3 @@
 psycopg2-binary
 pytest
 testing.postgresql
-openpyxl # pandas requires openpyxl installed separately to write .xlsx files
