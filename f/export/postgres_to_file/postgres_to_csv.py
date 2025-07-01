@@ -14,6 +14,23 @@ def main(
     db_table_name: str,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
+    """
+    Export a PostgreSQL table to a CSV file using the COPY command.
+
+    This function uses psycopg2's `copy_expert` method to execute a SQL COPY command
+    that exports the specified table to a CSV file. For more details on `copy_expert`,
+    see the documentation: https://www.psycopg.org/docs/cursor.html#cursor.copy_expert
+
+    Parameters
+    ----------
+    db : dict
+        A dictionary containing database connection parameters.
+    db_table_name : str
+        The name of the table to export.
+    storage_path : str, optional
+        The directory path where the CSV file will be saved. Defaults to
+        "/persistent-storage/datalake/export".
+    """
     out_path = Path(storage_path) / f"{db_table_name}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
