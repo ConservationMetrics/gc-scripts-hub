@@ -1,20 +1,35 @@
 import logging
+from pathlib import Path
 
-from f.common_logic.db_operations import conninfo, fetch_data_from_postgres, postgresql
-from f.common_logic.file_operations import save_data_to_file
+from psycopg2 import connect, sql
+
+from f.common_logic.db_operations import conninfo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    db: postgresql,
+    db: dict,
     db_table_name: str,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
-    columns, rows = fetch_data_from_postgres(conninfo(db), db_table_name)
+    out_path = Path(storage_path) / f"{db_table_name}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert rows to lists to ensure compatibility with CSV writer, which requires iterable rows
-    data = [columns, *map(list, rows)]
+    conn_str = conninfo(db)
 
-    save_data_to_file(data, db_table_name, storage_path, file_type="csv")
+    try:
+        with (
+            connect(conn_str) as conn,
+            conn.cursor() as cur,
+            out_path.open("w", encoding="utf-8") as f,
+        ):
+            copy_sql = sql.SQL(
+                "COPY {} TO STDOUT WITH CSV HEADER QUOTE '\"' DELIMITER ',' NULL ''"
+            ).format(sql.Identifier(db_table_name))
+            cur.copy_expert(copy_sql, f)
+            logger.info(f"Exported {db_table_name} to {out_path}")
+    except Exception as e:
+        logger.error(f"Failed to export {db_table_name} to CSV: {e}")
+        raise

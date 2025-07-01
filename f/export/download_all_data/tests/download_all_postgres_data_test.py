@@ -78,8 +78,8 @@ def test_download_all_data(pg_database):
 
         assert read_csv_from_zip("oranges.csv") == [
             ["id", "color", "variety", "weight", "ripe", "harvested_at"],
-            ["1", "orange", "valencia", "0.28", "True", "2024-11-01 08:30:00"],
-            ["2", "green", "navel", "0.35", "False", ""],
-            ["3", "orange", "blood", "0.30", "True", "2024-10-15 14:00:00"],
-            ["4", "yellow", "cara cara", "0.32", "True", "2024-09-10 07:45:00"],
+            ["1", "orange", "valencia", "0.28", "t", "2024-11-01 08:30:00"],
+            ["2", "green", "navel", "0.35", "f", ""],
+            ["3", "orange", "blood", "0.30", "t", "2024-10-15 14:00:00"],
+            ["4", "yellow", "cara cara", "0.32", "t", "2024-09-10 07:45:00"],
         ]
