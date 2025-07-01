@@ -3,14 +3,14 @@ from pathlib import Path
 
 from psycopg2 import connect, sql
 
-from f.common_logic.db_operations import conninfo
+from f.common_logic.db_operations import conninfo, postgresql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    db: dict,
+    db: postgresql,
     db_table_name: str,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
@@ -23,8 +23,8 @@ def main(
 
     Parameters
     ----------
-    db : dict
-        A dictionary containing database connection parameters.
+    db : postgresql
+        The PostgreSQL database connection object.
     db_table_name : str
         The name of the table to export.
     storage_path : str, optional
