@@ -1,0 +1,31 @@
+summary: 'Export: Download All Data from PostgreSQL to CSV'
+description: >-
+  This script connects to a PostgreSQL database, retrieves data from all tables,
+  and exports it to CSV files stored in a ZIP archive.
+lock: '!inline f/export/download_all_data/download_all_data.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - db
+    - storage_path
+  properties:
+    db:
+      type: object
+      description: >-
+        A database connection for a PostgreSQL database where
+        the data will be exported from.
+      default: null
+      format: resource-postgresql
+    storage_path:
+      type: string
+      description: >-
+        The path to the directory where the `all_database_content.zip` 
+        file will be stored.
+      default: /persistent-storage/datalake/exports/
+      originalType: string
+  required:
+    - db
+    - storage_path
