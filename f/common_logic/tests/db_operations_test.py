@@ -151,3 +151,32 @@ def test_truncated_table_name_retains_suffix(mock_db_connection):
     submissions = [{"_id": "1", "field": "value"}]
     writer.handle_output(submissions)
     assert writer._inspect_schema(writer.table_name)
+
+
+def test_table_name_normalization_to_lowercase(mock_db_connection):
+    writer = StructuredDBWriter(
+        mock_db_connection,
+        "ALL_CAPS_TABLE_NAME",
+        use_mapping_table=True,
+    )
+
+    submissions = [{"_id": "1", "key": "value"}]
+    writer.handle_output(submissions)
+
+    assert writer.table_name == "all_caps_table_name"
+
+    mapping_table = f"{writer.table_name}__columns"
+    assert mapping_table == "all_caps_table_name__columns"
+
+    with writer._get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+            (writer.table_name,),
+        )
+        assert cursor.fetchone() is not None
+
+        cursor.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_name = %s",
+            (mapping_table,),
+        )
+        assert cursor.fetchone() is not None

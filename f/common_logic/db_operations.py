@@ -140,10 +140,14 @@ class StructuredDBWriter:
         predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string
+
+        # Table name is converted to lowercase to ensure consistency
+        table_name = table_name.lower()
+        self.base_table_name = table_name
+
         # Safely truncate the table to 63 characters
         # If suffix is provided (e.g., "labels"), create a derived table name.
         # TODO: ...while retaining uniqueness
-        self.base_table_name = table_name
         self.suffix = suffix
 
         if suffix:
