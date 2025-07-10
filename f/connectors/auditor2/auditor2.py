@@ -6,6 +6,7 @@ import logging
 import shutil
 from pathlib import Path
 
+from f.common_logic.azure_operations import download_blob_to_temp
 from f.common_logic.db_operations import (
     StructuredDBWriter,
     check_if_table_exists,
@@ -18,42 +19,66 @@ logger = logging.getLogger(__name__)
 
 
 def main(
-    auditor2_zip: str,
+    blob_connection_string: str,
+    container_name: str,
+    blob_name: str,
     db: postgresql,
     project_name: str,
-    delete_auditor2_zip: bool = True,
     attachment_root: str = "/persistent-storage/datalake",
 ):
+    """
+    Downloads an Auditor2 ZIP file from Azure Blob Storage, extracts it, and processes the data.
+
+    Parameters
+    ----------
+    blob_connection_string : str
+        Azure Storage connection string
+    container_name : str
+        Name of the Azure Blob Storage container
+    blob_name : str
+        Name of the blob (ZIP file) to download
+    db : postgresql
+        Database connection configuration
+    project_name : str
+        Name of the project for table prefixes
+    attachment_root : str
+        Root directory for persistent storage
+    """
     raise_if_project_name_exists(db, project_name)
 
     storage_path = Path(attachment_root) / "Auditor2" / project_name
-    auditor2_zip_path = Path(auditor2_zip)
 
-    actual_storage_path = extract_auditor2_archive(auditor2_zip_path, storage_path)
+    # Download ZIP file from Azure Blob Storage
+    auditor2_zip_path = download_blob_to_temp(
+        blob_connection_string, container_name, blob_name
+    )
 
-    auditor2_data = read_auditor2_csvs(storage_path)
+    try:
+        actual_storage_path = extract_auditor2_archive(auditor2_zip_path, storage_path)
 
-    transformed_auditor2_data = transform_auditor2_data(auditor2_data, project_name)
+        auditor2_data = read_auditor2_csvs(storage_path)
 
-    for table_name, rows in transformed_auditor2_data.items():
-        db_writer = StructuredDBWriter(
-            conninfo(db),
-            table_name,
-            use_mapping_table=False,
-            reverse_properties_separated_by=None,
-        )
-        db_writer.handle_output(rows)
-        logger.info(
-            f"Auditor 2 data from table '{table_name}' successfully written to the database."
-        )
+        transformed_auditor2_data = transform_auditor2_data(auditor2_data, project_name)
 
-    if delete_auditor2_zip:
-        # Now that we've extracted the archive and written the data to the database,
-        # we can delete the original ZIP file.
-        auditor2_zip_path.unlink()
-        logger.info(f"Deleted Timelapse archive: {auditor2_zip_path}")
+        for table_name, rows in transformed_auditor2_data.items():
+            db_writer = StructuredDBWriter(
+                conninfo(db),
+                table_name,
+                use_mapping_table=False,
+                reverse_properties_separated_by=None,
+            )
+            db_writer.handle_output(rows)
+            logger.info(
+                f"Auditor 2 data from table '{table_name}' successfully written to the database."
+            )
 
-    return actual_storage_path
+        return actual_storage_path
+
+    finally:
+        # Clean up the temporary ZIP file
+        if auditor2_zip_path.exists():
+            auditor2_zip_path.unlink()
+            logger.info(f"Deleted temporary ZIP file: {auditor2_zip_path}")
 
 
 def raise_if_project_name_exists(db: postgresql, project_name: str) -> None:
@@ -98,7 +123,7 @@ def extract_auditor2_archive(
     ----------
     auditor2_zip_path : Path
         The path to the Auditor 2 ZIP file.
-    storage_path : str
+    storage_path : Path
         The path to the root directory where the ZIP file will be extracted.
     """
     logger.debug(

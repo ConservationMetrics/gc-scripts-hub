@@ -1,5 +1,5 @@
 summary: 'Auditor 2: Import Annotated Acoustic Data'
-description: Import annotated acoustic data from a Auditor 2 root folder.
+description: Import annotated acoustic data from an Auditor 2 ZIP file stored in Azure Blob Storage.
 lock: '!inline f/connectors/auditor2/auditor2.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -7,10 +7,11 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - auditor2_zip
+    - blob_connection_string
+    - container_name
+    - blob_name
     - db
     - project_name
-    - delete_auditor2_zip
     - attachment_root
   properties:
     attachment_root:
@@ -21,6 +22,31 @@ schema:
         `{attachment_root}/auditor2/{project_name}/...`
       default: /persistent-storage/datalake
       originalType: string
+    blob_connection_string:
+      type: string
+      description: >-
+        Azure Storage connection string for accessing the blob storage account
+        containing the Auditor 2 ZIP file. Found in the Azure portal under
+        Storage Account > Access keys. Format: 
+        "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net"
+      originalType: string
+      format: password
+    container_name:
+      type: string
+      description: >-
+        Name of the Azure Blob Storage container where the Auditor 2 ZIP file
+        is stored. Container names are visible in the Azure portal under
+        Storage Account > Containers. Must be lowercase, e.g. "auditor2-data"
+      originalType: string
+    blob_name:
+      type: string
+      description: >-
+        Name of the blob (ZIP file) to download from Azure Blob Storage. This is
+        the filename as it appears in the container, e.g. "lake_accotink_2023.zip".
+        This ZIP file should contain five Auditor 2 export CSVs, and a directory
+        containing spectrogram images and audio files.
+      originalType: string
+      pattern: '^.+\.zip$'
     db:
       type: object
       description: A database connection for storing tabular data.
@@ -36,21 +62,10 @@ schema:
       default: timelapse
       originalType: string
       pattern: '^[a-zA-Z0-9_-]+$'
-    delete_auditor2_zip:
-      type: boolean
-      description: >-
-        Whether to delete the Auditor 2 ZIP file after processing.
-      default: true
-    auditor2_zip:
-      type: string
-      description: >-
-        The path to the Auditor 2 ZIP file, including the filename. This ZIP
-        file should contain five Auditor 2 export CSVs, and a directory
-        containing spectrogram images and audio files.
-      originalType: string
-      pattern: '^.+\.zip$'
   required:
-    - auditor2_zip
+    - blob_connection_string
+    - container_name
+    - blob_name
     - attachment_root
     - db
     - project_name
