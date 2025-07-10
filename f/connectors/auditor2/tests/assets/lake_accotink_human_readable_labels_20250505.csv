@@ -1,0 +1,29 @@
+label,class,order,family,genus,species,sci_name,common_name,code4,code6,unique_code,type,human_readable
+BALBON_bioduck,Mammalia,CETACEA,Balaenopteridae,Balaenoptera,bonaerensis,Balaenoptera bonaerensis,Antarctic Minke Whale,,BALBON,BALBON1,Bioduck,Antarctic Minke Whale - Bioduck
+Cascading_wail,Actinopteri,"","","","","",Fish,,"","",Cascading Wail,Fish - Cascading Wail
+Damselfish,Actinopteri,Ovalentaria/misc,Pomacentridae,"","","",Damselfish,,"","","",Damselfish
+Damselfish Damselfish_high,Actinopteri,Ovalentaria/misc,Pomacentridae,"","","",Damselfish,,"","",High,Damselfish - High
+Damselfish_hollow,Actinopteri,Ovalentaria/misc,Pomacentridae,"","","",Damselfish,,"","",Hollow,Damselfish - Hollow
+Damselfish_mid,Actinopteri,Ovalentaria/misc,Pomacentridae,"","","",Damselfish,,"","",Mid,Damselfish - Mid
+Engine_boat,"","","","","","",Boat,,"","",Engine,Boat - Engine
+Fish_croak,Actinopteri,"","","","","",Fish,,"","",Croak,Fish - Croak
+Fish_grazing,Actinopteri,Eupercaria/misc,Scaridae,"","","",Parrotfish,,"","",Grazing,Parrotfish - Grazing
+Fish_growl,Actinopteri,"","","","","",Fish,,"","",Growl,Fish - Growl
+Fish_grunt_series_500Hz,Actinopteri,"","","","","",Fish,,"","",Grunt Series (500Hz),Fish - Grunt Series (500Hz)
+Fish_knock,Actinopteri,"","","","","",Fish,,"","",Knock,Fish - Knock
+Fish_knock_2500Hz,Actinopteri,"","","","","",Fish,,"","",Knock (2500Hz),Fish - Knock (2500Hz)
+Fish_knock_and_croak_A,Actinopteri,"","","","","",Fish,,"","",Knock and Croak (A),Fish - Knock and Croak (A)
+Fish_knock_and_croak_B,Actinopteri,"","","","","",Fish,,"","",Knock and Croak (B),Fish - Knock and Croak (B)
+Fish_knock_low,Actinopteri,"","","","","",Fish,,"","",Knock (Low),Fish - Knock (Low)
+Fish_pulse_100to700Hz,Actinopteri,"","","","","",Fish,,"","",Pulse (100-700Hz),Fish - Pulse (100-700Hz)
+Fish_whup,Actinopteri,"","","","","",Fish,,"","",Whup,Fish - Whup
+HOMSAP_scuba,Mammalia,PRIMATES,Hominidae,"","","",Human,,"","",Scuba,Human - Scuba
+MEGNOV_grumble_train,Mammalia,CETACEA,Balaenopteridae,Megaptera,novaeangliae,Megaptera novaeangliae,Humpback Whale,,MEGNOV,MEGNOV1,Grumble Train,Humpback Whale - Grumble Train
+MEGNOV_song,Mammalia,CETACEA,Balaenopteridae,Megaptera,novaeangliae,Megaptera novaeangliae,Humpback Whale,,MEGNOV,MEGNOV1,Song,Humpback Whale - Song
+Rumble_low,"","","","","","",Geophony,,"","",Rumble (Low),Geophony - Rumble (Low)
+Scrape_train,Actinopteri,Eupercaria/misc,Scaridae,"","","",Parrotfish,,"","",Grazing (Scrape Train),Parrotfish - Grazing (Scrape Train)
+Sensor_noise,"","","","","","",Human,,"","",Sensor Noise,Human - Sensor Noise
+Steel_drum,Actinopteri,"","","","","",Fish,,"","",Steel Drum,Fish - Steel Drum
+Tapping_low,"","","","","","",Unknown,,"","",Tapping (Low),Unknown - Tapping (Low)
+Wave_action,"","","","","","",Geophony,,"","",Waves,Geophony - Waves
+possGrouper,Actinopteri,Perciformes/Serranoidei,Serranidae,"","","",Grouper,,"","",possible,Grouper - possible
