@@ -120,9 +120,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
     asset_storage = tmp_path / "datalake"
 
     # Mock the Azure Blob Storage download to return our test zip file
-    with patch(
-        "f.common_logic.azure_operations.download_blob_to_temp"
-    ) as mock_download:
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
         mock_download.return_value = auditor2_zip_with_media
 
         actual_storage_path = main(
@@ -197,9 +195,7 @@ def test_raise_if_project_name_exists(
     asset_storage = tmp_path / "datalake"
 
     # Mock the Azure Blob Storage download to return our test zip file
-    with patch(
-        "f.common_logic.azure_operations.download_blob_to_temp"
-    ) as mock_download:
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
         mock_download.return_value = auditor2_zip_without_media
 
         # Run the main function to create the tables once
@@ -228,9 +224,7 @@ def test_zip_file_not_found(pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     # Mock the Azure Blob Storage download to raise an exception
-    with patch(
-        "f.common_logic.azure_operations.download_blob_to_temp"
-    ) as mock_download:
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
         mock_download.side_effect = Exception("Blob not found")
 
         with pytest.raises(Exception, match="Blob not found"):
@@ -273,9 +267,7 @@ def test_missing_csv_raises_error(pg_database, tmp_path, auditor2_zip_without_me
                 zipf.write(file, arcname)
 
     # Mock the Azure Blob Storage download to return the incomplete zip
-    with patch(
-        "f.common_logic.azure_operations.download_blob_to_temp"
-    ) as mock_download:
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
         mock_download.return_value = incomplete_zip
 
         with pytest.raises(ValueError, match="Missing required CSV file"):
