@@ -42,7 +42,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
 
     # Mock the Azure Blob Storage download to return our test zip file
     with patch(
-        "f.connectors.timelapse.timelapse.download_blob_to_temp"
+        "f.common_logic.azure_operations.download_blob_to_temp"
     ) as mock_download:
         mock_download.return_value = timelapse_zip
 
@@ -124,7 +124,7 @@ def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
 
     # Mock the Azure Blob Storage download to return fresh copies of our test zip file
     with patch(
-        "f.connectors.timelapse.timelapse.download_blob_to_temp"
+        "f.common_logic.azure_operations.download_blob_to_temp"
     ) as mock_download:
         mock_download.side_effect = create_temp_zip_copy
 
