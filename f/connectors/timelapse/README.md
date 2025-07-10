@@ -1,10 +1,10 @@
 # Timelapse: Import Annotated Camera Trap Data
 
-This script ingests annotated camera trap data from a [Timelapse](https://timelapse.ucalgary.ca/) project. It expects a ZIP archive of the entire project folder, and extracts tabular data from the `TimelapseData.ddb` (SQLite) database file. Media files such as images or videos are saved to the configured data lake.
+This script ingests annotated camera trap data from a [Timelapse](https://timelapse.ucalgary.ca/) project. It downloads a ZIP archive of the entire project folder from Azure Blob Storage, and extracts tabular data from the `TimelapseData.ddb` (SQLite) database file. Media files such as images or videos are saved to the configured data lake.
 
 The script writes data to PostgreSQL and handles fully dynamic schemas, since Timelapse allows all field names and folder levels to be customized by the user.
 
-TODO: Figure out how the ZIP file makes it to blob storage, and what calls this script.
+The script requires Azure Blob Storage credentials to download the Timelapse ZIP file, which should be uploaded to a blob container before running the script.
 
 > [!NOTE]
 > The Timelapse database schema may change in future versions. This script was developed against Timelapse version 2.3.3.0.

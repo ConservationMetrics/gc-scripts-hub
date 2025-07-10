@@ -1,6 +1,7 @@
 # requirements:
 # pandas~=2.2
 # psycopg2-binary
+# azure-storage-blob
 
 import logging
 import shutil
@@ -9,6 +10,7 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
+from azure.storage.blob import BlobServiceClient
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.db_transformations import camel_to_snake
@@ -18,40 +20,118 @@ logger = logging.getLogger(__name__)
 
 
 def main(
-    timelapse_zip: str,
+    blob_connection_string: str,
+    container_name: str,
+    blob_name: str,
     db: postgresql,
     db_table_prefix: str,
-    delete_timelapse_zip: bool = True,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    base_storage_path = Path(attachment_root) / "Timelapse" / db_table_prefix
+    """
+    Downloads a Timelapse ZIP file from Azure Blob Storage, extracts it, and processes the data.
 
-    timelapse_zip_path = Path(timelapse_zip)
-    actual_storage_path = extract_timelapse_archive(
-        timelapse_zip_path, base_storage_path
+    Parameters
+    ----------
+    blob_connection_string : str
+        Azure Storage connection string
+    container_name : str
+        Name of the Azure Blob Storage container
+    blob_name : str
+        Name of the blob (ZIP file) to download
+    db : postgresql
+        Database connection configuration
+    db_table_prefix : str
+        Prefix for database table names
+    attachment_root : str
+        Root directory for persistent storage
+    """
+    base_storage_path = Path(attachment_root) / "Timelapse"
+
+    # Download ZIP file from Azure Blob Storage
+    timelapse_zip_path = download_blob_to_temp(
+        blob_connection_string, container_name, blob_name
     )
 
-    timelapse_tables = read_timelapse_db_tables(actual_storage_path, db_table_prefix)
-
-    for table_name, rows in timelapse_tables.items():
-        db_writer = StructuredDBWriter(
-            conninfo(db),
-            table_name,
-            use_mapping_table=False,
-            reverse_properties_separated_by=None,
+    try:
+        actual_storage_path = extract_timelapse_archive(
+            timelapse_zip_path, base_storage_path
         )
-        db_writer.handle_output(rows)
+
+        timelapse_tables = read_timelapse_db_tables(
+            actual_storage_path, db_table_prefix
+        )
+
+        for table_name, rows in timelapse_tables.items():
+            db_writer = StructuredDBWriter(
+                conninfo(db),
+                table_name,
+                use_mapping_table=False,
+                reverse_properties_separated_by=None,
+            )
+            db_writer.handle_output(rows)
+            logger.info(
+                f"Timelapse data from table '{table_name}' successfully written to the database."
+            )
+
+        return actual_storage_path
+
+    finally:
+        # Clean up the temporary ZIP file
+        if timelapse_zip_path.exists():
+            timelapse_zip_path.unlink()
+            logger.info(f"Deleted temporary ZIP file: {timelapse_zip_path}")
+
+
+def download_blob_to_temp(
+    connection_string: str, container_name: str, blob_name: str
+) -> Path:
+    """
+    Downloads a blob from Azure Blob Storage to a temporary file.
+
+    Parameters
+    ----------
+    connection_string : str
+        Azure Storage connection string
+    container_name : str
+        Name of the container
+    blob_name : str
+        Name of the blob to download
+
+    Returns
+    -------
+    Path
+        Path to the temporary file containing the downloaded blob
+    """
+    try:
+        # Create BlobServiceClient
+        blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string
+        )
+
+        # Get blob client
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=blob_name
+        )
+
+        # Create temporary file with the same name as the blob
+        temp_dir = Path(tempfile.gettempdir())
+        temp_path = temp_dir / blob_name
+
+        # Download blob to temporary file
+        with open(temp_path, "wb") as download_file:
+            blob_data = blob_client.download_blob()
+            blob_data.readinto(download_file)
+
         logger.info(
-            f"Timelapse data from table '{table_name}' successfully written to the database."
+            f"Downloaded blob '{blob_name}' from container '{container_name}' to {temp_path}"
         )
+        return temp_path
 
-    if delete_timelapse_zip:
-        # Now that we've extracted the archive and written the data to the database,
-        # we can delete the original ZIP file.
-        timelapse_zip_path.unlink()
-        logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
-
-    return actual_storage_path
+    except Exception as e:
+        logger.error(
+            f"Failed to download blob '{blob_name}' from container '{container_name}': {e}"
+        )
+        raise
 
 
 def extract_timelapse_archive(
@@ -68,7 +148,7 @@ def extract_timelapse_archive(
     ----------
     timelapse_zip_path : Path
         The path to the Timelapse ZIP file.
-    storage_path : str
+    storage_path : Path
         The path to the root directory where the ZIP file will be extracted.
 
     Returns
@@ -133,9 +213,6 @@ def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
 
     if len(new_columns) != len(set(new_columns)):
         raise ValueError("Column name collision detected")
-
-    logger.error(f"New columns: {new_columns}")
-    logger.error(f"Original columns: {df.columns}")
 
     df.columns = new_columns
     return df
