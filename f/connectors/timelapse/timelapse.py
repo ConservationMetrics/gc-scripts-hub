@@ -1,6 +1,7 @@
 # requirements:
 # pandas~=2.2
 # psycopg2-binary
+# azure-storage-blob
 
 import logging
 import shutil
@@ -17,10 +18,12 @@ from f.common_logic.db_transformations import camel_to_snake
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# type names that refer to Windmill Resources
+azure_blob = dict
+
 
 def main(
-    blob_connection_string: str,
-    container_name: str,
+    azure_blob: azure_blob,
     blob_name: str,
     db: postgresql,
     db_table_prefix: str,
@@ -31,10 +34,9 @@ def main(
 
     Parameters
     ----------
-    blob_connection_string : str
-        Azure Storage connection string
-    container_name : str
-        Name of the Azure Blob Storage container
+    azure_blob : azure_blob
+        Windmill Azure Blob Storage resource containing accountName, containerName,
+        accessKey, useSSL, and optional endpoint.
     blob_name : str
         Name of the blob (ZIP file) to download
     db : postgresql
@@ -47,9 +49,7 @@ def main(
     base_storage_path = Path(attachment_root) / "Timelapse"
 
     # Download ZIP file from Azure Blob Storage
-    timelapse_zip_path = download_blob_to_temp(
-        blob_connection_string, container_name, blob_name
-    )
+    timelapse_zip_path = download_blob_to_temp(azure_blob, blob_name)
 
     try:
         actual_storage_path = extract_timelapse_archive(

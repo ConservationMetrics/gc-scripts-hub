@@ -115,6 +115,15 @@ def auditor2_zip_without_media(tmp_path):
 
 project_name = "lake_accotink_biacoustics"
 
+# Create mock azure_blob resource
+azure_blob = {
+    "accountName": "testaccount",
+    "containerName": "test_container",
+    "accessKey": "testkey",
+    "useSSL": True,
+    "endpoint": "core.windows.net",
+}
+
 
 def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
     asset_storage = tmp_path / "datalake"
@@ -124,8 +133,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
         mock_download.return_value = auditor2_zip_with_media
 
         actual_storage_path = main(
-            blob_connection_string="fake_connection_string",
-            container_name="test_container",
+            azure_blob=azure_blob,
             blob_name="auditor2_20250505_with_media.zip",
             db=pg_database,
             project_name=project_name,
@@ -200,8 +208,7 @@ def test_raise_if_project_name_exists(
 
         # Run the main function to create the tables once
         main(
-            blob_connection_string="fake_connection_string",
-            container_name="test_container",
+            azure_blob=azure_blob,
             blob_name="auditor2_20250505.zip",
             db=pg_database,
             project_name=project_name,
@@ -211,8 +218,7 @@ def test_raise_if_project_name_exists(
         # Try to run again with the same project name - should raise an error
         with pytest.raises(ValueError, match="Auditor2 project name already in usage"):
             main(
-                blob_connection_string="fake_connection_string",
-                container_name="test_container",
+                azure_blob=azure_blob,
                 blob_name="auditor2_20250505.zip",
                 db=pg_database,
                 project_name=project_name,
@@ -229,8 +235,7 @@ def test_zip_file_not_found(pg_database, tmp_path):
 
         with pytest.raises(Exception, match="Blob not found"):
             main(
-                blob_connection_string="fake_connection_string",
-                container_name="test_container",
+                azure_blob=azure_blob,
                 blob_name="nonexistent.zip",
                 db=pg_database,
                 project_name="test_project",
@@ -272,8 +277,7 @@ def test_missing_csv_raises_error(pg_database, tmp_path, auditor2_zip_without_me
 
         with pytest.raises(ValueError, match="Missing required CSV file"):
             main(
-                blob_connection_string="fake_connection_string",
-                container_name="test_container",
+                azure_blob=azure_blob,
                 blob_name="incomplete.zip",
                 db=pg_database,
                 project_name="test_project",

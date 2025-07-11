@@ -7,37 +7,19 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - blob_connection_string
-    - container_name
+    - azure_blob
     - blob_name
     - db
     - db_table_prefix
     - attachment_root
   properties:
-    attachment_root:
-      type: string
+    azure_blob:
+      type: object
       description: >-
-        A path where Timelapse images will be stored. Attachment files (e.g.,
-        photos and video) will be stored in the following directory schema: 
-        `{attachment_root}/timelapse/{project_name}/...`
-      default: /persistent-storage/datalake
-      originalType: string
-    blob_connection_string:
-      type: string
-      description: >-
-        Azure Storage connection string for accessing the blob storage account
-        containing the Timelapse ZIP file. Found in the Azure portal under
-        Storage Account > Access keys. Format: 
-        "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net"
-      originalType: string
-      format: password
-    container_name:
-      type: string
-      description: >-
-        Name of the Azure Blob Storage container where the Timelapse ZIP file
-        is stored. Container names are visible in the Azure portal under
-        Storage Account > Containers. Must be lowercase, e.g. "timelapse-data"
-      originalType: string
+        Windmill Azure Blob Storage resource containing account information
+        and credentials for accessing the storage account where the Timelapse
+        ZIP file is stored.
+      format: resource-azure_blob
     blob_name:
       type: string
       description: >-
@@ -58,9 +40,16 @@ schema:
         This is a prefix added to the database table names created by this script.
       default: timelapse
       originalType: string
+    attachment_root:
+      type: string
+      description: >-
+        A path where Timelapse images will be stored. Attachment files (e.g.,
+        photos and video) will be stored in the following directory schema: 
+        `{attachment_root}/timelapse/{project_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
   required:
-    - blob_connection_string
-    - container_name
+    - azure_blob
     - blob_name
     - attachment_root
     - db

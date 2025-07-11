@@ -9,6 +9,15 @@ import pytest
 
 from f.connectors.timelapse.timelapse import _transform_df, main
 
+# Create mock azure_blob resource
+azure_blob = {
+    "accountName": "testaccount",
+    "containerName": "test_container",
+    "accessKey": "testkey",
+    "useSSL": True,
+    "endpoint": "core.windows.net",
+}
+
 
 def test_transform_df_column_name_collision():
     # Create a DataFrame with columns that will collide after transformation
@@ -47,8 +56,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
         mock_download.return_value = timelapse_zip
 
         actual_storage_path = main(
-            blob_connection_string="fake_connection_string",
-            container_name="test_container",
+            azure_blob=azure_blob,
             blob_name="timelapse_export.zip",
             db=pg_database,
             db_table_prefix="my_timelapse_project",
@@ -109,7 +117,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
 def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
     asset_storage = tmp_path / "datalake"
 
-    def create_temp_zip_copy(connection_string, container_name, blob_name):
+    def create_temp_zip_copy(azure_blob, blob_name):
         """Create a fresh copy of the ZIP file for each call"""
         # Create a temporary directory for each copy to avoid conflicts
         temp_dir = tmp_path / f"temp_dir_{create_temp_zip_copy.counter}"
@@ -130,8 +138,7 @@ def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
 
         # First run
         first_path = main(
-            blob_connection_string="fake_connection_string",
-            container_name="test_container",
+            azure_blob=azure_blob,
             blob_name="timelapse_export.zip",
             db=pg_database,
             db_table_prefix="my_timelapse_project",
@@ -140,8 +147,7 @@ def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
 
         # Second run
         second_path = main(
-            blob_connection_string="fake_connection_string",
-            container_name="test_container",
+            azure_blob=azure_blob,
             blob_name="timelapse_export.zip",
             db=pg_database,
             db_table_prefix="my_timelapse_project",

@@ -10,19 +10,19 @@ from azure.storage.blob import BlobServiceClient
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# type names that refer to Windmill Resources
+azure_blob = dict
 
-def download_blob_to_temp(
-    connection_string: str, container_name: str, blob_name: str
-) -> Path:
+
+def download_blob_to_temp(azure_blob: azure_blob, blob_name: str) -> Path:
     """
     Downloads a blob from Azure Blob Storage to a temporary file.
 
     Parameters
     ----------
-    connection_string : str
-        Azure Storage connection string
-    container_name : str
-        Name of the container
+    azure_blob : azure_blob
+        Windmill Azure Blob Storage resource containing accountName, containerName,
+        accessKey, useSSL, and optional endpoint.
     blob_name : str
         Name of the blob to download
 
@@ -32,6 +32,16 @@ def download_blob_to_temp(
         Path to the temporary file containing the downloaded blob
     """
     try:
+        # Extract values from Windmill resource and construct connection string
+        account_name = azure_blob["accountName"]
+        container_name = azure_blob["containerName"]
+        access_key = azure_blob["accessKey"]
+        use_ssl = azure_blob.get("useSSL", True)
+        endpoint = azure_blob.get("endpoint") or "core.windows.net"
+
+        protocol = "https" if use_ssl else "http"
+        connection_string = f"DefaultEndpointsProtocol={protocol};AccountName={account_name};AccountKey={access_key};EndpointSuffix={endpoint}"
+
         # Create BlobServiceClient
         blob_service_client = BlobServiceClient.from_connection_string(
             connection_string

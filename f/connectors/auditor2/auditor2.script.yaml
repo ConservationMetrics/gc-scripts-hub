@@ -7,37 +7,19 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - blob_connection_string
-    - container_name
+    - azure_blob
     - blob_name
     - db
     - project_name
     - attachment_root
   properties:
-    attachment_root:
-      type: string
+    azure_blob:
+      type: object
       description: >-
-        A path where Auditor 2 original CSVs and media will be stored, in 
-        the following directory schema: 
-        `{attachment_root}/auditor2/{project_name}/...`
-      default: /persistent-storage/datalake
-      originalType: string
-    blob_connection_string:
-      type: string
-      description: >-
-        Azure Storage connection string for accessing the blob storage account
-        containing the Auditor 2 ZIP file. Found in the Azure portal under
-        Storage Account > Access keys. Format: 
-        "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net"
-      originalType: string
-      format: password
-    container_name:
-      type: string
-      description: >-
-        Name of the Azure Blob Storage container where the Auditor 2 ZIP file
-        is stored. Container names are visible in the Azure portal under
-        Storage Account > Containers. Must be lowercase, e.g. "auditor2-data"
-      originalType: string
+        Windmill Azure Blob Storage resource containing account information
+        and credentials for accessing the storage account where the Auditor 2
+        ZIP file is stored.
+      format: resource-azure_blob
     blob_name:
       type: string
       description: >-
@@ -62,9 +44,16 @@ schema:
       default: timelapse
       originalType: string
       pattern: '^[a-zA-Z0-9_-]+$'
+    attachment_root:
+      type: string
+      description: >-
+        A path where Auditor 2 original CSVs and media will be stored, in 
+        the following directory schema: 
+        `{attachment_root}/auditor2/{project_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
   required:
-    - blob_connection_string
-    - container_name
+    - azure_blob
     - blob_name
     - attachment_root
     - db
