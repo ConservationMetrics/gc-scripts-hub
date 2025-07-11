@@ -2,6 +2,7 @@ import csv
 import shutil
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import psycopg2
 import pytest
@@ -114,17 +115,30 @@ def auditor2_zip_without_media(tmp_path):
 
 project_name = "lake_accotink_biacoustics"
 
+# Create mock azure_blob resource
+azure_blob = {
+    "accountName": "testaccount",
+    "containerName": "test_container",
+    "accessKey": "testkey",
+    "useSSL": True,
+    "endpoint": "core.windows.net",
+}
+
 
 def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
     asset_storage = tmp_path / "datalake"
 
-    actual_storage_path = main(
-        auditor2_zip_with_media,
-        pg_database,
-        project_name,
-        delete_auditor2_zip=True,
-        attachment_root=asset_storage,
-    )
+    # Mock the Azure Blob Storage download to return our test zip file
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
+        mock_download.return_value = auditor2_zip_with_media
+
+        actual_storage_path = main(
+            azure_blob=azure_blob,
+            blob_name="auditor2_20250505_with_media.zip",
+            db=pg_database,
+            project_name=project_name,
+            attachment_root=asset_storage,
+        )
 
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
@@ -178,11 +192,6 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
         csv_path = asset_storage / "Auditor2" / project_name / csv_name
         assert csv_path.exists(), f"Expected CSV not found: {csv_path}"
 
-    # Check to see that the ZIP file was deleted
-    assert not auditor2_zip_with_media.exists(), (
-        "Auditor2 ZIP file was not deleted as expected."
-    )
-
     # Check that actual_storage_path is correctly returned
     expected_storage_path = asset_storage / "Auditor2" / project_name
     assert actual_storage_path == expected_storage_path
@@ -193,66 +202,84 @@ def test_raise_if_project_name_exists(
 ):
     asset_storage = tmp_path / "datalake"
 
-    # Run the main function to create the tables once
-    main(
-        auditor2_zip_without_media,
-        pg_database,
-        project_name,
-        delete_auditor2_zip=False,
-        attachment_root=asset_storage,
-    )
+    # Mock the Azure Blob Storage download to return our test zip file
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
+        mock_download.return_value = auditor2_zip_without_media
 
-    # Now let's run it again to check if it raises an error
-    with pytest.raises(ValueError, match="Auditor2 project name already in usage"):
+        # Run the main function to create the tables once
         main(
-            auditor2_zip_without_media,
-            pg_database,
-            project_name,
-            delete_auditor2_zip=True,
+            azure_blob=azure_blob,
+            blob_name="auditor2_20250505.zip",
+            db=pg_database,
+            project_name=project_name,
             attachment_root=asset_storage,
         )
+
+        # Try to run again with the same project name - should raise an error
+        with pytest.raises(ValueError, match="Auditor2 project name already in usage"):
+            main(
+                azure_blob=azure_blob,
+                blob_name="auditor2_20250505.zip",
+                db=pg_database,
+                project_name=project_name,
+                attachment_root=asset_storage,
+            )
 
 
 def test_zip_file_not_found(pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
-    non_existent_zip = tmp_path / "non_existent_auditor2.zip"
+    # Mock the Azure Blob Storage download to raise an exception
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
+        mock_download.side_effect = Exception("Blob not found")
 
-    with pytest.raises(FileNotFoundError, match="Auditor 2 ZIP file not found"):
-        main(
-            non_existent_zip,
-            pg_database,
-            project_name,
-            delete_auditor2_zip=True,
-            attachment_root=asset_storage,
-        )
+        with pytest.raises(Exception, match="Blob not found"):
+            main(
+                azure_blob=azure_blob,
+                blob_name="nonexistent.zip",
+                db=pg_database,
+                project_name="test_project",
+                attachment_root=asset_storage,
+            )
 
 
 def test_missing_csv_raises_error(pg_database, tmp_path, auditor2_zip_without_media):
     asset_storage = tmp_path / "datalake"
 
-    # Extract original zip to a temp dir
-    extracted_dir = tmp_path / "extracted_assets"
-    with zipfile.ZipFile(auditor2_zip_without_media, "r") as zip_ref:
-        zip_ref.extractall(extracted_dir)
+    # Create a ZIP file missing one of the required CSVs
+    staging_dir = tmp_path / "incomplete_assets"
+    staging_dir.mkdir()
 
-    # Remove the 'labels' CSV file
-    (extracted_dir / "lake_accotink_labels_20250505.csv").unlink()
+    # Create only 4 of the 5 required CSVs
+    incomplete_keys = [
+        "deployments",
+        "human_readable_labels",
+        "labels",
+        "sites",
+        # Missing: sound_file_summary
+    ]
 
-    # Recreate the zip without the missing CSV
-    incomplete_zip_path = tmp_path / "incomplete_auditor2_20250505.zip"
-    with zipfile.ZipFile(incomplete_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for file in extracted_dir.rglob("*"):
+    for key in incomplete_keys:
+        file_path = staging_dir / f"project_{key}_20250505.csv"
+        file_path.write_text("col1,col2\nval1,val2", encoding="utf-8")
+
+    # Create ZIP with incomplete CSV set
+    incomplete_zip = tmp_path / "incomplete.zip"
+    with zipfile.ZipFile(incomplete_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file in staging_dir.rglob("*"):
             if file.is_file():
-                arcname = file.relative_to(extracted_dir)
+                arcname = file.relative_to(staging_dir)
                 zipf.write(file, arcname)
 
-    # Run the main function and expect a ValueError
-    with pytest.raises(ValueError, match="Missing required CSV"):
-        main(
-            incomplete_zip_path,
-            pg_database,
-            project_name,
-            delete_auditor2_zip=True,
-            attachment_root=asset_storage,
-        )
+    # Mock the Azure Blob Storage download to return the incomplete zip
+    with patch("f.connectors.auditor2.auditor2.download_blob_to_temp") as mock_download:
+        mock_download.return_value = incomplete_zip
+
+        with pytest.raises(ValueError, match="Missing required CSV file"):
+            main(
+                azure_blob=azure_blob,
+                blob_name="incomplete.zip",
+                db=pg_database,
+                project_name="test_project",
+                attachment_root=asset_storage,
+            )
