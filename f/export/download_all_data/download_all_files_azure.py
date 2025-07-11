@@ -18,13 +18,26 @@ def main(
     expiry_minutes: int = 120,
 ):
     """
-    Generate a SAS URL for an Azure Blob Storage container or subfolder,
-    allowing the user to run an `azcopy` command to download all files directly
-    from persistent storage. Ideal for creating a fast and reliable file
-    download option without requiring zipping large directories.
+    Generate a SAS URL for an Azure Blob Storage container or subfolder and provide
+    azcopy commands for transferring files to multiple destinations
+    (local disk, AWS S3, Google Cloud Storage, and another Azure Storage account).
 
-    Returns:
-        dict: Dictionary containing the generated azcopy commands for different destinations
+    Parameters
+    ----------
+    blob_connection_string : str
+        The connection string for the Azure Blob Storage container.
+    container_name : str
+        The name of the Azure Blob Storage container.
+    folder_path : str, optional
+        The path to the subfolder within the container.
+    expiry_minutes : int, optional
+        The number of minutes before the SAS URL expires (default: 120)
+
+    Returns
+    -------
+    dict
+        Dictionary with keys 'local', 's3', 'gcs', 'azure' containing
+        the corresponding azcopy commands for each destination
     """
 
     try:

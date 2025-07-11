@@ -28,7 +28,12 @@ This export script targets **file-based data** stored in Azure Blob Storage cont
 - Exported data files from other services
 - Any persistent storage files accessible via Azure Blob Storage
 
-The script generates a secure SAS (Shared Access Signature) URL with time-limited access to the specified Azure Blob Storage container or subfolder. It then provides multiple [`azcopy`](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10?tabs=dnf) command options for different destinations (local disk, AWS S3, Google Cloud Storage, and another Azure Storage account)
+The script generates a secure SAS (Shared Access Signature) URL with time-limited access to the specified Azure Blob Storage container or subfolder. It then provides multiple [`azcopy`](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10?tabs=dnf) command options for different destinations:
+
+- Local disk (download to your computer)
+- AWS S3 bucket (cloud-to-cloud transfer)
+- Google Cloud Storage (cloud-to-cloud transfer)
+- Another Azure Storage account (cloud-to-cloud transfer)
 
 This approach using `azcopy` provides several advantages. Transfers are fast, especially when copying data directly between cloud services. You can choose from a variety of destinations for your data, making the process flexible. Because files are transferred directly from Azure storage, there is no additional load on your Guardian Connector deployment. Additionally, if a transfer is interrupted, the `azcopy` tool allows you to resume it without starting over.
 
