@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, timedelta
 
 from azure.storage.blob import (
-    BlobServiceClient,
     ContainerSasPermissions,
     generate_container_sas,
 )
@@ -10,10 +9,12 @@ from azure.storage.blob import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# type names that refer to Windmill Resources
+azure_blob = dict
+
 
 def main(
-    blob_connection_string: str,
-    container_name: str,
+    azure_blob: azure_blob,
     folder_path: str = "",
     expiry_minutes: int = 120,
 ):
@@ -24,10 +25,9 @@ def main(
 
     Parameters
     ----------
-    blob_connection_string : str
-        The connection string for the Azure Blob Storage container.
-    container_name : str
-        The name of the Azure Blob Storage container.
+    azure_blob : azure_blob
+        Windmill Azure Blob Storage resource containing accountName, containerName,
+        accessKey, useSSL, and optional endpoint.
     folder_path : str, optional
         The path to the subfolder within the container.
     expiry_minutes : int, optional
@@ -41,21 +41,24 @@ def main(
     """
 
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(
-            blob_connection_string
-        )
-        account_name = blob_service_client.account_name
+        # Extract values from Windmill resource
+        account_name = azure_blob["accountName"]
+        container_name = azure_blob["containerName"]
+        access_key = azure_blob["accessKey"]
+        use_ssl = azure_blob.get("useSSL", True)
+        endpoint = azure_blob.get("endpoint", "core.windows.net")
 
         # Generate the SAS token
         sas_token = generate_container_sas(
             account_name=account_name,
             container_name=container_name,
-            account_key=blob_service_client.credential.account_key,
+            account_key=access_key,
             permission=ContainerSasPermissions(read=True, list=True),
             expiry=datetime.utcnow() + timedelta(minutes=expiry_minutes),
         )
 
-        base_url = f"https://{account_name}.blob.core.windows.net/{container_name}"
+        protocol = "https" if use_ssl else "http"
+        base_url = f"{protocol}://{account_name}.blob.{endpoint}/{container_name}"
         if folder_path:
             folder_path = folder_path.strip("/")
             full_url = f"{base_url}/{folder_path}?{sas_token}"
