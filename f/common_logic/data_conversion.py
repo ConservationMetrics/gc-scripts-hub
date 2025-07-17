@@ -32,9 +32,9 @@ def handle_file_errors(func):
 
 def convert_data(file_path: str, file_format: str):
     """
-    Converts a structured input file into a standard tabular or geospatial format.
+    Converts a structured input file into a standard tabular or spatial format.
 
-    Right now, we are assuming that geospatial data (e.g. GPX, KML) will only
+    Right now, we are assuming that spatial data (e.g. GPX, KML) will only
     be converted into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
     JSON) will only be converted into CSV, and not GeoJSON.
 
