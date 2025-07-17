@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<gpx version="1.1" creator="Locus Map, Android"
+ xmlns="http://www.topografix.com/GPX/1/1"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd"
+ xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+ xmlns:gpxtrkx="http://www.garmin.com/xmlschemas/TrackStatsExtension/v1"
+ xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"
+ xmlns:locus="http://www.locusmap.eu">
+	<metadata>
+		<desc>File with points/tracks from Locus Map/4.27.1</desc>
+		<time>2025-01-17T03:17:52.640Z</time>
+	</metadata>
+<wpt lat="40.768731" lon="-73.974922">
+	<ele>152.40</ele>
+	<time>2025-01-09T20:11:40.532Z</time>
+<name>2025-01-09 15:10:33</name>
+	<desc><![CDATA[My favorite tree]]></desc>
+	<link href="./Favorites-attachments/p_2025-01-09_15-_20250109_151051.jpg">
+	</link>
+</wpt>
+<wpt lat="40.948215" lon="-73.297812">
+	<time>2025-01-09T20:49:36.561Z</time>
+<name>2025-01-09 15:48:54</name>
+	<desc><![CDATA[My favorite rock]]></desc>
+	<link href="./Favorites-attachments/p_2025-01-09_15-_20250109_154929.jpg">
+	</link>
+	<link href="./Favorites-attachments/p_2025-01-09_15-_20250109_154918.m4a">
+	</link>
+</wpt>
+</gpx>

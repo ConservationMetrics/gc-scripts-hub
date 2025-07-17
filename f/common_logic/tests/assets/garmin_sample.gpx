@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<gpx version="1.1" creator="Garmin Connect"
+     xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 
+         http://www.topografix.com/GPX/1/1/gpx.xsd 
+         http://www.garmin.com/xmlschemas/TrackPointExtension/v1 
+         http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd">
+
+  <metadata>
+    <name>Morning Ride</name>
+    <time>2025-06-15T06:30:00Z</time>
+  </metadata>
+
+  <wpt lat="38.897957" lon="-77.036560">
+    <ele>5.2</ele>
+    <name>White House</name>
+    <desc>Start point of the ride</desc>
+    <time>2025-06-15T06:30:00Z</time>
+  </wpt>
+
+  <rte>
+    <name>Scenic Route</name>
+    <rtept lat="38.897957" lon="-77.036560">
+      <ele>5.2</ele>
+      <time>2025-06-15T06:30:00Z</time>
+    </rtept>
+    <rtept lat="38.889939" lon="-77.009051">
+      <ele>4.0</ele>
+      <time>2025-06-15T06:45:00Z</time>
+    </rtept>
+  </rte>
+
+  <trk>
+    <name>Track Log</name>
+    <trkseg>
+      <trkpt lat="38.897957" lon="-77.036560">
+        <ele>5.2</ele>
+        <time>2025-06-15T06:30:00Z</time>
+      </trkpt>
+      <trkpt lat="38.889939" lon="-77.009051">
+        <ele>4.0</ele>
+        <time>2025-06-15T06:45:00Z</time>
+      </trkpt>
+      <trkpt lat="38.881626" lon="-77.036873">
+        <ele>3.5</ele>
+        <time>2025-06-15T07:00:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+
+</gpx>
