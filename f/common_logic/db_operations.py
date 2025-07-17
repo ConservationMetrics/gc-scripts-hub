@@ -44,6 +44,24 @@ def check_if_table_exists(
     return cursor.fetchone()[0]
 
 
+def fetch_tables_from_postgres(db_connection_string: str):
+    """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
+    try:
+        conn = connect(db_connection_string)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public'
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        conn.close()
+        return tables
+    except Exception as e:
+        logger.error(f"Error fetching tables: {e}")
+        return []
+
+
 def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     """
     Fetches all data from a specified PostgreSQL table.
@@ -122,10 +140,14 @@ class StructuredDBWriter:
         predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string
+
+        # Table name is converted to lowercase to ensure consistency
+        table_name = table_name.lower()
+        self.base_table_name = table_name
+
         # Safely truncate the table to 63 characters
         # If suffix is provided (e.g., "labels"), create a derived table name.
         # TODO: ...while retaining uniqueness
-        self.base_table_name = table_name
         self.suffix = suffix
 
         if suffix:
