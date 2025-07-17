@@ -30,13 +30,13 @@ def handle_file_errors(func):
     return wrapper
 
 
-def normalize_data(file_path: str, file_format: str):
+def convert_data(file_path: str, file_format: str):
     """
-    Normalizes a structured file into either CSV (list of lists) or GeoJSON (dict).
+    Converts a structured input file into a standard tabular or geospatial format.
 
     Right now, we are assuming that geospatial data (e.g. GPX, KML) will only
-    be normalized into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
-    JSON) will only be normalized into CSV, and not GeoJSON.
+    be converted into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
+    JSON) will only be converted into CSV, and not GeoJSON.
 
     Parameters
     ----------
@@ -49,10 +49,10 @@ def normalize_data(file_path: str, file_format: str):
     Returns
     -------
     Union[list[list[str]], dict]
-        Normalized data as CSV (list of lists) or GeoJSON (dict).
+        Converted data as CSV (list of lists) or GeoJSON (dict).
     """
     path = Path(file_path)
-    logger.debug(f"Normalizing {file_path} with format {file_format}")
+    logger.debug(f"Converting {file_path} with format {file_format}")
 
     match file_format:
         case "csv":

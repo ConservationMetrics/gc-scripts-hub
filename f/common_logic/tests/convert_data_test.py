@@ -1,10 +1,10 @@
 import pytest
 
-from f.common_logic.normalize import normalize_data
+from f.common_logic.convert_data import convert_data
 
 
-def test_normalize_data__locusmap_points_gpx(locusmap_points_gpx_file):
-    result = normalize_data(str(locusmap_points_gpx_file), "gpx")
+def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
+    result = convert_data(str(locusmap_points_gpx_file), "gpx")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
@@ -23,8 +23,8 @@ def test_normalize_data__locusmap_points_gpx(locusmap_points_gpx_file):
         assert any(properties["link"].strip().endswith(ext) for ext in [".jpg", ".m4a"])
 
 
-def test_normalize_data__locusmap_points_kml(locusmap_points_kml_file):
-    result = normalize_data(str(locusmap_points_kml_file), "kml")
+def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
+    result = convert_data(str(locusmap_points_kml_file), "kml")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
@@ -38,8 +38,8 @@ def test_normalize_data__locusmap_points_kml(locusmap_points_kml_file):
         assert "attachments" in props
 
 
-def test_normalize_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
-    result = normalize_data(str(locusmap_tracks_kml_file), "kml")
+def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
+    result = convert_data(str(locusmap_tracks_kml_file), "kml")
 
     # Root-level structure check
     assert result["type"] == "FeatureCollection"
@@ -83,8 +83,8 @@ def test_normalize_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
     assert "willow" in props["description"].lower()
 
 
-def test_normalize_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
-    result = normalize_data(str(locusmap_tracks_gpx_file), "gpx")
+def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
+    result = convert_data(str(locusmap_tracks_gpx_file), "gpx")
 
     # Root-level sanity checks
     assert result["type"] == "FeatureCollection"
@@ -125,8 +125,8 @@ def test_normalize_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
     assert "willow" in props["desc"].lower()
 
 
-def test_normalize_data__garmin_sample_gpx(garmin_sample_gpx_file):
-    result = normalize_data(str(garmin_sample_gpx_file), "gpx")
+def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
+    result = convert_data(str(garmin_sample_gpx_file), "gpx")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
@@ -146,7 +146,7 @@ def test_normalize_data__garmin_sample_gpx(garmin_sample_gpx_file):
 
 
 def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
-    result = normalize_data(str(kobotoolbox_csv_file), "csv")
+    result = convert_data(str(kobotoolbox_csv_file), "csv")
 
     headers = result[0]
     assert "What community are you from?" in headers
@@ -165,11 +165,11 @@ def test_read_data__csv_only_headers(tmp_path):
     file = tmp_path / "only_headers.csv"
     file.write_text("start,location,comment\n")
     with pytest.raises(ValueError, match="no data"):
-        normalize_data(str(file), "csv")
+        convert_data(str(file), "csv")
 
 
-def test_normalize_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
-    result = normalize_data(str(kobotoolbox_excel_file), "xlsx")
+def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
+    result = convert_data(str(kobotoolbox_excel_file), "xlsx")
     headers = result[0]
     assert "What community are you from?" in headers
     assert "_id" in headers
@@ -183,34 +183,34 @@ def test_normalize_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
     assert "bamboo, wild boar" in record
 
 
-def test_normalize_data__kobotoolbox_multiple_sheets_xlsx(
+def test_convert_data__kobotoolbox_multiple_sheets_xlsx(
     kobotoolbox_multiple_sheets_excel_file,
 ):
     with pytest.raises(ValueError, match="only single-sheet files are supported"):
-        normalize_data(str(kobotoolbox_multiple_sheets_excel_file), "xlsx")
+        convert_data(str(kobotoolbox_multiple_sheets_excel_file), "xlsx")
 
 
-def test_normalize_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
+def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
     with pytest.raises(ValueError, match="no data"):
-        normalize_data(str(kobotoolbox_empty_submission_csv_file), "csv")
+        convert_data(str(kobotoolbox_empty_submission_csv_file), "csv")
 
 
-def test_normalize_data__json(tmp_path):
+def test_convert_data__json(tmp_path):
     file = tmp_path / "test.json"
     file.write_text('[{"a": 1, "b": 2}, {"a": 3}]')
-    result = normalize_data(str(file), "json")
+    result = convert_data(str(file), "json")
     assert result == [["a", "b"], ["1", "2"], ["3", ""]]
 
 
-def test_normalize_data__json_empty(tmp_path):
+def test_convert_data__json_empty(tmp_path):
     file = tmp_path / "test_empty.json"
     file.write_text("[]")
     with pytest.raises(ValueError, match="JSON file contains no records"):
-        normalize_data(str(file), "json")
+        convert_data(str(file), "json")
 
 
 def test_read_data__mapeo_geojson(mapeo_geojson_file):
-    result = normalize_data(str(mapeo_geojson_file), "geojson")
+    result = convert_data(str(mapeo_geojson_file), "geojson")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 3
 
@@ -223,34 +223,34 @@ def test_read_data__mapeo_geojson(mapeo_geojson_file):
         assert "notes" in feature["properties"]
 
 
-def test_normalize_data__empty_geojson(empty_geojson_file):
+def test_convert_data__empty_geojson(empty_geojson_file):
     with pytest.raises(ValueError, match="GeoJSON contains no features"):
-        normalize_data(str(empty_geojson_file), "geojson")
+        convert_data(str(empty_geojson_file), "geojson")
 
 
-def test_normalize_data__geojson_with_missing_properties(
+def test_convert_data__geojson_with_missing_properties(
     geojson_with_missing_properties_file,
 ):
     with pytest.raises(ValueError, match="missing properties"):
-        normalize_data(str(geojson_with_missing_properties_file), "geojson")
+        convert_data(str(geojson_with_missing_properties_file), "geojson")
 
 
-def test_normalize_data__geojson_with_invalid_geometry(
+def test_convert_data__geojson_with_invalid_geometry(
     geojson_with_invalid_geometry_file,
 ):
     with pytest.raises(ValueError, match="invalid geometry coordinates"):
-        normalize_data(str(geojson_with_invalid_geometry_file), "geojson")
+        convert_data(str(geojson_with_invalid_geometry_file), "geojson")
 
 
-def test_normalize_data__geojson_with_invalid_top_level(
+def test_convert_data__geojson_with_invalid_top_level(
     geojson_with_invalid_top_level_structure_file,
 ):
     with pytest.raises(ValueError, match="must be a FeatureCollection object"):
-        normalize_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
+        convert_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
 
 
-def test_normalize_data__googleearth_sample_kml(googleearth_sample_kml_file):
-    result = normalize_data(str(googleearth_sample_kml_file), "kml")
+def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
+    result = convert_data(str(googleearth_sample_kml_file), "kml")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 19
 
@@ -293,8 +293,8 @@ def test_normalize_data__googleearth_sample_kml(googleearth_sample_kml_file):
     assert "lookat_tilt" in props
 
 
-def test_normalize_data__gc_alerts_kml(alerts_kml_file):
-    result = normalize_data(str(alerts_kml_file), "kml")
+def test_convert_data__gc_alerts_kml(alerts_kml_file):
+    result = convert_data(str(alerts_kml_file), "kml")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
@@ -312,13 +312,13 @@ def test_normalize_data__gc_alerts_kml(alerts_kml_file):
         assert "t0_url" in props
 
 
-def test_normalize_data__kml_missing_geometry(kml_with_missing_geometry_file):
+def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
     with pytest.raises(ValueError, match="No valid features found in input file"):
-        normalize_data(str(kml_with_missing_geometry_file), "kml")
+        convert_data(str(kml_with_missing_geometry_file), "kml")
 
 
-def test_normalize_data__unsupported():
+def test_convert_data__unsupported():
     import pytest
 
     with pytest.raises(ValueError):
-        normalize_data("/fake/path.foo", "foo")
+        convert_data("/fake/path.foo", "foo")
