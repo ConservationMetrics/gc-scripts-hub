@@ -1,6 +1,7 @@
 # requirements:
 # pandas~=2.2
 # psycopg2-binary
+# azure-storage-blob
 
 import logging
 import shutil
@@ -10,48 +11,74 @@ from pathlib import Path
 
 import pandas as pd
 
+from f.common_logic.azure_operations import download_blob_to_temp
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.db_transformations import camel_to_snake
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# type names that refer to Windmill Resources
+azure_blob = dict
+
 
 def main(
-    timelapse_zip: str,
+    azure_blob: azure_blob,
+    blob_name: str,
     db: postgresql,
     db_table_prefix: str,
-    delete_timelapse_zip: bool = True,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    base_storage_path = Path(attachment_root) / "Timelapse" / db_table_prefix
+    """
+    Downloads a Timelapse ZIP file from Azure Blob Storage, extracts it, and processes the data.
 
-    timelapse_zip_path = Path(timelapse_zip)
-    actual_storage_path = extract_timelapse_archive(
-        timelapse_zip_path, base_storage_path
-    )
+    Parameters
+    ----------
+    azure_blob : azure_blob
+        Windmill Azure Blob Storage resource containing accountName, containerName,
+        accessKey, useSSL, and optional endpoint.
+    blob_name : str
+        Name of the blob (ZIP file) to download
+    db : postgresql
+        Database connection configuration
+    db_table_prefix : str
+        Prefix for database table names
+    attachment_root : str
+        Root directory for persistent storage
+    """
+    base_storage_path = Path(attachment_root) / "Timelapse"
 
-    timelapse_tables = read_timelapse_db_tables(actual_storage_path, db_table_prefix)
+    # Download ZIP file from Azure Blob Storage
+    timelapse_zip_path = download_blob_to_temp(azure_blob, blob_name)
 
-    for table_name, rows in timelapse_tables.items():
-        db_writer = StructuredDBWriter(
-            conninfo(db),
-            table_name,
-            use_mapping_table=False,
-            reverse_properties_separated_by=None,
+    try:
+        actual_storage_path = extract_timelapse_archive(
+            timelapse_zip_path, base_storage_path
         )
-        db_writer.handle_output(rows)
-        logger.info(
-            f"Timelapse data from table '{table_name}' successfully written to the database."
+
+        timelapse_tables = read_timelapse_db_tables(
+            actual_storage_path, db_table_prefix
         )
 
-    if delete_timelapse_zip:
-        # Now that we've extracted the archive and written the data to the database,
-        # we can delete the original ZIP file.
-        timelapse_zip_path.unlink()
-        logger.info(f"Deleted Timelapse archive: {timelapse_zip_path}")
+        for table_name, rows in timelapse_tables.items():
+            db_writer = StructuredDBWriter(
+                conninfo(db),
+                table_name,
+                use_mapping_table=False,
+                reverse_properties_separated_by=None,
+            )
+            db_writer.handle_output(rows)
+            logger.info(
+                f"Timelapse data from table '{table_name}' successfully written to the database."
+            )
 
-    return actual_storage_path
+        return actual_storage_path
+
+    finally:
+        # Clean up the temporary ZIP file
+        if timelapse_zip_path.exists():
+            timelapse_zip_path.unlink()
+            logger.info(f"Deleted temporary ZIP file: {timelapse_zip_path}")
 
 
 def extract_timelapse_archive(
@@ -68,7 +95,7 @@ def extract_timelapse_archive(
     ----------
     timelapse_zip_path : Path
         The path to the Timelapse ZIP file.
-    storage_path : str
+    storage_path : Path
         The path to the root directory where the ZIP file will be extracted.
 
     Returns
@@ -133,9 +160,6 @@ def _transform_df(df: pd.DataFrame) -> pd.DataFrame:
 
     if len(new_columns) != len(set(new_columns)):
         raise ValueError("Column name collision detected")
-
-    logger.error(f"New columns: {new_columns}")
-    logger.error(f"Original columns: {df.columns}")
 
     df.columns = new_columns
     return df

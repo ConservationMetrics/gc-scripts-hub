@@ -1,6 +1,8 @@
 # Auditor 2: Import Annotated Acoustic Data
 
-This script processes annotated acoustic data from an [Auditor 2](https://github.com/ConservationMetrics/AuditorServer) project, via a ZIP file containing 5 expected CSVs and attachments (audio and spectrogram images).
+This script processes annotated acoustic data from an [Auditor 2](https://github.com/ConservationMetrics/AuditorServer) project. It downloads a ZIP file from Azure Blob Storage containing 5 expected CSVs and attachments (audio and spectrogram images).
+
+The script requires Azure Blob Storage credentials to download the Auditor 2 ZIP file, which should be uploaded to a blob container before running the script.
 
 The script expects the following five CSV files, each identified by specific substrings in their filenames:
 - `deployments.csv`: Must include a `deployment_id` field.
@@ -28,5 +30,3 @@ It also stores files using the following directory schema:
 ```
 
 The script enforces uniqueness for the `project_name`. If any of the corresponding database tables already exist, the script will raise an error.
-
-TODO: Figure out how the ZIP file makes it to blob storage, and what calls this script. c.f. https://github.com/ConservationMetrics/gc-scripts-hub/issues/106
