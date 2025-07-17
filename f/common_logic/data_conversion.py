@@ -301,6 +301,9 @@ def kml_to_geojson(path: Path):
     Parses Placemarks, extracting metadata and geometry.
     Returns a FeatureCollection.
 
+    Assumes that the KML file is using version 2.2 of the KML specification.
+    https://developers.google.com/kml/documentation/kmlreference
+
     Returns
     -------
     dict
