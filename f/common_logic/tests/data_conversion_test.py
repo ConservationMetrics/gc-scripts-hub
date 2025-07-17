@@ -1,6 +1,6 @@
 import pytest
 
-from f.common_logic.convert_data import convert_data
+from f.common_logic.data_conversion import convert_data
 
 
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
