@@ -132,10 +132,25 @@ def kml_with_missing_geometry_file(tmp_path):
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <Placemark>
-      <name>Missing Geometry</name>
+      <n>Missing Geometry</n>
       <description>No geometry provided</description>
     </Placemark>
   </Document>
 </kml>"""
     path.write_text(data)
     return path
+
+
+@pytest.fixture
+def osm_overpass_gpx_file():
+    return Path(__file__).parent / "assets" / "osm_overpass.gpx"
+
+
+@pytest.fixture
+def osm_overpass_geojson_file():
+    return Path(__file__).parent / "assets" / "osm_overpass.geojson"
+
+
+@pytest.fixture
+def osm_overpass_kml_file():
+    return Path(__file__).parent / "assets" / "osm_overpass.kml"
