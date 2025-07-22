@@ -212,6 +212,12 @@ def gpx_to_geojson(path: Path):
     Converts a GPX file to GeoJSON format using Fiona.
     Reads all GPX layers (waypoints, tracks, etc.) and returns a FeatureCollection.
 
+    Includes specialized business logic to handle Locus Map GPX exports:
+    - Locus Map creates multiple separate link fields (link_1_href, link_2_href, etc.)
+      that need to be consolidated into a single 'link' property for better usability
+    - Standard Fiona GPX reading doesn't handle this consolidation automatically
+    - This preprocessing ensures consistent output regardless of GPX source application
+
     Returns
     -------
     dict
@@ -230,6 +236,8 @@ def gpx_to_geojson(path: Path):
                 )
 
                 # Handle Locus Map link fields - combine all link-related fields
+                # NOTE: This is lossy - we lose individual field names (link_1_href, link_2_href, etc.)
+                # and merge into a single comma-separated string.
                 link_fields = [k for k in properties.keys() if "link" in k.lower()]
                 links = []
                 for field in sorted(link_fields):  # Sort for consistent output
@@ -239,11 +247,6 @@ def gpx_to_geojson(path: Path):
 
                 if links:
                     properties["link"] = ", ".join(links)
-
-                # Clean up empty properties
-                properties = {
-                    k: v for k, v in properties.items() if v not in (None, "", "None")
-                }
 
                 features.append(
                     {
@@ -264,6 +267,17 @@ def kml_to_geojson(path: Path):
     """
     Converts a KML file to GeoJSON format using a hybrid approach.
     Uses Fiona for reliable geometry parsing and XML for comprehensive property extraction.
+
+    Implements specialized business logic for comprehensive KML parsing:
+    - Fiona/GDAL only reads basic KML elements (Name, Description, geometry) but ignores
+      ExtendedData and custom elements that are commonly used by mapping applications
+    - Locus Map KML exports include custom attachment elements and extensive ExtendedData
+      that would be lost with standard Fiona-only parsing
+    - This hybrid approach combines Fiona's robust GDAL-based geometry handling with
+      manual XML parsing to capture all available metadata and custom fields
+    - Property name normalization ensures consistent output (Name -> name, etc.)
+    - Handles Locus Map-specific attachment references by extracting filename from paths
+    - Applies selective lossy transformations to balance data preservation with output consistency
 
     Returns
     -------
