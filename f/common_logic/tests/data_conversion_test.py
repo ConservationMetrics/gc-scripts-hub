@@ -298,6 +298,12 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
         geometry = feature["geometry"]
         properties = feature["properties"]
 
+        # Ensure geometry is a plain dict, not a fiona.Geometry object
+        assert isinstance(geometry, dict)
+        assert not hasattr(
+            geometry, "__geo_interface__"
+        )  # fiona.Geometry would have this
+
         assert geometry["type"] == "Point"
         assert isinstance(geometry["coordinates"], (list, tuple))
         assert len(geometry["coordinates"]) >= 2  # lon, lat (may have elevation)
@@ -437,11 +443,17 @@ def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
     # All features should be Points in this dataset
     for feature in result["features"]:
         assert feature["type"] == "Feature"
-        assert feature["geometry"]["type"] == "Point"
-        assert isinstance(feature["geometry"]["coordinates"], (list, tuple))
-        assert (
-            len(feature["geometry"]["coordinates"]) >= 2
-        )  # lon, lat (may have elevation)
+
+        # Ensure geometry is a plain dict, not a fiona.Geometry object
+        geometry = feature["geometry"]
+        assert isinstance(geometry, dict)
+        assert not hasattr(
+            geometry, "__geo_interface__"
+        )  # fiona.Geometry would have this
+
+        assert geometry["type"] == "Point"
+        assert isinstance(geometry["coordinates"], (list, tuple))
+        assert len(geometry["coordinates"]) >= 2  # lon, lat (may have elevation)
         assert isinstance(feature["properties"], dict)
 
     # Validate KML ExtendedData preservation

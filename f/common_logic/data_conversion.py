@@ -251,7 +251,7 @@ def gpx_to_geojson(path: Path):
                 features.append(
                     {
                         "type": "Feature",
-                        "geometry": feature["geometry"],
+                        "geometry": dict(feature["geometry"]),
                         "properties": properties,
                     }
                 )
@@ -365,7 +365,7 @@ def kml_to_geojson(path: Path):
             features.append(
                 {
                     "type": "Feature",
-                    "geometry": feature["geometry"],
+                    "geometry": dict(feature["geometry"]),
                     "properties": final_properties,
                 }
             )
