@@ -4,6 +4,7 @@ import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import fiona
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
@@ -143,6 +144,8 @@ def read_geojson(path: Path):
     dict
         The parsed GeoJSON data as a dictionary.
     """
+    # Always use manual parsing for better validation and error messages
+    # Fiona is too permissive with invalid GeoJSON files
     with path.open(encoding="utf-8") as f:
         data = json.load(f)
 
@@ -206,85 +209,50 @@ def json_to_csv(path: Path):
 @handle_file_errors
 def gpx_to_geojson(path: Path):
     """
-    Converts a GPX file to GeoJSON format.
-    Parses waypoints and track segments, returning a FeatureCollection.
+    Converts a GPX file to GeoJSON format using Fiona.
+    Reads all GPX layers (waypoints, tracks, etc.) and returns a FeatureCollection.
+
+    Includes specialized business logic to handle Locus Map GPX exports:
+    - Locus Map creates multiple separate link fields (link_1_href, link_2_href, etc.)
+      that need to be consolidated into a single 'link' property for better usability
+    - Standard Fiona GPX reading doesn't handle this consolidation automatically
+    - This preprocessing ensures consistent output regardless of GPX source application
 
     Returns
     -------
     dict
         The converted GPX data as a GeoJSON dictionary.
     """
-    tree = ET.parse(path)
-    root = tree.getroot()
-    namespace = {"default": root.tag.split("}")[0].strip("{")}
-
     features = []
 
-    def parse_point(el):
-        lat = el.get("lat")
-        lon = el.get("lon")
-        props = {}
-        links = []
+    # Read all available layers in the GPX file
+    layers = fiona.listlayers(path)
 
-        for child in el:
-            tag = child.tag.split("}")[-1]
-            if tag == "link":
-                href = child.attrib.get("href")
-                if href:
-                    links.append(href)
-                else:
-                    # Fallback: nested <text> tag for Locus variants
-                    text_el = child.find("./default:text", namespace)
-                    if text_el is not None and text_el.text:
-                        links.append(text_el.text.strip())
-                        logger.warning("Fallback to nested <text> tag for link")
-            else:
-                props[tag] = child.text
+    for layer in layers:
+        with fiona.open(path, layer=layer, driver="GPX") as collection:
+            for feature in collection:
+                properties = (
+                    dict(feature["properties"]) if feature["properties"] else {}
+                )
 
-        if links:
-            props["link"] = ", ".join(links)
+                # Handle Locus Map link fields - combine all link-related fields
+                # NOTE: This is lossy - we lose individual field names (link_1_href, link_2_href, etc.)
+                # and merge into a single comma-separated string.
+                link_fields = [k for k in properties.keys() if "link" in k.lower()]
+                links = []
+                for field in sorted(link_fields):  # Sort for consistent output
+                    if properties[field]:
+                        links.append(str(properties[field]))
+                        del properties[field]
 
-        try:
-            lat = float(lat)
-            lon = float(lon)
-        except (TypeError, ValueError):
-            raise ValueError("Invalid lat/lon in GPX waypoint")
+                if links:
+                    properties["link"] = ", ".join(links)
 
-        return {
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [lon, lat]},
-            "properties": props,
-        }
-
-    # Waypoints
-    for wpt in root.findall(".//default:wpt", namespace):
-        features.append(parse_point(wpt))
-
-    # Track segments as LineStrings
-    for trk in root.findall(".//default:trk", namespace):
-        track_name_el = trk.find("default:name", namespace)
-        track_desc_el = trk.find("default:desc", namespace)
-        props = {}
-        if track_name_el is not None:
-            props["name"] = track_name_el.text
-        if track_desc_el is not None:
-            props["description"] = track_desc_el.text
-
-        for trkseg in trk.findall("default:trkseg", namespace):
-            coords = []
-            for trkpt in trkseg.findall("default:trkpt", namespace):
-                try:
-                    lat = float(trkpt.get("lat"))
-                    lon = float(trkpt.get("lon"))
-                except (TypeError, ValueError):
-                    raise ValueError("Invalid lat/lon in GPX track point")
-                coords.append([lon, lat])
-            if coords:
                 features.append(
                     {
                         "type": "Feature",
-                        "geometry": {"type": "LineString", "coordinates": coords},
-                        "properties": props,
+                        "geometry": dict(feature["geometry"]),
+                        "properties": properties,
                     }
                 )
 
@@ -297,18 +265,34 @@ def gpx_to_geojson(path: Path):
 @handle_file_errors
 def kml_to_geojson(path: Path):
     """
-    Converts a KML file to GeoJSON format.
-    Parses Placemarks, extracting metadata and geometry.
-    Returns a FeatureCollection.
+    Converts a KML file to GeoJSON format using a hybrid approach.
+    Uses Fiona for reliable geometry parsing and XML for comprehensive property extraction.
 
-    Assumes that the KML file is using version 2.2 of the KML specification.
-    https://developers.google.com/kml/documentation/kmlreference
+    Implements specialized business logic for comprehensive KML parsing:
+    - Fiona/GDAL only reads basic KML elements (Name, Description, geometry) but ignores
+      ExtendedData and custom elements that are commonly used by mapping applications
+    - Locus Map KML exports include custom attachment elements and extensive ExtendedData
+      that would be lost with standard Fiona-only parsing
+    - This hybrid approach combines Fiona's robust GDAL-based geometry handling with
+      manual XML parsing to capture all available metadata and custom fields
+    - Property name normalization ensures consistent output (Name -> name, etc.)
+    - Handles Locus Map-specific attachment references by extracting filename from paths
+    - Applies selective lossy transformations to balance data preservation with output consistency
 
     Returns
     -------
     dict
         The converted KML data as a GeoJSON dictionary.
     """
+    # Enable KML support in Fiona (not enabled by default)
+    # See: https://github.com/geopandas/geopandas/issues/2481
+    fiona.supported_drivers["KML"] = "rw"
+
+    features = []
+
+    # Hybrid approach: Fiona only reads basic KML elements (Name, Description, geometry)
+    # but ignores ExtendedData and custom elements. We use XML parsing for comprehensive
+    # property extraction while leveraging Fiona's robust geometry handling via GDAL/OGR.
     tree = ET.parse(path)
     root = tree.getroot()
     namespace = {
@@ -316,101 +300,75 @@ def kml_to_geojson(path: Path):
         "gx": "http://www.google.com/kml/ext/2.2",
     }
 
-    features = []
-    for placemark in root.findall(".//kml:Placemark", namespace):
-        props = {}
+    # Extract all placemark properties by matching with Fiona features
+    placemark_properties = []
 
-        # Extract all relevant properties from Placemark and children
+    for placemark in root.findall(".//kml:Placemark", namespace):
+        properties = {}
+
+        # Extract basic properties
         for el in placemark:
             tag = el.tag.split("}")[-1]
-
             if tag in {"name", "description", "visibility", "styleUrl"} and el.text:
-                props[tag] = el.text.strip()
-
+                properties[tag] = el.text.strip()
             elif tag == "LookAt":
                 for look_el in el:
                     look_tag = look_el.tag.split("}")[-1]
                     if look_el.text:
-                        props[f"lookat_{look_tag}"] = look_el.text.strip()
+                        properties[f"lookat_{look_tag}"] = look_el.text.strip()
 
-            elif tag == "Style":
-                for style_child in el.iter():
-                    style_tag = style_child.tag.split("}")[-1]
-                    if style_child.text:
-                        props[f"style_{style_tag}"] = style_child.text.strip()
-
-            elif tag == "IconStyle":
-                href_el = el.find(".//kml:href", namespace)
-                if href_el is not None and href_el.text:
-                    props["icon_href"] = href_el.text.strip()
-
-        # Add <ExtendedData><Data name="..."><value>...</value></Data>
+        # Extract extended data (Fiona doesn't read these)
         for data_el in placemark.findall(".//kml:ExtendedData/kml:Data", namespace):
             key = data_el.attrib.get("name")
             val = data_el.findtext("kml:value", default="", namespaces=namespace)
             if key:
-                props[key] = val.strip()
+                properties[key] = val.strip()
 
-        # Add any <attachment> tags regardless of namespace (e.g. for Locus Map)
+        # Extract Locus Map attachments (custom elements)
         attachments = [
             el.text.strip().split("/")[-1]
             for el in placemark.findall(".//{*}attachment")
             if el.text
         ]
         if attachments:
-            props["attachments"] = ", ".join(attachments)
-            logger.debug("Attachments found and processed")
+            properties["attachments"] = ", ".join(attachments)
 
-        geometry = None
+        placemark_properties.append(properties)
 
-        # Polygon
-        coords_el = placemark.find(
-            ".//kml:Polygon/kml:outerBoundaryIs/kml:LinearRing/kml:coordinates",
-            namespace,
-        )
-        if coords_el is not None:
-            coords = [
-                list(map(float, c.split(",")[:2]))
-                for c in coords_el.text.strip().split()
-                if c.strip()
-            ]
-            if coords:
-                geometry = {"type": "Polygon", "coordinates": [coords]}
+    # Use Fiona for reliable geometry parsing via GDAL/OGR
+    with fiona.open(path, driver="KML") as collection:
+        for i, feature in enumerate(collection):
+            # Get Fiona's basic properties and normalize names
+            fiona_props = dict(feature["properties"]) if feature["properties"] else {}
 
-        # LineString
-        if geometry is None:
-            coords_el = placemark.find(".//kml:LineString/kml:coordinates", namespace)
-            if coords_el is not None:
-                coords = [
-                    list(map(float, c.split(",")[:2]))
-                    for c in coords_el.text.strip().split()
-                    if c.strip()
-                ]
-                if coords:
-                    geometry = {"type": "LineString", "coordinates": coords}
+            # Normalize Fiona property names for consistency (Name -> name, etc.)
+            normalized_fiona_props = {}
+            for key, value in fiona_props.items():
+                if key == "Name" and value:
+                    normalized_fiona_props["name"] = value
+                elif key == "Description" and value:
+                    normalized_fiona_props["description"] = value
+                elif value not in (None, "", "None"):
+                    normalized_fiona_props[key.lower()] = value
 
-        # Point
-        if geometry is None:
-            coords_el = placemark.find(".//kml:Point/kml:coordinates", namespace)
-            if coords_el is not None:
-                coords = coords_el.text.strip().split(",")
-                if len(coords) >= 2:
-                    lon, lat = map(float, coords[:2])
-                    geometry = {"type": "Point", "coordinates": [lon, lat]}
+            # Merge properties (XML takes precedence for comprehensive data)
+            if i < len(placemark_properties):
+                final_properties = {**normalized_fiona_props, **placemark_properties[i]}
+            else:
+                final_properties = normalized_fiona_props
 
-        if geometry is None:
-            logger.warning(
-                "Skipping Placemark without geometry: %s", props.get("name", "Unnamed")
-            )
-            continue
-
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": geometry,
-                "properties": props,
+            # Clean up empty properties
+            final_properties = {
+                k: v for k, v in final_properties.items() if v not in (None, "", "None")
             }
-        )
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": dict(feature["geometry"]),
+                    "properties": final_properties,
+                }
+            )
 
     if not features:
         raise ValueError("No valid features found in input file")
