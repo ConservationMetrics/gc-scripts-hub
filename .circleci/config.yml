@@ -7,7 +7,7 @@ executors:
   machine-executor:
     machine:
       # https://circleci.com/docs/2.0/configuration-reference/#available-machine-images
-      image: ubuntu-2204:current
+      image: ubuntu-2404:current
 
 workflows:
   run-tests:
@@ -35,8 +35,7 @@ jobs:
           # Additionally, any tests for scripts that use the Azure Storage Blob SDK
           # fail on CircleCI with Python 3.13, even though the scripts run fine in
           # Windmill runtime with 3.13.
-          # TODO: Figure out why the Azure Storage Blob SDK fails on CircleCI with 3.13, 
-          # then revert back to using 3.13 via ubuntu-2404:current.
+          # TODO: Figure out why the Azure Storage Blob SDK fails on CircleCI with 3.13
           name: Install and set Python 3.11
           command: |
             pyenv install 3.11.10
