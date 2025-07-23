@@ -7,7 +7,7 @@ executors:
   machine-executor:
     machine:
       # https://circleci.com/docs/2.0/configuration-reference/#available-machine-images
-      image: ubuntu-2404:current
+      image: ubuntu-2204:current
 
 workflows:
   run-tests:
@@ -23,17 +23,29 @@ jobs:
 
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: pip
-          pip-dependency-file: ""
-          args: tox~=4.18 tox-docker~=5.0
-          pypi-cache: false
       - run:
           # If we want to get rid of this step, convert our scripts to use
           # SqlAlchemy so tests would use SQLite.
           name: Install PostgreSQL server to test against
           command: |
             sudo apt-get update && sudo apt-get install --yes postgresql
+      - run:
+          # We set Python 3.11 as the default version for CircleCI because it's the
+          # version we use for our Windmill instances (as "latest stable").
+          # Additionally, any tests for scripts that use the Azure Storage Blob SDK
+          # fail on CircleCI with Python 3.13, even though the scripts run fine in
+          # Windmill runtime with 3.13.
+          # TODO: Figure out why the Azure Storage Blob SDK fails on CircleCI with 3.13, 
+          # then revert back to using 3.13 via ubuntu-2404:current.
+          name: Install and set Python 3.11
+          command: |
+            pyenv install 3.11.10
+            pyenv global 3.11.10
+      - run:
+          name: Install tox for Python 3.11
+          command: |
+            python -m pip install --upgrade pip
+            pip install tox~=4.18 tox-docker~=5.0
       - run:
           name: Run tests
           command: tox -- -v
