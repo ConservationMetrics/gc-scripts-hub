@@ -46,6 +46,10 @@ def convert_data(file_path: str, file_format: str):
     some intermediate representation, and a suite of `to_*()` fns that takes that intermediate
     representation.
 
+    NOTE: We assume that the input file has one layer only. In the future, we might
+    consider an extension where the number of layers might be > 1. e.g multiple sheets in Excel.
+    And/or carrying thru metadata from the source layer (e.g. Excel sheet name).
+
     Parameters
     ----------
     file_path : str
