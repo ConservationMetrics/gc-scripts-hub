@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from f.common_logic.data_validation import detect_structured_data_type
+from f.common_logic.data_conversion import detect_structured_data_type
 
 
 def test_structured_data_type__valid_gpx(tmp_path: Path):
