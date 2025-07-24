@@ -42,7 +42,9 @@ def convert_data(file_path: str, file_format: str):
     1. Transform spatial CSV (with lat, lon columns) into GeoJSON
     2. Convert GPX to Spatial CSV (with lat, lon columns)
     3. Convert spatial GeoJSON to tabular CSV
-    In that case a better funcitonal API might be a suite of `read_*()` functions that return some intermediate representation, and a suite of `to_*()` fns that takes that intermediate representation.
+    In that case a better functional API might be a suite of `read_*()` fns that return
+    some intermediate representation, and a suite of `to_*()` fns that takes that intermediate
+    representation.
 
     Parameters
     ----------
@@ -80,8 +82,8 @@ def convert_data(file_path: str, file_format: str):
 @handle_file_errors
 def read_csv(path: Path):
     """
-    Reads a CSV file and returns its content as a list of lists.
-    The first row is treated as the header.
+    Reads a CSV file and returns its content as a list of lists. The first row is treated
+    as the header.
     Raises ValueError if the file is empty or contains no data.
 
     Returns
@@ -110,8 +112,8 @@ def read_csv(path: Path):
 @handle_file_errors
 def excel_to_csv(path: Path):
     """
-    Reads an Excel file and returns its content as a list of lists.
-    The first row is treated as the header.
+    Reads an Excel file and returns its content as a list of lists. The first row is treated
+    as the header.
     Raises ValueError if the file is empty or contains multiple sheets.
 
     Returns
@@ -184,8 +186,8 @@ def read_geojson(path: Path):
 @handle_file_errors
 def json_to_csv(path: Path):
     """
-    Reads a JSON file and returns its content as a list of lists.
-    The first row is treated as the header.
+    Reads a JSON file and returns its content as a list of lists. The first row is treated
+    as the header.
     Raises ValueError if the file is empty or not a list of records.
 
     Returns
@@ -203,10 +205,8 @@ def json_to_csv(path: Path):
     if not all(isinstance(row, dict) and row for row in data):
         raise ValueError("Each record must be a non-empty dictionary")
 
-    # Collect all unique field names across all records
-    # and create a header row
-    # Also ensure all values are strings and strip whitespace
-    # to avoid issues with CSV formatting
+    # Collect all unique field names across all records and create a header row
+    # Also ensure all values are strings and strip whitespace to avoid issues with CSV formatting.
     fieldnames = sorted(set(k for row in data for k in row))
     output = [fieldnames]
     for row in data:
