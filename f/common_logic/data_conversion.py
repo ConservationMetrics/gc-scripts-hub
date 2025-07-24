@@ -35,9 +35,14 @@ def convert_data(file_path: str, file_format: str):
     """
     Converts a structured input file into a standard tabular or spatial format.
 
-    Right now, we are assuming that spatial data (e.g. GPX, KML) will only
+    NOTE: Right now, we are assuming that spatial data (e.g. GPX, KML) will only
     be converted into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
     JSON) will only be converted into CSV, and not GeoJSON.
+    In the future, we will want to de-couple the output format from the input format e.g.
+    1. Transform spatial CSV (with lat, lon columns) into GeoJSON
+    2. Convert GPX to Spatial CSV (with lat, lon columns)
+    3. Convert spatial GeoJSON to tabular CSV
+    In that case a better funcitonal API might be a suite of `read_*()` functions that return some intermediate representation, and a suite of `to_*()` fns that takes that intermediate representation.
 
     Parameters
     ----------
