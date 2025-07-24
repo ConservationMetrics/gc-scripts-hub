@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 
 def detect_structured_data_type(file_path: str) -> str:
     """
-    Detects the type of a structured data file, focusing on geospatial and tabular formats.
+    Heuristically detects the type of a structured data file, focusing on geospatial and tabular
+    formats.
 
     Only files with recognized extensions are considered. The function attempts to
-    parse the file to confirm it matches the expected structure. If the file type is
-    unsupported or the content does not validate, 'unsupported' is returned.
+    parse the file to confirm it matches the expected format. If the file type is
+    unsupported or the content does not match the expected format, 'unsupported' is returned.
 
     This function is intended to identify structured datasets used in environmental,
     geographic, and tabular data pipelines. It supports:
@@ -32,7 +33,7 @@ def detect_structured_data_type(file_path: str) -> str:
     TODO: Add support for ESRI shapefiles, which requires a different approach as a
     collection of files rather than a single file.
 
-    Validation is intentionally lightweight. We avoid fully loading large or malformed
+    Format detection is intentionally lightweight. We avoid fully loading large or malformed
     files where possible. For tabular data, we use pandas selectively (e.g., Excel files)
     and simpler parsers for CSV. In the future, we could consider a more robust approach
     by consistently using `pandas` for tabular formats and something like `fiona` for
@@ -47,8 +48,8 @@ def detect_structured_data_type(file_path: str) -> str:
     Returns
     -------
     str
-        The validated file type (e.g., "csv", "geojson", etc.), or "unsupported" if
-        the file does not conform to expectations.
+        The detected file type (e.g., "csv", "geojson", etc.), or "unsupported" if
+        the file does not match any recognized format.
     """
 
     path = Path(file_path)
@@ -93,7 +94,7 @@ def detect_structured_data_type(file_path: str) -> str:
     def is_excel(path):
         # Excel is a binary format and there's no lightweight parser,
         # so we use pd.read_excel despite its overhead. If needed,
-        # we could explore faster or more granular validation later.
+        # we could explore faster or more granular detection later.
         pd.read_excel(path)
         return True
 
@@ -114,7 +115,7 @@ def detect_structured_data_type(file_path: str) -> str:
     def is_csv(path):
         # CSV detection is a bit more complex than the other formats
         # because it's overly permissive. Currently, we use csv.reader
-        # to cheaply validate structure without reading the full file
+        # to cheaply detect structure without reading the full file
         # into memory.
         try:
             with path.open(newline="") as f:
@@ -141,7 +142,7 @@ def detect_structured_data_type(file_path: str) -> str:
         except Exception:
             return False
 
-    # Map file suffix to (type name, validator function)
+    # Map file suffix to (type name, detector function)
     type_map = {
         ".geojson": ("geojson", is_geojson),
         ".json": ("json", is_json),
@@ -159,15 +160,15 @@ def detect_structured_data_type(file_path: str) -> str:
     if suffix not in type_map:
         return "unsupported"
 
-    expected_type, validator = type_map[suffix]
+    expected_type, detector = type_map[suffix]
 
     try:
-        if validator(path):
-            logger.info(f"File {path.name} validated as {expected_type}")
+        if detector(path):
+            logger.info(f"File {path.name} detected as {expected_type}")
             return expected_type
     except Exception:
         logger.warning(
-            f"File {path.name} has extension '{suffix}' but failed {expected_type} validation — possibly malformed or misnamed."
+            f"File {path.name} has extension '{suffix}' but does not match {expected_type} format — possibly malformed or misnamed."
         )
         return "unsupported"
 
