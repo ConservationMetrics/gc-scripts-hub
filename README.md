@@ -14,7 +14,7 @@ secrets managements, etc).
 
 Some of the tools available in the Guardian Connector Scripts Hub are:
 
-* Connector scripts to ingest data from data collection tools such as KoboToolbox, ODK, CoMapeo, ArcGIS, Global Forest Watch, and Locus Map, 
+* Connector scripts to ingest data from data collection or annotation tools such as KoboToolbox, ODK, CoMapeo, ArcGIS, Global Forest Watch, Timelapse, and Locus Map, 
   and store this data (tabular and media attachments) in a data lake. 
 * A flow to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server 
   API, and send a message to WhatsApp recipients via Twilio.
