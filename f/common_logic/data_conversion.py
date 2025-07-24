@@ -139,18 +139,21 @@ def excel_to_csv(path: Path):
 @handle_file_errors
 def read_geojson(path: Path):
     """
-    Reads a GeoJSON file and validates its structure.
-    Returns the parsed GeoJSON as a dictionary.
-    Raises ValueError if the file is not a valid FeatureCollection
-    or if it contains no features.
+    Reads a GeoJSON file and validates its structure. Returns the parsed GeoJSON as a
+    dictionary.
+    Raises ValueError if the file is not a valid FeatureCollection or if it
+    contains no features.
+
+    NOTE: this function uses manual parsing for better validation and error messages.
+    Both fiona.open() and geojson.geometry.is_valid() are too permissive with invalid
+    GeoJSON files - they focus on data extraction rather than format compliance (e.g. accept
+    empty features, missing properties, null geometries).
 
     Returns
     -------
     dict
         The parsed GeoJSON data as a dictionary.
     """
-    # Always use manual parsing for better validation and error messages
-    # Fiona is too permissive with invalid GeoJSON files
     with path.open(encoding="utf-8") as f:
         data = json.load(f)
 
