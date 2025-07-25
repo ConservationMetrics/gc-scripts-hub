@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<gpx version="1.1" creator="Locus Map, Android"
+ xmlns="http://www.topografix.com/GPX/1/1"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd"
+ xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+ xmlns:gpxtrkx="http://www.garmin.com/xmlschemas/TrackStatsExtension/v1"
+ xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"
+ xmlns:locus="http://www.locusmap.eu">
+	<metadata>
+		<desc>File with points/tracks from Locus Map/4.27.1</desc>
+		<time>2025-01-17T14:22:13.064Z</time>
+	</metadata>
+<trk>
+<name>2025-01-17 09:13</name>
+<desc><![CDATA[A brisk walk]]></desc>
+	<extensions>
+		<line xmlns="http://www.topografix.com/GPX/gpx_style/0/2">
+			<color>D700D7</color>
+			<opacity>0.78</opacity>
+			<width>3.0</width>
+			<extensions>
+				<locus:lsColorBase>#C8D700D7</locus:lsColorBase>
+				<locus:lsWidth>3.0</locus:lsWidth>
+				<locus:lsUnits>PIXELS</locus:lsUnits>
+			</extensions>
+		</line>
+		<locus:activity>walking</locus:activity>
+	</extensions>
+<trkseg>
+<trkpt lat="48.7607432" lon="-70.1977479">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:13:32.653Z</time>
+	<hdop>3.79</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>334.74728</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607424" lon="-70.1977483">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:13:42.655Z</time>
+	<hdop>3.24</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>89.99986</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607506" lon="-70.1977706">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:13:53.632Z</time>
+	<hdop>3.00</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>89.99986</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607545" lon="-70.1977611">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:14:03.653Z</time>
+	<hdop>3.00</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>37.316887</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607620" lon="-70.1977602">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:14:14.495Z</time>
+	<hdop>3.27</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>87.97801</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607592" lon="-70.1977409">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:14:24.809Z</time>
+	<hdop>3.22</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>128.36765</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607406" lon="-70.1977706">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:14:35.637Z</time>
+	<hdop>4.75</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>104.48211</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+</trkseg>
+</trk>
+<trk>
+<name>2025-01-17 09:15</name>
+<desc><![CDATA[Path to where the trees are]]></desc>
+	<extensions>
+		<line xmlns="http://www.topografix.com/GPX/gpx_style/0/2">
+			<color>D700D7</color>
+			<opacity>0.78</opacity>
+			<width>3.0</width>
+			<extensions>
+				<locus:lsColorBase>#C8D700D7</locus:lsColorBase>
+				<locus:lsWidth>3.0</locus:lsWidth>
+				<locus:lsUnits>PIXELS</locus:lsUnits>
+			</extensions>
+		</line>
+		<locus:activity>walking</locus:activity>
+	</extensions>
+<trkseg>
+<trkpt lat="48.7607680" lon="-70.1977495">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:15:26.636Z</time>
+	<hdop>3.43</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>231.49905</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607524" lon="-70.1977522">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:15:36.638Z</time>
+	<hdop>3.34</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>226.45573</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607513" lon="-70.1977746">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:15:46.647Z</time>
+	<hdop>4.07</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>276.86642</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607634" lon="-70.1977858">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:15:57.102Z</time>
+	<hdop>3.62</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>56.454758</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607604" lon="-70.1977794">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:16:07.161Z</time>
+	<hdop>4.42</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>12.52569</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607410" lon="-70.1977717">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:16:17.641Z</time>
+	<hdop>3.00</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>67.84138</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607326" lon="-70.1977627">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:16:27.727Z</time>
+	<hdop>3.38</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>236.97693</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607402" lon="-70.1977785">
+	<ele>74.72</ele>
+	<time>2025-01-17T14:16:38.649Z</time>
+	<hdop>3.73</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>289.44196</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607502" lon="-70.1977691">
+	<ele>74.72</ele>
+	<time>2025-01-17T14:16:49.525Z</time>
+	<hdop>3.02</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>19.533787</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607684" lon="-70.1977906">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:16:59.647Z</time>
+	<hdop>3.95</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>271.79123</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607612" lon="-70.1978155">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:17:10.156Z</time>
+	<hdop>3.60</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>177.83585</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+</trkseg>
+</trk>
+<wpt lat="48.7607616" lon="-70.1978286">
+	<ele>74.68</ele>
+	<time>2025-01-17T14:19:39.315Z</time>
+<name>Point 1</name>
+	<cmt>Cool tree!</cmt>
+	<desc><![CDATA[I think it's a willow]]></desc>
+	<sym>image/png;base64,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
+/C9bNlfZw3OUZAAAAABJRU5ErkJggg==</sym>
+	<hdop>3.79</hdop>
+	<extensions>
+		<locus:icon>data:image/png;base64,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
+/C9bNlfZw3OUZAAAAABJRU5ErkJggg==</locus:icon>
+	</extensions>
+</wpt>
+<trk>
+<name>2025-01-17 09:19</name>
+<desc><![CDATA[Willow tree walk]]></desc>
+	<extensions>
+		<line xmlns="http://www.topografix.com/GPX/gpx_style/0/2">
+			<color>D700D7</color>
+			<opacity>0.78</opacity>
+			<width>3.0</width>
+			<extensions>
+				<locus:lsColorBase>#C8D700D7</locus:lsColorBase>
+				<locus:lsWidth>3.0</locus:lsWidth>
+				<locus:lsUnits>PIXELS</locus:lsUnits>
+			</extensions>
+		</line>
+		<locus:activity>walking</locus:activity>
+	</extensions>
+<trkseg>
+<trkpt lat="48.7607508" lon="-70.1978165">
+	<ele>74.72</ele>
+	<time>2025-01-17T14:19:04.637Z</time>
+	<hdop>3.88</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>326.60596</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607574" lon="-70.1978239">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:19:14.644Z</time>
+	<hdop>3.79</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>316.84888</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+<trkpt lat="48.7607617" lon="-70.1978289">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:19:25.631Z</time>
+	<hdop>3.79</hdop>
+</trkpt>
+<trkpt lat="48.7607616" lon="-70.1978286">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:19:35.631Z</time>
+	<hdop>3.79</hdop>
+</trkpt>
+<trkpt lat="48.7607615" lon="-70.1978286">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:19:45.651Z</time>
+	<hdop>3.79</hdop>
+</trkpt>
+<trkpt lat="48.7607479" lon="-70.1978200">
+	<ele>74.52</ele>
+	<time>2025-01-17T14:19:56.634Z</time>
+	<hdop>3.79</hdop>
+	<extensions>
+		<gpxtpx:TrackPointExtension>
+			<gpxtpx:course>70.245804</gpxtpx:course>
+		</gpxtpx:TrackPointExtension>
+	</extensions>
+</trkpt>
+</trkseg>
+</trk>
+</gpx>

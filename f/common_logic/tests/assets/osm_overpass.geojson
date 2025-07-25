@@ -1,0 +1,291 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2025-07-18T01:25:10Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1660255196",
+        "amenity": "bus_station",
+        "bus": "yes",
+        "name": "Bus Station Lijn 5 bus",
+        "name:en": "Line 5 bus station",
+        "name:nl": "Lijn 5 bus station",
+        "public_transport": "station"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1576618,
+          5.8239507
+        ]
+      },
+      "id": "node/1660255196"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4408361845",
+        "amenity": "restaurant",
+        "name": "Soeng Nige's",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1580345,
+          5.8240285
+        ]
+      },
+      "id": "node/4408361845"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4408361850",
+        "addr:city": "Paramaribo",
+        "addr:housenumber": "92 - 96",
+        "addr:street": "Waterkant",
+        "amenity": "bureau_de_change",
+        "name": "HJ De Vries Exchange N.V.",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1589811,
+          5.8237704
+        ]
+      },
+      "id": "node/4408361850"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4408423967",
+        "amenity": "restaurant",
+        "name": "Sara's",
+        "source": "KG Ground Survey. 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1605499,
+          5.8235864
+        ]
+      },
+      "id": "node/4408423967"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4408423974",
+        "addr:housenumber": "7",
+        "addr:street": "Dr. Sophie Redmondstraat",
+        "amenity": "restaurant",
+        "name": "Grand Sky Nam Hoj Nokja",
+        "source": "KG Ground Survey. 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1606158,
+          5.8236325
+        ]
+      },
+      "id": "node/4408423974"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419266906",
+        "amenity": "bureau_de_change",
+        "name": "Moneyline N.V.",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1597951,
+          5.8263685
+        ]
+      },
+      "id": "node/4419266906"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419266917",
+        "amenity": "bureau_de_change",
+        "name": "Money Line N.V.",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1609959,
+          5.8249353
+        ]
+      },
+      "id": "node/4419266917"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419290024",
+        "amenity": "casino",
+        "name": "Golden Dragon Hotel & Casino",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1586129,
+          5.8240695
+        ]
+      },
+      "id": "node/4419290024"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419290047",
+        "amenity": "fast_food",
+        "brand": "Popeyes",
+        "brand:wikidata": "Q1330910",
+        "brand:wikipedia": "en:Popeyes",
+        "cuisine": "chicken",
+        "name": "Popeyes",
+        "official_name": "Popeyes Louisiana Kitchen",
+        "source": "KG Ground Survey 2016",
+        "takeaway": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1606579,
+          5.8260803
+        ]
+      },
+      "id": "node/4419290047"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419290048",
+        "amenity": "restaurant",
+        "name": "Pizza Boys",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1606077,
+          5.8259293
+        ]
+      },
+      "id": "node/4419290048"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4419290051",
+        "amenity": "restaurant",
+        "name": "Apollo Snacks",
+        "source": "KG Ground Survey 2016"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1601921,
+          5.824302
+        ]
+      },
+      "id": "node/4419290051"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4726921190",
+        "addr:city": "Paramaribo",
+        "addr:country": "SR",
+        "addr:housenumber": "44",
+        "addr:street": "Domineestraat",
+        "amenity": "cafe",
+        "name:en": "Anthony's Corner",
+        "opening_hours": "Mo-Fr 07:00-15:00; Sa 07:00-13:00",
+        "phone": "+597 422828",
+        "website": "http://www.anthonyscorner.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1606886,
+          5.8263693
+        ]
+      },
+      "id": "node/4726921190"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12184689909",
+        "amenity": "parking",
+        "operator": "Harevey parking centrum",
+        "operator:type": "government",
+        "survey:date": "2024-09-18"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1583651,
+          5.8236963
+        ]
+      },
+      "id": "node/12184689909"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12186885144",
+        "amenity": "parking",
+        "operator": "Humphrey Parking",
+        "operator:type": "public",
+        "survey:date": "2024-09-19"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1583358,
+          5.8236885
+        ]
+      },
+      "id": "node/12186885144"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12222800352",
+        "amenity": "ice_cream",
+        "cuisine": "juice",
+        "currency:XBT": "yes",
+        "description": "Shaved ice with variety of flavors and cocktails",
+        "name": "SMG Schaafijs and More",
+        "payment:lightning": "yes",
+        "payment:lightning_contactless": "yes",
+        "payment:onchain": "yes",
+        "survey:date": "2024-10-04"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -55.1588545,
+          5.8252695
+        ]
+      },
+      "id": "node/12222800352"
+    }
+  ]
+}
