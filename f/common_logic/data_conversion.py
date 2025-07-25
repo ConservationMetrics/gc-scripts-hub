@@ -29,11 +29,8 @@ def detect_structured_data_type(file_path: str) -> str:
     TODO: Add support for ESRI shapefiles, which requires a different approach as a
     collection of files rather than a single file.
 
-    Format detection is intentionally lightweight, using MIME type detection and minimal
-    content inspection where needed. This avoids fully parsing potentially large or
-    malformed files. Comprehensive validation is expected to occur later in the data
-    processing pipeline (e.g., in convert_data), so this function prioritizes speed
-    and reliability over exhaustive format verification.
+    Format detection is intentionally lightweight. Comprehensive validation is expected
+    to occur later in the data processing pipeline (e.g., in convert_data).
 
     Parameters
     ----------
