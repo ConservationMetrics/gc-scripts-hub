@@ -1,6 +1,12 @@
+import csv
+from pathlib import Path
+
 import psycopg2
 
-from f.connectors.kobotoolbox.kobotoolbox_responses import main
+from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    main,
+    transform_kobotoolbox_form_data,
+)
 
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
@@ -149,3 +155,22 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
                 f"SELECT label FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
             )
             assert cursor.fetchone() == ("Record your current location",)
+
+
+def test_transform_kobotoolbox_form_data_from_csv():
+    csv_path = Path(__file__).parent / "assets" / "kobotoolbox_submissions.csv"
+    with csv_path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        data = [dict(row) for row in reader]
+
+    form_name = "Test Form"
+    result = transform_kobotoolbox_form_data(data, form_name)
+
+    for submission in result:
+        assert submission["dataset_name"] == form_name
+        assert submission["data_source"] == "KoboToolbox"
+        assert "g__type" in submission
+        assert submission["g__type"] == "Point"
+        assert "g__coordinates" in submission
+
+    assert result[0]["g__coordinates"] == [-55.963451, 2.164341]
