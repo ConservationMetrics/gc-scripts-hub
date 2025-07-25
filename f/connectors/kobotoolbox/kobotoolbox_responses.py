@@ -2,6 +2,7 @@
 # psycopg2-binary
 # requests~=2.32
 
+import ast
 import hashlib
 import json
 import logging
@@ -40,11 +41,18 @@ def main(
 
     form_labels = extract_form_labels(form_metadata)
 
-    form_responses = download_form_responses_and_attachments(
-        headers, form_metadata, db_table_name, attachment_root
+    form_responses, skipped_attachments, form_name, form_languages = (
+        download_form_responses_and_attachments(
+            headers, form_metadata, db_table_name, attachment_root
+        )
     )
 
-    transformed_form_responses = format_geometry_fields(form_responses)
+    transformed_form_responses = transform_kobotoolbox_form_data(
+        form_responses,
+        form_name=form_name,
+        form_languages=form_languages,
+        skipped_attachments=skipped_attachments,
+    )
 
     kobo_response_writer = StructuredDBWriter(
         conninfo(db),
@@ -257,8 +265,12 @@ def download_form_responses_and_attachments(
 
     Returns
     -------
-    list
-        A list of form submissions downloaded from the KoboToolbox API.
+    tuple
+        A tuple containing:
+        - list: Raw form submissions downloaded from the KoboToolbox API
+        - int: Number of attachments skipped due to already existing on disk
+        - str: Form name from metadata
+        - str: Comma-separated form languages (or None if single language)
     """
     # Extract the data URI, form name, and translations from the metadata
     data_uri = form_metadata["data"]
@@ -275,13 +287,8 @@ def download_form_responses_and_attachments(
 
     skipped_attachments = 0
 
+    # Download attachments for each submission, if they exist
     for submission in form_submissions:
-        submission["dataset_name"] = form_name
-        submission["data_source"] = "KoboToolbox"
-        if form_languages:
-            submission["form_translations"] = form_languages
-
-        # Download attachments for each submission, if they exist
         if "_attachments" in submission:
             skipped_attachments += _download_submission_attachments(
                 submission, db_table_name, attachment_root, headers
@@ -291,26 +298,65 @@ def download_form_responses_and_attachments(
         logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
 
     logger.info(f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s).")
-    return form_submissions
+    return form_submissions, skipped_attachments, form_name, form_languages
 
 
-def format_geometry_fields(form_data):
-    """Transform KoboToolbox form data by formatting geometry fields for SQL database insertion.
+def transform_kobotoolbox_form_data(
+    form_data, form_name=None, form_languages=None, skipped_attachments=None
+):
+    """Transform KoboToolbox form data by adding metadata fields and formatting geometry for SQL database insertion.
 
     Parameters
     ----------
     form_data : list
         A list of form submissions downloaded from the KoboToolbox API.
+    form_name : str, optional
+        The name of the form from metadata. If provided, adds 'dataset_name' field to each submission.
+    form_languages : str, optional
+        Comma-separated list of form languages. If provided, adds 'form_translations' field to each submission.
+    skipped_attachments : int, optional
+        Number of attachments skipped during download. Used for logging purposes.
 
     Returns
     -------
     list
-        A list of transformed form submissions.
+        A list of transformed form submissions with added metadata fields and formatted geometry.
     """
     for submission in form_data:
+        # Add metadata fields if provided
+        if form_name:
+            submission["dataset_name"] = form_name
+        submission["data_source"] = "KoboToolbox"
+        if form_languages:
+            submission["form_translations"] = form_languages
+
+        # Transform geometry fields for GeoJSON compliance
         if "_geolocation" in submission:
-            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
-            coordinates = submission.pop("_geolocation")[::-1]
-            submission.update({"g__type": "Point", "g__coordinates": coordinates})
+            value = submission.pop("_geolocation")
+            coordinates = None
+
+            # Handle different input formats:
+            # - From CSV: _geolocation is a string like "[36.97012, -122.0109429]"
+            # - From server API: _geolocation is already a list like [36.97012, -122.0109429]
+            if isinstance(value, str):
+                value = value.strip()
+                # Skip empty strings or invalid values
+                if value and value not in ("[]", '""'):
+                    try:
+                        # Parse string representation of list to actual list
+                        coords = ast.literal_eval(value)
+                        if isinstance(coords, list) and len(coords) == 2:
+                            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
+                            coordinates = [float(coords[1]), float(coords[0])]
+                    except Exception:
+                        # Skip invalid coordinate strings
+                        pass
+            elif isinstance(value, list) and len(value) == 2:
+                # Already a list, just convert [lat, lon] to [lon, lat]
+                coordinates = [float(value[1]), float(value[0])]
+
+            # Only add geometry fields if we have valid coordinates
+            if coordinates:
+                submission.update({"g__type": "Point", "g__coordinates": coordinates})
 
     return form_data
