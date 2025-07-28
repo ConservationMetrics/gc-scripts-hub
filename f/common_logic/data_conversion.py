@@ -6,9 +6,6 @@ from pathlib import Path
 
 import filetype
 import fiona
-
-# pandas requires openpyxl installed separately to read .xlsx files
-import openpyxl  # noqa: F401
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
