@@ -1,11 +1,22 @@
+import shutil
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import psycopg2
 import pytest
 
 from f.connectors.timelapse.timelapse import _transform_df, main
+
+# Create mock azure_blob resource
+azure_blob = {
+    "accountName": "testaccount",
+    "containerName": "test_container",
+    "accessKey": "testkey",
+    "useSSL": True,
+    "endpoint": "core.windows.net",
+}
 
 
 def test_transform_df_column_name_collision():
@@ -38,13 +49,19 @@ def timelapse_zip(tmp_path):
 def test_script_e2e(pg_database, tmp_path, timelapse_zip):
     asset_storage = tmp_path / "datalake"
 
-    actual_storage_path = main(
-        timelapse_zip,
-        pg_database,
-        "my_timelapse_project",
-        delete_timelapse_zip=True,
-        attachment_root=asset_storage,
-    )
+    # Mock the Azure Blob Storage download to return our test zip file
+    with patch(
+        "f.connectors.timelapse.timelapse.download_blob_to_temp"
+    ) as mock_download:
+        mock_download.return_value = timelapse_zip
+
+        actual_storage_path = main(
+            azure_blob=azure_blob,
+            blob_name="timelapse_export.zip",
+            db=pg_database,
+            db_table_prefix="my_timelapse_project",
+            attachment_root=asset_storage,
+        )
 
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
@@ -100,23 +117,42 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
 def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
     asset_storage = tmp_path / "datalake"
 
-    # First run
-    first_path = main(
-        timelapse_zip,
-        pg_database,
-        "my_timelapse_project",
-        delete_timelapse_zip=False,  # don't delete the zip, we need it again
-        attachment_root=asset_storage,
-    )
+    def create_temp_zip_copy(azure_blob, blob_name):
+        """Create a fresh copy of the ZIP file for each call"""
+        # Create a temporary directory for each copy to avoid conflicts
+        temp_dir = tmp_path / f"temp_dir_{create_temp_zip_copy.counter}"
+        temp_dir.mkdir(exist_ok=True)
+        # Keep the same filename so the stem is preserved for extraction
+        temp_zip = temp_dir / "timelapse_export.zip"
+        create_temp_zip_copy.counter += 1
+        shutil.copy2(timelapse_zip, temp_zip)
+        return temp_zip
 
-    # Second run
-    second_path = main(
-        timelapse_zip,
-        pg_database,
-        "my_timelapse_project",
-        delete_timelapse_zip=False,
-        attachment_root=asset_storage,
-    )
+    create_temp_zip_copy.counter = 0
+
+    # Mock the Azure Blob Storage download to return fresh copies of our test zip file
+    with patch(
+        "f.connectors.timelapse.timelapse.download_blob_to_temp"
+    ) as mock_download:
+        mock_download.side_effect = create_temp_zip_copy
+
+        # First run
+        first_path = main(
+            azure_blob=azure_blob,
+            blob_name="timelapse_export.zip",
+            db=pg_database,
+            db_table_prefix="my_timelapse_project",
+            attachment_root=asset_storage,
+        )
+
+        # Second run
+        second_path = main(
+            azure_blob=azure_blob,
+            blob_name="timelapse_export.zip",
+            db=pg_database,
+            db_table_prefix="my_timelapse_project",
+            attachment_root=asset_storage,
+        )
 
     assert first_path.name == "timelapse_export"
     assert second_path.name == "timelapse_export_1"
