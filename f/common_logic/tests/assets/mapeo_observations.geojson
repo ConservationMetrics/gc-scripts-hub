@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.968285, 40.785091]
+      },
+      "id": "a1b2c3d4e5f67890",
+      "properties": {
+        "type": "activity",
+        "activity": "gathering",
+        "categoryId": "gathering-site",
+        "notes": "Gathering spot for bird watchers",
+        "$created": "2021-10-11T18:33:21.059Z",
+        "$modified": "2021-10-11T18:33:21.059Z",
+        "$version": "78ab235883d998930cafd15978d18d7239c092c2bf31c394b311747cc3e6eb64@50",
+        "$photos": ["53a3841fb6028ba608a085d36b1115d9.jpg"]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.961449, 40.784876]
+      },
+      "id": "f6e7d8c9b0a12345",
+      "properties": {
+        "type": "waterway",
+        "waterway": "stream",
+        "categoryId": "stream",
+        "notes": "Small stream near the Great Lawn",
+        "$created": "2023-06-08T12:13:24.514Z",
+        "$modified": "2023-06-08T12:13:24.514Z",
+        "$version": "41811c656c7e1cb3162e3f756dc2d3073f05404f457800c5ac4bbec109a54c3b@16",
+        "$photos": ["c63adea79098a59e22e8bf73e5df68a1.jpg"]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.971249, 40.782865]
+      },
+      "id": "1234567890abcdef",
+      "properties": {
+        "type": "waterway",
+        "waterway": "waterfall",
+        "categoryId": "waterfall",
+        "notes": "Popular waterfall near the Ramble",
+        "$created": "2021-10-11T14:39:25.377Z",
+        "$modified": "2021-10-11T14:39:25.377Z",
+        "$version": "78ab235883d998930cafd15978d18d7239c092c2bf31c394b311747cc3e6eb64@38",
+        "$photos": ["f58953ea5b6519b6c7e587c79e98fc2b.jpg"]
+      }
+    }
+  ]
+}
