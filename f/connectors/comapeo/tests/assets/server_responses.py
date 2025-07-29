@@ -1,3 +1,52 @@
+SAMPLE_OBSERVATIONS = [
+    {
+        "docId": "doc_id_1",
+        "createdAt": "2024-10-14T20:18:14.206Z",
+        "updatedAt": "2024-10-14T20:18:14.206Z",
+        "deleted": False,
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "tags": {
+            "notes": "Rapid",
+            "type": "water",
+            "status": "active",
+            "created_at": "village",
+        },
+    },
+    {
+        "docId": "doc_id_2",
+        "createdAt": "2024-10-15T21:19:15.207Z",
+        "updatedAt": "2024-10-15T21:19:15.207Z",
+        "deleted": False,
+        "lat": 48.8566,
+        "lon": 2.3522,
+        "attachments": [
+            {
+                "url": "http://comapeo.example.org/projects/forest_expedition/attachments/doc_id_2/photo/capybara.jpg"
+            }
+        ],
+        "tags": {
+            "notes": "Capybara",
+            "type": "animal",
+            "animal-type": "capybara",
+        },
+    },
+    {
+        "docId": "doc_id_3",
+        "createdAt": "2024-10-16T22:20:16.208Z",
+        "updatedAt": "2024-10-16T22:20:16.208Z",
+        "deleted": False,
+        "lat": 35.6895,
+        "lon": 139.6917,
+        "tags": {
+            "notes": "Former village site",
+            "type": "location",
+            "status": "historical",
+        },
+    },
+]
+
+
 def comapeo_projects(uri):
     return {
         "data": [
@@ -14,55 +63,18 @@ def comapeo_projects(uri):
 
 
 def comapeo_project_observations(uri, project_id):
-    return {
-        "data": [
-            {
-                "docId": "doc_id_1",
-                "createdAt": "2024-10-14T20:18:14.206Z",
-                "updatedAt": "2024-10-14T20:18:14.206Z",
-                "deleted": False,
-                "lat": -33.8688,
-                "lon": 151.2093,
-                "tags": {
-                    "notes": "Rapid",
-                    "type": "water",
-                    "status": "active",
-                    "created_at": "village",
-                },
-            },
-            {
-                "docId": "doc_id_2",
-                "createdAt": "2024-10-15T21:19:15.207Z",
-                "updatedAt": "2024-10-15T21:19:15.207Z",
-                "deleted": False,
-                "lat": 48.8566,
-                "lon": 2.3522,
-                "attachments": [
-                    {
-                        "url": f"{uri}/projects/{project_id}/attachments/doc_id_2/photo/capybara.jpg"
-                    }
-                ],
-                "tags": {
-                    "notes": "Capybara",
-                    "type": "animal",
-                    "animal-type": "capybara",
-                },
-            },
-            {
-                "docId": "doc_id_3",
-                "createdAt": "2024-10-16T22:20:16.208Z",
-                "updatedAt": "2024-10-16T22:20:16.208Z",
-                "deleted": False,
-                "lat": 35.6895,
-                "lon": 139.6917,
-                "tags": {
-                    "notes": "Former village site",
-                    "type": "location",
-                    "status": "historical",
-                },
-            },
-        ]
-    }
+    # Update attachment URLs to use the provided URI and project_id
+    observations = []
+    for obs in SAMPLE_OBSERVATIONS:
+        obs_copy = obs.copy()
+        if "attachments" in obs_copy:
+            for attachment in obs_copy["attachments"]:
+                attachment["url"] = (
+                    f"{uri}/projects/{project_id}/attachments/{obs_copy['docId']}/photo/capybara.jpg"
+                )
+        observations.append(obs_copy)
+
+    return {"data": observations}
 
 
 def comapeo_alerts():
