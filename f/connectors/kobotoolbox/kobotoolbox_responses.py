@@ -346,17 +346,16 @@ def transform_kobotoolbox_form_data(
                         # Parse string representation of list to actual list
                         coords = ast.literal_eval(value)
                         if isinstance(coords, list) and len(coords) == 2:
-                            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
-                            coordinates = [float(coords[1]), float(coords[0])]
+                            coordinates = coords
                     except Exception:
                         # Skip invalid coordinate strings
                         pass
             elif isinstance(value, list) and len(value) == 2:
-                # Already a list, just convert [lat, lon] to [lon, lat]
-                coordinates = [float(value[1]), float(value[0])]
+                coordinates = value
 
-            # Only add geometry fields if we have valid coordinates
+            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance and add geometry fields
             if coordinates:
+                coordinates = [float(coordinates[1]), float(coordinates[0])]
                 submission.update({"g__type": "Point", "g__coordinates": coordinates})
 
     return form_data
