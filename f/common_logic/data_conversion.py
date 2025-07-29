@@ -322,14 +322,17 @@ def json_to_csv(path: Path):
 @handle_file_errors
 def gpx_to_geojson(path: Path):
     """
-    Converts a GPX file to GeoJSON format using Fiona.
-    Reads all GPX layers (waypoints, tracks, etc.) and returns a FeatureCollection.
+    Converts a GPX file to GeoJSON format using a hybrid approach.
+    Uses Fiona for reliable geometry parsing and XML for comprehensive property extraction.
 
-    Includes specialized business logic to handle Locus Map GPX exports:
-    - Locus Map creates multiple separate link fields (link_1_href, link_2_href, etc.)
-      that need to be consolidated into a single 'link' property for better usability
-    - Standard Fiona GPX reading doesn't handle this consolidation automatically
-    - This preprocessing ensures consistent output regardless of GPX source application
+    Implements specialized business logic for comprehensive GPX parsing:
+    - Fiona/GDAL only reads basic GPX elements but ignores custom extensions
+    - OsmAnd GPX exports include custom extension elements that would be lost with standard Fiona-only parsing
+    - This hybrid approach combines Fiona's robust GDAL-based geometry handling with
+      manual XML parsing to capture all available metadata and custom fields
+    - Handles Locus Map link fields consolidation for better usability
+    - Captures OsmAnd extensions like visited_date, amenity_subtype, address, etc.
+    - Applies selective lossy transformations to balance data preservation with output consistency
 
     Returns
     -------
@@ -338,36 +341,119 @@ def gpx_to_geojson(path: Path):
     """
     features = []
 
-    # Read all available layers in the GPX file
+    # Hybrid approach: Use XML parsing for comprehensive property extraction
+    # while leveraging Fiona's robust geometry handling via GDAL/OGR
+    tree = ET.parse(path)
+    root = tree.getroot()
+    namespace = {
+        "gpx": "http://www.topografix.com/GPX/1/1",
+        "osmand": "https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx",
+    }
+
+    # Extract all waypoint properties by matching with Fiona features
+    waypoint_properties = []
+
+    for waypoint in root.findall(".//gpx:wpt", namespace):
+        properties = {}
+
+        # Extract basic GPX properties
+        for el in waypoint:
+            tag = el.tag.split("}")[-1]
+            if tag in {"name", "desc", "type", "time", "ele"} and el.text:
+                properties[tag] = el.text.strip()
+            elif tag == "link":
+                href = el.get("href")
+                if href:
+                    properties["link"] = href
+
+        # Extract OsmAnd extensions from within the extensions element
+        extensions_el = waypoint.find(".//gpx:extensions", namespace)
+        if extensions_el is not None:
+            for ext_el in extensions_el.findall(".//osmand:*", namespace):
+                tag = ext_el.tag.split("}")[-1]
+                if ext_el.text:
+                    properties[f"osmand:{tag}"] = ext_el.text.strip()
+
+        waypoint_properties.append(properties)
+
+    # Use Fiona for reliable geometry parsing via GDAL/OGR
     layers = fiona.listlayers(path)
+    waypoint_index = 0
 
     for layer in layers:
         with fiona.open(path, layer=layer, driver="GPX") as collection:
             for feature in collection:
-                properties = (
+                # Get Fiona's basic properties and normalize names
+                fiona_props = (
                     dict(feature["properties"]) if feature["properties"] else {}
                 )
+
+                # Normalize Fiona property names for consistency
+                normalized_fiona_props = {}
+                for key, value in fiona_props.items():
+                    if value not in (None, "", "None"):
+                        # Skip OsmAnd extensions that Fiona might have captured
+                        if not key.startswith("osmand"):
+                            normalized_fiona_props[key.lower()] = value
+
+                # Merge properties (XML takes precedence for comprehensive data)
+                if waypoint_index < len(waypoint_properties):
+                    final_properties = {
+                        **normalized_fiona_props,
+                        **waypoint_properties[waypoint_index],
+                    }
+                else:
+                    final_properties = normalized_fiona_props
 
                 # Handle Locus Map link fields - combine all link-related fields
                 # NOTE: This is lossy - we lose individual field names (link_1_href, link_2_href, etc.)
                 # and merge into a single comma-separated string.
-                link_fields = [k for k in properties.keys() if "link" in k.lower()]
+                link_fields = [
+                    k
+                    for k in final_properties.keys()
+                    if "link" in k.lower() and k != "link"
+                ]
                 links = []
                 for field in sorted(link_fields):  # Sort for consistent output
-                    if properties[field]:
-                        links.append(str(properties[field]))
-                        del properties[field]
+                    if final_properties[field]:
+                        links.append(str(final_properties[field]))
+                        del final_properties[field]
 
                 if links:
-                    properties["link"] = ", ".join(links)
+                    # Preserve existing link if present, otherwise create new one
+                    existing_link = final_properties.get("link", "")
+                    if existing_link:
+                        # Avoid duplication by checking if the link is already in the list
+                        existing_links = [
+                            link.strip() for link in existing_link.split(",")
+                        ]
+                        new_links = [
+                            link.strip()
+                            for link in links
+                            if link.strip() not in existing_links
+                        ]
+                        if new_links:
+                            final_properties["link"] = (
+                                f"{existing_link}, {', '.join(new_links)}"
+                            )
+                    else:
+                        final_properties["link"] = ", ".join(links)
+
+                # Clean up empty properties
+                final_properties = {
+                    k: v
+                    for k, v in final_properties.items()
+                    if v not in (None, "", "None")
+                }
 
                 features.append(
                     {
                         "type": "Feature",
                         "geometry": dict(feature["geometry"]),
-                        "properties": properties,
+                        "properties": final_properties,
                     }
                 )
+                waypoint_index += 1
 
     if not features:
         raise ValueError("No valid features found in input file")

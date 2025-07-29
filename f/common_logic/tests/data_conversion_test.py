@@ -3,10 +3,53 @@ import pytest
 from f.common_logic.data_conversion import convert_data
 
 
+def _validate_geojson_structure(result, expected_feature_count):
+    """Helper to validate basic GeoJSON structure."""
+    assert result["type"] == "FeatureCollection"
+    assert len(result["features"]) == expected_feature_count
+
+
+def _validate_point_geometry(feature):
+    """Helper to validate point geometry structure."""
+    geometry = feature["geometry"]
+    properties = feature["properties"]
+
+    # Ensure geometry is a plain dict, not a fiona.Geometry object
+    assert isinstance(geometry, dict)
+    assert not hasattr(geometry, "__geo_interface__")
+
+    assert geometry["type"] == "Point"
+    assert isinstance(geometry["coordinates"], (list, tuple))
+    assert len(geometry["coordinates"]) >= 2  # lon, lat (may have elevation)
+    assert isinstance(properties, dict)
+
+
+def _validate_coordinates_in_bounds(coords, lon_bounds, lat_bounds):
+    """Helper to validate coordinates are within specified bounds."""
+    assert lon_bounds[0] < coords[0] < lon_bounds[1], (
+        f"Longitude {coords[0]} not in range {lon_bounds}"
+    )
+    assert lat_bounds[0] < coords[1] < lat_bounds[1], (
+        f"Latitude {coords[1]} not in range {lat_bounds}"
+    )
+
+
+def _assert_osmand_property(props, key, expected_value=None):
+    """Helper to check OsmAnd properties with or without namespace prefix."""
+    has_property = f"osmand:{key}" in props or key in props
+    assert has_property, f"Missing OsmAnd property: {key}"
+
+    if expected_value is not None:
+        actual_value = props.get(f"osmand:{key}") or props.get(key)
+        assert actual_value == expected_value, (
+            f"Expected {key}={expected_value}, got {actual_value}"
+        )
+
+
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
     result = convert_data(str(locusmap_points_gpx_file), "gpx")
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) >= 2  # At least 2 waypoints
+    _validate_geojson_structure(result, len(result["features"]))  # At least 2 waypoints
+    assert len(result["features"]) >= 2
 
     # Filter to waypoints with descriptions (the main features we care about)
     waypoints_with_desc = [
@@ -17,12 +60,8 @@ def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
     assert len(waypoints_with_desc) >= 2
 
     for feature in waypoints_with_desc:
-        geometry = feature["geometry"]
+        _validate_point_geometry(feature)
         properties = feature["properties"]
-
-        assert geometry["type"] == "Point"
-        assert "coordinates" in geometry
-        assert isinstance(properties, dict)
 
         assert "desc" in properties
         assert any(word in properties["desc"].lower() for word in ["tree", "rock"])
@@ -33,14 +72,11 @@ def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
 
 def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
     result = convert_data(str(locusmap_points_kml_file), "kml")
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 2
+    _validate_geojson_structure(result, 2)
 
     for feat in result["features"]:
-        assert feat["geometry"]["type"] == "Point"
-        assert "coordinates" in feat["geometry"]
+        _validate_point_geometry(feat)
         props = feat["properties"]
-        assert isinstance(props, dict)
         assert "name" in props
         assert "description" in props
         assert "attachments" in props
@@ -50,8 +86,7 @@ def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
     result = convert_data(str(locusmap_tracks_kml_file), "kml")
 
     # Root-level structure check
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 4
+    _validate_geojson_structure(result, 4)
 
     # Group by geometry type (accept both LineString and MultiLineString)
     lines = [
@@ -99,6 +134,7 @@ def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
 
     # Check the single point feature
     pt = points[0]
+    _validate_point_geometry(pt)
     props = pt["properties"]
 
     assert "attachments" in props
@@ -111,7 +147,7 @@ def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
     result = convert_data(str(locusmap_tracks_gpx_file), "gpx")
 
     # Root-level sanity checks
-    assert result["type"] == "FeatureCollection"
+    _validate_geojson_structure(result, len(result["features"]))
     assert len(result["features"]) > 4
 
     # Split into geometry types
@@ -165,7 +201,7 @@ def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
 
 def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
     result = convert_data(str(garmin_sample_gpx_file), "gpx")
-    assert result["type"] == "FeatureCollection"
+    _validate_geojson_structure(result, len(result["features"]))
     assert len(result["features"]) > 2
 
     points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
@@ -184,6 +220,7 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
         (p for p in points if p["properties"].get("name") == "White House"), None
     )
     assert white_house_point is not None
+    _validate_point_geometry(white_house_point)
     coords = white_house_point["geometry"]["coordinates"]
     assert coords[0] == -77.03656 and coords[1] == 38.897957
     assert "desc" in white_house_point["properties"]
@@ -269,8 +306,7 @@ def test_convert_data__json_empty(tmp_path):
 
 def test_read_data__mapeo_geojson(mapeo_geojson_file):
     result = convert_data(str(mapeo_geojson_file), "geojson")
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 3
+    _validate_geojson_structure(result, 3)
 
     for feature in result["features"]:
         assert feature["type"] == "Feature"
@@ -286,8 +322,7 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     result = convert_data(str(osm_overpass_gpx_file), "gpx")
 
     # Root-level structure validation
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 15  # Exact count from OSM data
+    _validate_geojson_structure(result, 15)
 
     # All features should be waypoints (Points)
     points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
@@ -295,19 +330,7 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
 
     # Validate geometry and basic structure
     for feature in result["features"]:
-        geometry = feature["geometry"]
-        properties = feature["properties"]
-
-        # Ensure geometry is a plain dict, not a fiona.Geometry object
-        assert isinstance(geometry, dict)
-        assert not hasattr(
-            geometry, "__geo_interface__"
-        )  # fiona.Geometry would have this
-
-        assert geometry["type"] == "Point"
-        assert isinstance(geometry["coordinates"], (list, tuple))
-        assert len(geometry["coordinates"]) >= 2  # lon, lat (may have elevation)
-        assert isinstance(properties, dict)
+        _validate_point_geometry(feature)
 
     # Validate specific known features from OSM data
     bus_station = next(
@@ -355,8 +378,7 @@ def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
     result = convert_data(str(osm_overpass_geojson_file), "geojson")
 
     # Root-level structure validation
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 15  # Exact count from OSM data
+    _validate_geojson_structure(result, 15)
 
     # All features should be Points in this dataset
     for feature in result["features"]:
@@ -437,24 +459,12 @@ def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
     result = convert_data(str(osm_overpass_kml_file), "kml")
 
     # Root-level structure validation
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 15  # Exact count from OSM data
+    _validate_geojson_structure(result, 15)
 
     # All features should be Points in this dataset
     for feature in result["features"]:
         assert feature["type"] == "Feature"
-
-        # Ensure geometry is a plain dict, not a fiona.Geometry object
-        geometry = feature["geometry"]
-        assert isinstance(geometry, dict)
-        assert not hasattr(
-            geometry, "__geo_interface__"
-        )  # fiona.Geometry would have this
-
-        assert geometry["type"] == "Point"
-        assert isinstance(geometry["coordinates"], (list, tuple))
-        assert len(geometry["coordinates"]) >= 2  # lon, lat (may have elevation)
-        assert isinstance(feature["properties"], dict)
+        _validate_point_geometry(feature)
 
     # Validate KML ExtendedData preservation
     bus_station = next(
@@ -644,8 +654,7 @@ def test_convert_data__geojson_with_invalid_top_level(
 
 def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
     result = convert_data(str(googleearth_sample_kml_file), "kml")
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 3
+    _validate_geojson_structure(result, 3)
 
     for feat in result["features"]:
         geom = feat["geometry"]
@@ -690,8 +699,7 @@ def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
 
 def test_convert_data__gc_alerts_kml(alerts_kml_file):
     result = convert_data(str(alerts_kml_file), "kml")
-    assert result["type"] == "FeatureCollection"
-    assert len(result["features"]) == 2
+    _validate_geojson_structure(result, 2)
 
     for feat in result["features"]:
         geom = feat["geometry"]
@@ -715,3 +723,193 @@ def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
 def test_convert_data__unsupported():
     with pytest.raises(ValueError):
         convert_data("/fake/path.foo", "foo")
+
+
+def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
+    """Test conversion of OsmAnd notes GPX data with photo attachments."""
+    result = convert_data(str(osmand_notes_gpx_file), "gpx")
+
+    # Root-level structure validation
+    _validate_geojson_structure(result, 10)
+
+    # All features should be waypoints (Points)
+    points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
+    assert len(points) == 10
+
+    # Validate geometry and basic structure
+    for feature in result["features"]:
+        _validate_point_geometry(feature)
+
+    # Validate specific OsmAnd photo note features
+    photo_notes = [
+        f for f in result["features"] if f["properties"].get("type") == "photonote"
+    ]
+    assert len(photo_notes) == 10
+
+    # Check that all photo notes have required properties
+    for note in photo_notes:
+        props = note["properties"]
+
+        # Basic GPX properties
+        assert "name" in props
+        assert props["name"].endswith(".jpg")
+        assert "desc" in props
+        assert props["desc"] == "Fotografía"
+        assert "type" in props
+        assert props["type"] == "photonote"
+        assert "time" in props
+        assert "link" in props
+        assert props["link"].endswith(".jpg")
+
+        # OsmAnd notes don't have individual extensions, just basic GPX properties
+
+    # Check specific photo note with known data
+    first_note = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "YHpvuyI9--.1.jpg"
+        ),
+        None,
+    )
+    assert first_note is not None
+    props = first_note["properties"]
+    assert props["link"] == "YHpvuyI9--.1.jpg"
+    assert props["time"] == "2025-05-03T21:53:38Z"
+
+    # Check coordinates (should be in NYC area based on the data)
+    _validate_coordinates_in_bounds(
+        first_note["geometry"]["coordinates"], (-74.0, -73.0), (40.7, 40.8)
+    )
+
+
+def test_convert_data__osmand_poi_gpx(osmand_poi_gpx_file):
+    """Test conversion of OsmAnd POI GPX data with comprehensive metadata."""
+    result = convert_data(str(osmand_poi_gpx_file), "gpx")
+
+    # Root-level structure validation
+    _validate_geojson_structure(result, 3)
+
+    # All features should be waypoints (Points)
+    points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
+    assert len(points) == 3
+
+    # Validate geometry and basic structure
+    for feature in result["features"]:
+        _validate_point_geometry(feature)
+
+    # Validate specific POI features
+    poi_features = [
+        f for f in result["features"] if f["properties"].get("type") == "Guyana trip"
+    ]
+    assert len(poi_features) == 3
+
+    # Check that all POI features have required properties
+    for poi in poi_features:
+        props = poi["properties"]
+
+        # Basic GPX properties
+        assert "name" in props
+        assert "type" in props
+        assert props["type"] == "Guyana trip"
+        assert "time" in props
+
+        # OsmAnd extensions should be captured (at least visited_date for all)
+        assert "osmand:visited_date" in props or "visited_date" in props
+
+    # Check specific POI with known data - A&D Sunset Guesthouse
+    sunset_guesthouse = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "A&D Sunset Guesthouse"
+        ),
+        None,
+    )
+    assert sunset_guesthouse is not None
+    props = sunset_guesthouse["properties"]
+
+    # Basic properties
+    assert props["type"] == "Guyana trip"
+    assert props["time"] == "2025-04-21T15:29:08Z"
+    assert "ele" in props  # elevation
+    assert float(props["ele"]) == 485.5
+
+    # OsmAnd extensions
+    _assert_osmand_property(props, "visited_date", "2025-04-26T16:57:24Z")
+
+    # Check coordinates (should be in Guyana)
+    _validate_coordinates_in_bounds(
+        sunset_guesthouse["geometry"]["coordinates"], (-61.0, -60.0), (5.8, 5.9)
+    )
+
+    # Check Cara Lodge with comprehensive metadata
+    cara_lodge = next(
+        (f for f in result["features"] if f["properties"].get("name") == "Cara Lodge"),
+        None,
+    )
+    assert cara_lodge is not None
+    props = cara_lodge["properties"]
+
+    # Basic properties
+    assert props["type"] == "Guyana trip"
+    assert props["time"] == "2025-04-27T23:57:35Z"
+
+    # OsmAnd extensions
+    _assert_osmand_property(props, "amenity_subtype", "hotel")
+    _assert_osmand_property(props, "address", "Quamina Street, Alberttown")
+    _assert_osmand_property(
+        props, "amenity_origin", "Amenity:Cara Lodge: tourism:hotel"
+    )
+    _assert_osmand_property(props, "amenity_name", "Cara Lodge")
+    _assert_osmand_property(props, "osm_tag_wikidata", "Q111880937")
+    _assert_osmand_property(props, "icon", "tourism_hotel")
+    _assert_osmand_property(props, "amenity_type", "tourism")
+    _assert_osmand_property(props, "visited_date", "2025-05-20T16:14:43Z")
+
+    # Check Hotel with minimal metadata
+    hotel = next(
+        (f for f in result["features"] if f["properties"].get("name") == "Hotel"), None
+    )
+    assert hotel is not None
+    props = hotel["properties"]
+
+    # Basic properties
+    assert props["type"] == "Guyana trip"
+    assert props["time"] == "2025-05-02T19:21:32Z"
+
+    # OsmAnd extensions
+    _assert_osmand_property(props, "address", "Quamina Street, Alberttown")
+    _assert_osmand_property(props, "visited_date", "2025-05-02T19:22:14Z")
+
+
+def test_osmand_data_consistency_across_formats(
+    osmand_notes_gpx_file, osmand_poi_gpx_file
+):
+    """Test that OsmAnd GPX data is consistently parsed with all extensions captured."""
+    notes_result = convert_data(str(osmand_notes_gpx_file), "gpx")
+    poi_result = convert_data(str(osmand_poi_gpx_file), "gpx")
+
+    # Notes should have 10 photo notes
+    assert len(notes_result["features"]) == 10
+    assert all(
+        f["properties"].get("type") == "photonote" for f in notes_result["features"]
+    )
+
+    # POI should have 3 waypoints
+    assert len(poi_result["features"]) == 3
+    assert all(
+        f["properties"].get("type") == "Guyana trip" for f in poi_result["features"]
+    )
+
+    # All features should have OsmAnd extensions captured
+    for feature in poi_result["features"]:  # Only POI features have OsmAnd extensions
+        props = feature["properties"]
+
+        # Should have basic GPX properties
+        assert "name" in props
+        assert "type" in props
+        assert "time" in props
+
+        # Should have OsmAnd extensions (at least visited_date)
+        _assert_osmand_property(props, "visited_date")

@@ -154,3 +154,13 @@ def osm_overpass_geojson_file():
 @pytest.fixture
 def osm_overpass_kml_file():
     return Path(__file__).parent / "assets" / "osm_overpass.kml"
+
+
+@pytest.fixture
+def osmand_notes_gpx_file():
+    return Path(__file__).parent / "assets" / "osmand_notes.gpx"
+
+
+@pytest.fixture
+def osmand_poi_gpx_file():
+    return Path(__file__).parent / "assets" / "osmand_poi.gpx"

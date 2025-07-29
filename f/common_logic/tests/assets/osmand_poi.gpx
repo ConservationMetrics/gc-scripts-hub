@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<gpx version="1.1" creator="OsmAnd~ 5.1.3" xmlns="http://www.topografix.com/GPX/1/1" xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx" xmlns:gpxtpx="https://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 https://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>favorites-Guyana trip</name>
+  </metadata>
+  <wpt lat="5.8626188" lon="-60.616413">
+    <ele>485.5</ele>
+    <time>2025-04-21T15:29:08Z</time>
+    <name>A&amp;D Sunset Guesthouse</name>
+    <type>Guyana trip</type>
+    <extensions>
+      <osmand:visited_date>2025-04-26T16:57:24Z</osmand:visited_date>
+    </extensions>
+  </wpt>
+  <wpt lat="6.8135605" lon="-58.1573677">
+    <time>2025-04-27T23:57:35Z</time>
+    <name>Cara Lodge</name>
+    <type>Guyana trip</type>
+    <extensions>
+      <osmand:amenity_subtype>hotel</osmand:amenity_subtype>
+      <osmand:address>Quamina Street, Alberttown</osmand:address>
+      <osmand:amenity_origin>Amenity:Cara Lodge: tourism:hotel</osmand:amenity_origin>
+      <osmand:amenity_name>Cara Lodge</osmand:amenity_name>
+      <osmand:osm_tag_wikidata>Q111880937</osmand:osm_tag_wikidata>
+      <osmand:icon>tourism_hotel</osmand:icon>
+      <osmand:visited_date>2025-05-20T16:14:43Z</osmand:visited_date>
+      <osmand:amenity_type>tourism</osmand:amenity_type>
+    </extensions>
+  </wpt>
+  <wpt lat="6.8135607" lon="-58.1573674">
+    <time>2025-05-02T19:21:32Z</time>
+    <name>Hotel</name>
+    <type>Guyana trip</type>
+    <extensions>
+      <osmand:address>Quamina Street, Alberttown</osmand:address>
+      <osmand:visited_date>2025-05-02T19:22:14Z</osmand:visited_date>
+    </extensions>
+  </wpt>
+  <extensions>
+    <osmand:points_groups>
+      <group name="Guyana trip" color="#FF5020" icon="special_star" background="circle" />
+    </osmand:points_groups>
+  </extensions>
+</gpx>

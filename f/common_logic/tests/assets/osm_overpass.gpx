@@ -1,29 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="overpass-turbo"><metadata><desc>Filtered OSM data converted to GPX by overpass turbo</desc><copyright author="The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."/><time>2025-07-18T01:25:10Z</time></metadata><wpt lat="5.8239507" lon="-55.1576618"><name>Bus Station Lijn 5 bus</name><desc>amenity=bus_station
+<gpx
+	xmlns="http://www.topografix.com/GPX/1/1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="overpass-turbo">
+	<metadata>
+		<desc>Filtered OSM data converted to GPX by overpass turbo</desc>
+		<copyright author="The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."/>
+		<time>2025-07-18T01:25:10Z</time>
+	</metadata>
+	<wpt lat="5.8239507" lon="-55.1576618">
+		<name>Bus Station Lijn 5 bus</name>
+		<desc>amenity=bus_station
 bus=yes
 name=Bus Station Lijn 5 bus
 name:en=Line 5 bus station
 name:nl=Lijn 5 bus station
-public_transport=station</desc><link href="http://osm.org/browse/node/1660255196"/></wpt><wpt lat="5.8240285" lon="-55.1580345"><name>Soeng Nige's</name><desc>amenity=restaurant
+public_transport=station</desc>
+		<link href="http://osm.org/browse/node/1660255196"/>
+	</wpt>
+	<wpt lat="5.8240285" lon="-55.1580345">
+		<name>Soeng Nige's</name>
+		<desc>amenity=restaurant
 name=Soeng Nige's
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4408361845"/></wpt><wpt lat="5.8237704" lon="-55.1589811"><name>HJ De Vries Exchange N.V.</name><desc>addr:city=Paramaribo
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4408361845"/>
+	</wpt>
+	<wpt lat="5.8237704" lon="-55.1589811">
+		<name>HJ De Vries Exchange N.V.</name>
+		<desc>addr:city=Paramaribo
 addr:housenumber=92 - 96
 addr:street=Waterkant
 amenity=bureau_de_change
 name=HJ De Vries Exchange N.V.
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4408361850"/></wpt><wpt lat="5.8235864" lon="-55.1605499"><name>Sara's</name><desc>amenity=restaurant
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4408361850"/>
+	</wpt>
+	<wpt lat="5.8235864" lon="-55.1605499">
+		<name>Sara's</name>
+		<desc>amenity=restaurant
 name=Sara's
-source=KG Ground Survey. 2016</desc><link href="http://osm.org/browse/node/4408423967"/></wpt><wpt lat="5.8236325" lon="-55.1606158"><name>Grand Sky Nam Hoj Nokja</name><desc>addr:housenumber=7
+source=KG Ground Survey. 2016</desc>
+		<link href="http://osm.org/browse/node/4408423967"/>
+	</wpt>
+	<wpt lat="5.8236325" lon="-55.1606158">
+		<name>Grand Sky Nam Hoj Nokja</name>
+		<desc>addr:housenumber=7
 addr:street=Dr. Sophie Redmondstraat
 amenity=restaurant
 name=Grand Sky Nam Hoj Nokja
-source=KG Ground Survey. 2016</desc><link href="http://osm.org/browse/node/4408423974"/></wpt><wpt lat="5.8263685" lon="-55.1597951"><name>Moneyline N.V.</name><desc>amenity=bureau_de_change
+source=KG Ground Survey. 2016</desc>
+		<link href="http://osm.org/browse/node/4408423974"/>
+	</wpt>
+	<wpt lat="5.8263685" lon="-55.1597951">
+		<name>Moneyline N.V.</name>
+		<desc>amenity=bureau_de_change
 name=Moneyline N.V.
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4419266906"/></wpt><wpt lat="5.8249353" lon="-55.1609959"><name>Money Line N.V.</name><desc>amenity=bureau_de_change
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4419266906"/>
+	</wpt>
+	<wpt lat="5.8249353" lon="-55.1609959">
+		<name>Money Line N.V.</name>
+		<desc>amenity=bureau_de_change
 name=Money Line N.V.
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4419266917"/></wpt><wpt lat="5.8240695" lon="-55.1586129"><name>Golden Dragon Hotel &amp; Casino</name><desc>amenity=casino
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4419266917"/>
+	</wpt>
+	<wpt lat="5.8240695" lon="-55.1586129">
+		<name>Golden Dragon Hotel &amp; Casino</name>
+		<desc>amenity=casino
 name=Golden Dragon Hotel &amp; Casino
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4419290024"/></wpt><wpt lat="5.8260803" lon="-55.1606579"><name>Popeyes</name><desc>amenity=fast_food
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4419290024"/>
+	</wpt>
+	<wpt lat="5.8260803" lon="-55.1606579">
+		<name>Popeyes</name>
+		<desc>amenity=fast_food
 brand=Popeyes
 brand:wikidata=Q1330910
 brand:wikipedia=en:Popeyes
@@ -31,11 +81,26 @@ cuisine=chicken
 name=Popeyes
 official_name=Popeyes Louisiana Kitchen
 source=KG Ground Survey 2016
-takeaway=yes</desc><link href="http://osm.org/browse/node/4419290047"/></wpt><wpt lat="5.8259293" lon="-55.1606077"><name>Pizza Boys</name><desc>amenity=restaurant
+takeaway=yes</desc>
+		<link href="http://osm.org/browse/node/4419290047"/>
+	</wpt>
+	<wpt lat="5.8259293" lon="-55.1606077">
+		<name>Pizza Boys</name>
+		<desc>amenity=restaurant
 name=Pizza Boys
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4419290048"/></wpt><wpt lat="5.824302" lon="-55.1601921"><name>Apollo Snacks</name><desc>amenity=restaurant
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4419290048"/>
+	</wpt>
+	<wpt lat="5.824302" lon="-55.1601921">
+		<name>Apollo Snacks</name>
+		<desc>amenity=restaurant
 name=Apollo Snacks
-source=KG Ground Survey 2016</desc><link href="http://osm.org/browse/node/4419290051"/></wpt><wpt lat="5.8263693" lon="-55.1606886"><name>Domineestraat 44</name><desc>addr:city=Paramaribo
+source=KG Ground Survey 2016</desc>
+		<link href="http://osm.org/browse/node/4419290051"/>
+	</wpt>
+	<wpt lat="5.8263693" lon="-55.1606886">
+		<name>Domineestraat 44</name>
+		<desc>addr:city=Paramaribo
 addr:country=SR
 addr:housenumber=44
 addr:street=Domineestraat
@@ -43,13 +108,28 @@ amenity=cafe
 name:en=Anthony's Corner
 opening_hours=Mo-Fr 07:00-15:00; Sa 07:00-13:00
 phone=+597 422828
-website=http://www.anthonyscorner.com/</desc><link href="http://osm.org/browse/node/4726921190"/></wpt><wpt lat="5.8236963" lon="-55.1583651"><name>node/12184689909</name><desc>amenity=parking
+website=http://www.anthonyscorner.com/</desc>
+		<link href="http://osm.org/browse/node/4726921190"/>
+	</wpt>
+	<wpt lat="5.8236963" lon="-55.1583651">
+		<name>node/12184689909</name>
+		<desc>amenity=parking
 operator=Harevey parking centrum
 operator:type=government
-survey:date=2024-09-18</desc><link href="http://osm.org/browse/node/12184689909"/></wpt><wpt lat="5.8236885" lon="-55.1583358"><name>node/12186885144</name><desc>amenity=parking
+survey:date=2024-09-18</desc>
+		<link href="http://osm.org/browse/node/12184689909"/>
+	</wpt>
+	<wpt lat="5.8236885" lon="-55.1583358">
+		<name>node/12186885144</name>
+		<desc>amenity=parking
 operator=Humphrey Parking
 operator:type=public
-survey:date=2024-09-19</desc><link href="http://osm.org/browse/node/12186885144"/></wpt><wpt lat="5.8252695" lon="-55.1588545"><name>SMG Schaafijs and More</name><desc>amenity=ice_cream
+survey:date=2024-09-19</desc>
+		<link href="http://osm.org/browse/node/12186885144"/>
+	</wpt>
+	<wpt lat="5.8252695" lon="-55.1588545">
+		<name>SMG Schaafijs and More</name>
+		<desc>amenity=ice_cream
 cuisine=juice
 currency:XBT=yes
 description=Shaved ice with variety of flavors and cocktails
@@ -57,4 +137,7 @@ name=SMG Schaafijs and More
 payment:lightning=yes
 payment:lightning_contactless=yes
 payment:onchain=yes
-survey:date=2024-10-04</desc><link href="http://osm.org/browse/node/12222800352"/></wpt></gpx>
+survey:date=2024-10-04</desc>
+		<link href="http://osm.org/browse/node/12222800352"/>
+	</wpt>
+</gpx>
