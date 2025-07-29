@@ -1,3 +1,392 @@
-<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>overpass-turbo.eu export</name><description>Filtered OSM data converted to KML by overpass turbo.
+<?xml version="1.0" encoding="UTF-8"?>
+<kml
+	xmlns="http://www.opengis.net/kml/2.2">
+	<Document>
+		<name>overpass-turbo.eu export</name>
+		<description>Filtered OSM data converted to KML by overpass turbo.
 Copyright: The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.
-Timestamp: 2025-07-18T01:25:10Z</description><Placemark><name>Bus Station Lijn 5 bus</name><ExtendedData><Data name="@id"><value>node/1660255196</value></Data><Data name="amenity"><value>bus_station</value></Data><Data name="bus"><value>yes</value></Data><Data name="name"><value>Bus Station Lijn 5 bus</value></Data><Data name="name:en"><value>Line 5 bus station</value></Data><Data name="name:nl"><value>Lijn 5 bus station</value></Data><Data name="public_transport"><value>station</value></Data></ExtendedData><Point><coordinates>-55.1576618,5.8239507</coordinates></Point></Placemark><Placemark><name>Soeng Nige's</name><ExtendedData><Data name="@id"><value>node/4408361845</value></Data><Data name="amenity"><value>restaurant</value></Data><Data name="name"><value>Soeng Nige's</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1580345,5.8240285</coordinates></Point></Placemark><Placemark><name>HJ De Vries Exchange N.V.</name><ExtendedData><Data name="@id"><value>node/4408361850</value></Data><Data name="addr:city"><value>Paramaribo</value></Data><Data name="addr:housenumber"><value>92 - 96</value></Data><Data name="addr:street"><value>Waterkant</value></Data><Data name="amenity"><value>bureau_de_change</value></Data><Data name="name"><value>HJ De Vries Exchange N.V.</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1589811,5.8237704</coordinates></Point></Placemark><Placemark><name>Sara's</name><ExtendedData><Data name="@id"><value>node/4408423967</value></Data><Data name="amenity"><value>restaurant</value></Data><Data name="name"><value>Sara's</value></Data><Data name="source"><value>KG Ground Survey. 2016</value></Data></ExtendedData><Point><coordinates>-55.1605499,5.8235864</coordinates></Point></Placemark><Placemark><name>Grand Sky Nam Hoj Nokja</name><ExtendedData><Data name="@id"><value>node/4408423974</value></Data><Data name="addr:housenumber"><value>7</value></Data><Data name="addr:street"><value>Dr. Sophie Redmondstraat</value></Data><Data name="amenity"><value>restaurant</value></Data><Data name="name"><value>Grand Sky Nam Hoj Nokja</value></Data><Data name="source"><value>KG Ground Survey. 2016</value></Data></ExtendedData><Point><coordinates>-55.1606158,5.8236325</coordinates></Point></Placemark><Placemark><name>Moneyline N.V.</name><ExtendedData><Data name="@id"><value>node/4419266906</value></Data><Data name="amenity"><value>bureau_de_change</value></Data><Data name="name"><value>Moneyline N.V.</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1597951,5.8263685</coordinates></Point></Placemark><Placemark><name>Money Line N.V.</name><ExtendedData><Data name="@id"><value>node/4419266917</value></Data><Data name="amenity"><value>bureau_de_change</value></Data><Data name="name"><value>Money Line N.V.</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1609959,5.8249353</coordinates></Point></Placemark><Placemark><name>Golden Dragon Hotel &amp; Casino</name><ExtendedData><Data name="@id"><value>node/4419290024</value></Data><Data name="amenity"><value>casino</value></Data><Data name="name"><value>Golden Dragon Hotel &amp; Casino</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1586129,5.8240695</coordinates></Point></Placemark><Placemark><name>Popeyes</name><ExtendedData><Data name="@id"><value>node/4419290047</value></Data><Data name="amenity"><value>fast_food</value></Data><Data name="brand"><value>Popeyes</value></Data><Data name="brand:wikidata"><value>Q1330910</value></Data><Data name="brand:wikipedia"><value>en:Popeyes</value></Data><Data name="cuisine"><value>chicken</value></Data><Data name="name"><value>Popeyes</value></Data><Data name="official_name"><value>Popeyes Louisiana Kitchen</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data><Data name="takeaway"><value>yes</value></Data></ExtendedData><Point><coordinates>-55.1606579,5.8260803</coordinates></Point></Placemark><Placemark><name>Pizza Boys</name><ExtendedData><Data name="@id"><value>node/4419290048</value></Data><Data name="amenity"><value>restaurant</value></Data><Data name="name"><value>Pizza Boys</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1606077,5.8259293</coordinates></Point></Placemark><Placemark><name>Apollo Snacks</name><ExtendedData><Data name="@id"><value>node/4419290051</value></Data><Data name="amenity"><value>restaurant</value></Data><Data name="name"><value>Apollo Snacks</value></Data><Data name="source"><value>KG Ground Survey 2016</value></Data></ExtendedData><Point><coordinates>-55.1601921,5.824302</coordinates></Point></Placemark><Placemark><ExtendedData><Data name="@id"><value>node/4726921190</value></Data><Data name="addr:city"><value>Paramaribo</value></Data><Data name="addr:country"><value>SR</value></Data><Data name="addr:housenumber"><value>44</value></Data><Data name="addr:street"><value>Domineestraat</value></Data><Data name="amenity"><value>cafe</value></Data><Data name="name:en"><value>Anthony's Corner</value></Data><Data name="opening_hours"><value>Mo-Fr 07:00-15:00; Sa 07:00-13:00</value></Data><Data name="phone"><value>+597 422828</value></Data><Data name="website"><value>http://www.anthonyscorner.com/</value></Data></ExtendedData><Point><coordinates>-55.1606886,5.8263693</coordinates></Point></Placemark><Placemark><ExtendedData><Data name="@id"><value>node/12184689909</value></Data><Data name="amenity"><value>parking</value></Data><Data name="operator"><value>Harevey parking centrum</value></Data><Data name="operator:type"><value>government</value></Data><Data name="survey:date"><value>2024-09-18</value></Data></ExtendedData><Point><coordinates>-55.1583651,5.8236963</coordinates></Point></Placemark><Placemark><ExtendedData><Data name="@id"><value>node/12186885144</value></Data><Data name="amenity"><value>parking</value></Data><Data name="operator"><value>Humphrey Parking</value></Data><Data name="operator:type"><value>public</value></Data><Data name="survey:date"><value>2024-09-19</value></Data></ExtendedData><Point><coordinates>-55.1583358,5.8236885</coordinates></Point></Placemark><Placemark><name>SMG Schaafijs and More</name><description>Shaved ice with variety of flavors and cocktails</description><ExtendedData><Data name="@id"><value>node/12222800352</value></Data><Data name="amenity"><value>ice_cream</value></Data><Data name="cuisine"><value>juice</value></Data><Data name="currency:XBT"><value>yes</value></Data><Data name="description"><value>Shaved ice with variety of flavors and cocktails</value></Data><Data name="name"><value>SMG Schaafijs and More</value></Data><Data name="payment:lightning"><value>yes</value></Data><Data name="payment:lightning_contactless"><value>yes</value></Data><Data name="payment:onchain"><value>yes</value></Data><Data name="survey:date"><value>2024-10-04</value></Data></ExtendedData><Point><coordinates>-55.1588545,5.8252695</coordinates></Point></Placemark></Document></kml>
+Timestamp: 2025-07-18T01:25:10Z</description>
+		<Placemark>
+			<name>Bus Station Lijn 5 bus</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/1660255196</value>
+				</Data>
+				<Data name="amenity">
+					<value>bus_station</value>
+				</Data>
+				<Data name="bus">
+					<value>yes</value>
+				</Data>
+				<Data name="name">
+					<value>Bus Station Lijn 5 bus</value>
+				</Data>
+				<Data name="name:en">
+					<value>Line 5 bus station</value>
+				</Data>
+				<Data name="name:nl">
+					<value>Lijn 5 bus station</value>
+				</Data>
+				<Data name="public_transport">
+					<value>station</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1576618,5.8239507</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Soeng Nige's</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4408361845</value>
+				</Data>
+				<Data name="amenity">
+					<value>restaurant</value>
+				</Data>
+				<Data name="name">
+					<value>Soeng Nige's</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1580345,5.8240285</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>HJ De Vries Exchange N.V.</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4408361850</value>
+				</Data>
+				<Data name="addr:city">
+					<value>Paramaribo</value>
+				</Data>
+				<Data name="addr:housenumber">
+					<value>92 - 96</value>
+				</Data>
+				<Data name="addr:street">
+					<value>Waterkant</value>
+				</Data>
+				<Data name="amenity">
+					<value>bureau_de_change</value>
+				</Data>
+				<Data name="name">
+					<value>HJ De Vries Exchange N.V.</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1589811,5.8237704</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Sara's</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4408423967</value>
+				</Data>
+				<Data name="amenity">
+					<value>restaurant</value>
+				</Data>
+				<Data name="name">
+					<value>Sara's</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey. 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1605499,5.8235864</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Grand Sky Nam Hoj Nokja</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4408423974</value>
+				</Data>
+				<Data name="addr:housenumber">
+					<value>7</value>
+				</Data>
+				<Data name="addr:street">
+					<value>Dr. Sophie Redmondstraat</value>
+				</Data>
+				<Data name="amenity">
+					<value>restaurant</value>
+				</Data>
+				<Data name="name">
+					<value>Grand Sky Nam Hoj Nokja</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey. 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1606158,5.8236325</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Moneyline N.V.</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419266906</value>
+				</Data>
+				<Data name="amenity">
+					<value>bureau_de_change</value>
+				</Data>
+				<Data name="name">
+					<value>Moneyline N.V.</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1597951,5.8263685</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Money Line N.V.</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419266917</value>
+				</Data>
+				<Data name="amenity">
+					<value>bureau_de_change</value>
+				</Data>
+				<Data name="name">
+					<value>Money Line N.V.</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1609959,5.8249353</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Golden Dragon Hotel &amp; Casino</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419290024</value>
+				</Data>
+				<Data name="amenity">
+					<value>casino</value>
+				</Data>
+				<Data name="name">
+					<value>Golden Dragon Hotel &amp; Casino</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1586129,5.8240695</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Popeyes</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419290047</value>
+				</Data>
+				<Data name="amenity">
+					<value>fast_food</value>
+				</Data>
+				<Data name="brand">
+					<value>Popeyes</value>
+				</Data>
+				<Data name="brand:wikidata">
+					<value>Q1330910</value>
+				</Data>
+				<Data name="brand:wikipedia">
+					<value>en:Popeyes</value>
+				</Data>
+				<Data name="cuisine">
+					<value>chicken</value>
+				</Data>
+				<Data name="name">
+					<value>Popeyes</value>
+				</Data>
+				<Data name="official_name">
+					<value>Popeyes Louisiana Kitchen</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+				<Data name="takeaway">
+					<value>yes</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1606579,5.8260803</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Pizza Boys</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419290048</value>
+				</Data>
+				<Data name="amenity">
+					<value>restaurant</value>
+				</Data>
+				<Data name="name">
+					<value>Pizza Boys</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1606077,5.8259293</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Apollo Snacks</name>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4419290051</value>
+				</Data>
+				<Data name="amenity">
+					<value>restaurant</value>
+				</Data>
+				<Data name="name">
+					<value>Apollo Snacks</value>
+				</Data>
+				<Data name="source">
+					<value>KG Ground Survey 2016</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1601921,5.824302</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/4726921190</value>
+				</Data>
+				<Data name="addr:city">
+					<value>Paramaribo</value>
+				</Data>
+				<Data name="addr:country">
+					<value>SR</value>
+				</Data>
+				<Data name="addr:housenumber">
+					<value>44</value>
+				</Data>
+				<Data name="addr:street">
+					<value>Domineestraat</value>
+				</Data>
+				<Data name="amenity">
+					<value>cafe</value>
+				</Data>
+				<Data name="name:en">
+					<value>Anthony's Corner</value>
+				</Data>
+				<Data name="opening_hours">
+					<value>Mo-Fr 07:00-15:00; Sa 07:00-13:00</value>
+				</Data>
+				<Data name="phone">
+					<value>+597 422828</value>
+				</Data>
+				<Data name="website">
+					<value>http://www.anthonyscorner.com/</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1606886,5.8263693</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/12184689909</value>
+				</Data>
+				<Data name="amenity">
+					<value>parking</value>
+				</Data>
+				<Data name="operator">
+					<value>Harevey parking centrum</value>
+				</Data>
+				<Data name="operator:type">
+					<value>government</value>
+				</Data>
+				<Data name="survey:date">
+					<value>2024-09-18</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1583651,5.8236963</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/12186885144</value>
+				</Data>
+				<Data name="amenity">
+					<value>parking</value>
+				</Data>
+				<Data name="operator">
+					<value>Humphrey Parking</value>
+				</Data>
+				<Data name="operator:type">
+					<value>public</value>
+				</Data>
+				<Data name="survey:date">
+					<value>2024-09-19</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1583358,5.8236885</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>SMG Schaafijs and More</name>
+			<description>Shaved ice with variety of flavors and cocktails</description>
+			<ExtendedData>
+				<Data name="@id">
+					<value>node/12222800352</value>
+				</Data>
+				<Data name="amenity">
+					<value>ice_cream</value>
+				</Data>
+				<Data name="cuisine">
+					<value>juice</value>
+				</Data>
+				<Data name="currency:XBT">
+					<value>yes</value>
+				</Data>
+				<Data name="description">
+					<value>Shaved ice with variety of flavors and cocktails</value>
+				</Data>
+				<Data name="name">
+					<value>SMG Schaafijs and More</value>
+				</Data>
+				<Data name="payment:lightning">
+					<value>yes</value>
+				</Data>
+				<Data name="payment:lightning_contactless">
+					<value>yes</value>
+				</Data>
+				<Data name="payment:onchain">
+					<value>yes</value>
+				</Data>
+				<Data name="survey:date">
+					<value>2024-10-04</value>
+				</Data>
+			</ExtendedData>
+			<Point>
+				<coordinates>-55.1588545,5.8252695</coordinates>
+			</Point>
+		</Placemark>
+	</Document>
+</kml>

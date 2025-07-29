@@ -41,17 +41,14 @@ def main(
 
     form_labels = extract_form_labels(form_metadata)
 
-    form_responses, skipped_attachments, form_name, form_languages = (
-        download_form_responses_and_attachments(
-            headers, form_metadata, db_table_name, attachment_root
-        )
+    form_responses, form_name, form_languages = download_form_responses_and_attachments(
+        headers, form_metadata, db_table_name, attachment_root
     )
 
     transformed_form_responses = transform_kobotoolbox_form_data(
         form_responses,
         form_name=form_name,
         form_languages=form_languages,
-        skipped_attachments=skipped_attachments,
     )
 
     kobo_response_writer = StructuredDBWriter(
@@ -298,12 +295,10 @@ def download_form_responses_and_attachments(
         logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
 
     logger.info(f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s).")
-    return form_submissions, skipped_attachments, form_name, form_languages
+    return form_submissions, form_name, form_languages
 
 
-def transform_kobotoolbox_form_data(
-    form_data, form_name=None, form_languages=None, skipped_attachments=None
-):
+def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=None):
     """Transform KoboToolbox form data by adding metadata fields and formatting geometry for SQL database insertion.
 
     Parameters
@@ -314,8 +309,6 @@ def transform_kobotoolbox_form_data(
         The name of the form from metadata. If provided, adds 'dataset_name' field to each submission.
     form_languages : str, optional
         Comma-separated list of form languages. If provided, adds 'form_translations' field to each submission.
-    skipped_attachments : int, optional
-        Number of attachments skipped during download. Used for logging purposes.
 
     Returns
     -------
