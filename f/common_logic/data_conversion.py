@@ -1,6 +1,7 @@
 import csv
 import json
 import logging
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -10,6 +11,74 @@ import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def generate_feature_id(properties: dict) -> str:
+    """
+    Generates a deterministic UUID for a feature based on its properties.
+
+    Uses UUID5 with NAMESPACE_OID to ensure the same properties always generate
+    the same UUID, which is useful for data consistency and deduplication.
+
+    Parameters
+    ----------
+    properties : dict
+        Feature properties to use for UUID generation.
+
+    Returns
+    -------
+    str
+        Deterministic UUID string.
+    """
+    # Sort keys for consistent ordering
+    sorted_props = json.dumps(properties, sort_keys=True)
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, sorted_props))
+
+
+def _add_feature_ids(geojson_data: dict) -> None:
+    """
+    Adds deterministic UUIDs to all features in a GeoJSON FeatureCollection.
+
+    Modifies the input dictionary in-place by adding an '_id' field to each feature.
+
+    Parameters
+    ----------
+    geojson_data : dict
+        GeoJSON FeatureCollection to add IDs to.
+    """
+    if (
+        not isinstance(geojson_data, dict)
+        or geojson_data.get("type") != "FeatureCollection"
+    ):
+        return
+
+    for feature in geojson_data.get("features", []):
+        if isinstance(feature, dict) and feature.get("type") == "Feature":
+            properties = feature.get("properties", {})
+            feature["_id"] = generate_feature_id(properties)
+
+
+def _add_row_ids(csv_data: list[list[str]]) -> None:
+    """
+    Adds deterministic UUIDs to all rows in CSV data.
+
+    Modifies the input list in-place by adding an '_id' column to the header
+    and corresponding UUIDs to each data row.
+
+    Parameters
+    ----------
+    csv_data : list[list[str]]
+        CSV data as list of lists (first row is header).
+    """
+    # Add '_id' to header
+    csv_data[0].insert(0, "_id")
+
+    # Add UUIDs to each data row
+    for i in range(1, len(csv_data)):
+        # Create properties dict from header and row data
+        properties = dict(zip(csv_data[0][1:], csv_data[i]))  # Skip '_id' column
+        row_id = generate_feature_id(properties)
+        csv_data[i].insert(0, row_id)
 
 
 def detect_structured_data_type(file_path: str) -> str:
@@ -132,7 +201,7 @@ def handle_file_errors(func):
     return wrapper
 
 
-def convert_data(file_path: str, file_format: str):
+def convert_data(file_path: str, file_format: str, generate_ids: bool = False):
     """
     Converts a structured input file into a standard tabular or spatial format.
 
@@ -158,6 +227,10 @@ def convert_data(file_path: str, file_format: str):
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
         'gpx', 'kml', 'geojson'.
+    generate_ids : bool, optional
+        Whether to generate deterministic UUIDs for features.
+        For spatial formats (gpx, kml, geojson): adds '_id' field to each feature.
+        For tabular formats (csv, xlsx, xls, json): adds '_id' column to the data.
 
     Returns
     -------
@@ -169,17 +242,35 @@ def convert_data(file_path: str, file_format: str):
 
     match file_format:
         case "csv":
-            return read_csv(path)
+            result = read_csv(path)
+            if generate_ids:
+                _add_row_ids(result)
+            return result
         case "xlsx" | "xls":
-            return excel_to_csv(path)
+            result = excel_to_csv(path)
+            if generate_ids:
+                _add_row_ids(result)
+            return result
         case "json":
-            return json_to_csv(path)
+            result = json_to_csv(path)
+            if generate_ids:
+                _add_row_ids(result)
+            return result
         case "geojson":
-            return read_geojson(path)
+            result = read_geojson(path)
+            if generate_ids:
+                _add_feature_ids(result)
+            return result
         case "gpx":
-            return gpx_to_geojson(path)
+            result = gpx_to_geojson(path)
+            if generate_ids:
+                _add_feature_ids(result)
+            return result
         case "kml":
-            return kml_to_geojson(path)
+            result = kml_to_geojson(path)
+            if generate_ids:
+                _add_feature_ids(result)
+            return result
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 

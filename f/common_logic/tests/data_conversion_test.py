@@ -1,6 +1,6 @@
 import pytest
 
-from f.common_logic.data_conversion import convert_data
+from f.common_logic.data_conversion import convert_data, generate_feature_id
 
 
 def _validate_geojson_structure(result, expected_feature_count):
@@ -44,6 +44,117 @@ def _assert_osmand_property(props, key, expected_value=None):
         assert actual_value == expected_value, (
             f"Expected {key}={expected_value}, got {actual_value}"
         )
+
+
+def test_generate_feature_id_deterministic():
+    """Test that generate_feature_id produces deterministic results."""
+    properties1 = {
+        "name": "Test Point",
+        "description": "A test point",
+        "lat": 40.0,
+        "lon": -74.0,
+    }
+    properties2 = {
+        "name": "Test Point",
+        "description": "A test point",
+        "lat": 40.0,
+        "lon": -74.0,
+    }
+    properties3 = {
+        "name": "Different Point",
+        "description": "A test point",
+        "lat": 40.0,
+        "lon": -74.0,
+    }
+
+    # Same properties should generate same ID
+    id1 = generate_feature_id(properties1)
+    id2 = generate_feature_id(properties2)
+    assert id1 == id2
+
+    # Different properties should generate different ID
+    id3 = generate_feature_id(properties3)
+    assert id1 != id3
+
+    # Order shouldn't matter
+    properties_reordered = {
+        "lon": -74.0,
+        "description": "A test point",
+        "name": "Test Point",
+        "lat": 40.0,
+    }
+    id4 = generate_feature_id(properties_reordered)
+    assert id1 == id4
+
+
+def test_convert_data_with_ids_gpx(locusmap_points_gpx_file):
+    """Test that GPX conversion with ID generation works correctly."""
+    result = convert_data(str(locusmap_points_gpx_file), "gpx", generate_ids=True)
+
+    # Check that all features have IDs
+    for feature in result["features"]:
+        assert "_id" in feature
+        assert isinstance(feature["_id"], str)
+        assert len(feature["_id"]) > 0
+
+    # Check that IDs are deterministic (same result on second call)
+    result2 = convert_data(str(locusmap_points_gpx_file), "gpx", generate_ids=True)
+    for i, feature in enumerate(result["features"]):
+        assert feature["_id"] == result2["features"][i]["_id"]
+
+
+def test_convert_data_with_ids_kml(locusmap_points_kml_file):
+    """Test that KML conversion with ID generation works correctly."""
+    result = convert_data(str(locusmap_points_kml_file), "kml", generate_ids=True)
+
+    # Check that all features have IDs
+    for feature in result["features"]:
+        assert "_id" in feature
+        assert isinstance(feature["_id"], str)
+        assert len(feature["_id"]) > 0
+
+
+def test_convert_data_without_ids_gpx(locusmap_points_gpx_file):
+    """Test that GPX conversion without ID generation doesn't add IDs."""
+    result = convert_data(str(locusmap_points_gpx_file), "gpx", generate_ids=False)
+
+    # Check that no features have IDs
+    for feature in result["features"]:
+        assert "_id" not in feature
+
+
+def test_convert_data_with_ids_csv(kobotoolbox_csv_file):
+    """Test that CSV conversion with ID generation works correctly."""
+    result = convert_data(str(kobotoolbox_csv_file), "csv", generate_ids=True)
+
+    # Check that header has '_id' column
+    assert result[0][0] == "_id"
+
+    # Check that all data rows have IDs
+    for i in range(1, len(result)):
+        assert len(result[i]) > 0
+        assert isinstance(result[i][0], str)
+        assert len(result[i][0]) > 0  # UUID should not be empty
+
+    # Check that IDs are deterministic (same result on second call)
+    result2 = convert_data(str(kobotoolbox_csv_file), "csv", generate_ids=True)
+    for i in range(1, len(result)):
+        assert result[i][0] == result2[i][0]  # Same ID for same row
+
+
+def test_convert_data_without_ids_csv(kobotoolbox_csv_file):
+    """Test that CSV conversion without ID generation doesn't add IDs."""
+    result = convert_data(str(kobotoolbox_csv_file), "csv", generate_ids=False)
+
+    # Check that header doesn't have '_id' column
+    assert result[0][0] != "_id"
+
+    # Check that no data rows have IDs in first column
+    for i in range(1, len(result)):
+        # First column should be original data, not a UUID
+        assert not result[i][0].startswith(
+            "_id"
+        )  # Basic check that it's not an ID field
 
 
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
