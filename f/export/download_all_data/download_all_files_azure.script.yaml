@@ -6,7 +6,7 @@ description: >-
   Ideal for creating fast and reliable file transfer options without requiring
   zipping large directories or putting load on your GC deployment.
 
-lock: '!inline f/export/download_all_files/download_all_files_azure.script.lock'
+lock: '!inline f/export/download_all_data/download_all_files_azure.script.lock'
 concurrency_time_window_s: 0
 kind: script
 
