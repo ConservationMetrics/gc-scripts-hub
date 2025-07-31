@@ -251,6 +251,136 @@ def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
     return new_dict
 
 
+def download_project_observations_and_attachments(
+    server_url, access_token, project_id, project_name, attachment_root
+):
+    """Download observations and their attachments for a specific project from the CoMapeo API.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    access_token : str
+        The access token for authentication.
+    project_id : str
+        The unique identifier of the project.
+    project_name : str
+        The name of the project.
+    attachment_root : str
+        The root directory where attachments will be saved.
+
+    Returns
+    -------
+    tuple
+        A tuple containing (observations, skipped_attachments, attachment_failed).
+    """
+    url = f"{server_url}/projects/{project_id}/observations"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    logger.info(f"Fetching project (ID: {project_id})...")
+    response = requests.get(url, headers=headers)
+
+    try:
+        observations = response.json().get("data", [])
+    except requests.exceptions.JSONDecodeError:
+        logger.error("Failed to decode JSON from response.")
+        logger.info("Response received: ", response.text)
+        raise ValueError("Invalid JSON response received from server.")
+
+    # Download attachments for all observations
+    sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
+    attachment_dir = (
+        Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
+    )
+    existing_file_stems = build_existing_file_set(attachment_dir)
+
+    skipped_attachments = 0
+    attachment_failed = False
+
+    for observation in observations:
+        if "attachments" in observation:
+            filenames = []
+            for attachment in observation["attachments"]:
+                if "url" in attachment:
+                    file_name, skipped = download_attachment(
+                        attachment["url"],
+                        headers,
+                        str(attachment_dir / Path(attachment["url"]).name),
+                        existing_file_stems,
+                    )
+                    skipped_attachments += skipped
+                    if file_name is not None:
+                        filenames.append(file_name)
+                    else:
+                        logger.error(
+                            f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
+                        )
+                        attachment_failed = True
+
+            observation["attachments"] = ", ".join(filenames)
+
+    return observations, skipped_attachments, attachment_failed
+
+
+def transform_comapeo_observations(observations, project_name, project_id):
+    """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
+
+    Parameters
+    ----------
+    observations : list
+        A list of raw observation data from the CoMapeo API.
+    project_name : str
+        The name of the project these observations belong to.
+    project_id : str
+        The unique identifier of the project.
+
+    Returns
+    -------
+    list
+        A list of GeoJSON Feature objects with transformed properties and geometry.
+    """
+    features = []
+
+    for observation in observations:
+        # Create k/v pairs for each tag
+        for key, value in observation.pop("tags", {}).items():
+            observation[key] = value
+
+        # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
+        special_case_keys = set(["docId"])
+        observation = normalize_and_snakecase_keys(observation, special_case_keys)
+
+        # Add project-specific information to properties
+        observation["project_name"] = project_name
+        observation["project_id"] = project_id
+        observation["data_source"] = "CoMapeo"
+
+        # Create GeoJSON Feature
+        # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
+        # Other geometry types and formats may be added in the future
+        feature = {
+            "type": "Feature",
+            # docId is the unique identifier for the observation. We'll use it as the ID for the feature
+            # and also include it in the properties
+            "id": observation["docId"],
+            "properties": {
+                k: str(v) for k, v in observation.items() if k not in ["lat", "lon"]
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [observation["lon"], observation["lat"]],
+            }
+            if "lat" in observation and "lon" in observation
+            else None,
+        }
+
+        features.append(feature)
+
+    return features
+
+
 def download_and_transform_comapeo_data(
     server_url,
     access_token,
@@ -285,91 +415,21 @@ def download_and_transform_comapeo_data(
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
-        sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
 
-        # Download the project data
-        url = f"{server_url}/projects/{project_id}/observations"
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-        }
-
-        logger.info(f"Fetching project {index + 1} (ID: {project_id})...")
-        response = requests.get(url, headers=headers)
-        current_project_data = []
-
-        try:
-            current_project_data = response.json().get("data", [])
-        except requests.exceptions.JSONDecodeError:
-            logger.error("Failed to decode JSON from response.")
-            logger.info("Response received: ", response.text)
-            raise ValueError("Invalid JSON response received from server.")
-
-        skipped_attachments = 0
-        features = []
-
-        attachment_dir = (
-            Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
+        # Download all observations and attachments for this project
+        observations, skipped_attachments, project_attachment_failed = (
+            download_project_observations_and_attachments(
+                server_url, access_token, project_id, project_name, attachment_root
+            )
         )
-        existing_file_stems = build_existing_file_set(attachment_dir)
 
-        for i, observation in enumerate(current_project_data):
-            # Create k/v pairs for each tag
-            for key, value in observation.pop("tags", {}).items():
-                observation[key] = value
-
-            # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
-            special_case_keys = set(["docId"])
-            observation = normalize_and_snakecase_keys(observation, special_case_keys)
-
-            # Add project-specific information to properties
-            observation["project_name"] = project_name
-            observation["project_id"] = project_id
-            observation["data_source"] = "CoMapeo"
-
-            # Create GeoJSON Feature
-            # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
-            # Other geometry types and formats may be added in the future
-            feature = {
-                "type": "Feature",
-                # docId is the unique identifier for the observation. We'll use it as the ID for the feature
-                # and also include it in the properties
-                "id": observation["docId"],
-                "properties": {
-                    k: str(v) for k, v in observation.items() if k not in ["lat", "lon"]
-                },
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [observation["lon"], observation["lat"]],
-                }
-                if "lat" in observation and "lon" in observation
-                else None,
-            }
-
-            # Download attachments
-            if "attachments" in observation:
-                filenames = []
-                for attachment in observation["attachments"]:
-                    if "url" in attachment:
-                        file_name, skipped = download_attachment(
-                            attachment["url"],
-                            headers,
-                            str(attachment_dir / Path(attachment["url"]).name),
-                            existing_file_stems,
-                        )
-                        skipped_attachments += skipped
-                        if file_name is not None:
-                            filenames.append(file_name)
-                        else:
-                            logger.error(
-                                f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
-                            )
-                            attachment_failed = True
-
-                feature["properties"]["attachments"] = ", ".join(filenames)
-
-            features.append(feature)
+        # Transform observations to GeoJSON features
+        features = transform_comapeo_observations(
+            observations, project_name, project_id
+        )
 
         # Store observations as a GeoJSON FeatureCollection
+        sanitized_project_name = re.sub(r"\W+", "_", project_name).lower()
         comapeo_data[sanitized_project_name] = {
             "type": "FeatureCollection",
             "features": features,
@@ -380,7 +440,10 @@ def download_and_transform_comapeo_data(
                 f"Skipped downloading {skipped_attachments} media attachment(s)."
             )
 
+        if project_attachment_failed:
+            attachment_failed = True
+
         logger.info(
-            f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(current_project_data)} observation(s)."
+            f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s)."
         )
     return comapeo_data, attachment_failed
