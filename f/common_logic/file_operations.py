@@ -64,7 +64,9 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
     logger.info(f"{file_type.upper()} file saved to {file_path}")
 
 
-def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storage/tmp"):
+def save_uploaded_file_to_temp(
+    uploaded_file, tmp_dir: str = "/persistent-storage/tmp", is_base64: bool = True
+):
     """
     Saves an uploaded file to a temp directory and extracts it if it's a ZIP or KMZ.
 
@@ -79,11 +81,13 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
     Parameters
     ----------
     uploaded_file : list of dict
-        List with one dict: {"name": str, "data": base64-encoded str}
+        List with one dict: {"name": str, "data": str or bytes}
         This is the currently used format in which files are uploaded to a
         Windmill app. See https://www.windmill.dev/docs/core_concepts/files_binary_data
     tmp_dir : str
         Directory to save file(s). Default: /persistent-storage/tmp
+    is_base64 : bool
+        Whether the data is base64 encoded. Default: True
 
     Returns
     -------
@@ -96,7 +100,14 @@ def save_uploaded_file_to_temp(uploaded_file, tmp_dir: str = "/persistent-storag
     try:
         file_info = uploaded_file[0]
         filename = file_info["name"]
-        raw_data = base64.b64decode(file_info["data"].encode())
+        data = file_info["data"]
+
+        # Decode base64 if specified, otherwise treat as raw data
+        if is_base64:
+            raw_data = base64.b64decode(data.encode())
+        else:
+            # If not base64 encoded, treat as raw bytes
+            raw_data = data.encode() if isinstance(data, str) else data
 
         tmp_dir_path = Path(tmp_dir)
         tmp_dir_path.mkdir(parents=True, exist_ok=True)
