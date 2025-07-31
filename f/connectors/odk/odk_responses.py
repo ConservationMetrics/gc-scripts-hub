@@ -67,7 +67,7 @@ def main(
             client, project_id, form_id, db_table_name, attachment_root
         )
 
-        transformed_form_data = format_geometry_fields(form_data)
+        transformed_form_data = transform_odk_form_data(form_data, form_name=form_id)
 
         db_writer = StructuredDBWriter(
             conninfo(db),
@@ -116,7 +116,7 @@ def _download_submission_attachments(
     """
     skipped_attachments = 0
 
-    uuid = submission.get("_id")
+    uuid = submission.get("__id")
     attachments_path = (
         f"projects/{project_id}/forms/{form_id}/submissions/{uuid}/attachments"
     )
@@ -178,10 +178,6 @@ def download_form_responses_and_attachments(
     skipped_attachments = 0
 
     for submission in form_submissions:
-        submission["_id"] = submission.pop("__id")
-        submission["dataset_name"] = form_id
-        submission["data_source"] = "ODK"
-
         # Download attachments for each submission, if they exist
         if submission.get("__system", {}).get("attachmentsPresent", 0) != 0:
             skipped_attachments += _download_submission_attachments(
@@ -195,36 +191,84 @@ def download_form_responses_and_attachments(
     return form_submissions
 
 
-def format_geometry_fields(form_data):
-    """Transform ODK form data by formatting geometry fields for SQL database insertion.
+def _extract_coordinates_from_submission(submission):
+    """Extract coordinates from submission data, handling both location object and location-Latitude/location-Longitude fields.
 
-    Note that ODK also stores altitude in the coordinates array, but we are only interested in extracting lat/long. But we preserve the location object in the transformed data in case it is needed.
+    Parameters
+    ----------
+    submission : dict
+        The form submission data
+
+    Returns
+    -------
+    list or None
+        Coordinates as [lon, lat] for GeoJSON compliance, or None if no valid coordinates found
+    """
+    # First try to extract from location object (API format)
+    if "location" in submission and submission["location"]:
+        location_data = submission["location"]
+        if "coordinates" in location_data:
+            coordinates = location_data["coordinates"]
+            # Extract latitude and longitude only (ODK stores as [lon, lat, altitude])
+            if len(coordinates) >= 2:
+                lon, lat = coordinates[:2]
+                return [lon, lat]
+
+    # Fallback to location-Latitude/location-Longitude fields (CSV format)
+    lat_key = "location-Latitude"
+    lon_key = "location-Longitude"
+
+    if lat_key in submission and lon_key in submission:
+        try:
+            lat = float(submission[lat_key])
+            lon = float(submission[lon_key])
+            # Convert [lat, lon] to [lon, lat] for GeoJSON compliance
+            return [lon, lat]
+        except (ValueError, TypeError):
+            # Skip invalid coordinate values
+            pass
+
+    return None
+
+
+def transform_odk_form_data(form_data, form_name=None):
+    """Transform ODK form data by adding metadata fields and formatting geometry for SQL database insertion.
+
+    Note that ODK also stores altitude in the coordinates array, but we are only interested in extracting lat/long.
+    The location object is preserved in the transformed data in case it is needed.
 
     Parameters
     ----------
     form_data : list
         A list of form submissions downloaded from the ODK API.
+    form_name : str, optional
+        The name of the form. If provided, adds 'dataset_name' field to each submission.
 
     Returns
     -------
     list
-        A list of transformed form submissions.
+        A list of transformed form submissions with added metadata fields and formatted geometry.
     """
     for submission in form_data:
-        if "location" in submission and submission["location"]:
-            location_data = submission["location"]
+        # Add metadata fields
+        # Handle both API format (__id) and CSV format (KEY)
+        if "__id" in submission:
+            submission["_id"] = submission.pop("__id")
+        elif "KEY" in submission:
+            submission["_id"] = submission.pop("KEY")
 
-            if "coordinates" in location_data:
-                coordinates = location_data["coordinates"]
+        if form_name:
+            submission["dataset_name"] = form_name
+        submission["data_source"] = "ODK"
 
-                # Extract latitude and longitude only
-                lon, lat = coordinates[:2]
-
-                submission.update(
-                    {
-                        "g__type": location_data.get("type", "Point"),
-                        "g__coordinates": [lon, lat],
-                    }
-                )
+        # Transform geometry fields for GeoJSON compliance
+        coordinates = _extract_coordinates_from_submission(submission)
+        if coordinates:
+            submission.update(
+                {
+                    "g__type": "Point",
+                    "g__coordinates": coordinates,
+                }
+            )
 
     return form_data
