@@ -172,86 +172,22 @@ value:
           - Upload your file
           - Apply transformations
   hiddenInlineScripts:
-    - type: runnableByPath
-      name: 'Locus Map: Import Data'
+    - type: runnableByName
+      name: Toggle state.datasetAvailable
       autoRefresh: false
-      fields:
-        attachment_root:
-          type: static
-          value: /persistent-storage/datalake
-          fieldType: string
-        db:
-          type: static
-          fieldType: object
-          format: resource-postgresql
-        db_table_name:
-          type: evalv2
-          value: null
-          connections:
-            - id: result
-              componentId: uploadFile
-          expr: uploadFile.result.db_table_name
-          fieldType: string
-        delete_locusmap_export_file:
-          type: static
-          value: true
-          fieldType: boolean
-        locusmap_export_path:
-          type: evalv2
-          connections:
-            - id: result
-              componentId: uploadFile
-          expr: uploadFile.result.file_path
-          fieldType: string
-      path: f/connectors/locusmap/locusmap
-      recomputeIds:
-        - bg_2
-      recomputeOnInputChanged: false
-      runType: script
-      schema:
-        $schema: 'https://json-schema.org/draft/2020-12/schema'
-        type: object
-        order:
-          - locusmap_export_path
-          - db
-          - db_table_prefix
-          - delete_locusmap_export_file
-          - attachment_root
-        properties:
-          attachment_root:
-            type: string
-            description: >-
-              A path where Locus Map attachments will be stored. Attachment
-              files will be stored in the following directory schema: 
-              `{attachment_root}/{db_table_name}/attachments/{filename}`
-            default: /persistent-storage/datalake
-            originalType: string
-          db:
-            type: object
-            description: A database connection for storing tabular data.
-            default: null
-            format: resource-postgresql
-          db_table_name:
-            type: string
-            description: The name of the database table where the form data will be stored.
-            default: null
-            originalType: string
-            pattern: '^.{1,54}$'
-          delete_locusmap_export_file:
-            type: boolean
-            description: Whether to delete the Locus Map export file after processing.
-            default: false
-          locusmap_export_path:
-            type: string
-            description: >-
-              The path to the file exported from Locus Map, including the
-              filename. This could be a GPX/KML/CSV file, or a ZIP file also
-              containing attachments.
-            originalType: string
-        required:
-          - db
-          - db_table_name
-          - locusmap_export_path
+      fields: {}
+      inlineScript:
+        content: '!inline toggle_state.datasetavailable.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_file_uploader/Toggle_state.datasetAvailable
+        refreshOn: []
+        suggestedRefreshOn:
+          - id: state
+            key: datasetAvailable
+          - id: submitDatasetName
+            key: result
+      recomputeIds: []
+      recomputeOnInputChanged: true
     - type: runnableByName
       name: Set state.uploadSuccess to false
       autoRefresh: true
@@ -259,8 +195,10 @@ value:
       inlineScript:
         content: '!inline set_state.uploadsuccess_to_false.inline_script.frontend.js'
         language: frontend
-        path: f/apps/gc_uploader/Set_state.uploadSuccess_to_false
+        path: f/apps/gc_file_uploader/Set_state.uploadSuccess_to_false
         suggestedRefreshOn:
+          - id: state
+            key: uploadProcessing
           - id: state
             key: uploadSuccess
       recomputeIds: []
@@ -272,16 +210,17 @@ value:
       inlineScript:
         content: '!inline toggle_state.uploadsuccess.inline_script.frontend.js'
         language: frontend
-        path: f/apps/gc_uploader/Toggle_state.uploadSuccess
+        path: f/apps/gc_file_uploader/Toggle_state.uploadSuccess
+        refreshOn:
+          - id: uploadFile
+            key: result
         suggestedRefreshOn:
+          - id: selectFile
+            key: result
           - id: state
             key: uploadSuccess
           - id: state
             key: uploadProcessing
-          - id: selectFile
-            key: result
-          - id: uploadFile
-            key: result
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
@@ -291,7 +230,7 @@ value:
       inlineScript:
         content: '!inline toggle_state.uploadbuttonenabled.inline_script.frontend.js'
         language: frontend
-        path: f/apps/gc_uploader/Toggle_state.uploadButtonEnabled
+        path: f/apps/gc_file_uploader/Toggle_state.uploadButtonEnabled
         suggestedRefreshOn:
           - id: selectFile
             key: result
@@ -304,7 +243,7 @@ value:
       inlineScript:
         content: '!inline set_state.uploadprocessing_to_true;.inline_script.frontend.js'
         language: frontend
-        path: f/apps/gc_uploader/Set_state.uploadProcessing_to_true;
+        path: f/apps/gc_file_uploader/Set_state.uploadProcessing_to_true;
         suggestedRefreshOn:
           - id: state
             key: uploadProcessing
@@ -425,8 +364,8 @@ value:
                 language: frontend
                 path: f/apps/gc_file_uploader/Eval_of_enterDatasetNameResultMessage
                 refreshOn:
-                  - id: submitDatasetName
-                    key: result
+                  - id: state
+                    key: datasetAvailable
                 suggestedRefreshOn: []
           configuration:
             copyButton:
@@ -636,7 +575,8 @@ value:
               class: ''
               style: ''
           horizontalAlignment: center
-          recomputeIds: []
+          recomputeIds:
+            - bg_0
           verticalAlignment: center
     formStepper-1:
       - '12':
@@ -682,7 +622,7 @@ value:
               style: ''
             text:
               class: ''
-              style: 'font-size: 0.6em!important;'
+              style: 'font-size: 0.7em;'
           horizontalAlignment: center
           verticalAlignment: center
       - '12':
@@ -748,6 +688,183 @@ value:
           onFileChange:
             - bg_3
             - bg_1
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 5
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: uploadFile
+        data:
+          id: uploadFile
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields:
+              uploaded_file:
+                type: evalv2
+                value: null
+                connections:
+                  - id: result
+                    componentId: selectFile
+                expr: selectFile.result
+                fieldType: object
+            fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              type: runnableByName
+              name: Upload and convert file
+              inlineScript:
+                content: '!inline upload_and_convert_file.inline_script.py'
+                lock: '!inline upload_and_convert_file.inline_script.lock'
+                language: python3
+                path: f/apps/gc_file_uploader/Upload_and_convert_file
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    uploaded_file:
+                      type: object
+                      description: ''
+                      default: null
+                  required:
+                    - uploaded_file
+          configuration:
+            afterIcon:
+              type: static
+              value: ''
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: blue
+            confirmationModal:
+              type: oneOf
+              configuration:
+                confirmationModal:
+                  description:
+                    type: static
+                    value: Are you sure?
+                  confirmationText:
+                    type: static
+                    value: Confirm
+                  title:
+                    type: static
+                    value: Title
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: uploadButtonEnabled
+                  componentId: state
+              expr: '!state.uploadButtonEnabled === true'
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Upload File
+            onError:
+              type: oneOf
+              configuration:
+                close:
+                  id:
+                    type: static
+                    value: ''
+                errorOverlay: {}
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                open:
+                  id:
+                    type: static
+                    value: ''
+                sendErrorToast:
+                  appendError:
+                    type: static
+                    value: true
+                  message:
+                    type: static
+                    value: An error occured
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: errorOverlay
+            onSuccess:
+              type: oneOf
+              configuration:
+                clearFiles:
+                  id:
+                    type: static
+                    value: ''
+                close:
+                  id:
+                    type: static
+                    value: ''
+                closeModal:
+                  modalId:
+                    type: static
+                    value: ''
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                none: {}
+                open:
+                  id:
+                    type: static
+                    value: ''
+                openModal:
+                  modalId:
+                    type: static
+                    value: ''
+                sendToast:
+                  message:
+                    type: static
+                    value: ''
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: none
+            size:
+              type: static
+              value: xs
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds:
+            - bg_4
+          verticalAlignment: center
       - '12':
           fixed: true
           fullHeight: false
@@ -822,12 +939,10 @@ policy:
   execution_mode: publisher
   s3_inputs: []
   triggerables_v2:
-    'bg_0:script/f/connectors/locusmap/locusmap':
+    'bg_0:rawscript/2fdb0026720b703ec365c0897de34009bb5f6904789849bb71d89b3947f428a4':
       allow_user_resources: []
       one_of_inputs: {}
-      static_inputs:
-        attachment_root: /persistent-storage/datalake
-        delete_locusmap_export_file: true
+      static_inputs: {}
     'bg_1:rawscript/75680a5e96c31082b2eac6745fda4454fa917497f23e5150a445949265d92dd9':
       allow_user_resources: []
       one_of_inputs: {}
@@ -844,7 +959,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'enterDatasetNameResultMessage:rawscript/cf56af06c2c3fb77df89868d94124e0f410e0050cd2ed397f28d4992f40ba568':
+    'enterDatasetNameResultMessage:rawscript/8e953eb74403c32e19ea085c922c8d5e9b78bdbbbb7d8712d910d85b2c33f003':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -857,6 +972,10 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
+    'uploadFile:rawscript/160bb6889154df9181a28ee65378c25b43ea50b4c5d4234a9c610306e86964d2':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
     'uploadFileResultMessage:rawscript/72c57efb22b5201ca42e05750e728495cced21917f6f05b98dee8cabd63096a0':
       allow_user_resources: []
       one_of_inputs: {}
