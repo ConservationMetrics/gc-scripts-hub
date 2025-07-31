@@ -10,5 +10,5 @@ def main(uploaded_file):
 
     converted_data = convert_data(file_path, file_type)
 
-    print(converted_data)
+    return(converted_data)
    
