@@ -160,9 +160,9 @@ value:
                 - id: formStepper
                   key: lastAction
                 - id: state
-                  key: uploadSuccess
-                - id: state
                   key: datasetAvailable
+                - id: state
+                  key: uploadSuccess
                 - id: formStepper
                   key: currentStepIndex
         configuration: {}
@@ -952,7 +952,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
-    'uploadFile:rawscript/9994c45f2e08452af2e08592cfa638d8308aacbc3365ac73be614134a172b3c7':
+    'uploadFile:rawscript/e6a02303727ec43e7a8c21276b716060598feb9daac730a488e9bbffaa6731af':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
