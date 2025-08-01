@@ -16,7 +16,7 @@ def main(uploaded_file):
     converted_data = convert_data(input_path, file_type)
 
     # Build a new filename with the same stem and file type
-    output_filename = f"{Path(input_path).stem}_converted.{file_type}"
+    output_filename = f"{Path(input_path).stem}_parsed.{file_type}"
     file_to_save = [{
         "name": output_filename,
         "data": json.dumps(converted_data)
