@@ -153,3 +153,26 @@ def test_save_uploaded_file_to_temp__kmz_with_subdir(
     for p in paths:
         assert p.exists()
     assert not kmz_path.exists()
+
+
+def test_save_uploaded_file_to_temp__kobotoolbox_submissions_xlsx(tmp_path: Path):
+    # Use the actual kobotoolbox_submissions.xlsx file from assets
+    assets_dir = Path(__file__).parent / "assets"
+    xlsx_file = assets_dir / "kobotoolbox_submissions.xlsx"
+
+    # Read the actual file and encode it
+    with xlsx_file.open("rb") as f:
+        encoded = base64.b64encode(f.read()).decode()
+
+    result = save_uploaded_file_to_temp(
+        [{"name": "kobotoolbox_submissions.xlsx", "data": encoded}],
+        tmp_dir=str(tmp_path),
+    )
+
+    assert "file_paths" in result
+    saved_path = Path(result["file_paths"][0])
+    assert saved_path.exists()
+    assert saved_path.suffix == ".xlsx"
+
+    # Verify the file content is preserved
+    assert saved_path.read_bytes() == xlsx_file.read_bytes()

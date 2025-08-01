@@ -119,7 +119,16 @@ def save_uploaded_file_to_temp(
         logger.debug(f"Saved file to temp: {file_path}")
 
         is_kmz = file_path.suffix.lower() == ".kmz"
-        is_zip = zipfile.is_zipfile(file_path)
+
+        # Don't extract Excel, Word, or PowerPoint files even though they are ZIP archives
+        is_zip = zipfile.is_zipfile(file_path) and file_path.suffix.lower() not in [
+            ".xlsx",
+            ".xls",
+            ".docx",
+            ".doc",
+            ".pptx",
+            ".ppt",
+        ]
 
         if is_kmz or is_zip:
             extract_dir = file_path.with_suffix("")
