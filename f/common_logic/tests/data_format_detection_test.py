@@ -62,6 +62,11 @@ def test_structured_data_type__excel_format(tmp_path: Path):
     assert detect_structured_data_type(file_path) == "xlsx"
 
 
+def test_structured_data_type__kobotoolbox_excel_export():
+    file_path = Path(__file__).parent / "assets" / "kobotoolbox_submissions.xlsx"
+    assert detect_structured_data_type(file_path) == "xlsx"
+
+
 def test_structured_data_type__pdf_file(tmp_path: Path):
     file_path = tmp_path / "table.html"
     file_path.write_text(
