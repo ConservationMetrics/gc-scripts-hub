@@ -157,12 +157,10 @@ value:
               language: frontend
               path: f/apps/gc_file_uploader/Form_stepper_validation
               suggestedRefreshOn:
-                - id: formStepper
-                  key: lastAction
                 - id: state
                   key: datasetAvailable
-                - id: state
-                  key: uploadSuccess
+                - id: formStepper
+                  key: lastAction
                 - id: formStepper
                   key: currentStepIndex
         configuration: {}
@@ -306,74 +304,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 10
-          x: 0
-          'y': 5
-        '3':
-          fixed: true
-          fullHeight: false
-          h: 1
-          w: 1
-          x: 0
-          'y': 0
-        id: enterDatasetNameResultMessage
-        data:
-          id: enterDatasetNameResultMessage
-          type: textcomponent
-          actions: []
-          componentInput:
-            type: runnable
-            autoRefresh: true
-            connections:
-              - id: result
-                componentId: submitDatasetName
-            eval: ''
-            expr: submitDatasetName.result
-            fields: {}
-            fieldType: template
-            hideRefreshButton: true
-            recomputeOnInputChanged: true
-            runnable:
-              type: runnableByName
-              name: Eval of enterDatasetNameResultMessage
-              inlineScript:
-                content: >-
-                  !inline
-                  eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
-                language: frontend
-                path: f/apps/gc_file_uploader/Eval_of_enterDatasetNameResultMessage
-                refreshOn:
-                  - id: state
-                    key: datasetAvailable
-                suggestedRefreshOn: []
-          configuration:
-            copyButton:
-              type: static
-              value: false
-            disableNoText:
-              type: static
-              value: true
-            style:
-              type: static
-              value: Label
-            tooltip:
-              type: static
-              value: ''
-          customCss:
-            container:
-              class: ''
-              style: ''
-            text:
-              class: ''
-              style: ''
-          horizontalAlignment: center
-          verticalAlignment: top
-      - '12':
-          fixed: true
-          fullHeight: false
-          h: 1
           w: 2
-          x: 10
+          x: 9
           'y': 5
         '3':
           fixed: true
@@ -468,7 +400,7 @@ value:
               value: false
             label:
               type: static
-              value: Submit
+              value: Check Availability
             onError:
               type: oneOf
               configuration:
@@ -557,6 +489,72 @@ value:
           recomputeIds:
             - bg_0
           verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 6
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: enterDatasetNameResultMessage
+        data:
+          id: enterDatasetNameResultMessage
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: result
+                componentId: submitDatasetName
+            eval: ''
+            expr: submitDatasetName.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: Eval of enterDatasetNameResultMessage
+              inlineScript:
+                content: >-
+                  !inline
+                  eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
+                language: frontend
+                path: f/apps/gc_file_uploader/Eval_of_enterDatasetNameResultMessage
+                refreshOn:
+                  - id: state
+                    key: datasetAvailable
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
     formStepper-1:
       - '12':
           fixed: true
@@ -605,14 +603,14 @@ value:
           horizontalAlignment: center
           verticalAlignment: center
       - '12':
-          fixed: false
+          fixed: true
           fullHeight: false
           h: 4
           w: 10
           x: 1
           'y': 1
         '3':
-          fixed: false
+          fixed: true
           fullHeight: false
           h: 4
           w: 3
@@ -667,14 +665,14 @@ value:
           onFileChange:
             - bg_1
       - '12':
-          fixed: false
+          fixed: true
           fullHeight: false
           h: 1
           w: 2
           x: 5
           'y': 5
         '3':
-          fixed: false
+          fixed: true
           fullHeight: false
           h: 1
           w: 1
@@ -952,7 +950,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
-    'uploadFile:rawscript/e6a02303727ec43e7a8c21276b716060598feb9daac730a488e9bbffaa6731af':
+    'uploadFile:rawscript/387c6954e4c7f0f0a430b08f7e052d79d579bc4bf321e8addd71e373d0c69720':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}

@@ -23,7 +23,7 @@ def main(uploaded_file):
     }]
 
     # Save the converted data to a temp path
-    saved_output = save_uploaded_file_to_temp(file_to_save)
+    saved_output = save_uploaded_file_to_temp(file_to_save, is_base64=False)
     output_path = saved_output['file_paths'][0]
 
     return output_path
