@@ -120,14 +120,12 @@ def save_uploaded_file_to_temp(
 
         is_kmz = file_path.suffix.lower() == ".kmz"
 
-        # Don't extract Excel, Word, or PowerPoint files even though they are ZIP archives
+        # Don't extract Excel files even though they are ZIP archives
+        # (In the future, we could add other archive file types to this list
+        # such as Word, PowerPoint, etc.)
         is_zip = zipfile.is_zipfile(file_path) and file_path.suffix.lower() not in [
             ".xlsx",
             ".xls",
-            ".docx",
-            ".doc",
-            ".pptx",
-            ".ppt",
         ]
 
         if is_kmz or is_zip:
