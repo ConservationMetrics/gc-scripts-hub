@@ -6,6 +6,12 @@ from pathlib import Path
 
 import filetype
 import fiona
+
+# pandas requires openpyxl installed separately to read .xlsx files
+# it has to be imported in this module despite also being listed in
+# data_conversion.script.lock; otherwise, the script will complain about
+# "Missing optional dependency 'openpyxl'"
+import openpyxl  # noqa: F401
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
@@ -181,7 +187,7 @@ def convert_data(file_path: str, file_format: str):
         case "kml":
             return kml_to_geojson(path)
         case _:
-            raise ValueError(f"Unsupported file format: {file_format}")
+            raise ValueError("Unsupported file format.")
 
 
 @handle_file_errors
