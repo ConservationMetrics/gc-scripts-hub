@@ -167,27 +167,29 @@ def convert_data(file_path: str, file_format: str):
 
     Returns
     -------
-    Union[list[list[str]], dict]
-        Converted data as CSV (list of lists) or GeoJSON (dict).
+    tuple
+        A tuple containing (converted_data, output_format) where:
+        - converted_data: Union[list[list[str]], dict] - Converted data as CSV (list of lists) or GeoJSON (dict)
+        - output_format: str - The output format ('csv' for tabular data, 'geojson' for spatial data)
     """
     path = Path(file_path)
     logger.debug(f"Converting {file_path} with format {file_format}")
 
     match file_format:
         case "csv":
-            return read_csv(path)
+            return read_csv(path), "csv"
         case "xlsx" | "xls":
-            return excel_to_csv(path)
+            return excel_to_csv(path), "csv"
         case "json":
-            return json_to_csv(path)
+            return json_to_csv(path), "csv"
         case "geojson":
-            return read_geojson(path)
+            return read_geojson(path), "geojson"
         case "gpx":
-            return gpx_to_geojson(path)
+            return gpx_to_geojson(path), "geojson"
         case "kml":
-            return kml_to_geojson(path)
+            return kml_to_geojson(path), "geojson"
         case _:
-            raise ValueError("Unsupported file format.")
+            raise ValueError(f"Unsupported file format: {file_format}")
 
 
 @handle_file_errors
