@@ -348,7 +348,7 @@ value:
                 fieldType: string
               db:
                 type: static
-                value: '$res:u/rudo/ingenuous_postgresql'
+                value: '$res:f/connectors/postgresql'
                 fieldType: object
                 format: resource-postgresql
             fieldType: any
@@ -1578,7 +1578,7 @@ value:
                 fieldType: object
               db:
                 type: static
-                value: '$res:u/rudo/ingenuous_postgresql'
+                value: '$res:f/connectors/postgresql'
                 fieldType: object
                 format: resource-postgresql
               filename_original:
@@ -1884,11 +1884,11 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'checkAvailability:rawscript/a6fa8fd12a328d7dd66121f6d76b424d87e21da0987ed727765bb4e2a25e68ec':
+    'checkAvailability:rawscript/c1780cd5fb1cf51bdf828e6b715d95e89fb32c94777696c5550d322be9eb85fb':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
-        db: '$res:u/rudo/ingenuous_postgresql'
+        db: '$res:f/connectors/postgresql'
     'datasetNameResult:rawscript/a2ffe61faabfbb37e7b096e148027e3bd474dfe1d4593f50de2b244c072f53f9':
       allow_user_resources: []
       one_of_inputs: {}
@@ -1901,7 +1901,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'formStepper:rawscript/518fce76bab5a7f5733454fafcc41959e7b3a4f9fbba8399b4c6bd9e72194aba':
+    'formStepper:rawscript/e7b0e49657b06a7708790b18798cf973862248f7f05c01d38fc6c61c3ee8f348':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1909,12 +1909,12 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/481ed5893e20a9f4fcb3b2c840bca2d447bc09f414738b66fbc2cc2527420afc':
+    'transformAndWrite:rawscript/9da420b034d0d72d797a9037d60e9bd246df1fc321e5c994d62d4b58a411b004':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
-        db: '$res:u/rudo/ingenuous_postgresql'
-    'uploadFile:rawscript/0fd8fa19faeebafdbdaa9f09fbb1efbc12551f8f50080fa0b87012e9fc3c0186':
+        db: '$res:f/connectors/postgresql'
+    'uploadFile:rawscript/c2011df349eb90e0e7f957cb90cc43c92abf67b4060c41659cbc758e44bf281e':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
