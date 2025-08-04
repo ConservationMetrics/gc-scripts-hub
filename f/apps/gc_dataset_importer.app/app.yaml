@@ -111,7 +111,7 @@ value:
         componentInput:
           type: templatev2
           connections: []
-          eval: "\U0001F4E4 Upload a file to your data warehouse"
+          eval: "\U0001F4E4 Upload a dataset file to your data warehouse"
           fieldType: template
         configuration:
           copyButton:
@@ -171,11 +171,11 @@ value:
                 - id: state
                   key: datasetAvailable
                 - id: formStepper
+                  key: currentStepIndex
+                - id: formStepper
                   key: lastAction
                 - id: state
                   key: uploadSuccess
-                - id: formStepper
-                  key: currentStepIndex
         configuration: {}
         customCss:
           container:
@@ -191,46 +191,42 @@ value:
           - Finalize
   hiddenInlineScripts:
     - type: runnableByName
-      name: '[1] Dataset is available'
+      name: 1 Dataset is available
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline [1]_dataset_is_available.inline_script.frontend.js'
+        content: '!inline 1_dataset_is_available.inline_script.frontend.js'
         language: frontend
-        path: 'f/apps/gc_dataset_importer/[1]_Dataset_is_available'
+        path: f/apps/gc_dataset_importer/1_Dataset_is_available
         refreshOn: []
         suggestedRefreshOn:
           - id: enterDatasetName
             key: values
           - id: submitDatasetName
             key: result
-          - id: state
-            key: datasetName
-          - id: state
-            key: datasetAvailable
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
-      name: '[2] File has been selected'
+      name: 2 File has been selected
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline [2]_file_has_been_selected.inline_script.frontend.js'
+        content: '!inline 2_file_has_been_selected.inline_script.frontend.js'
         language: frontend
-        path: 'f/apps/gc_file_uploader/[2]_File_has_been_selected'
+        path: f/apps/gc_dataset_importer/2_File_has_been_selected
         suggestedRefreshOn:
           - id: selectFile
             key: result
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
-      name: '[2] Toggle state.uploadSuccess'
+      name: 2 Toggle state.uploadSuccess
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline [2]_toggle_state.uploadsuccess.inline_script.frontend.js'
+        content: '!inline 2_toggle_state.uploadsuccess.inline_script.frontend.js'
         language: frontend
-        path: 'f/apps/gc_file_uploader/[2]_Toggle_state.uploadSuccess'
+        path: f/apps/gc_dataset_importer/2_Toggle_state.uploadSuccess
         refreshOn:
           - id: uploadFile
             key: result
@@ -240,14 +236,16 @@ value:
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
-      name: '[3] Set data source state'
+      name: 3 Set data source state
       autoRefresh: true
       fields: {}
       inlineScript:
-        content: '!inline [3]_set_data_source_state.inline_script.frontend.js'
+        content: '!inline 3_set_data_source_state.inline_script.frontend.js'
         language: frontend
-        path: 'f/apps/gc_dataset_importer/[3]_Set_data_source_state'
+        path: f/apps/gc_dataset_importer/3_Set_data_source_state
         suggestedRefreshOn:
+          - id: state
+            key: dataSource
           - id: dataSources
             key: result
       recomputeIds: []
@@ -366,12 +364,12 @@ value:
             recomputeOnInputChanged: false
             runnable:
               type: runnableByName
-              name: '[1] Check if database table exists'
+              name: 1 Check if database table exists
               inlineScript:
-                content: '!inline [1]_check_if_database_table_exists.inline_script.py'
-                lock: '!inline [1]_check_if_database_table_exists.inline_script.lock'
+                content: '!inline 1_check_if_database_table_exists.inline_script.py'
+                lock: '!inline 1_check_if_database_table_exists.inline_script.lock'
                 language: python3
-                path: 'f/apps/gc_dataset_importer/[1]_Check_if_database_table_exists'
+                path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
@@ -548,14 +546,14 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: '[1] Eval of enterDatasetNameResultMessage'
+              name: 1 Eval of enterDatasetNameResultMessage
               inlineScript:
                 content: >-
                   !inline
-                  [1]_eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
+                  1_eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
                 language: frontend
                 path: >-
-                  f/apps/gc_dataset_importer/[1]_Eval_of_enterDatasetNameResultMessage
+                  f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResultMessage
                 refreshOn:
                   - id: state
                     key: datasetAvailable
@@ -726,12 +724,12 @@ value:
             recomputeOnInputChanged: false
             runnable:
               type: runnableByName
-              name: '[2] Upload and convert file'
+              name: 2 Upload and convert file
               inlineScript:
-                content: '!inline [2]_upload_and_convert_file.inline_script.py'
-                lock: '!inline [2]_upload_and_convert_file.inline_script.lock'
+                content: '!inline 2_upload_and_convert_file.inline_script.py'
+                lock: '!inline 2_upload_and_convert_file.inline_script.lock'
                 language: python3
-                path: 'f/apps/gc_dataset_importer/[2]_Upload_and_convert_file'
+                path: f/apps/gc_dataset_importer/2_Upload_and_convert_file
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
@@ -744,7 +742,7 @@ value:
                     - uploaded_file
             transformer:
               content: |-
-                state.data = result;
+                state.uploadedFilePath = result;
                 state.uploadSuccess = true;
                 state.fileName = selectFile.result[0].name;
               language: frontend
@@ -752,8 +750,6 @@ value:
               suggestedRefreshOn:
                 - id: selectFile
                   key: result
-                - id: state
-                  key: data
                 - id: state
                   key: fileName
                 - id: state
@@ -914,11 +910,11 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: '[2] Update result message'
+              name: 2 Update result message
               inlineScript:
-                content: '!inline [2]_update_result_message.inline_script.frontend.js'
+                content: '!inline 2_update_result_message.inline_script.frontend.js'
                 language: frontend
-                path: 'f/apps/gc_dataset_importer/[2]_Update_result_message'
+                path: f/apps/gc_dataset_importer/2_Update_result_message
                 refreshOn:
                   - id: state
                     key: uploadSuccess
@@ -1419,11 +1415,11 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: '[3] Eval of Data Source'
+              name: 3 Eval of Data Source
               inlineScript:
-                content: '!inline [3]_eval_of_data_source.inline_script.frontend.js'
+                content: '!inline 3_eval_of_data_source.inline_script.frontend.js'
                 language: frontend
-                path: 'f/apps/gc_dataset_importer/[3]_Eval_of_Data_Source'
+                path: f/apps/gc_dataset_importer/3_Eval_of_Data_Source
                 refreshOn:
                   - id: dataSources
                     key: result
@@ -1533,17 +1529,17 @@ value:
             recomputeOnInputChanged: false
             runnable:
               type: runnableByName
-              name: '[4] Apply transformation and write to database'
+              name: 4 Apply transformation and write to database
               inlineScript:
                 content: >-
                   !inline
-                  [4]_apply_transformation_and_write_to_database.inline_script.py
+                  4_apply_transformation_and_write_to_database.inline_script.py
                 lock: >-
                   !inline
-                  [4]_apply_transformation_and_write_to_database.inline_script.lock
+                  4_apply_transformation_and_write_to_database.inline_script.lock
                 language: python3
                 path: >-
-                  f/apps/gc_dataset_importer/[4]_Apply_transformation_and_write_to_database
+                  f/apps/gc_dataset_importer/4_Apply_transformation_and_write_to_database
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
