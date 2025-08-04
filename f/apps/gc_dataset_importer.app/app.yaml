@@ -171,11 +171,11 @@ value:
                 - id: state
                   key: datasetAvailable
                 - id: formStepper
-                  key: currentStepIndex
-                - id: formStepper
                   key: lastAction
                 - id: state
                   key: uploadSuccess
+                - id: formStepper
+                  key: currentStepIndex
         configuration: {}
         customCss:
           container:
@@ -197,11 +197,15 @@ value:
       inlineScript:
         content: '!inline [1]_dataset_is_available.inline_script.frontend.js'
         language: frontend
-        path: 'f/apps/gc_file_uploader/[1]_Dataset_is_available'
+        path: 'f/apps/gc_dataset_importer/[1]_Dataset_is_available'
         refreshOn: []
         suggestedRefreshOn:
+          - id: enterDatasetName
+            key: values
           - id: submitDatasetName
             key: result
+          - id: state
+            key: datasetName
           - id: state
             key: datasetAvailable
       recomputeIds: []
@@ -236,10 +240,18 @@ value:
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
-      name: Background Runnable 3
+      name: '[3] Set data source state'
+      autoRefresh: true
       fields: {}
-      hidden: true
+      inlineScript:
+        content: '!inline [3]_set_data_source_state.inline_script.frontend.js'
+        language: frontend
+        path: 'f/apps/gc_dataset_importer/[3]_Set_data_source_state'
+        suggestedRefreshOn:
+          - id: dataSources
+            key: result
       recomputeIds: []
+      recomputeOnInputChanged: true
   hideLegacyTopBar: true
   mobileViewOnSmallerScreens: false
   norefreshbar: false
@@ -354,12 +366,12 @@ value:
             recomputeOnInputChanged: false
             runnable:
               type: runnableByName
-              name: Check if database table exists
+              name: '[1] Check if database table exists'
               inlineScript:
-                content: '!inline check_if_database_table_exists.inline_script.py'
-                lock: '!inline check_if_database_table_exists.inline_script.lock'
+                content: '!inline [1]_check_if_database_table_exists.inline_script.py'
+                lock: '!inline [1]_check_if_database_table_exists.inline_script.lock'
                 language: python3
-                path: f/apps/gc_dataset_importer/Check_if_database_table_exists
+                path: 'f/apps/gc_dataset_importer/[1]_Check_if_database_table_exists'
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
@@ -517,9 +529,9 @@ value:
           w: 1
           x: 0
           'y': 0
-        id: enterDatasetNameResultMessage
+        id: datasetNameResult
         data:
-          id: enterDatasetNameResultMessage
+          id: datasetNameResult
           type: textcomponent
           actions: []
           componentInput:
@@ -536,13 +548,14 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: Eval of enterDatasetNameResultMessage
+              name: '[1] Eval of enterDatasetNameResultMessage'
               inlineScript:
                 content: >-
                   !inline
-                  eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
+                  [1]_eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
                 language: frontend
-                path: f/apps/gc_file_uploader/Eval_of_enterDatasetNameResultMessage
+                path: >-
+                  f/apps/gc_dataset_importer/[1]_Eval_of_enterDatasetNameResultMessage
                 refreshOn:
                   - id: state
                     key: datasetAvailable
@@ -713,12 +726,12 @@ value:
             recomputeOnInputChanged: false
             runnable:
               type: runnableByName
-              name: Upload and convert file
+              name: '[2] Upload and convert file'
               inlineScript:
-                content: '!inline upload_and_convert_file.inline_script.py'
-                lock: '!inline upload_and_convert_file.inline_script.lock'
+                content: '!inline [2]_upload_and_convert_file.inline_script.py'
+                lock: '!inline [2]_upload_and_convert_file.inline_script.lock'
                 language: python3
-                path: f/apps/gc_dataset_importer/Upload_and_convert_file
+                path: 'f/apps/gc_dataset_importer/[2]_Upload_and_convert_file'
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
@@ -733,9 +746,18 @@ value:
               content: |-
                 state.data = result;
                 state.uploadSuccess = true;
+                state.fileName = selectFile.result[0].name;
               language: frontend
-              path: f/apps/gc_file_uploader/Transformer
-              suggestedRefreshOn: []
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn:
+                - id: selectFile
+                  key: result
+                - id: state
+                  key: data
+                - id: state
+                  key: fileName
+                - id: state
+                  key: uploadSuccess
           configuration:
             afterIcon:
               type: static
@@ -875,9 +897,9 @@ value:
           w: 1
           x: 0
           'y': 6
-        id: uploadFileResultMessage
+        id: uploadFileResult
         data:
-          id: uploadFileResultMessage
+          id: uploadFileResult
           type: textcomponent
           actions: []
           componentInput:
@@ -892,11 +914,11 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: Update result message
+              name: '[2] Update result message'
               inlineScript:
-                content: '!inline update_result_message.inline_script.frontend.js'
+                content: '!inline [2]_update_result_message.inline_script.frontend.js'
                 language: frontend
-                path: f/apps/gc_file_uploader/Update_result_message
+                path: 'f/apps/gc_dataset_importer/[2]_Update_result_message'
                 refreshOn:
                   - id: state
                     key: uploadSuccess
@@ -1077,7 +1099,8 @@ value:
               style: ''
               tooltip: >-
                 https://github.com/rob-balfre/svelte-select/blob/master/docs/theming_variables.md
-          onSelect: []
+          onSelect:
+            - bg_3
           recomputeIds: []
           verticalAlignment: center
     formStepper-3:
@@ -1195,10 +1218,10 @@ value:
           componentInput:
             type: evalv2
             connections:
-              - id: values
-                componentId: enterDatasetName
+              - id: datasetName
+                componentId: state
             eval: '${selectFile.result[0].name}'
-            expr: 'enterDatasetName.values["Dataset name"]'
+            expr: state.datasetName
             fieldType: template
           configuration:
             copyButton:
@@ -1288,11 +1311,12 @@ value:
           type: textcomponent
           actions: []
           componentInput:
-            type: templatev2
+            type: evalv2
             connections:
-              - id: result
-                componentId: selectFile
-            eval: '${selectFile.result[0].name}'
+              - id: fileName
+                componentId: state
+            eval: state.fileName
+            expr: state.fileName
             fieldType: template
           configuration:
             copyButton:
@@ -1395,17 +1419,19 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: eval of Data Source
+              name: '[3] Eval of Data Source'
               inlineScript:
-                content: '!inline eval_of_data_source.inline_script.frontend.js'
+                content: '!inline [3]_eval_of_data_source.inline_script.frontend.js'
                 language: frontend
-                path: f/apps/gc_file_uploader/eval_of_Data_Source
+                path: 'f/apps/gc_dataset_importer/[3]_Eval_of_Data_Source'
                 refreshOn:
                   - id: dataSources
                     key: result
                   - id: dataSourceToggle
                     key: result
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: dataSource
           configuration:
             copyButton:
               type: static
@@ -1490,15 +1516,44 @@ value:
           w: 1
           x: 1
           'y': 2
-        id: saveButton
+        id: transformAndWrite
         data:
-          id: saveButton
+          id: transformAndWrite
           type: buttoncomponent
           actions: []
           componentInput:
             type: runnable
-            fields: {}
+            autoRefresh: false
+            fields:
+              uploaded_file:
+                type: static
+                value: null
+                fieldType: object
             fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              type: runnableByName
+              name: '[4] Apply transformation and write to database'
+              inlineScript:
+                content: >-
+                  !inline
+                  [4]_apply_transformation_and_write_to_database.inline_script.py
+                lock: >-
+                  !inline
+                  [4]_apply_transformation_and_write_to_database.inline_script.lock
+                language: python3
+                path: >-
+                  f/apps/gc_dataset_importer/[4]_Apply_transformation_and_write_to_database
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    uploaded_file:
+                      type: object
+                      description: ''
+                      default: null
+                  required:
+                    - uploaded_file
           configuration:
             afterIcon:
               type: static
@@ -1675,7 +1730,7 @@ policy:
   execution_mode: publisher
   s3_inputs: []
   triggerables_v2:
-    'bg_0:rawscript/2fdb0026720b703ec365c0897de34009bb5f6904789849bb71d89b3947f428a4':
+    'bg_0:rawscript/5329aa107911f1d869bcc358d7d4a3a345f69da3dd0690103dbb27a00a7ef200':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1687,15 +1742,15 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'bg_3:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
+    'bg_3:rawscript/ffc2ce6e935db06aa6fee6660f09fe5e205274eae5a0f0908bc8640e1c693559':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'dataSource:rawscript/ac9979ec05819cf68ed046b2c8444c8094b31a69532b719ca6b911e6d92f763e':
+    'datasetNameResult:rawscript/8e953eb74403c32e19ea085c922c8d5e9b78bdbbbb7d8712d910d85b2c33f003':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'enterDatasetNameResultMessage:rawscript/8e953eb74403c32e19ea085c922c8d5e9b78bdbbbb7d8712d910d85b2c33f003':
+    'dataSource:rawscript/03b0b24613940852c512362a2e9df99934b9f5b42d77052aa5b1967ea6045cbd':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1708,11 +1763,16 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
+    'transformAndWrite:rawscript/f8f678e9ac102fe7ac91e8042f4ef1523533fc663358a5c28b14c240466a66e0':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs:
+        uploaded_file: null
     'uploadFile:rawscript/f8f678e9ac102fe7ac91e8042f4ef1523533fc663358a5c28b14c240466a66e0':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResultMessage:rawscript/4367aba1a642f5c124e0b646b8e5526222d71319f015fb44b4d5924597ab6b8e':
+    'uploadFileResult:rawscript/4367aba1a642f5c124e0b646b8e5526222d71319f015fb44b4d5924597ab6b8e':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
