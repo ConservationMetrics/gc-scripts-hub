@@ -130,3 +130,18 @@ def camel_to_snake(name: str) -> str:
     pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
     return pattern.sub("_", name).lower()
+
+
+def force_valid_sql_name(raw: str, maxlen: int = 62) -> str:
+    # Replace spaces and common separators with _
+    s = re.sub(r"[ \-./]", "_", raw)
+
+    # Remove invalid characters (anything not alphanumeric or _)
+    s = re.sub(r"[^a-zA-Z0-9_]", "", s)
+
+    # Ensure it starts with a letter or underscore
+    if not re.match(r"^[a-zA-Z_]", s):
+        s = "_" + s
+
+    # Truncate to max characters
+    return s[:maxlen] or "_"
