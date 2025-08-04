@@ -1344,11 +1344,11 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: Eval of fileUploaded
+              name: 2 Eval of fileUploaded
               inlineScript:
-                content: '!inline eval_of_fileuploaded.inline_script.frontend.js'
+                content: '!inline 2_eval_of_fileuploaded.inline_script.frontend.js'
                 language: frontend
-                path: f/apps/gc_dataset_importer/Eval_of_fileUploaded
+                path: f/apps/gc_dataset_importer/2_Eval_of_fileUploaded
                 refreshOn:
                   - id: state
                     key: fileNameOriginal
