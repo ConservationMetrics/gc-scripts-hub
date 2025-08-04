@@ -4,7 +4,7 @@ if (formStepper.currentStepIndex === 0 && !state.datasetAvailable) {
 }
 
 // Step 2 validation
-if (formStepper.currentStepIndex === 1 && formStepper.lastAction === "next" && !state.uploadSuccess ) {
+if (formStepper.currentStepIndex === 1 && formStepper.lastAction === "next" && !state.uploadSuccess) {
   throw new Error("Please upload your file to proceed.");
 }
 

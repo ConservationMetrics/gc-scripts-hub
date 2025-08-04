@@ -12,6 +12,29 @@ logger = logging.getLogger(__name__)
 
 
 def main(uploaded_file, dataset_name):
+    """
+    Process uploaded file and convert to standardized format.
+
+    Takes an uploaded file, detects its format, and converts it to either CSV or GeoJSON
+    depending on the data type. Saves both original and converted files to a dataset-specific
+    temporary directory for further processing.
+
+    Parameters
+    ----------
+    uploaded_file : object or list
+        File object or list containing uploaded file data.
+    dataset_name : str
+        Name of the dataset, used for creating temp directory paths.
+
+    Returns
+    -------
+    tuple
+        A tuple containing (output_filename, output_format):
+        - output_filename : str
+            Name of the converted file with '_parsed' suffix.
+        - output_format : str
+            Format of converted file ('csv' or 'geojson').
+    """
     logger.info(f"Starting file upload and conversion for dataset: {dataset_name}")
 
     # Create dataset-specific temp directory
