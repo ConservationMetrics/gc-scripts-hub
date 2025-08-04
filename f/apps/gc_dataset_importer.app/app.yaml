@@ -162,20 +162,20 @@ value:
           recomputeOnInputChanged: false
           runnable:
             type: runnableByName
-            name: Form stepper validation
+            name: 0 Form stepper validation
             inlineScript:
-              content: '!inline form_stepper_validation.inline_script.frontend.js'
+              content: '!inline 0_form_stepper_validation.inline_script.frontend.js'
               language: frontend
-              path: f/apps/gc_dataset_importer/Form_stepper_validation
+              path: f/apps/gc_dataset_importer/0_Form_stepper_validation
               suggestedRefreshOn:
-                - id: state
-                  key: datasetAvailable
-                - id: formStepper
-                  key: currentStepIndex
                 - id: formStepper
                   key: lastAction
                 - id: state
+                  key: datasetAvailable
+                - id: state
                   key: uploadSuccess
+                - id: formStepper
+                  key: currentStepIndex
         configuration: {}
         customCss:
           container:
@@ -191,21 +191,10 @@ value:
           - Finalize
   hiddenInlineScripts:
     - type: runnableByName
-      name: 1 Dataset is available
-      autoRefresh: false
+      name: Background Runnable 0
       fields: {}
-      inlineScript:
-        content: '!inline 1_dataset_is_available.inline_script.frontend.js'
-        language: frontend
-        path: f/apps/gc_dataset_importer/1_Dataset_is_available
-        refreshOn: []
-        suggestedRefreshOn:
-          - id: enterDatasetName
-            key: values
-          - id: submitDatasetName
-            key: result
+      hidden: true
       recomputeIds: []
-      recomputeOnInputChanged: true
     - type: runnableByName
       name: 2 File has been selected
       autoRefresh: false
@@ -215,6 +204,10 @@ value:
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
         suggestedRefreshOn:
+          - id: state
+            key: uploadSuccess
+          - id: state
+            key: uploadButtonEnabled
           - id: selectFile
             key: result
       recomputeIds: []
@@ -233,6 +226,8 @@ value:
         suggestedRefreshOn:
           - id: selectFile
             key: result
+          - id: state
+            key: uploadSuccess
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
@@ -244,10 +239,10 @@ value:
         language: frontend
         path: f/apps/gc_dataset_importer/3_Set_data_source_state
         suggestedRefreshOn:
-          - id: state
-            key: dataSource
           - id: dataSources
             key: result
+          - id: state
+            key: dataSource
       recomputeIds: []
       recomputeOnInputChanged: true
   hideLegacyTopBar: true
@@ -278,24 +273,19 @@ value:
             type: static
             value:
               order:
-                - "\U0001F3F7️ Dataset name"
+                - Dataset name
               properties:
-                "\U0001F3F7️ Dataset name":
+                Dataset name:
                   type: string
-                  description: >-
-                    Enter the name you wish to give your dataset. This will be
-                    used for filenames and database table names.
-                  customErrorMessage: >-
-                    Must start with a letter or underscore, contain only
-                    letters, numbers, or underscores, and be no longer than 62
-                    characters.
+                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. This will be used for filenames and database table names."
+                  customErrorMessage: Must be no longer than 61 characters.
                   default: ''
                   disableVariablePicker: true
                   nullable: false
-                  pattern: '^[a-zA-Z_][a-zA-Z0-9_]{0,61}$'
+                  pattern: '^.{1,61}$'
                   placeholder: ''
               required:
-                - "\U0001F3F7️ Dataset name"
+                - Dataset name
             connections: []
             expr: ''
             fieldType: schema
@@ -338,28 +328,28 @@ value:
           w: 1
           x: 10
           'y': 5
-        id: submitDatasetName
+        id: checkAvailability
         data:
-          id: submitDatasetName
+          id: checkAvailability
           type: buttoncomponent
           actions: []
           componentInput:
             type: runnable
             autoRefresh: false
             fields:
-              db:
-                type: static
-                value: '$res:u/rudo/ingenuous_postgresql'
-                fieldType: object
-                format: resource-postgresql
-              table_name:
+              dataset_name:
                 type: evalv2
-                value: haha
+                value: null
                 connections:
                   - id: values
                     componentId: enterDatasetName
                 expr: 'enterDatasetName.values["Dataset name"]'
                 fieldType: string
+              db:
+                type: static
+                value: '$res:u/rudo/ingenuous_postgresql'
+                fieldType: object
+                format: resource-postgresql
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
@@ -374,19 +364,31 @@ value:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
+                    dataset_name:
+                      type: string
+                      description: ''
+                      default: null
+                      originalType: string
                     db:
                       type: object
                       description: ''
                       default: null
                       format: resource-postgresql
-                    table_name:
-                      type: string
-                      description: ''
-                      default: null
-                      originalType: string
                   required:
                     - db
-                    - table_name
+                    - dataset_name
+            transformer:
+              content: |-
+                state.datasetAvailable = result.tableExists !== true;
+                state.datasetName = result.datasetName
+                state.validSqlname = result.validSqlName
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn:
+                - id: state
+                  key: datasetName
+                - id: state
+                  key: datasetAvailable
           configuration:
             afterIcon:
               type: static
@@ -546,14 +548,13 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: 1 Eval of enterDatasetNameResultMessage
+              name: 1 Eval of enterDatasetNameResult
               inlineScript:
                 content: >-
                   !inline
-                  1_eval_of_enterdatasetnameresultmessage.inline_script.frontend.js
+                  1_eval_of_enterdatasetnameresult.inline_script.frontend.js
                 language: frontend
-                path: >-
-                  f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResultMessage
+                path: f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResult
                 refreshOn:
                   - id: state
                     key: datasetAvailable
@@ -752,6 +753,8 @@ value:
                   key: result
                 - id: state
                   key: fileName
+                - id: state
+                  key: uploadedFilePath
                 - id: state
                   key: uploadSuccess
           configuration:
@@ -1415,11 +1418,11 @@ value:
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
-              name: 3 Eval of Data Source
+              name: 3 Eval of dataSource
               inlineScript:
-                content: '!inline 3_eval_of_data_source.inline_script.frontend.js'
+                content: '!inline 3_eval_of_datasource.inline_script.frontend.js'
                 language: frontend
-                path: f/apps/gc_dataset_importer/3_Eval_of_Data_Source
+                path: f/apps/gc_dataset_importer/3_Eval_of_dataSource
                 refreshOn:
                   - id: dataSources
                     key: result
@@ -1521,7 +1524,36 @@ value:
             type: runnable
             autoRefresh: false
             fields:
-              uploaded_file:
+              data_source:
+                type: evalv2
+                value: null
+                connections:
+                  - id: dataSource
+                    componentId: state
+                expr: state.dataSource
+                fieldType: object
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: datasetName
+                    componentId: state
+                expr: state.datasetName
+                fieldType: object
+              db:
+                type: static
+                value: '$res:u/rudo/ingenuous_postgresql'
+                fieldType: object
+                format: resource-postgresql
+              uploaded_path:
+                type: evalv2
+                value: null
+                connections:
+                  - id: uploadedFilePath
+                    componentId: state
+                expr: state.uploadedFilePath
+                fieldType: object
+              valid_sql_name:
                 type: static
                 value: null
                 fieldType: object
@@ -1544,12 +1576,38 @@ value:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
-                    uploaded_file:
+                    data_source:
+                      type: object
+                      description: ''
+                      default: null
+                    dataset_name:
+                      type: object
+                      description: ''
+                      default: null
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
+                    uploaded_path:
+                      type: object
+                      description: ''
+                      default: null
+                    valid_sql_name:
                       type: object
                       description: ''
                       default: null
                   required:
-                    - uploaded_file
+                    - db
+                    - uploaded_path
+                    - data_source
+                    - dataset_name
+                    - valid_sql_name
+            transformer:
+              content: state.finalizeSuccess = true
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn: []
           configuration:
             afterIcon:
               type: static
@@ -1691,10 +1749,28 @@ value:
           type: textcomponent
           actions: []
           componentInput:
-            type: templatev2
+            type: runnable
+            autoRefresh: true
             connections: []
             eval: ''
+            expr: ''
+            fields: {}
             fieldType: template
+            hideRefreshButton: false
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 4 Eval of saveResult
+              inlineScript:
+                content: '!inline 4_eval_of_saveresult.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Eval_of_saveResult
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                  - id: state
+                    key: dataSource
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1704,7 +1780,7 @@ value:
               value: true
             style:
               type: static
-              value: Body
+              value: Label
             tooltip:
               type: static
               value: ''
@@ -1726,7 +1802,7 @@ policy:
   execution_mode: publisher
   s3_inputs: []
   triggerables_v2:
-    'bg_0:rawscript/5329aa107911f1d869bcc358d7d4a3a345f69da3dd0690103dbb27a00a7ef200':
+    'bg_0:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1742,6 +1818,11 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
+    'checkAvailability:rawscript/a6fa8fd12a328d7dd66121f6d76b424d87e21da0987ed727765bb4e2a25e68ec':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs:
+        db: '$res:u/rudo/ingenuous_postgresql'
     'datasetNameResult:rawscript/8e953eb74403c32e19ea085c922c8d5e9b78bdbbbb7d8712d910d85b2c33f003':
       allow_user_resources: []
       one_of_inputs: {}
@@ -1754,17 +1835,17 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'submitDatasetName:rawscript/57668f9f668d96131044c91870599b3444782b9e51baa0298236b5d38845a44d':
+    'saveResult:rawscript/4b6ab9776a6eb1878e2e60e10b53a0c5799c195874a5134d4130b39c95ccdb3e':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'transformAndWrite:rawscript/440c4f3e56e2528b5a1bbce6dcf3de166f1d02cdaf69f969d623438aad648a9b':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
-    'transformAndWrite:rawscript/f8f678e9ac102fe7ac91e8042f4ef1523533fc663358a5c28b14c240466a66e0':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs:
-        uploaded_file: null
-    'uploadFile:rawscript/f8f678e9ac102fe7ac91e8042f4ef1523533fc663358a5c28b14c240466a66e0':
+        valid_sql_name: null
+    'uploadFile:rawscript/0b56ad75ce7856eb42f7da21aa5760ecacf447f6c2697951ed4335b3c3141e24':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}

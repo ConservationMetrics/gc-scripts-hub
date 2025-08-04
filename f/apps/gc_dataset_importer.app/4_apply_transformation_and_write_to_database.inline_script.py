@@ -1,29 +1,84 @@
 import json
-
-from f.common_logic.file_operations import save_uploaded_file_to_temp
-from f.common_logic.data_conversion import detect_structured_data_type, convert_data
 from pathlib import Path
 
-def main(uploaded_file):
-    # Save the original uploaded file to a temp path
-    saved_input = save_uploaded_file_to_temp(uploaded_file)
-    input_path = saved_input['file_paths'][0]
+import pandas as pd
 
-    # Detect the file type (e.g., csv, geojson, etc.)
-    file_type = detect_structured_data_type(input_path)
+from f.common_logic.db_operations import postgresql
+from f.common_logic.file_operations import save_data_to_file, save_uploaded_file_to_temp
+from f.connectors.comapeo.comapeo_observations import transform_comapeo_observations
+from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
+from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    transform_kobotoolbox_form_data,
+)
 
-    # Convert the file into a normalized structure
-    converted_data = convert_data(input_path, file_type)
+# from f.connectors.odk.odk_responses import transform_odk_form_data
 
-    # Build a new filename with the same stem and file type
-    output_filename = f"{Path(input_path).stem}_parsed.{file_type}"
-    file_to_save = [{
-        "name": output_filename,
-        "data": json.dumps(converted_data)
-    }]
 
-    # Save the converted data to a temp path
-    saved_output = save_uploaded_file_to_temp(file_to_save, is_base64=False)
-    output_path = saved_output['file_paths'][0]
+def main(db: postgresql, uploaded_path, data_source, dataset_name, valid_sql_name):
+    file_format = Path(uploaded_path).suffix.lower().lstrip(".")
 
-    return output_path
+    if file_format == "geojson":
+        with open(uploaded_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if data_source == "comapeo":
+            data = transform_comapeo_observations(data, dataset_name)
+            transformed = True
+        else:  # TODO: support locus_map, mapeo transformations
+            transformed = False
+
+        if transformed:
+            output_filename = f"{Path(uploaded_path).stem}_transformed.geojson"
+            saved = save_uploaded_file_to_temp(
+                [{"name": output_filename, "data": json.dumps(data)}], is_base64=False
+            )
+            geojson_path = saved["file_paths"][0]
+        else:
+            geojson_path = uploaded_path
+
+        save_geojson_to_postgres(
+            db=db, db_table_name=valid_sql_name, geojson_path=geojson_path
+        )
+
+        save_data_to_file(
+            data,
+            dataset_name,
+            f"/persistent-storage/datalake/{valid_sql_name}",
+            file_type="geojson",
+        )
+        # TODO: Do we also want to save the original file?
+
+    elif file_format == "csv":
+        df = pd.read_csv(uploaded_path)
+
+        if data_source == "kobotoolbox":
+            df = transform_kobotoolbox_form_data(df, dataset_name)
+            transformed = True
+        # TODO: Fix ODK requirements issue where 'requests' imported by pyodk is
+        # not compatible with the version of requests used by the rest of the codebase.
+        # elif data_source == "odk":
+        #     df = transform_odk_form_data(df, dataset_name)
+        #    transformed = True
+        else:
+            transformed = False
+
+        if transformed:
+            output_filename = f"{Path(uploaded_path).stem}_transformed.csv"
+            csv_str = df.to_csv(index=False)
+            saved = save_uploaded_file_to_temp(
+                [{"name": output_filename, "data": csv_str}], is_base64=False
+            )
+            csv_path = saved["file_paths"][0]
+        else:
+            csv_path = uploaded_path
+
+        # TODO: There is no CSV to Postgres connector. What to do?
+        # save_csv_to_postgres(db=db, db_table_name=dataset_name, csv_path=csv_path)
+
+        save_data_to_file(
+            df,
+            dataset_name,
+            f"/persistent-storage/datalake/{valid_sql_name}",
+            file_type="csv",
+        )
+        # TODO: Do we also want to save the original file?
