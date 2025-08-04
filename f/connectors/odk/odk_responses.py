@@ -1,7 +1,7 @@
 # requirements:
 # psycopg2-binary
 # requests
-# pyodk~=0.3.0
+# pyodk~=1.2.1
 
 import logging
 import tempfile

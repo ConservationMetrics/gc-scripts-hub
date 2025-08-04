@@ -7,3 +7,8 @@ if (formStepper.currentStepIndex === 0 && !state.datasetAvailable) {
 if (formStepper.currentStepIndex === 1 && formStepper.lastAction === "next" && !state.uploadSuccess ) {
   throw new Error("Please upload your file to proceed.");
 }
+
+// Step 4 validation
+if (formStepper.currentStepIndex === 3 && state.finalizeSuccess === true) {
+  throw new Error("Please refresh the page to upload another file.")
+}

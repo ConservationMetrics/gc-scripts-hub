@@ -10,13 +10,13 @@ def main(uploaded_file):
     saved_input = save_uploaded_file_to_temp(uploaded_file)
     input_path = saved_input["file_paths"][0]
 
-    # Detect the file type (e.g., csv, geojson, etc.)
+    # Detect the file type (e.g., GPX, KML, XLS, CSV, GeoJSON, etc.)
     file_format = detect_structured_data_type(input_path)
 
-    # Convert the file into a normalized structure
+    # Convert the file into either CSV or GeoJSON
     converted_data, output_format = convert_data(input_path, file_format)
 
-    # Build a new filename with the same stem and file format
+    # Build a new filename with the same stem and converted output file format
     output_filename = f"{Path(input_path).stem}_parsed.{output_format}"
     file_to_save = [{"name": output_filename, "data": json.dumps(converted_data)}]
 

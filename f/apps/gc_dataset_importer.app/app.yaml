@@ -162,20 +162,20 @@ value:
           recomputeOnInputChanged: false
           runnable:
             type: runnableByName
-            name: 0 Form stepper validation
+            name: 0 Form stepper validations
             inlineScript:
-              content: '!inline 0_form_stepper_validation.inline_script.frontend.js'
+              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
               language: frontend
-              path: f/apps/gc_dataset_importer/0_Form_stepper_validation
+              path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: formStepper
-                  key: lastAction
+                  key: currentStepIndex
                 - id: state
                   key: datasetAvailable
                 - id: state
                   key: uploadSuccess
                 - id: formStepper
-                  key: currentStepIndex
+                  key: lastAction
         configuration: {}
         customCss:
           container:
@@ -238,11 +238,14 @@ value:
         content: '!inline 3_set_data_source_state.inline_script.frontend.js'
         language: frontend
         path: f/apps/gc_dataset_importer/3_Set_data_source_state
-        suggestedRefreshOn:
-          - id: dataSources
+        refreshOn:
+          - id: dataSourceToggle
             key: result
+        suggestedRefreshOn:
           - id: state
             key: dataSource
+          - id: dataSources
+            key: result
       recomputeIds: []
       recomputeOnInputChanged: true
   hideLegacyTopBar: true
@@ -385,6 +388,8 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
+                - id: state
+                  key: validSqlname
                 - id: state
                   key: datasetName
                 - id: state
@@ -558,7 +563,9 @@ value:
                 refreshOn:
                   - id: state
                     key: datasetAvailable
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: validSqlname
           configuration:
             copyButton:
               type: static
@@ -749,14 +756,14 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
-                - id: selectFile
-                  key: result
                 - id: state
                   key: fileName
                 - id: state
                   key: uploadedFilePath
                 - id: state
                   key: uploadSuccess
+                - id: selectFile
+                  key: result
           configuration:
             afterIcon:
               type: static
@@ -1814,7 +1821,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'bg_3:rawscript/ffc2ce6e935db06aa6fee6660f09fe5e205274eae5a0f0908bc8640e1c693559':
+    'bg_3:rawscript/cdc5d5215108fdd12b9150b905922f99aa2188356de1fdc4729da9bc4190038d':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1823,7 +1830,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
-    'datasetNameResult:rawscript/8e953eb74403c32e19ea085c922c8d5e9b78bdbbbb7d8712d910d85b2c33f003':
+    'datasetNameResult:rawscript/a2ffe61faabfbb37e7b096e148027e3bd474dfe1d4593f50de2b244c072f53f9':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1831,7 +1838,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'formStepper:rawscript/a78a04440266c029d6878d2bb99d963d656c3ba08556a546df4a64789a69fd7a':
+    'formStepper:rawscript/518fce76bab5a7f5733454fafcc41959e7b3a4f9fbba8399b4c6bd9e72194aba':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1839,13 +1846,13 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/440c4f3e56e2528b5a1bbce6dcf3de166f1d02cdaf69f969d623438aad648a9b':
+    'transformAndWrite:rawscript/77859a0d5adff11e51492aba04867bf605340a1dfcaee48617ef973212eaa866':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
         valid_sql_name: null
-    'uploadFile:rawscript/0b56ad75ce7856eb42f7da21aa5760ecacf447f6c2697951ed4335b3c3141e24':
+    'uploadFile:rawscript/4c6ccf2b47c47c1eeb44dc0787c8037aca1d780d11a2cd8779e1e56337db8210':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
