@@ -1,4 +1,4 @@
-summary: GC File Uploader
+summary: GC Dataset Importer
 value:
   css:
     buttoncomponent:
@@ -65,7 +65,7 @@ value:
         componentInput:
           type: templatev2
           connections: []
-          eval: Guardian Connector File Uploader
+          eval: Guardian Connector Dataset Importer
           fieldType: template
         configuration:
           copyButton:
@@ -988,7 +988,7 @@ value:
             type: templatev2
             connections: []
             eval: |
-              (We use this to apply any special formatting logic.)
+              (We use this to apply special formatting logic.)
             fieldType: template
           configuration:
             copyButton:
@@ -1215,7 +1215,7 @@ value:
               value: ''
           customCss:
             container:
-              class: 'bg-gray-50 dark:bg-gray-800'
+              class: 'bg-gray-100 dark:bg-gray-800'
               style: ''
             text:
               class: ''
@@ -1309,7 +1309,7 @@ value:
               value: ''
           customCss:
             container:
-              class: 'bg-gray-50 dark:bg-gray-800'
+              class: 'bg-gray-100 dark:bg-gray-800'
               style: ''
             text:
               class: ''
@@ -1421,7 +1421,7 @@ value:
               value: ''
           customCss:
             container:
-              class: 'bg-gray-50 dark:bg-gray-800'
+              class: 'bg-gray-100 dark:bg-gray-800'
               style: ''
             text:
               class: ''
@@ -1450,7 +1450,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "\U0001F5C3️ Ready to write this dataset to your warehouse?"
+            eval: ✍️ Ready to write this dataset to your warehouse?
             fieldType: template
           configuration:
             copyButton:
