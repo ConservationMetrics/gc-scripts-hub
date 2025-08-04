@@ -161,7 +161,8 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
         return transformed_data, True
     else:
         if output_format == "geojson":
-            # TODO: support locus_map, mapeo transformations
+            # TODO: Support locus_map, mapeo transformations
+            logger.info(f"{output_format} transformations are not supported yet")
             pass
         logger.info("No transformation applied for this data source")
         return data, False
