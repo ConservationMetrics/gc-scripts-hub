@@ -138,7 +138,7 @@ value:
     - '12':
         fixed: true
         fullHeight: false
-        h: 11
+        h: 12
         w: 8
         x: 2
         'y': 5
@@ -168,14 +168,12 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
-                - id: formStepper
-                  key: currentStepIndex
                 - id: state
                   key: datasetAvailable
-                - id: state
-                  key: uploadSuccess
                 - id: formStepper
                   key: lastAction
+                - id: formStepper
+                  key: currentStepIndex
         configuration: {}
         customCss:
           container:
@@ -257,8 +255,8 @@ value:
           fixed: true
           fullHeight: false
           h: 4
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 1
         '3':
           fixed: true
@@ -524,8 +522,8 @@ value:
           fixed: true
           fullHeight: false
           h: 2
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 6
         '3':
           fixed: true
@@ -720,6 +718,14 @@ value:
             type: runnable
             autoRefresh: false
             fields:
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: validSqlname
+                    componentId: state
+                expr: state.validSqlname
+                fieldType: object
               uploaded_file:
                 type: evalv2
                 value: null
@@ -742,28 +748,36 @@ value:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
+                    dataset_name:
+                      type: object
+                      description: ''
+                      default: null
                     uploaded_file:
                       type: object
                       description: ''
                       default: null
                   required:
                     - uploaded_file
+                    - dataset_name
             transformer:
-              content: |-
-                state.uploadedFilePath = result;
+              content: |
                 state.uploadSuccess = true;
-                state.fileName = selectFile.result[0].name;
+                state.fileNameOriginal = selectFile.result[0].name;
+                state.fileNameParsed = result[0];
+                state.outputFormat = result[1];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: fileName
-                - id: state
-                  key: uploadedFilePath
+                  key: fileNameParsed
                 - id: state
                   key: uploadSuccess
+                - id: state
+                  key: fileNameOriginal
                 - id: selectFile
                   key: result
+                - id: state
+                  key: outputFormat
           configuration:
             afterIcon:
               type: static
@@ -958,8 +972,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 2
         '3':
           fixed: true
@@ -997,8 +1011,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 3
         '3':
           fixed: true
@@ -1161,7 +1175,7 @@ value:
           fullHeight: false
           h: 1
           w: 3
-          x: 0
+          x: 1
           'y': 1
         '3':
           fixed: false
@@ -1206,8 +1220,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 9
-          x: 3
+          w: 7
+          x: 4
           'y': 1
         '3':
           fixed: true
@@ -1256,7 +1270,7 @@ value:
           fullHeight: false
           h: 1
           w: 3
-          x: 0
+          x: 1
           'y': 2
         '3':
           fixed: true
@@ -1301,8 +1315,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 9
-          x: 3
+          w: 7
+          x: 4
           'y': 2
         '3':
           fixed: true
@@ -1317,13 +1331,28 @@ value:
           type: textcomponent
           actions: []
           componentInput:
-            type: evalv2
+            type: runnable
+            autoRefresh: true
             connections:
-              - id: fileName
+              - id: fileNameOriginal
                 componentId: state
             eval: state.fileName
-            expr: state.fileName
+            expr: state.fileNameOriginal
+            fields: {}
             fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: Eval of fileUploaded
+              inlineScript:
+                content: '!inline eval_of_fileuploaded.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/Eval_of_fileUploaded
+                refreshOn:
+                  - id: state
+                    key: fileNameOriginal
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1351,7 +1380,7 @@ value:
           fullHeight: false
           h: 1
           w: 3
-          x: 0
+          x: 1
           'y': 3
         '3':
           fixed: true
@@ -1396,8 +1425,8 @@ value:
           fixed: true
           fullHeight: false
           h: 1
-          w: 9
-          x: 3
+          w: 7
+          x: 4
           'y': 3
         '3':
           fixed: true
@@ -1552,17 +1581,37 @@ value:
                 value: '$res:u/rudo/ingenuous_postgresql'
                 fieldType: object
                 format: resource-postgresql
-              uploaded_path:
+              filename_original:
                 type: evalv2
                 value: null
                 connections:
-                  - id: uploadedFilePath
+                  - id: fileNameOriginal
                     componentId: state
-                expr: state.uploadedFilePath
+                expr: state.fileNameOriginal
+                fieldType: object
+              filename_parsed:
+                type: evalv2
+                value: null
+                connections:
+                  - id: fileNameParsed
+                    componentId: state
+                expr: state.fileNameParsed
+                fieldType: object
+              output_format:
+                type: evalv2
+                value: null
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: state.outputFormat
                 fieldType: object
               valid_sql_name:
-                type: static
+                type: evalv2
                 value: null
+                connections:
+                  - id: validSqlname
+                    componentId: state
+                expr: state.validSqlname
                 fieldType: object
             fieldType: any
             recomputeOnInputChanged: false
@@ -1596,7 +1645,15 @@ value:
                       description: ''
                       default: null
                       format: resource-postgresql
-                    uploaded_path:
+                    filename_original:
+                      type: object
+                      description: ''
+                      default: null
+                    filename_parsed:
+                      type: object
+                      description: ''
+                      default: null
+                    output_format:
                       type: object
                       description: ''
                       default: null
@@ -1606,7 +1663,9 @@ value:
                       default: null
                   required:
                     - db
-                    - uploaded_path
+                    - filename_original
+                    - filename_parsed
+                    - output_format
                     - data_source
                     - dataset_name
                     - valid_sql_name
@@ -1740,8 +1799,8 @@ value:
           fixed: false
           fullHeight: false
           h: 2
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 6
         '3':
           fixed: false
@@ -1763,7 +1822,7 @@ value:
             expr: ''
             fields: {}
             fieldType: template
-            hideRefreshButton: false
+            hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
               type: runnableByName
@@ -1821,7 +1880,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'bg_3:rawscript/cdc5d5215108fdd12b9150b905922f99aa2188356de1fdc4729da9bc4190038d':
+    'bg_3:rawscript/eb598dc66943f8daaeee655cf32953fb14eea371b4f886619c79b7161cd12f40':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1838,6 +1897,10 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
+    'fileUploaded:rawscript/c8afc9500163ab5f943ef27cc21d42c5666fb94cec35ada3afc558d59f756b69':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
     'formStepper:rawscript/518fce76bab5a7f5733454fafcc41959e7b3a4f9fbba8399b4c6bd9e72194aba':
       allow_user_resources: []
       one_of_inputs: {}
@@ -1846,13 +1909,12 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/77859a0d5adff11e51492aba04867bf605340a1dfcaee48617ef973212eaa866':
+    'transformAndWrite:rawscript/481ed5893e20a9f4fcb3b2c840bca2d447bc09f414738b66fbc2cc2527420afc':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
         db: '$res:u/rudo/ingenuous_postgresql'
-        valid_sql_name: null
-    'uploadFile:rawscript/4c6ccf2b47c47c1eeb44dc0787c8037aca1d780d11a2cd8779e1e56337db8210':
+    'uploadFile:rawscript/0fd8fa19faeebafdbdaa9f09fbb1efbc12551f8f50080fa0b87012e9fc3c0186':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
