@@ -166,7 +166,7 @@ value:
             inlineScript:
               content: '!inline form_stepper_validation.inline_script.frontend.js'
               language: frontend
-              path: f/apps/gc_file_uploader/Form_stepper_validation
+              path: f/apps/gc_dataset_importer/Form_stepper_validation
               suggestedRefreshOn:
                 - id: state
                   key: datasetAvailable
@@ -268,9 +268,9 @@ value:
             type: static
             value:
               order:
-                - Dataset name
+                - "\U0001F3F7️ Dataset name"
               properties:
-                Dataset name:
+                "\U0001F3F7️ Dataset name":
                   type: string
                   description: >-
                     Enter the name you wish to give your dataset. This will be
@@ -285,7 +285,7 @@ value:
                   pattern: '^[a-zA-Z_][a-zA-Z0-9_]{0,61}$'
                   placeholder: ''
               required:
-                - Dataset name
+                - "\U0001F3F7️ Dataset name"
             connections: []
             expr: ''
             fieldType: schema
@@ -359,7 +359,7 @@ value:
                 content: '!inline check_if_database_table_exists.inline_script.py'
                 lock: '!inline check_if_database_table_exists.inline_script.lock'
                 language: python3
-                path: f/apps/gc_file_uploader/Check_if_database_table_exists
+                path: f/apps/gc_dataset_importer/Check_if_database_table_exists
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
@@ -718,7 +718,7 @@ value:
                 content: '!inline upload_and_convert_file.inline_script.py'
                 lock: '!inline upload_and_convert_file.inline_script.lock'
                 language: python3
-                path: f/apps/gc_file_uploader/Upload_and_convert_file
+                path: f/apps/gc_dataset_importer/Upload_and_convert_file
                 schema:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
