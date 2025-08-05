@@ -49,7 +49,7 @@ def main(
     db_writer.handle_output(transformed_csv_data)
 
     if delete_csv_file:
-        delete_csv_file_func(csv_path)
+        delete_csv_file(csv_path)
 
 
 def transform_csv_data(csv_path, id_column=None):
@@ -93,7 +93,7 @@ def transform_csv_data(csv_path, id_column=None):
     return transformed_csv_data
 
 
-def delete_csv_file_func(csv_path: Path):
+def delete_csv_file(csv_path: Path):
     """
     Delete the CSV file after processing.
 

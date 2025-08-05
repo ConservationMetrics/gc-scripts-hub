@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from f.common_logic.file_operations import save_data_to_file, save_uploaded_file_to_temp
+from f.common_logic.file_operations import (
+    list_to_csv_string,
+    read_csv_to_list,
+    save_data_to_file,
+    save_uploaded_file_to_temp,
+)
 
 
 def test_save_data_to_file(tmp_path: Path):
@@ -176,3 +181,59 @@ def test_save_uploaded_file_to_temp__kobotoolbox_submissions_xlsx(tmp_path: Path
 
     # Verify the file content is preserved
     assert saved_path.read_bytes() == xlsx_file.read_bytes()
+
+
+def test_read_csv_to_list(tmp_path: Path):
+    csv_file = tmp_path / "test.csv"
+    csv_file.write_text("col1,col2,col3\nfoo,123,bar\nbaz,456,qux")
+
+    result = read_csv_to_list(csv_file)
+
+    assert len(result) == 2
+    assert result[0] == {"col1": "foo", "col2": "123", "col3": "bar"}
+    assert result[1] == {"col1": "baz", "col2": "456", "col3": "qux"}
+
+
+def test_read_csv_to_list__empty_file(tmp_path: Path):
+    csv_file = tmp_path / "empty.csv"
+    csv_file.write_text("col1,col2\n")
+
+    result = read_csv_to_list(csv_file)
+
+    assert result == []
+
+
+def test_list_to_csv_string():
+    data = [
+        {"col1": "foo", "col2": "123", "col3": "bar"},
+        {"col1": "baz", "col2": "456", "col3": "qux"},
+    ]
+
+    result = list_to_csv_string(data)
+
+    expected_lines = ["col1,col2,col3", "foo,123,bar", "baz,456,qux"]
+    result_lines = result.strip().splitlines()
+
+    assert len(result_lines) == 3
+    assert result_lines[0] == expected_lines[0]
+    assert result_lines[1] == expected_lines[1]
+    assert result_lines[2] == expected_lines[2]
+
+
+def test_list_to_csv_string__empty_list():
+    result = list_to_csv_string([])
+    assert result == ""
+
+
+def test_list_to_csv_string__special_characters():
+    data = [
+        {"col1": "foo, bar", "col2": 'Has "quotes"', "col3": "Line\nbreak"},
+        {"col1": "baz", "col2": "Normal text", "col3": ""},
+    ]
+
+    result = list_to_csv_string(data)
+
+    # Should properly escape commas, quotes, and newlines
+    assert '"foo, bar"' in result
+    assert '"Has ""quotes"""' in result
+    assert '"Line\nbreak"' in result

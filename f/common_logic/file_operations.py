@@ -4,10 +4,57 @@ import json
 import logging
 import tempfile
 import zipfile
+from io import StringIO
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def read_csv_to_list(csv_path):
+    """
+    Read CSV file and return as list of dictionaries.
+
+    Parameters
+    ----------
+    csv_path : str or pathlib.Path
+        Path to the CSV file to read.
+
+    Returns
+    -------
+    list of dict
+        List of dictionaries representing CSV rows with column headers as keys.
+    """
+    logger.info(f"Reading CSV file: {csv_path}")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        data = list(csv.DictReader(f))
+    logger.info(f"Read {len(data)} rows from CSV file")
+    return data
+
+
+def list_to_csv_string(data):
+    """
+    Convert list of dictionaries to CSV string.
+
+    Parameters
+    ----------
+    data : list of dict
+        List of dictionaries to convert to CSV format.
+
+    Returns
+    -------
+    str
+        CSV-formatted string with headers and data rows.
+        Returns empty string if input data is empty.
+    """
+    if not data:
+        return ""
+
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames=data[0].keys())
+    writer.writeheader()
+    writer.writerows(data)
+    return output.getvalue()
 
 
 def get_safe_file_path(storage_path: str, db_table_name: str, file_type: str):

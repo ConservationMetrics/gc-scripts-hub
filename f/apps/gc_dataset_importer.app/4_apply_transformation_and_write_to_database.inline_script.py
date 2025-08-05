@@ -1,12 +1,14 @@
-import csv
 import json
 import logging
 import shutil
-from io import StringIO
 from pathlib import Path
 
 from f.common_logic.db_operations import postgresql
-from f.common_logic.file_operations import save_uploaded_file_to_temp
+from f.common_logic.file_operations import (
+    list_to_csv_string,
+    read_csv_to_list,
+    save_uploaded_file_to_temp,
+)
 from f.connectors.comapeo.comapeo_observations import transform_comapeo_observations
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
@@ -17,52 +19,6 @@ from f.connectors.odk.odk_responses import transform_odk_form_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def read_csv_to_list(csv_path):
-    """
-    Read CSV file and return as list of dictionaries.
-
-    Parameters
-    ----------
-    csv_path : str or pathlib.Path
-        Path to the CSV file to read.
-
-    Returns
-    -------
-    list of dict
-        List of dictionaries representing CSV rows with column headers as keys.
-    """
-    logger.info(f"Reading CSV file: {csv_path}")
-    with open(csv_path, "r", encoding="utf-8") as f:
-        data = list(csv.DictReader(f))
-    logger.info(f"Read {len(data)} rows from CSV file")
-    return data
-
-
-def list_to_csv_string(data):
-    """
-    Convert list of dictionaries to CSV string.
-
-    Parameters
-    ----------
-    data : list of dict
-        List of dictionaries to convert to CSV format.
-
-    Returns
-    -------
-    str
-        CSV-formatted string with headers and data rows.
-        Returns empty string if input data is empty.
-    """
-    if not data:
-        return ""
-
-    output = StringIO()
-    writer = csv.DictWriter(output, fieldnames=data[0].keys())
-    writer.writeheader()
-    writer.writerows(data)
-    return output.getvalue()
 
 
 def _save_transformed_file(data, filename, file_format, tmp_dir):
@@ -85,10 +41,10 @@ def _save_transformed_file(data, filename, file_format, tmp_dir):
     str
         Full path to the saved file.
     """
-    if file_format == "geojson":
-        file_data = json.dumps(data)
-    else:  # csv
+    if file_format == "csv":
         file_data = list_to_csv_string(data)
+    else:  # geojson
+        file_data = json.dumps(data)
 
     saved = save_uploaded_file_to_temp(
         [{"name": filename, "data": file_data}],
@@ -98,7 +54,7 @@ def _save_transformed_file(data, filename, file_format, tmp_dir):
     return saved["file_paths"][0]
 
 
-def _copy_to_datalake(source_path, datalake_dir, output_filename, file_type):
+def _copy_to_datalake(source_path, datalake_dir, output_filename):
     """
     Copy file to datalake directory.
 
@@ -110,12 +66,10 @@ def _copy_to_datalake(source_path, datalake_dir, output_filename, file_type):
         Destination directory in the datalake.
     output_filename : str
         Name of the file in the datalake.
-    file_type : str
-        Type description for logging ('original', 'parsed', 'transformed').
     """
     datalake_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, datalake_dir / output_filename)
-    logger.info(f"Copied {file_type} file to datalake: {output_filename}")
+    logger.info(f"Copied file to datalake: {output_filename}")
 
 
 def _add_data_source_to_csv(data, data_source):
@@ -317,7 +271,6 @@ def main(
             file_path,
             datalake_dir,
             datalake_filename,
-            "transformed" if transformed else "parsed",
         )
 
         # Save originally uploaded file to the same directory as parsed/transformed files
@@ -325,9 +278,7 @@ def main(
             # Copy original file to datalake directory
             # TODO: only copy if the file wasn't converted from a different format (e.g. GPX to GeoJSON)
             # Otherwise, it's probably not worth keeping around for only minor transformation differences
-            _copy_to_datalake(
-                original_path, datalake_dir, filename_original, "original"
-            )
+            _copy_to_datalake(original_path, datalake_dir, filename_original)
         else:
             logger.warning(f"Original file not found: {original_path}")
 
