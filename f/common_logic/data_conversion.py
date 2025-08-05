@@ -454,9 +454,15 @@ def gpx_to_geojson(path: Path):
                     if v not in (None, "", "None")
                 }
 
+                # Generate unique ID for the feature
+                feature_id = final_properties.get(
+                    "name", f"waypoint_{waypoint_index + 1}"
+                )
+
                 features.append(
                     {
                         "type": "Feature",
+                        "id": feature_id,
                         "geometry": dict(feature["geometry"]),
                         "properties": final_properties,
                     }
@@ -569,9 +575,13 @@ def kml_to_geojson(path: Path):
                 k: v for k, v in final_properties.items() if v not in (None, "", "None")
             }
 
+            # Generate unique ID for the feature
+            feature_id = final_properties.get("name", f"placemark_{i + 1}")
+
             features.append(
                 {
                     "type": "Feature",
+                    "id": feature_id,
                     "geometry": dict(feature["geometry"]),
                     "properties": final_properties,
                 }

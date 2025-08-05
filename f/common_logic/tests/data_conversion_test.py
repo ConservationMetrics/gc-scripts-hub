@@ -8,6 +8,11 @@ def _validate_geojson_structure(result, expected_feature_count):
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == expected_feature_count
 
+    # Ensure all features have IDs (required for database insertion)
+    for i, feature in enumerate(result["features"]):
+        assert "id" in feature, f"Feature {i} missing required 'id' field"
+        assert feature["id"], f"Feature {i} has empty 'id' field"
+
 
 def _validate_point_geometry(feature):
     """Helper to validate point geometry structure."""
