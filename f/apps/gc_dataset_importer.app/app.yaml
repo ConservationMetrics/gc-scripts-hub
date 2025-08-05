@@ -169,11 +169,9 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
+                  key: uploadSuccess
+                - id: state
                   key: datasetAvailable
-                - id: formStepper
-                  key: lastAction
-                - id: formStepper
-                  key: currentStepIndex
         configuration: {}
         customCss:
           container:
@@ -1010,7 +1008,7 @@ value:
       - '12':
           fixed: true
           fullHeight: false
-          h: 1
+          h: 2
           w: 10
           x: 1
           'y': 3
@@ -1029,8 +1027,9 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: |
-              (We use this to apply special formatting logic.)
+            eval: >
+              (We use this to add a "data source" column to the dataset, and in
+              some cases, apply special formatting logic.)
             fieldType: template
           configuration:
             copyButton:
@@ -1062,7 +1061,7 @@ value:
           h: 1
           w: 6
           x: 3
-          'y': 4
+          'y': 5
         '3':
           fixed: true
           fullHeight: false
@@ -1094,15 +1093,15 @@ value:
             items:
               type: static
               value:
-                - value: comapeo
+                - value: CoMapeo
                   label: CoMapeo
-                - value: kobotoolbox
+                - value: KoboToolbox
                   label: KoboToolbox
-                - value: locus_map
-                  label: Locus Map
-                - value: mapeo
+                - value: Mapeo
                   label: Mapeo
-                - value: odk
+                - value: Locus Map
+                  label: Locus Map
+                - value: ODK
                   label: ODK
             nativeHtmlSelect:
               type: static
@@ -1909,7 +1908,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/9da420b034d0d72d797a9037d60e9bd246df1fc321e5c994d62d4b58a411b004':
+    'transformAndWrite:rawscript/4074080e69115b942aa3590d2b07742a6793fc827ec56d52e31bf8babb415f2f':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:

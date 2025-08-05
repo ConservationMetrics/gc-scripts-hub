@@ -8,6 +8,7 @@ from pathlib import Path
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_uploaded_file_to_temp
 from f.connectors.comapeo.comapeo_observations import transform_comapeo_observations
+from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
     transform_kobotoolbox_form_data,
@@ -117,6 +118,51 @@ def _copy_to_datalake(source_path, datalake_dir, output_filename, file_type):
     logger.info(f"Copied {file_type} file to datalake: {output_filename}")
 
 
+def _add_data_source_to_csv(data, data_source):
+    """
+    Add data_source column to CSV data.
+
+    Parameters
+    ----------
+    data : list of dict
+        List of dictionaries representing CSV rows.
+    data_source : str
+        Source system identifier to add as a column.
+
+    Returns
+    -------
+    list of dict
+        Modified data with data_source column added to each row.
+    """
+    for row in data:
+        row["data_source"] = data_source
+    return data
+
+
+def _add_data_source_to_geojson(data, data_source):
+    """
+    Add data_source property to GeoJSON features.
+
+    Parameters
+    ----------
+    data : dict
+        GeoJSON data structure.
+    data_source : str
+        Source system identifier to add as a property.
+
+    Returns
+    -------
+    dict
+        Modified GeoJSON with data_source property added to each feature.
+    """
+    if "features" in data:
+        for feature in data["features"]:
+            if "properties" not in feature:
+                feature["properties"] = {}
+            feature["properties"]["data_source"] = data_source
+    return data
+
+
 def _apply_transformation(data, data_source, dataset_name, output_format):
     """
     Apply transformation based on data source and return transformed data and status.
@@ -126,7 +172,7 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
     data : list or dict
         Raw data to transform (list for CSV, dict for GeoJSON).
     data_source : str
-        Source system identifier ('comapeo', 'kobotoolbox', 'odk', etc.).
+        Source system identifier ('CoMapeo', 'KoboToolbox', 'ODK', etc.).
     dataset_name : str
         Human-readable name of the dataset.
     output_format : str
@@ -142,15 +188,15 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
             Whether any transformation was applied.
     """
     transformations = {
-        ("geojson", "comapeo"): (
+        ("geojson", "CoMapeo"): (
             transform_comapeo_observations,
             "Comapeo transformation applied",
         ),
-        ("csv", "kobotoolbox"): (
+        ("csv", "KoboToolbox"): (
             transform_kobotoolbox_form_data,
             "Kobotoolbox transformation applied",
         ),
-        ("csv", "odk"): (transform_odk_form_data, "ODK transformation applied"),
+        ("csv", "ODK"): (transform_odk_form_data, "ODK transformation applied"),
     }
 
     transform_key = (output_format, data_source)
@@ -159,11 +205,14 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
         transformed_data = transform_func(data, dataset_name)
         logger.info(log_msg)
         return transformed_data, True
-    else:
+    elif data_source:  # Apply generic data_source transformation if data_source is set
         if output_format == "geojson":
-            # TODO: Support locus_map, mapeo transformations
-            logger.info(f"{output_format} transformations are not supported yet")
-            pass
+            transformed_data = _add_data_source_to_geojson(data, data_source)
+        else:  # csv
+            transformed_data = _add_data_source_to_csv(data, data_source)
+        logger.info(f"Generic data_source transformation applied for: {data_source}")
+        return transformed_data, True
+    else:
         logger.info("No transformation applied for this data source")
         return data, False
 
@@ -202,7 +251,7 @@ def main(
     output_format : str
         Format of the parsed file ('csv' or 'geojson').
     data_source : str
-        Source system identifier ('comapeo', 'kobotoolbox', 'odk', etc.).
+        Source system identifier ('CoMapeo', 'KoboToolbox', 'ODK', etc.).
     dataset_name : str
         Human-readable name of the dataset.
     valid_sql_name : str
@@ -240,23 +289,27 @@ def main(
             logger.info(f"Using original file: {file_path}")
 
         # Save to PostgreSQL
+        file_path_obj = Path(file_path)
         if output_format == "geojson":
             save_geojson_to_postgres(
-                db=db, db_table_name=valid_sql_name, geojson_path=file_path
+                db=db,
+                db_table_name=valid_sql_name,
+                geojson_path=file_path_obj.name,
+                attachment_root=str(file_path_obj.parent),
             )
             logger.info(f"GeoJSON saved to PostgreSQL table: {valid_sql_name}")
         else:  # csv
-            # TODO: There is no CSV to Postgres connector. What to do?
-            # save_csv_to_postgres(db=db, db_table_name=dataset_name, csv_path=csv_path)
-            # logger.info(f"CSV saved to PostgreSQL table: {dataset_name}")
-            pass
+            save_csv_to_postgres(
+                db=db,
+                db_table_name=valid_sql_name,
+                csv_path=file_path_obj.name,
+                attachment_root=str(file_path_obj.parent),
+            )
+            logger.info(f"CSV saved to PostgreSQL table: {valid_sql_name}")
 
         # Copy parsed/transformed file to datalake
         if transformed:
-            if output_format == "geojson":
-                datalake_filename = f"{uploaded_path.stem}_transformed.geojson"
-            else:  # csv
-                datalake_filename = filename_parsed.replace("_parsed", "_transformed")
+            datalake_filename = filename_parsed.replace("_parsed", "_transformed")
         else:
             datalake_filename = filename_parsed
 
@@ -270,6 +323,8 @@ def main(
         # Save originally uploaded file to the same directory as parsed/transformed files
         if original_path.exists():
             # Copy original file to datalake directory
+            # TODO: only copy if the file wasn't converted from a different format (e.g. GPX to GeoJSON)
+            # Otherwise, it's probably not worth keeping around for only minor transformation differences
             _copy_to_datalake(
                 original_path, datalake_dir, filename_original, "original"
             )
