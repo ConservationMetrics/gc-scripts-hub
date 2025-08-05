@@ -19,6 +19,7 @@ Some of the tools available in the Guardian Connector Scripts Hub are:
 * A flow to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server 
   API, and send a message to WhatsApp recipients via Twilio.
 * Scripts to export data from a database into a specific format (e.g., GeoJSON).
+* An app to import and transform datasets from a variety of file formats and sources into a PostgreSQL database.
 
 ![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
 _A Windmill Workspace populated with some of the tools in this repository._
