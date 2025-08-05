@@ -169,9 +169,9 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: uploadSuccess
-                - id: state
                   key: datasetAvailable
+                - id: state
+                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -200,10 +200,6 @@ value:
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
         suggestedRefreshOn:
-          - id: state
-            key: uploadSuccess
-          - id: state
-            key: uploadButtonEnabled
           - id: selectFile
             key: result
       recomputeIds: []
@@ -222,13 +218,11 @@ value:
         suggestedRefreshOn:
           - id: selectFile
             key: result
-          - id: state
-            key: uploadSuccess
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
       name: 3 Set data source state
-      autoRefresh: true
+      autoRefresh: false
       fields: {}
       inlineScript:
         content: '!inline 3_set_data_source_state.inline_script.frontend.js'
@@ -238,10 +232,10 @@ value:
           - id: dataSourceToggle
             key: result
         suggestedRefreshOn:
-          - id: state
-            key: dataSource
           - id: dataSources
             key: result
+          - id: state
+            key: dataSource
       recomputeIds: []
       recomputeOnInputChanged: true
   hideLegacyTopBar: true
@@ -276,7 +270,7 @@ value:
               properties:
                 Dataset name:
                   type: string
-                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. This will be used for filenames and database table names."
+                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. This will be added to your data, and used to construct filenames and database table names."
                   customErrorMessage: Must be no longer than 61 characters.
                   default: ''
                   disableVariablePicker: true
@@ -607,7 +601,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, KMZ, XLS, XLSX'
+            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX'
             fieldType: template
           configuration:
             copyButton:
@@ -766,16 +760,8 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
-                - id: state
-                  key: fileNameParsed
-                - id: state
-                  key: uploadSuccess
-                - id: state
-                  key: fileNameOriginal
                 - id: selectFile
                   key: result
-                - id: state
-                  key: outputFormat
           configuration:
             afterIcon:
               type: static
@@ -1908,12 +1894,12 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/4074080e69115b942aa3590d2b07742a6793fc827ec56d52e31bf8babb415f2f':
+    'transformAndWrite:rawscript/ee0bfbe22e21af802f83caa4d1dbebee5b926b6597711c91796e974f6ab061cd':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/c2011df349eb90e0e7f957cb90cc43c92abf67b4060c41659cbc758e44bf281e':
+    'uploadFile:rawscript/0285315d1cdb4e0e6e28366ba5f74ad01d02303d2dcbfa2c648e81c0348319cc':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
