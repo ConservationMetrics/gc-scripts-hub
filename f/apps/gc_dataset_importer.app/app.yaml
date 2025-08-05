@@ -171,6 +171,8 @@ value:
                 - id: state
                   key: datasetAvailable
                 - id: state
+                  key: finalizeSuccess
+                - id: state
                   key: uploadSuccess
         configuration: {}
         customCss:
@@ -270,7 +272,7 @@ value:
               properties:
                 Dataset name:
                   type: string
-                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. This will be added to your data, and used to construct filenames and database table names."
+                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. You will be able to find your dataset by this name in other Guardian Connector tools."
                   customErrorMessage: Must be no longer than 61 characters.
                   default: ''
                   disableVariablePicker: true
@@ -678,7 +680,9 @@ value:
               expr: '"Selected file"'
             text:
               type: static
-              value: Drag and drop files or click to select them
+              value: >-
+                Drag and drop files into this box, or click to select them. Then
+                click "Upload File" to finish before going to the next step.
               connections: []
               expr: '"Drag and drop files or click to select them"'
           customCss:
@@ -1685,8 +1689,12 @@ value:
                 none: {}
               selected: none
             disabled:
-              type: static
+              type: evalv2
               value: false
+              connections:
+                - id: finalizeSuccess
+                  componentId: state
+              expr: state.finalizeSuccess
             fillContainer:
               type: static
               value: false
@@ -1784,8 +1792,8 @@ value:
           fixed: false
           fullHeight: false
           h: 2
-          w: 10
-          x: 1
+          w: 12
+          x: 0
           'y': 6
         '3':
           fixed: false
@@ -1890,7 +1898,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'saveResult:rawscript/4b6ab9776a6eb1878e2e60e10b53a0c5799c195874a5134d4130b39c95ccdb3e':
+    'saveResult:rawscript/59e5275d33584704361e5ee843abaa09464a29545ac6e25235ef60f422a9397f':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
