@@ -9,7 +9,6 @@ from f.common_logic.file_operations import (
     read_csv_to_list,
     save_uploaded_file_to_temp,
 )
-from f.connectors.comapeo.comapeo_observations import transform_comapeo_observations
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
@@ -142,10 +141,11 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
             Whether any transformation was applied.
     """
     transformations = {
-        ("geojson", "CoMapeo"): (
-            transform_comapeo_observations,
-            "Comapeo transformation applied",
-        ),
+        # TODO: add CoMapeo transformation back in when we have fixtures
+        # ("geojson", "CoMapeo"): (
+        #     transform_comapeo_observations,
+        #     "Comapeo transformation applied",
+        # ),
         ("csv", "KoboToolbox"): (
             transform_kobotoolbox_form_data,
             "Kobotoolbox transformation applied",
