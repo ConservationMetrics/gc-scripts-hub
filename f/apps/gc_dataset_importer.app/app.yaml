@@ -171,9 +171,9 @@ value:
                 - id: state
                   key: datasetAvailable
                 - id: state
-                  key: finalizeSuccess
-                - id: state
                   key: uploadSuccess
+                - id: state
+                  key: finalizeSuccess
         configuration: {}
         customCss:
           container:
@@ -757,15 +757,26 @@ value:
                     - dataset_name
             transformer:
               content: |
-                state.uploadSuccess = true;
+                state.uploadSuccess = result[0];
+                state.uploadErrorMessage = result[1];
                 state.fileNameOriginal = selectFile.result[0].name;
-                state.fileNameParsed = result[0];
-                state.outputFormat = result[1];
+                state.fileNameParsed = result[2];
+                state.outputFormat = result[3];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: selectFile
                   key: result
+                - id: state
+                  key: outputFormat
+                - id: state
+                  key: uploadSuccess
+                - id: state
+                  key: fileNameOriginal
+                - id: state
+                  key: fileNameParsed
+                - id: state
+                  key: uploadErrorMessage
           configuration:
             afterIcon:
               type: static
@@ -932,7 +943,9 @@ value:
                     key: uploadSuccess
                   - id: state
                     key: uploadProcessing
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: uploadErrorMessage
           configuration:
             copyButton:
               type: static
@@ -1659,10 +1672,14 @@ value:
                     - dataset_name
                     - valid_sql_name
             transformer:
-              content: state.finalizeSuccess = true
+              content: |-
+                state.finalizeSuccess = result[0]
+                state.finalizeErrorMessage = result[1]
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
-              suggestedRefreshOn: []
+              suggestedRefreshOn:
+                - id: state
+                  key: finalizeSuccess
           configuration:
             afterIcon:
               type: static
@@ -1829,7 +1846,9 @@ value:
                     key: finalizeSuccess
                   - id: state
                     key: dataSource
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: finalizeErrorMessage
           configuration:
             copyButton:
               type: static
@@ -1898,20 +1917,20 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'saveResult:rawscript/59e5275d33584704361e5ee843abaa09464a29545ac6e25235ef60f422a9397f':
+    'saveResult:rawscript/08b9c653850e31a730c8cfa71d6fdc1c7049706954f31fda9b83e3e8dab3d265':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/ee0bfbe22e21af802f83caa4d1dbebee5b926b6597711c91796e974f6ab061cd':
+    'transformAndWrite:rawscript/95352d8a2cc69d87b2de1d0d0df189a2fa1e905cc4c39e32741d8ea753f465c0':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/0285315d1cdb4e0e6e28366ba5f74ad01d02303d2dcbfa2c648e81c0348319cc':
+    'uploadFile:rawscript/f5c54755b0a5a426bb22b0b67a3830affbae86ba989b394e6e3e01138ce2ecd1':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResult:rawscript/4367aba1a642f5c124e0b646b8e5526222d71319f015fb44b4d5924597ab6b8e':
+    'uploadFileResult:rawscript/b2dde31cee45ea92a7255487971a63b11a57167a8244084f87f723795493f701':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}

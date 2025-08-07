@@ -28,45 +28,58 @@ def main(uploaded_file, dataset_name):
 
     Returns
     -------
-    tuple
-        A tuple containing (output_filename, output_format):
-        - output_filename : str
-            Name of the converted file with '_parsed' suffix.
-        - output_format : str
-            Format of converted file ('csv' or 'geojson').
+    tuple[bool, str | None, str | None, str | None]
+        A tuple containing (success, error_message, output_filename, output_format):
+        - success : bool
+            True if processing completed successfully, False if an error occurred.
+        - error_message : str or None
+            Error message if success is False, None if success is True.
+        - output_filename : str or None
+            Name of the converted file with '_parsed' suffix if successful, None if failed.
+        - output_format : str or None
+            Format of converted file ('csv' or 'geojson') if successful, None if failed.
     """
-    logger.info(f"Starting file upload and conversion for dataset: {dataset_name}")
+    try:
+        logger.info(f"Starting file upload and conversion for dataset: {dataset_name}")
 
-    temp_dir = Path(f"/persistent-storage/tmp/{dataset_name}")
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Created dataset temp directory: {temp_dir}")
+        temp_dir = Path(f"/persistent-storage/tmp/{dataset_name}")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created dataset temp directory: {temp_dir}")
 
-    saved_input = save_uploaded_file_to_temp(uploaded_file, tmp_dir=str(temp_dir))
-    input_path = saved_input["file_paths"][0]
-    logger.info(f"Saved original file to: {input_path}")
+        saved_input = save_uploaded_file_to_temp(uploaded_file, tmp_dir=str(temp_dir))
+        input_path = saved_input["file_paths"][0]
+        logger.info(f"Saved original file to: {input_path}")
 
-    file_format = detect_structured_data_type(input_path)
-    logger.info(f"Detected file format: {file_format}")
+        file_format = detect_structured_data_type(input_path)
+        logger.info(f"Detected file format: {file_format}")
 
-    converted_data, output_format = convert_data(input_path, file_format)
-    logger.info(f"Converted to format: {output_format}")
+        converted_data, output_format = convert_data(input_path, file_format)
+        logger.info(f"Converted to format: {output_format}")
 
-    output_filename = f"{Path(input_path).stem}_parsed.{output_format}"
+        output_filename = f"{Path(input_path).stem}_parsed.{output_format}"
 
-    if output_format == "csv":
-        output = StringIO()
-        writer = csv.writer(output)
-        writer.writerows(converted_data)
-        csv_data = output.getvalue()
+        if output_format == "csv":
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerows(converted_data)
+            csv_data = output.getvalue()
 
-        file_to_save = [{"name": output_filename, "data": csv_data}]
-    else:  # geojson
-        file_to_save = [{"name": output_filename, "data": json.dumps(converted_data)}]
+            file_to_save = [{"name": output_filename, "data": csv_data}]
+        else:  # geojson
+            file_to_save = [
+                {"name": output_filename, "data": json.dumps(converted_data)}
+            ]
 
-    saved_output = save_uploaded_file_to_temp(
-        file_to_save, is_base64=False, tmp_dir=str(temp_dir)
-    )
-    output_path = saved_output["file_paths"][0]
-    logger.info(f"Saved parsed file to: {output_path}")
+        saved_output = save_uploaded_file_to_temp(
+            file_to_save, is_base64=False, tmp_dir=str(temp_dir)
+        )
+        output_path = saved_output["file_paths"][0]
+        logger.info(f"Saved parsed file to: {output_path}")
 
-    return output_filename, output_format
+        # Return success
+        return True, None, output_filename, output_format
+
+    except Exception as e:
+        error_msg = f"Error during file upload and conversion: {e}"
+        logger.error(error_msg)
+        return False, error_msg, None, None

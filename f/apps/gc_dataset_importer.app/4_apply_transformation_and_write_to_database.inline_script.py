@@ -210,6 +210,15 @@ def main(
         Human-readable name of the dataset.
     valid_sql_name : str
         SQL-safe name used for database tables and directories.
+
+    Returns
+    -------
+    tuple[bool, str | None]
+        A tuple containing (success, error_message):
+        - success : bool
+            True if processing completed successfully, False if an error occurred.
+        - error_message : str or None
+            Error message if success is False, None if success is True.
     """
     tmp_dir = Path(f"/persistent-storage/tmp/{valid_sql_name}")
     datalake_dir = Path(f"/persistent-storage/datalake/{valid_sql_name}")
@@ -282,9 +291,13 @@ def main(
         else:
             logger.warning(f"Original file not found: {original_path}")
 
+        # Return success
+        return True, None
+
     except Exception as e:
-        logger.error(f"Error during dataset import process: {e}")
-        raise
+        error_msg = f"Error during dataset import process: {e}"
+        logger.error(error_msg)
+        return False, error_msg
 
     finally:
         # Clean up dataset-specific temp directory
