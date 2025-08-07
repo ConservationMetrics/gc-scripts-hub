@@ -48,6 +48,18 @@ curl -X POST "https://data-api.globalforestwatch.org/auth/apikey" \
 > [!NOTE] 
 > The API key expires after one year. You will need to retrieve a new key afterwards. In the future, we can look at doing this programmatically.
 
+## Getting a Bounding Box
+
+Your bounding box needs to be in a three-ring format:
+
+```json
+[[[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]]]
+```
+
+If you don't already have a bounding box, you can use the following tool to get one: https://boundingbox.klokantech.com/
+
+Draw a box on the map, and then change the format (in the dropdown on the bottom left corner) to "GeoJSON" and copy the coordinates.
+
 ## 📚 Reference
 
 * Available datasets from the GFW API Documentation: https://data-api.globalforestwatch.org/datasets
