@@ -43,6 +43,14 @@ This repo also provides a shell script to batch push changes to a number of work
 
        (set -a; source .env; set +a; bin/push.sh)
 
+### Adding custom resource types
+
+This repository contains a number of [custom resource types](https://www.windmill.dev/docs/core_concepts/resources_and_types#create-a-resource-type) that are used by a number of the scripts in this repository. These are stored in the [`resource-types/`](./resource-types) directory.
+
+There is no way to sync these resource types to a Windmill workspace, so you will need to manually add them. The easiest way to do this is to paste them in to the JSON editor when creating a new resource type.
+
+Note: it is possible to add resource types to [Windmill Hub](https://www.windmill.dev/docs/core_concepts/resources_and_types#sync-resource-types-with-windmillhub), and it is our intention to try to add all of our custom resource types to Windmill Hub. The ones that are not (yet) in Windmill Hub are stored here in this repository.
+
 ## Development
 
 In Windmill, scripts can be written in Python, TypeScript, Go, and a number of other languages. Flows and apps can 
