@@ -58,14 +58,31 @@ def detect_structured_data_type(file_path: str) -> str:
         }
         detected_type = extension_map.get(path.suffix.lower(), "unsupported")
         if detected_type != "unsupported":
+            # For JSON files, check if they're actually GeoJSON
+            if detected_type == "json":
+                return _detect_json_subtype(path)
             logger.info(f"File {path.name} detected as {detected_type} (by extension)")
         return detected_type
 
     def _detect_json_subtype(path: Path) -> str:
-        """Distinguish between JSON and GeoJSON."""
+        """Distinguish between JSON and GeoJSON using extension and content sniffing."""
         if path.suffix.lower() == ".geojson":
-            logger.info(f"File {path.name} detected as geojson")
+            logger.info(f"File {path.name} detected as geojson (by extension)")
             return "geojson"
+
+        # For .json files, check content to detect GeoJSON
+        if path.suffix.lower() == ".json":
+            try:
+                with path.open(encoding="utf-8") as f:
+                    data = json.load(f)
+
+                if isinstance(data, dict) and data.get("type") == "FeatureCollection":
+                    logger.info(f"File {path.name} detected as geojson (by content)")
+                    return "geojson"
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+                # If we can't parse it, fall back to json
+                pass
+
         logger.info(f"File {path.name} detected as json")
         return "json"
 
