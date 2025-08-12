@@ -170,10 +170,6 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: datasetAvailable
-                - id: state
-                  key: uploadSuccess
-                - id: state
-                  key: finalizeSuccess
         configuration: {}
         customCss:
           container:
@@ -217,9 +213,7 @@ value:
         refreshOn:
           - id: uploadFile
             key: result
-        suggestedRefreshOn:
-          - id: selectFile
-            key: result
+        suggestedRefreshOn: []
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
@@ -375,17 +369,17 @@ value:
             transformer:
               content: |-
                 state.datasetAvailable = result.tableExists !== true;
-                state.datasetName = result.datasetName
-                state.validSqlname = result.validSqlName
+                state.datasetName = result.datasetName;
+                state.validSqlname = result.validSqlName;
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: validSqlname
+                  key: datasetAvailable
                 - id: state
                   key: datasetName
                 - id: state
-                  key: datasetAvailable
+                  key: validSqlname
           configuration:
             afterIcon:
               type: static
@@ -765,18 +759,18 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
+                - id: state
+                  key: uploadErrorMessage
                 - id: selectFile
                   key: result
                 - id: state
                   key: outputFormat
                 - id: state
-                  key: uploadSuccess
+                  key: fileNameParsed
                 - id: state
                   key: fileNameOriginal
                 - id: state
-                  key: fileNameParsed
-                - id: state
-                  key: uploadErrorMessage
+                  key: uploadSuccess
           configuration:
             afterIcon:
               type: static
@@ -923,7 +917,7 @@ value:
           actions: []
           componentInput:
             type: runnable
-            autoRefresh: true
+            autoRefresh: false
             connections: []
             eval: ''
             expr: ''
@@ -943,9 +937,11 @@ value:
                     key: uploadSuccess
                   - id: state
                     key: uploadProcessing
-                suggestedRefreshOn:
                   - id: state
                     key: uploadErrorMessage
+                  - id: state
+                    key: uploadButtonEnabled
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1673,13 +1669,11 @@ value:
                     - valid_sql_name
             transformer:
               content: |-
-                state.finalizeSuccess = result[0]
-                state.finalizeErrorMessage = result[1]
+                state.finalizeSuccess = result[0];
+                state.finalizeErrorMessage = result[1];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
-              suggestedRefreshOn:
-                - id: state
-                  key: finalizeSuccess
+              suggestedRefreshOn: []
           configuration:
             afterIcon:
               type: static
@@ -1846,9 +1840,7 @@ value:
                     key: finalizeSuccess
                   - id: state
                     key: dataSource
-                suggestedRefreshOn:
-                  - id: state
-                    key: finalizeErrorMessage
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1888,7 +1880,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'bg_2:rawscript/caf872b1d83f01a9d98fb8ef8167764c395ebeb9c0c67d9f8f75365dfe908b25':
+    'bg_2:rawscript/92d2721c1e4f731d1c78cd2f57aa4d12246f8436e13c6ff4eca92407876a7ebb':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1930,7 +1922,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResult:rawscript/b2dde31cee45ea92a7255487971a63b11a57167a8244084f87f723795493f701':
+    'uploadFileResult:rawscript/f3be8a7b447df0154ed776fe3df0f23ca2461a544b8fb4d9b5cee4181b2f7b39':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
