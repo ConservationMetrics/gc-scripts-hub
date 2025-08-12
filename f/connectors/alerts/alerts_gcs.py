@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 def main(
     gcp_service_acct: gcp_service_account,
     alerts_bucket: str,
+    alerts_provider: str,
     territory_id: int,
     db: postgresql,
     db_table_name: str,
@@ -49,6 +50,7 @@ def main(
     return _main(
         storage_client,
         alerts_bucket,
+        alerts_provider,
         territory_id,
         db,
         db_table_name,
@@ -59,6 +61,7 @@ def main(
 def _main(
     storage_client: gcs.Client,
     alerts_bucket: str,
+    alerts_provider: str,
     territory_id: int,
     db: postgresql,
     db_table_name: str,
@@ -71,6 +74,8 @@ def _main(
     storage_client : google.cloud.storage.Client
     alerts_bucket : str
         The name of the GCS bucket containing alerts.
+    alerts_provider : str
+        The name of the alerts provider.
     territory_id : int
         The ID of the territory for which alerts are being processed.
     db : postgresql
@@ -97,10 +102,12 @@ def _main(
     convert_tiffs_to_jpg(tiff_files)
 
     prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
-        alerts_metadata, territory_id
+        alerts_metadata, territory_id, alerts_provider
     )
 
-    prepared_alerts_data = prepare_alerts_data(destination_path, geojson_files)
+    prepared_alerts_data = prepare_alerts_data(
+        destination_path, geojson_files, alerts_provider
+    )
 
     logger.info(f"Writing alerts to the database table [{db_table_name}].")
     alerts_writer = StructuredDBWriter(
@@ -317,7 +324,7 @@ def convert_tiffs_to_jpg(tiff_files):
     logger.info("Successfully converted TIFF files to JPEG.")
 
 
-def prepare_alerts_metadata(alerts_metadata, territory_id):
+def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
     """
     Prepare alerts metadata by filtering and processing CSV data.
 
@@ -335,6 +342,7 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         CSV data as a string containing alerts metadata.
     territory_id : int
         The identifier for the territory used to filter the metadata.
+    alerts_provider : str
 
     Returns
     -------
@@ -377,9 +385,8 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
         index=False,
     )
 
-    # TODO: Currently, this script is only used for Terras alerts. Let's discuss a more sustainable approach with the alerts provider(s).
-    # Also, if this changes for future alerts, we will need to ensure that existing records are not overwritten.
-    filtered_df["data_source"] = "terras"
+    # TODO: if this changes for future alerts, we will need to ensure that existing records are not overwritten.
+    filtered_df["data_source"] = alerts_provider
 
     # Replace all NaN values with None
     filtered_df.replace({float("nan"): None}, inplace=True)
@@ -419,7 +426,7 @@ def prepare_alerts_metadata(alerts_metadata, territory_id):
     return prepared_alerts_metadata, alerts_statistics
 
 
-def prepare_alerts_data(local_directory, geojson_files):
+def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
     """
     Prepare alerts data by reading GeoJSON files from a local directory.
 
@@ -432,7 +439,8 @@ def prepare_alerts_data(local_directory, geojson_files):
         The local directory where GeoJSON files are stored.
     geojson_files : list of str
         A list of GeoJSON file names to be processed.
-
+    alerts_provider : str
+        The name of the alerts provider.
     Returns
     -------
     list of dict
@@ -485,7 +493,7 @@ def prepare_alerts_data(local_directory, geojson_files):
                     "g__type": geom.get("type"),
                     "g__coordinates": json.dumps(geom.get("coordinates")),
                     # Metadata
-                    "data_source": "terras",
+                    "data_source": alerts_provider,
                     "source_file_name": file_path,
                 }
             )

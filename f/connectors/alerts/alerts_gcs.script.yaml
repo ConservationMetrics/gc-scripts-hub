@@ -9,6 +9,7 @@ schema:
   order:
     - gcp_service_acct
     - alerts_bucket
+    - alerts_provider
     - territory_id
     - db
     - db_table_name
@@ -17,6 +18,11 @@ schema:
     alerts_bucket:
       type: string
       description: The name of the Google Cloud Storage bucket where the alerts are stored.
+      default: null
+      originalType: string
+    alerts_provider:
+      type: string
+      description: The name of the alerts provider.
       default: null
       originalType: string
     db:
@@ -56,6 +62,7 @@ schema:
   required:
     - gcp_service_acct
     - alerts_bucket
+    - alerts_provider
     - territory_id
     - db
     - db_table_name
