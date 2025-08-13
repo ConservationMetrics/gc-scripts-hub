@@ -11,6 +11,9 @@ value:
           alerts_bucket:
             type: javascript
             expr: flow_input.alerts_bucket
+          alerts_provider:
+            type: javascript
+            expr: flow_input.alerts_provider
           db:
             type: javascript
             expr: flow_input.db
@@ -87,6 +90,11 @@ schema:
       description: The name of the Google Cloud Storage bucket where the alerts are stored.
       default: ''
       originalType: string
+    alerts_provider:
+      type: string
+      description: The name of the alerts provider.
+      default: null
+      originalType: string
     comapeo:
       type: object
       description: >
@@ -151,6 +159,7 @@ schema:
   required:
     - gcp_service_acct
     - alerts_bucket
+    - alerts_provider
     - territory_id
     - db
     - db_table_name
