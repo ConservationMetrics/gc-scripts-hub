@@ -3,11 +3,20 @@
 
 import json
 import logging
+from typing import TypedDict
 
 from twilio.rest import Client as TwilioClient
 
-# type names that refer to Windmill Resources
-c_twilio_message_template = dict
+
+# https://hub.windmill.dev/resource_types/274/twilio_message_template
+class twilio_message_template(TypedDict):
+    account_sid: str
+    auth_token: str
+    origin_number: str
+    recipients: list[str]
+    content_sid: str
+    messaging_service_sid: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +25,7 @@ logger = logging.getLogger(__name__)
 def main(
     alerts_statistics: dict,
     community_slug: str,
-    twilio: c_twilio_message_template,
+    twilio: twilio_message_template,
 ):
     send_twilio_message(twilio, alerts_statistics, community_slug)
 

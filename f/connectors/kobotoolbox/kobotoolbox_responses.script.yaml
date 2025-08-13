@@ -41,7 +41,7 @@ schema:
       type: object
       description: A server and API key pair to connect to the KoboToolbox account
       default: null
-      format: resource-c_kobotoolbox_account
+      format: resource-kobotoolbox_account
       originalType: string
   required:
     - kobotoolbox

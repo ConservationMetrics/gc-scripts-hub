@@ -13,6 +13,7 @@ import requests
 from f.common_logic.db_operations import conninfo, postgresql
 
 
+# https://hub.windmill.dev/resource_types/194/comapeo_server
 class comapeo_server(TypedDict):
     server_url: str
     access_token: str

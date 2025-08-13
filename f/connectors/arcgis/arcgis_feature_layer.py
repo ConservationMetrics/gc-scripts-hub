@@ -5,6 +5,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import TypedDict
 
 import requests
 
@@ -12,15 +13,19 @@ from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
-# type names that refer to Windmill Resources
-c_arcgis_account = dict
+
+# https://hub.windmill.dev/resource_types/271/arcgis_account
+class arcgis_account(TypedDict):
+    username: str
+    password: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    arcgis_account: c_arcgis_account,
+    arcgis_account: arcgis_account,
     feature_layer_url: str,
     db: postgresql,
     db_table_name: str,
@@ -61,7 +66,7 @@ def main(
     )
 
 
-def get_arcgis_token(arcgis_account: c_arcgis_account):
+def get_arcgis_token(arcgis_account: arcgis_account):
     """
     Generate an ArcGIS token using the provided account credentials.
 

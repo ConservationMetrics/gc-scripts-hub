@@ -33,7 +33,7 @@ schema:
         ingesting and writing alerts to the database via a Twilio message
         content template.
       default: null
-      format: resource-c_twilio_message_template
+      format: resource-twilio_message_template
   required:
     - alerts_statistics
     - community_slug

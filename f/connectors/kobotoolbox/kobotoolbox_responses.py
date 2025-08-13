@@ -7,21 +7,26 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+from typing import TypedDict
 
 import requests
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.file_operations import save_data_to_file
 
-# type names that refer to Windmill Resources
-c_kobotoolbox_account = dict
+
+# https://hub.windmill.dev/resource_types/193/kobotoolbox_account
+class kobotoolbox_account(TypedDict):
+    server_url: str
+    api_key: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    kobotoolbox: c_kobotoolbox_account,
+    kobotoolbox: kobotoolbox_account,
     form_id: str,
     db: postgresql,
     db_table_name: str,

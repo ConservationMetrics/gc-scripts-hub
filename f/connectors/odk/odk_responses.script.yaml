@@ -45,7 +45,7 @@ schema:
         An ODK Central server URL, username, password, and project ID for an ODK
         project.
       default: null
-      format: resource-c_odk_config
+      format: resource-odk_config
       originalType: string
   required:
     - odk_config

@@ -37,7 +37,7 @@ schema:
         this year expires after 1 year. For now, you can obtain a new API key from 
         the Global Forest Watch API.
       default: null
-      format: resource-c_gfw_api
+      format: resource-gfw_api
     bounding_box:
       type: string
       description: >-
