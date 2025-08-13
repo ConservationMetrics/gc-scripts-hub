@@ -385,7 +385,6 @@ def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
         index=False,
     )
 
-    # TODO: if this changes for future alerts, we will need to ensure that existing records are not overwritten.
     filtered_df["data_source"] = alerts_provider
 
     # Replace all NaN values with None
