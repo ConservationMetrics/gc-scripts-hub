@@ -343,12 +343,29 @@ def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=No
                     try:
                         # Parse string representation of list to actual list
                         coords = ast.literal_eval(value)
-                        if isinstance(coords, list) and len(coords) == 2:
+                        # Only set coordinates if we have a valid 2-element list with numeric values
+                        # This prevents issues with [None, None] or other invalid coordinate data
+                        if (
+                            isinstance(coords, list)
+                            and len(coords) == 2
+                            and all(
+                                coord is not None and isinstance(coord, (int, float))
+                                for coord in coords
+                            )
+                        ):
                             coordinates = coords
                     except Exception:
-                        # Skip invalid coordinate strings
+                        # Skip invalid coordinate strings that can't be parsed
                         pass
-            elif isinstance(value, list) and len(value) == 2:
+            # Same conditional setting of coordinates as above, but for the case where value is already a list
+            elif (
+                isinstance(value, list)
+                and len(value) == 2
+                and all(
+                    coord is not None and isinstance(coord, (int, float))
+                    for coord in value
+                )
+            ):
                 coordinates = value
 
             # Convert [lat, lon] to [lon, lat] for GeoJSON compliance and add geometry fields
