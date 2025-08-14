@@ -1,0 +1,502 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "7add7896b1da72fc6a19d39e501f629195a602c743e232d2b9bfd64b607ccada",
+        "versionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/0",
+        "originalVersionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/0",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:47:04.614Z",
+        "updatedAt": "2025-08-13T18:47:04.614Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503371,
+        "lon": -73.5930026,
+        "attachments": [
+          {
+            "driveDiscoveryId": "30bcd441b5819584007b0109c1de4262d6d39565eda6e0b500f87276f1a17e47",
+            "name": "b5fb674ece4ebd56",
+            "type": "audio",
+            "hash": "a28e1e032e1b86c3f8fdcf19f81e9f4823d58431f5f93739c6665038cce66330",
+            "createdAt": "2025-08-13T18:47:00.913Z",
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "type": "natural",
+          "natural": "tree"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:47:02.865Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503371,
+              "longitude": -73.5930026,
+              "altitude": 29.69931476027233,
+              "heading": 0,
+              "speed": 0.0022014176938682795,
+              "accuracy": 2.9830000400543213,
+              "altitudeAccuracy": 9.396520614624023
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "4c0561eaf6068eef157be878d56fca41985e70bf52aae61a1f2d458a5fc6413a",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/298"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5930026,
+          45.5503371,
+          29.69931476027233
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "763916ce46315dc7333190070998d95ad813c0a2a5fff0dc5fac973e569a334a",
+        "versionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/1",
+        "originalVersionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/1",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:47:13.461Z",
+        "updatedAt": "2025-08-13T18:47:13.461Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503483,
+        "lon": -73.5929867,
+        "attachments": [],
+        "tags": {
+          "notes": "",
+          "type": "activity",
+          "activity": "hunting"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:47:11.864Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503483,
+              "longitude": -73.5929867,
+              "altitude": 29.69931476027233,
+              "heading": 0,
+              "speed": 0.00000178402069650474,
+              "accuracy": 3.1500000953674316,
+              "altitudeAccuracy": 9.329808235168457
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "af02f0685c0a5e89b45af4da5a8584452da154ee5ae9a5759750134c57c64d29",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/286"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5929867,
+          45.5503483,
+          29.69931476027233
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "7ab6fd944bc9b22f21c47580a6738a84342e985638924877ce4c990180d58ec0",
+        "versionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/2",
+        "originalVersionId": "70d809d685ef9b4f43b1af552c74317b06dda2e5602c97af6e1d20c2c88649a3/2",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:48:03.343Z",
+        "updatedAt": "2025-08-13T18:48:03.343Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503116,
+        "lon": -73.5928055,
+        "attachments": [],
+        "tags": {
+          "notes": "",
+          "type": "natural",
+          "natural": "water",
+          "water": "lake"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:48:02.865Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503116,
+              "longitude": -73.5928055,
+              "altitude": 29.613930450206595,
+              "heading": 0,
+              "speed": 0.0028296266682446003,
+              "accuracy": 3.450000047683716,
+              "altitudeAccuracy": 10.049077033996582
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "c228a6279a4c68dd978dad10aee4d785686691bdbd5a412ac2216d7f6c29bb73",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/285"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5928055,
+          45.5503116,
+          29.613930450206595
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "607d9c3ccc5278bfc94a0a6dfb0d81b04cfb9fdd52b5c301e819e7c7057dae83",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/4",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/4",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:47:59.092Z",
+        "updatedAt": "2025-08-13T18:47:59.092Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503424,
+        "lon": -73.5926224,
+        "attachments": [],
+        "tags": {
+          "notes": "Hii",
+          "type": "camp"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:47:58.964Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503424,
+              "longitude": -73.5926224,
+              "altitude": 32.79999923706055,
+              "heading": 88.99655151367188,
+              "speed": 0.15362772345542908,
+              "accuracy": 8.157999992370605,
+              "altitudeAccuracy": 1.7643688917160034
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "45b6701c4e39c56b669b0cef30bdd04ce9fcc20f3555dcb3ff97593d82d139e9",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/278"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5926224,
+          45.5503424,
+          32.79999923706055
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "7a2eb114a76a61c8633fe04e99c1a55446daafbce93359204fff71372d447a10",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/0",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/0",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:44:25.464Z",
+        "updatedAt": "2025-08-13T18:44:25.464Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503949,
+        "lon": -73.5927229,
+        "attachments": [
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "01c2d4efa3503b22",
+            "type": "photo",
+            "hash": "c09f1da743319bd45f65bacfbb641add1086ee052c6aaa821d13d5e7df9e6803",
+            "photoExif": {
+              "ApertureValue": 2.2,
+              "ExposureTime": 0.03000030000300003,
+              "Flash": 0,
+              "FocalLength": 3.42,
+              "ISOSpeedRatings": 102,
+              "ImageLength": 4608,
+              "ImageWidth": 3456,
+              "Make": "motorola",
+              "Model": "moto g04",
+              "Orientation": 0,
+              "FNumber": 2.2
+            },
+            "createdAt": "2025-08-13T18:44:22.400Z",
+            "position": {
+              "timestamp": "2025-08-13T18:44:19.961Z",
+              "mocked": false,
+              "coords": {
+                "latitude": 45.5504137,
+                "longitude": -73.59272,
+                "altitude": 30.200000762939453,
+                "heading": 210.0771484375,
+                "speed": 0.8375353813171387,
+                "accuracy": 8.670999526977539,
+                "altitudeAccuracy": 1.7712825536727905
+              }
+            },
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "waterway": "river",
+          "type": "waterway"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:44:24.959Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503949,
+              "longitude": -73.5927229,
+              "altitude": 30.200000762939453,
+              "heading": 236.1549072265625,
+              "speed": 0.7728829383850098,
+              "accuracy": 8.02299976348877,
+              "altitudeAccuracy": 1.82126784324646
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "404784c421c44ddc266bbfe2e52a468b11b4b9a12b2e4208349037828cb77e50",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/292"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5927229,
+          45.5503949,
+          30.200000762939453
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "b7267a50d8ce0638c4784529e4305f4413021da5f26cab21596bdfbc07644f85",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/5",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/5",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:49:06.414Z",
+        "updatedAt": "2025-08-13T18:49:06.414Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503453,
+        "lon": -73.592648,
+        "attachments": [
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "6822de4b48b7b21d",
+            "type": "audio",
+            "hash": "1cd77716eb2df409344dc91fd3623a3c7241b3c0f7350f803023790b32739a57",
+            "createdAt": "2025-08-13T18:48:59.500Z",
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "type": "natural",
+          "natural": "tree"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:49:04.966Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503453,
+              "longitude": -73.592648,
+              "altitude": 53.59,
+              "heading": 0,
+              "speed": 0.0009268915746361017,
+              "accuracy": 10.005000114440918,
+              "altitudeAccuracy": 18.885541915893555
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "4c0561eaf6068eef157be878d56fca41985e70bf52aae61a1f2d458a5fc6413a",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/298"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.592648,
+          45.5503453,
+          53.59
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "fd94e14996d7cca5f199713df79999d7b2f3c267915ba1f4f87c2b8258ea9242",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/1",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/1",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:44:55.835Z",
+        "updatedAt": "2025-08-13T18:44:55.835Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503129,
+        "lon": -73.5926172,
+        "attachments": [
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "f1a1c3083388d634",
+            "type": "photo",
+            "hash": "bf4adaab66cf043916e4b6a0007e24203f1c38f6b5e95b615185948cbf60385e",
+            "photoExif": {
+              "ApertureValue": 2.2,
+              "ExposureTime": 0.03000030000300003,
+              "Flash": 0,
+              "FocalLength": 3.42,
+              "ISOSpeedRatings": 186,
+              "ImageLength": 4608,
+              "ImageWidth": 3456,
+              "Make": "motorola",
+              "Model": "moto g04",
+              "Orientation": 0,
+              "FNumber": 2.2
+            },
+            "createdAt": "2025-08-13T18:44:45.601Z",
+            "position": {
+              "timestamp": "2025-08-13T18:44:43.965Z",
+              "mocked": false,
+              "coords": {
+                "latitude": 45.5503483,
+                "longitude": -73.5926516,
+                "altitude": 30.200000762939453,
+                "heading": 180.9936981201172,
+                "speed": 0.847004771232605,
+                "accuracy": 6.913000106811523,
+                "altitudeAccuracy": 2.0113143920898438
+              }
+            },
+            "external": false
+          },
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "8e4e5ace21f6e69a",
+            "type": "audio",
+            "hash": "a23aed32e18255b2516dffc3d56978748c5e7f09b0dafe2aadcb7deaa2a47edc",
+            "createdAt": "2025-08-13T18:44:40.258Z",
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "type": "waterway",
+          "waterway": "stream",
+          "name": "Hello "
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:44:54.968Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503129,
+              "longitude": -73.5926172,
+              "altitude": 30.200000762939453,
+              "heading": 0,
+              "speed": 0.08263634145259857,
+              "accuracy": 8.281000137329102,
+              "altitudeAccuracy": 2.1213598251342773
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "bf1a2df057fcfc3a222302587040945161c6a40f36bb766d8ec4a2e18424f9c7",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/295"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5926172,
+          45.5503129,
+          30.200000762939453
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "912f6bafa7a6fa96e1fce46c031bd9d2ccfaffeb6b8d918d5684a79290b5e5e0",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/2",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/2",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:45:06.221Z",
+        "updatedAt": "2025-08-13T18:45:06.221Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503131,
+        "lon": -73.5926115,
+        "attachments": [],
+        "tags": {
+          "notes": "",
+          "type": "activity",
+          "activity": "fishing"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:45:04.936Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503131,
+              "longitude": -73.5926115,
+              "altitude": 69.857,
+              "heading": 91.02433776855469,
+              "speed": 0.8494316339492798,
+              "accuracy": 8.739999771118164,
+              "altitudeAccuracy": 19.219545364379883
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "e4e4f84202c9f34351b52705dca00428a86edbeb6c8b151459b4ac487f1b670e",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/281"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5926115,
+          45.5503131,
+          69.857
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,770 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "9ae469bfb2d9227de382146a68bd41118e27e7e02721cf9ccd1ecd7ad47778bf",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/3",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/3",
+        "schemaName": "track",
+        "createdAt": "2025-08-13T18:47:37.478Z",
+        "updatedAt": "2025-08-13T18:47:37.478Z",
+        "links": [],
+        "deleted": false,
+        "locations": [
+          {
+            "coords": {
+              "latitude": 45.5504262,
+              "longitude": -73.5927804
+            },
+            "timestamp": "2025-08-13T18:43:48.968Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504312,
+              "longitude": -73.5927614
+            },
+            "timestamp": "2025-08-13T18:44:16.958Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504267,
+              "longitude": -73.5927457
+            },
+            "timestamp": "2025-08-13T18:44:17.960Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504208,
+              "longitude": -73.5927296
+            },
+            "timestamp": "2025-08-13T18:44:18.967Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504137,
+              "longitude": -73.59272
+            },
+            "timestamp": "2025-08-13T18:44:19.961Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503992,
+              "longitude": -73.5927184
+            },
+            "timestamp": "2025-08-13T18:44:20.962Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503949,
+              "longitude": -73.5927229
+            },
+            "timestamp": "2025-08-13T18:44:25.865Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503881,
+              "longitude": -73.5927325
+            },
+            "timestamp": "2025-08-13T18:44:30.972Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503813,
+              "longitude": -73.5927141
+            },
+            "timestamp": "2025-08-13T18:44:32.972Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503702,
+              "longitude": -73.5926967
+            },
+            "timestamp": "2025-08-13T18:44:35.960Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503652,
+              "longitude": -73.592684
+            },
+            "timestamp": "2025-08-13T18:44:36.958Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503592,
+              "longitude": -73.5926719
+            },
+            "timestamp": "2025-08-13T18:44:38.968Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503511,
+              "longitude": -73.5926577
+            },
+            "timestamp": "2025-08-13T18:44:39.969Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503356,
+              "longitude": -73.5926392
+            },
+            "timestamp": "2025-08-13T18:44:46.959Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503288,
+              "longitude": -73.5926554
+            },
+            "timestamp": "2025-08-13T18:44:49.955Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503184,
+              "longitude": -73.5926454
+            },
+            "timestamp": "2025-08-13T18:44:50.961Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503146,
+              "longitude": -73.5926279
+            },
+            "timestamp": "2025-08-13T18:44:52.971Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503129,
+              "longitude": -73.5926172
+            },
+            "timestamp": "2025-08-13T18:44:56.253Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503133,
+              "longitude": -73.5926123
+            },
+            "timestamp": "2025-08-13T18:44:56.968Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503131,
+              "longitude": -73.5926115
+            },
+            "timestamp": "2025-08-13T18:45:06.679Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5502929,
+              "longitude": -73.592603
+            },
+            "timestamp": "2025-08-13T18:45:14.008Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5502959,
+              "longitude": -73.5925901
+            },
+            "timestamp": "2025-08-13T18:45:31.950Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.550303,
+              "longitude": -73.5925986
+            },
+            "timestamp": "2025-08-13T18:45:51.958Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503147,
+              "longitude": -73.5926225
+            },
+            "timestamp": "2025-08-13T18:45:53.963Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503267,
+              "longitude": -73.5926449
+            },
+            "timestamp": "2025-08-13T18:45:54.954Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503464,
+              "longitude": -73.5926663
+            },
+            "timestamp": "2025-08-13T18:45:55.960Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503584,
+              "longitude": -73.592678
+            },
+            "timestamp": "2025-08-13T18:45:56.948Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503743,
+              "longitude": -73.5927001
+            },
+            "timestamp": "2025-08-13T18:45:57.963Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503819,
+              "longitude": -73.5927117
+            },
+            "timestamp": "2025-08-13T18:45:59.961Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.550398,
+              "longitude": -73.592823
+            },
+            "timestamp": "2025-08-13T18:46:42.955Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504046,
+              "longitude": -73.592867
+            },
+            "timestamp": "2025-08-13T18:46:43.962Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.550409,
+              "longitude": -73.5928849
+            },
+            "timestamp": "2025-08-13T18:46:44.955Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504157,
+              "longitude": -73.5928965
+            },
+            "timestamp": "2025-08-13T18:46:54.950Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5504162,
+              "longitude": -73.59291
+            },
+            "timestamp": "2025-08-13T18:46:59.955Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503886,
+              "longitude": -73.5927819
+            },
+            "timestamp": "2025-08-13T18:47:12.966Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503822,
+              "longitude": -73.5927407
+            },
+            "timestamp": "2025-08-13T18:47:13.969Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503801,
+              "longitude": -73.592727
+            },
+            "timestamp": "2025-08-13T18:47:14.963Z",
+            "mocked": false
+          },
+          {
+            "coords": {
+              "latitude": 45.5503827,
+              "longitude": -73.5927145
+            },
+            "timestamp": "2025-08-13T18:47:20.965Z",
+            "mocked": false
+          }
+        ],
+        "observationRefs": [
+          {
+            "docId": "7a2eb114a76a61c8633fe04e99c1a55446daafbce93359204fff71372d447a10",
+            "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/0"
+          },
+          {
+            "docId": "fd94e14996d7cca5f199713df79999d7b2f3c267915ba1f4f87c2b8258ea9242",
+            "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/1"
+          },
+          {
+            "docId": "912f6bafa7a6fa96e1fce46c031bd9d2ccfaffeb6b8d918d5684a79290b5e5e0",
+            "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/2"
+          }
+        ],
+        "tags": {
+          "notes": ""
+        },
+        "presetRef": {
+          "docId": "404784c421c44ddc266bbfe2e52a468b11b4b9a12b2e4208349037828cb77e50",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/292"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -73.5927804,
+            45.5504262,
+            null
+          ],
+          [
+            -73.5927614,
+            45.5504312,
+            null
+          ],
+          [
+            -73.5927457,
+            45.5504267,
+            null
+          ],
+          [
+            -73.5927296,
+            45.5504208,
+            null
+          ],
+          [
+            -73.59272,
+            45.5504137,
+            null
+          ],
+          [
+            -73.5927184,
+            45.5503992,
+            null
+          ],
+          [
+            -73.5927229,
+            45.5503949,
+            null
+          ],
+          [
+            -73.5927325,
+            45.5503881,
+            null
+          ],
+          [
+            -73.5927141,
+            45.5503813,
+            null
+          ],
+          [
+            -73.5926967,
+            45.5503702,
+            null
+          ],
+          [
+            -73.592684,
+            45.5503652,
+            null
+          ],
+          [
+            -73.5926719,
+            45.5503592,
+            null
+          ],
+          [
+            -73.5926577,
+            45.5503511,
+            null
+          ],
+          [
+            -73.5926392,
+            45.5503356,
+            null
+          ],
+          [
+            -73.5926554,
+            45.5503288,
+            null
+          ],
+          [
+            -73.5926454,
+            45.5503184,
+            null
+          ],
+          [
+            -73.5926279,
+            45.5503146,
+            null
+          ],
+          [
+            -73.5926172,
+            45.5503129,
+            null
+          ],
+          [
+            -73.5926123,
+            45.5503133,
+            null
+          ],
+          [
+            -73.5926115,
+            45.5503131,
+            null
+          ],
+          [
+            -73.592603,
+            45.5502929,
+            null
+          ],
+          [
+            -73.5925901,
+            45.5502959,
+            null
+          ],
+          [
+            -73.5925986,
+            45.550303,
+            null
+          ],
+          [
+            -73.5926225,
+            45.5503147,
+            null
+          ],
+          [
+            -73.5926449,
+            45.5503267,
+            null
+          ],
+          [
+            -73.5926663,
+            45.5503464,
+            null
+          ],
+          [
+            -73.592678,
+            45.5503584,
+            null
+          ],
+          [
+            -73.5927001,
+            45.5503743,
+            null
+          ],
+          [
+            -73.5927117,
+            45.5503819,
+            null
+          ],
+          [
+            -73.592823,
+            45.550398,
+            null
+          ],
+          [
+            -73.592867,
+            45.5504046,
+            null
+          ],
+          [
+            -73.5928849,
+            45.550409,
+            null
+          ],
+          [
+            -73.5928965,
+            45.5504157,
+            null
+          ],
+          [
+            -73.59291,
+            45.5504162,
+            null
+          ],
+          [
+            -73.5927819,
+            45.5503886,
+            null
+          ],
+          [
+            -73.5927407,
+            45.5503822,
+            null
+          ],
+          [
+            -73.592727,
+            45.5503801,
+            null
+          ],
+          [
+            -73.5927145,
+            45.5503827,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "7a2eb114a76a61c8633fe04e99c1a55446daafbce93359204fff71372d447a10",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/0",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/0",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:44:25.464Z",
+        "updatedAt": "2025-08-13T18:44:25.464Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503949,
+        "lon": -73.5927229,
+        "attachments": [
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "01c2d4efa3503b22",
+            "type": "photo",
+            "hash": "c09f1da743319bd45f65bacfbb641add1086ee052c6aaa821d13d5e7df9e6803",
+            "photoExif": {
+              "ApertureValue": 2.2,
+              "ExposureTime": 0.03000030000300003,
+              "Flash": 0,
+              "FocalLength": 3.42,
+              "ISOSpeedRatings": 102,
+              "ImageLength": 4608,
+              "ImageWidth": 3456,
+              "Make": "motorola",
+              "Model": "moto g04",
+              "Orientation": 0,
+              "FNumber": 2.2
+            },
+            "createdAt": "2025-08-13T18:44:22.400Z",
+            "position": {
+              "timestamp": "2025-08-13T18:44:19.961Z",
+              "mocked": false,
+              "coords": {
+                "latitude": 45.5504137,
+                "longitude": -73.59272,
+                "altitude": 30.200000762939453,
+                "heading": 210.0771484375,
+                "speed": 0.8375353813171387,
+                "accuracy": 8.670999526977539,
+                "altitudeAccuracy": 1.7712825536727905
+              }
+            },
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "waterway": "river",
+          "type": "waterway"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:44:24.959Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503949,
+              "longitude": -73.5927229,
+              "altitude": 30.200000762939453,
+              "heading": 236.1549072265625,
+              "speed": 0.7728829383850098,
+              "accuracy": 8.02299976348877,
+              "altitudeAccuracy": 1.82126784324646
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "404784c421c44ddc266bbfe2e52a468b11b4b9a12b2e4208349037828cb77e50",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/292"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5927229,
+          45.5503949,
+          30.200000762939453
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "fd94e14996d7cca5f199713df79999d7b2f3c267915ba1f4f87c2b8258ea9242",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/1",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/1",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:44:55.835Z",
+        "updatedAt": "2025-08-13T18:44:55.835Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503129,
+        "lon": -73.5926172,
+        "attachments": [
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "f1a1c3083388d634",
+            "type": "photo",
+            "hash": "bf4adaab66cf043916e4b6a0007e24203f1c38f6b5e95b615185948cbf60385e",
+            "photoExif": {
+              "ApertureValue": 2.2,
+              "ExposureTime": 0.03000030000300003,
+              "Flash": 0,
+              "FocalLength": 3.42,
+              "ISOSpeedRatings": 186,
+              "ImageLength": 4608,
+              "ImageWidth": 3456,
+              "Make": "motorola",
+              "Model": "moto g04",
+              "Orientation": 0,
+              "FNumber": 2.2
+            },
+            "createdAt": "2025-08-13T18:44:45.601Z",
+            "position": {
+              "timestamp": "2025-08-13T18:44:43.965Z",
+              "mocked": false,
+              "coords": {
+                "latitude": 45.5503483,
+                "longitude": -73.5926516,
+                "altitude": 30.200000762939453,
+                "heading": 180.9936981201172,
+                "speed": 0.847004771232605,
+                "accuracy": 6.913000106811523,
+                "altitudeAccuracy": 2.0113143920898438
+              }
+            },
+            "external": false
+          },
+          {
+            "driveDiscoveryId": "853510c4c7ff57ce19da3f7d1a13f9bcca79700bb48f08fb54bf2f3f76bdd073",
+            "name": "8e4e5ace21f6e69a",
+            "type": "audio",
+            "hash": "a23aed32e18255b2516dffc3d56978748c5e7f09b0dafe2aadcb7deaa2a47edc",
+            "createdAt": "2025-08-13T18:44:40.258Z",
+            "external": false
+          }
+        ],
+        "tags": {
+          "notes": "",
+          "type": "waterway",
+          "waterway": "stream",
+          "name": "Hello "
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:44:54.968Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503129,
+              "longitude": -73.5926172,
+              "altitude": 30.200000762939453,
+              "heading": 0,
+              "speed": 0.08263634145259857,
+              "accuracy": 8.281000137329102,
+              "altitudeAccuracy": 2.1213598251342773
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "bf1a2df057fcfc3a222302587040945161c6a40f36bb766d8ec4a2e18424f9c7",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/295"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5926172,
+          45.5503129,
+          30.200000762939453
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "docId": "912f6bafa7a6fa96e1fce46c031bd9d2ccfaffeb6b8d918d5684a79290b5e5e0",
+        "versionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/2",
+        "originalVersionId": "026216b25e23e3c71fbd3da5897a74048118ac9fb9054d328933cf92820512e2/2",
+        "schemaName": "observation",
+        "createdAt": "2025-08-13T18:45:06.221Z",
+        "updatedAt": "2025-08-13T18:45:06.221Z",
+        "links": [],
+        "deleted": false,
+        "lat": 45.5503131,
+        "lon": -73.5926115,
+        "attachments": [],
+        "tags": {
+          "notes": "",
+          "type": "activity",
+          "activity": "fishing"
+        },
+        "metadata": {
+          "manualLocation": false,
+          "position": {
+            "timestamp": "2025-08-13T18:45:04.936Z",
+            "mocked": false,
+            "coords": {
+              "latitude": 45.5503131,
+              "longitude": -73.5926115,
+              "altitude": 69.857,
+              "heading": 91.02433776855469,
+              "speed": 0.8494316339492798,
+              "accuracy": 8.739999771118164,
+              "altitudeAccuracy": 19.219545364379883
+            }
+          }
+        },
+        "presetRef": {
+          "docId": "e4e4f84202c9f34351b52705dca00428a86edbeb6c8b151459b4ac487f1b670e",
+          "versionId": "78c89c15b957081cebc5cdd2db433e65593dd0b996883685586f1e9f229559c3/281"
+        },
+        "forks": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5926115,
+          45.5503131,
+          69.857
+        ]
+      }
+    }
+  ]
+}
