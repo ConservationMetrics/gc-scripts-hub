@@ -26,7 +26,7 @@ def test_prepare_alerts_metadata():
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
     prepared_alerts_metadata, alert_statistics = prepare_alerts_metadata(
-        alerts_metadata, 100
+        alerts_metadata, 100, "test_provider"
     )
 
     # Check that alerts statistics is the latest month and year in the CSV
@@ -39,8 +39,8 @@ def test_metadata_id_stability():
     alerts_history_csv = Path(assets_directory, "alerts_history.csv")
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
-    first, _ = prepare_alerts_metadata(alerts_metadata, 100)
-    second, _ = prepare_alerts_metadata(alerts_metadata, 100)
+    first, _ = prepare_alerts_metadata(alerts_metadata, 100, "test_provider")
+    second, _ = prepare_alerts_metadata(alerts_metadata, 100, "test_provider")
 
     # Order shouldn't matter but just to be safe, sort by _id
     first_ids = sorted(r["_id"] for r in first)
@@ -53,7 +53,7 @@ def test_metadata_id_stability():
 def test_alert_id_generation(tmp_path):
     file_path = Path(assets_directory, "alert_202309900112345671.geojson")
     geojson_files = [str(file_path)]
-    prepared = prepare_alerts_data(tmp_path, geojson_files)
+    prepared = prepare_alerts_data(tmp_path, geojson_files, "test_provider")
 
     assert len(prepared) > 0
     for row in prepared:
@@ -99,6 +99,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     alerts_metadata = _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
+        "test_provider",
         100,
         pg_database,
         "fake_alerts",
@@ -248,6 +249,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     alerts_metadata = _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
+        "test_provider",
         100,
         pg_database,
         "fake_alerts",
@@ -264,6 +266,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
+        "test_provider",
         100,
         pg_database,
         "fake_alerts",
@@ -278,6 +281,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
+        "test_provider",
         100,
         pg_database,
         "fake_alerts",
@@ -304,6 +308,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     _main(
         mock_alerts_storage_client,
         MOCK_BUCKET_NAME,
+        "test_provider",
         100,
         pg_database,
         "fake_alerts",

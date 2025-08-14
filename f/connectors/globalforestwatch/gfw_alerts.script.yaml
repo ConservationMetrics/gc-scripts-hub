@@ -8,7 +8,7 @@ schema:
   type: object
   order:
     - type_of_alert
-    - gfw_api
+    - gfw
     - bounding_box
     - minimum_date
     - db
@@ -30,14 +30,14 @@ schema:
         - umd_glad_landsat_alerts
         - umd_glad_sentinel2_alerts
       originalType: string  
-    gfw_api:
+    gfw:
       type: object
       description: >-
         The API key for accessing the Global Forest Watch API. Please note that 
         this year expires after 1 year. For now, you can obtain a new API key from 
         the Global Forest Watch API.
       default: null
-      format: resource-c_gfw_api
+      format: resource-gfw
     bounding_box:
       type: string
       description: >-
@@ -73,7 +73,7 @@ schema:
 
   required:
     - type_of_alert
-    - gfw_api
+    - gfw
     - bounding_box
     - minimum_date
     - db

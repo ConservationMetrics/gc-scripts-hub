@@ -6,19 +6,26 @@
 import logging
 import tempfile
 from pathlib import Path
+from typing import TypedDict
 
 from pyodk.client import Client
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
-# type names that refer to Windmill Resources
-c_odk_config = dict
+
+# https://hub.windmill.dev/resource_types/272/odk_config
+class odk_config(TypedDict):
+    base_url: str
+    username: str
+    password: str
+    default_project_id: int
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_temp_config(odk_config: c_odk_config) -> Path:
+def get_temp_config(odk_config: odk_config) -> Path:
     """Create a temporary TOML configuration file for PyODK and return its path.
 
     This configuration file is used by PyODK to set up a Client for interacting
@@ -51,7 +58,7 @@ default_project_id = {odk_config["default_project_id"]}
 
 
 def main(
-    odk_config: c_odk_config,
+    odk_config: odk_config,
     form_id: str,
     db: postgresql,
     db_table_name: str,
