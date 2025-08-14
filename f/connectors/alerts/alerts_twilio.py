@@ -3,11 +3,20 @@
 
 import json
 import logging
+from typing import TypedDict
 
 from twilio.rest import Client as TwilioClient
 
-# type names that refer to Windmill Resources
-c_twilio_message_template = dict
+
+# https://hub.windmill.dev/resource_types/274/twilio_message_template
+class twilio_message_template(TypedDict):
+    account_sid: str
+    auth_token: str
+    origin_number: str
+    recipients: list[str]
+    content_sid: str
+    messaging_service_sid: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,12 +25,12 @@ logger = logging.getLogger(__name__)
 def main(
     alerts_statistics: dict,
     community_slug: str,
-    twilio: c_twilio_message_template,
+    twilio_message_template: twilio_message_template,
 ):
-    send_twilio_message(twilio, alerts_statistics, community_slug)
+    send_twilio_message(twilio_message_template, alerts_statistics, community_slug)
 
 
-def send_twilio_message(twilio, alerts_statistics, community_slug):
+def send_twilio_message(twilio_message_template, alerts_statistics, community_slug):
     """
     Send a Twilio SMS message with alerts processing completion details.
 
@@ -45,16 +54,18 @@ def send_twilio_message(twilio, alerts_statistics, community_slug):
     community_slug : str
         The slug of the community for which alerts are being processed.
     """
-    client = TwilioClient(twilio["account_sid"], twilio["auth_token"])
+    client = TwilioClient(
+        twilio_message_template["account_sid"], twilio_message_template["auth_token"]
+    )
 
     # Send a message to each recipient
     logger.info(
-        f"Sending Twilio messages to {len(twilio.get('recipients', []))} recipients."
+        f"Sending Twilio messages to {len(twilio_message_template.get('recipients', []))} recipients."
     )
 
-    for recipient in twilio["recipients"]:
+    for recipient in twilio_message_template["recipients"]:
         client.messages.create(
-            content_sid=twilio.get("content_sid"),
+            content_sid=twilio_message_template.get("content_sid"),
             content_variables=json.dumps(
                 {
                     "1": alerts_statistics.get("total_alerts"),
@@ -63,9 +74,9 @@ def send_twilio_message(twilio, alerts_statistics, community_slug):
                     "4": f"https://explorer.{community_slug}.guardianconnector.net/alerts/alerts",
                 }
             ),
-            messaging_service_sid=twilio.get("messaging_service_sid"),
+            messaging_service_sid=twilio_message_template.get("messaging_service_sid"),
             to=recipient,
-            from_=twilio["origin_number"],
+            from_=twilio_message_template["origin_number"],
         )
 
     logger.info("Twilio messages sent successfully.")

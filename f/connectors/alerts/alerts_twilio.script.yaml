@@ -8,7 +8,7 @@ schema:
   type: object
   order:
     - alerts_statistics
-    - twilio
+    - twilio_message_template
     - community_slug
   properties:
     alerts_statistics:
@@ -26,15 +26,15 @@ schema:
         messages to be sent.
       default: null
       originalType: string
-    twilio:
+    twilio_message_template:
       type: object
       description: >-
         Twilio account credentials and phone numbers for sending alerts after
         ingesting and writing alerts to the database via a Twilio message
         content template.
       default: null
-      format: resource-c_twilio_message_template
+      format: resource-twilio_message_template
   required:
     - alerts_statistics
     - community_slug
-    - twilio
+    - twilio_message_template

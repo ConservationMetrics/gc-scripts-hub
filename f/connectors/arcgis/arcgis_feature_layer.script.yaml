@@ -17,7 +17,7 @@ schema:
       type: object
       description: The name of the ArcGIS account to use for fetching the feature layer.
       default: null
-      format: resource-c_arcgis_account
+      format: resource-arcgis_account
       originalType: string
     attachment_root:
       type: string

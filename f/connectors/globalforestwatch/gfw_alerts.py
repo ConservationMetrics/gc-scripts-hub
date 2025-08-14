@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import TypedDict
 
 import requests
 
@@ -13,15 +14,18 @@ from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
-# type names that refer to Windmill Resources
-c_gfw_api = dict
+
+# https://hub.windmill.dev/resource_types/273/gfw_api
+class gfw(TypedDict):
+    api_key: str
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    gfw_api: c_gfw_api,
+    gfw: gfw,
     bounding_box: str,
     type_of_alert: str,
     minimum_date: str,
@@ -32,7 +36,7 @@ def main(
     storage_path = Path(attachment_root) / db_table_name
 
     alerts = fetch_alerts_from_gfw(
-        gfw_api["api_key"], bounding_box, type_of_alert, minimum_date
+        gfw["api_key"], bounding_box, type_of_alert, minimum_date
     )
 
     alerts_geojson = format_alerts_as_geojson(alerts, type_of_alert)
@@ -57,7 +61,7 @@ def main(
 
 
 def fetch_alerts_from_gfw(
-    api_key: c_gfw_api, bounding_box: str, type_of_alert: str, minimum_date: str
+    api_key: gfw, bounding_box: str, type_of_alert: str, minimum_date: str
 ):
     """
     Get alerts from GFW API using the provided API key and bounding box.

@@ -62,14 +62,14 @@ value:
           community_slug:
             type: javascript
             expr: flow_input.community_slug
-          twilio:
+          twilio_message_template:
             type: javascript
-            expr: flow_input.twilio
+            expr: flow_input.twilio_message_template
         is_trigger: false
         path: f/connectors/alerts/alerts_twilio
       continue_on_error: false
       skip_if:
-        expr: '!flow_input.twilio || !flow_input.community_slug || !results.a'
+        expr: '!flow_input.twilio_message_template || !flow_input.community_slug || !results.a'
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
@@ -83,7 +83,7 @@ schema:
     - comapeo
     - comapeo_project
     - community_slug
-    - twilio
+    - twilio_message_template
   properties:
     alerts_bucket:
       type: string
@@ -148,13 +148,13 @@ schema:
         will be retrieved. This ID is used to filter and process relevant
         alerts.
       format: ''
-    twilio:
+    twilio_message_template:
       type: object
       description: >-
         Twilio account credentials and phone numbers for sending alerts after
         ingesting and writing alerts to the database via a Twilio message
         content template.
-      format: resource-c_twilio_message_template
+      format: resource-twilio_message_template
       nullable: false
   required:
     - gcp_service_acct
