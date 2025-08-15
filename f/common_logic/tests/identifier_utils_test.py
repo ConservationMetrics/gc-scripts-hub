@@ -1,7 +1,7 @@
-from f.common_logic.identifier_utils import camel_to_snake, sanitize
+from f.common_logic.identifier_utils import camel_to_snake, sanitize_sql_message
 
 
-def test_sanitize():
+def test_sanitize_sql_message():
     message = {
         "col.1": 1,
         "col?2": 2,
@@ -11,7 +11,7 @@ def test_sanitize():
     }
     global_mapping = {"x": "X"}
 
-    sql_message, updated_global_mapping = sanitize(
+    sql_message, updated_global_mapping = sanitize_sql_message(
         message, global_mapping, "/", [("/", "__")]
     )
     assert sql_message == {
@@ -30,17 +30,17 @@ def test_sanitize():
     }
 
 
-def test_sanitize__same_letters():
+def test_sanitize_sql_message__same_letters():
     message = {"foo[bar]test": 1, "foo{bar}test": 2}
 
-    sql_message, _ = sanitize(message, {}, maxlen=12)
+    sql_message, _ = sanitize_sql_message(message, {}, maxlen=12)
     assert sql_message == {
         "foobartest": 1,
         "foobarte_001": 2,
     }
 
 
-def test_sanitize_column_names__long():
+def test_sanitize_sql_message__column_names__long():
     message = {
         "column.1": 1,
         "column12": 2,
@@ -49,7 +49,7 @@ def test_sanitize_column_names__long():
         "x": 5,
     }
 
-    sql_message, updated_global_mapping = sanitize(message, {}, maxlen=7)
+    sql_message, updated_global_mapping = sanitize_sql_message(message, {}, maxlen=7)
     print(sql_message)
     assert sql_message == {
         "column1": 1,
@@ -67,14 +67,14 @@ def test_sanitize_column_names__long():
     }
 
 
-def test_sanitize_with_nesting():
-    """sanitize() JSON-serializes deeply nested types."""
+def test_sanitize_sql_message__with_nesting():
+    """sanitize_sql_message() JSON-serializes deeply nested types."""
     message = {
         "group1": {"group2": {"question": "How ya doin?"}},
         "url": "gopher://example.net",
     }
 
-    sql_message, _ = sanitize(message, {})
+    sql_message, _ = sanitize_sql_message(message, {})
     assert sql_message == {
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",

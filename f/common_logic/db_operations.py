@@ -8,7 +8,7 @@ import time
 
 from psycopg2 import Error, connect, errors, sql
 
-from f.common_logic.identifier_utils import sanitize
+from f.common_logic.identifier_utils import sanitize_sql_message
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -359,7 +359,7 @@ class StructuredDBWriter:
         original_to_sql = {}
 
         for submission in submissions:
-            sanitized, updated = sanitize(
+            sanitized, updated = sanitize_sql_message(
                 submission,
                 existing_mappings,
                 reverse_properties_separated_by=self.reverse_separator,

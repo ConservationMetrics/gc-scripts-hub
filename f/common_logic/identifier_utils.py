@@ -64,7 +64,7 @@ def _shorten_and_uniqify(identifier, conflicts, maxlen):
     return new_identifier
 
 
-def sanitize(
+def sanitize_sql_message(
     message,
     column_renames,
     reverse_properties_separated_by=None,
