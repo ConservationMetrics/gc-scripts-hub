@@ -13,6 +13,7 @@ import requests
 
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
+from f.common_logic.identifier_utils import normalize_and_snakecase_keys
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 
@@ -206,49 +207,6 @@ def download_attachment(url, headers, save_path, existing_file_stems):
     except Exception as e:
         logger.error(f"Exception during download: {e}")
         return None, 1
-
-
-def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
-    """
-    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions and truncating long keys.
-    Optionally leaves specified keys unchanged.
-
-    Parameters
-    ----------
-    dictionary : dict
-        The dictionary whose keys are to be converted.
-    special_case_keys : set, optional
-        A set of keys that should not be converted.
-
-    Returns
-    -------
-    dict
-        A new dictionary with the keys converted to snake_case and truncated if necessary.
-    """
-    if special_case_keys is None:
-        special_case_keys = set()
-
-    new_dict = {}
-    items = list(dictionary.items())
-    for key, value in items:
-        if key in special_case_keys:
-            final_key = key
-        else:
-            new_key = (
-                re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
-            )
-            base_key = new_key[:61] if len(new_key) > 63 else new_key
-            final_key = base_key
-            if len(new_key) > 63:
-                final_key = f"{base_key}_1"
-
-            counter = 1
-            while final_key in new_dict:
-                counter += 1
-                final_key = f"{base_key}_{counter}"
-
-        new_dict[final_key] = value
-    return new_dict
 
 
 def download_project_observations_and_attachments(

@@ -130,3 +130,46 @@ def camel_to_snake(name: str) -> str:
     pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
     return pattern.sub("_", name).lower()
+
+
+def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
+    """
+    Converts the keys of a dictionary from camelCase to snake_case, handling key collisions and truncating long keys.
+    Optionally leaves specified keys unchanged.
+
+    Parameters
+    ----------
+    dictionary : dict
+        The dictionary whose keys are to be converted.
+    special_case_keys : set, optional
+        A set of keys that should not be converted.
+
+    Returns
+    -------
+    dict
+        A new dictionary with the keys converted to snake_case and truncated if necessary.
+    """
+    if special_case_keys is None:
+        special_case_keys = set()
+
+    new_dict = {}
+    items = list(dictionary.items())
+    for key, value in items:
+        if key in special_case_keys:
+            final_key = key
+        else:
+            new_key = (
+                re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
+            )
+            base_key = new_key[:61] if len(new_key) > 63 else new_key
+            final_key = base_key
+            if len(new_key) > 63:
+                final_key = f"{base_key}_1"
+
+            counter = 1
+            while final_key in new_dict:
+                counter += 1
+                final_key = f"{base_key}_{counter}"
+
+        new_dict[final_key] = value
+    return new_dict
