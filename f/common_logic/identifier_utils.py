@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 
 
 def _reverse_parts(k, sep="/"):
@@ -130,6 +131,57 @@ def camel_to_snake(name: str) -> str:
     pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
     return pattern.sub("_", name).lower()
+
+
+def sanitize_identifier(name: str, maxlen: int = 62) -> str:
+    """Sanitize a string for use as a file path or database identifier.
+
+    This function removes accents from characters and replaces non-alphanumeric
+    characters with underscores, making the name safe for both file systems
+    and database identifiers.
+
+    Parameters
+    ----------
+    name : str
+        The original name that may contain accented characters or special symbols.
+    maxlen : int, optional
+        Maximum length for the identifier, by default 62
+
+    Returns
+    -------
+    str
+        A sanitized version of the name suitable for file paths and database identifiers.
+
+    Examples
+    --------
+    >>> sanitize_identifier("Vigilância Ambiental")
+    'vigilancia_ambiental'
+    >>> sanitize_identifier("Projeto São Paulo")
+    'projeto_sao_paulo'
+    >>> sanitize_identifier("myProjectName")
+    'my_project_name'
+    >>> sanitize_identifier("123invalid")
+    '_123invalid'
+    """
+    normalized = unicodedata.normalize("NFD", name)
+    name = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+    name = camel_to_snake(name)
+
+    sanitized = re.sub(r"[ \-./]", "_", name)
+
+    sanitized = re.sub(r"[^a-zA-Z0-9_]", "", sanitized)
+
+    sanitized = sanitized.lower()
+
+    sanitized = sanitized.strip("_")
+
+    if not re.match(r"^[a-zA-Z_]", sanitized):
+        sanitized = "_" + sanitized
+
+    result = sanitized[:maxlen] if sanitized else "_"
+
+    return result
 
 
 def normalize_and_snakecase_keys(dictionary, special_case_keys=None):

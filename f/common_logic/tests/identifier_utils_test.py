@@ -1,6 +1,7 @@
 from f.common_logic.identifier_utils import (
     camel_to_snake,
     normalize_and_snakecase_keys,
+    sanitize_identifier,
     sanitize_sql_message,
 )
 
@@ -130,3 +131,27 @@ def test_normalize_and_snakecase_keys():
     result = normalize_and_snakecase_keys(input_dict, special_case_keys)
 
     assert result == expected_output, f"Expected {expected_output}, but got {result}"
+
+
+def test_sanitize_identifier():
+    assert sanitize_identifier("Vigilância Ambiental") == "vigilancia_ambiental"
+    assert sanitize_identifier("Monitoração de Água") == "monitoracao_de_agua"
+    assert sanitize_identifier("Área de Proteção") == "area_de_protecao"
+    assert sanitize_identifier("São Francisco") == "sao_francisco"
+    assert sanitize_identifier("Projeto Vigilância (2024)") == "projeto_vigilancia_2024"
+
+    assert sanitize_identifier("kebab-case") == "kebab_case"
+
+    assert sanitize_identifier("123project") == "_123project"
+    assert sanitize_identifier("2024_survey") == "_2024_survey"
+
+    assert sanitize_identifier("") == "_"
+    assert sanitize_identifier("!@#$%") == "_"
+    assert sanitize_identifier("___name___") == "name"
+
+    assert (
+        sanitize_identifier(
+            "aVeryLongKeyNameThatExceedsTheSixtyThreeCharacterLimitAndNeedsTruncation"
+        )
+        == "a_very_long_key_name_that_exceeds_the_sixty_three_character_li"
+    )
