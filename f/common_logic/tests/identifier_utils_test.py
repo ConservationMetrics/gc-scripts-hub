@@ -1,4 +1,4 @@
-from f.common_logic.db_transformations import camel_to_snake, sanitize
+from f.common_logic.identifier_utils import camel_to_snake, sanitize
 
 
 def test_sanitize():

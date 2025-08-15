@@ -8,7 +8,7 @@ import time
 
 from psycopg2 import Error, connect, errors, sql
 
-from f.common_logic.db_transformations import sanitize
+from f.common_logic.identifier_utils import sanitize
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
