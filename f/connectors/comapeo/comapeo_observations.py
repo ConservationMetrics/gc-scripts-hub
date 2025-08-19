@@ -14,7 +14,7 @@ from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.common_logic.identifier_utils import (
     normalize_and_snakecase_keys,
-    sanitize_identifier,
+    normalize_identifier,
 )
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -250,7 +250,7 @@ def download_project_observations_and_attachments(
         raise ValueError("Invalid JSON response received from server.")
 
     # Download attachments for all observations
-    sanitized_project_name = sanitize_identifier(project_name)
+    sanitized_project_name = normalize_identifier(project_name)
     attachment_dir = (
         Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
     )
@@ -389,7 +389,7 @@ def download_and_transform_comapeo_data(
         )
 
         # Store observations as a GeoJSON FeatureCollection
-        sanitized_project_name = sanitize_identifier(project_name)
+        sanitized_project_name = normalize_identifier(project_name)
         comapeo_data[sanitized_project_name] = {
             "type": "FeatureCollection",
             "features": features,

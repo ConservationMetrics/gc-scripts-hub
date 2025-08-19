@@ -21,23 +21,7 @@ def _reverse_parts(k, sep="/"):
     return sep.join(reversed(k.split(sep)))
 
 
-def _drop_nonsql_chars(s):
-    """Remove non-SQL compatible characters from a string.
-
-    Parameters
-    ----------
-    s : str
-        The string from which to remove non-SQL characters.
-
-    Returns
-    -------
-    str
-        The cleaned string with non-SQL characters removed.
-    """
-    return re.sub(r"[ ./?\[\]\\,<>(){}]", "", s)
-
-
-def _shorten_and_uniqify(identifier, conflicts, maxlen):
+def _shorten_and_uniqify(identifier, conflicts, maxlen=63):
     """Shorten an identifier and ensure its uniqueness within a set of conflicts.
 
     This function truncates an identifier to a specified maximum length and appends a
@@ -65,12 +49,90 @@ def _shorten_and_uniqify(identifier, conflicts, maxlen):
     return new_identifier
 
 
+def camel_to_snake(name: str) -> str:
+    """
+    Convert CamelCase string to snake_case.
+
+    c.f. https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
+    """
+    pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+    return pattern.sub("_", name).lower()
+
+
+def normalize_identifier(
+    name: str,
+    maxlen: int = 63,
+    *,
+    make_snake: bool = True,
+    ensure_leading_alpha: bool = True,
+    sep_policy: str = "underscore",
+) -> str:
+    """
+    Normalize a string into a SQL- and filesystem-safe identifier.
+
+    This helper removes accents, lowercases characters, strips or replaces
+    invalid symbols, and enforces constraints suitable for database column/table
+    names or file identifiers. It can optionally convert CamelCase into snake_case
+    and force the identifier to start with a letter or underscore.
+
+    Parameters
+    ----------
+    name : str
+        Input string to normalize.
+    maxlen : int, optional
+        Maximum length of the returned identifier. Longer strings are truncated. Default is 63 (PostgreSQL identifier limit).
+    make_snake : bool, optional
+        If True, convert CamelCase into snake_case. Default is True.
+    ensure_leading_alpha : bool, optional
+        If True, guarantees the result starts with a letter or underscore by prepending "_" when necessary. Default is True.
+    sep_policy : str, optional
+        The policy to use for collapsing common separators.
+        "underscore" | "remove". Default is "underscore".
+
+    Returns
+    -------
+    str
+        Normalized identifier string.
+
+    Examples
+    --------
+    >>> normalize_identifier("Vigilância Ambiental")
+    'vigilancia_ambiental'
+    >>> normalize_identifier("MyProjectName")
+    'my_project_name'
+    >>> normalize_identifier("123weird$name", ensure_leading_alpha=True)
+    '_123weirdname'
+    See tests for more examples.
+    """
+    # Special case: preserve '_id' as-is (primary key field)
+    if name == "_id":
+        return "_id"
+
+    normalized = unicodedata.normalize("NFD", name)
+    name = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+
+    if make_snake:
+        name = camel_to_snake(name)
+
+    if sep_policy == "remove":
+        name = re.sub(r"[ \-./]", "", name)
+    else:
+        name = re.sub(r"[ \-./]", "_", name)
+    name = re.sub(r"[^a-zA-Z0-9_]", "", name).strip("_")
+
+    if ensure_leading_alpha and not re.match(r"^[a-zA-Z_]", name or ""):
+        name = "_" + (name or "")
+
+    return (name or "_")[:maxlen]
+
+
 def sanitize_sql_message(
     message,
     column_renames,
     reverse_properties_separated_by=None,
     str_replace=[],
-    maxlen=63,  # https://stackoverflow.com/a/27865772
+    maxlen=63,
 ):
     """Sanitize a message for SQL compatibility and rename columns.
 
@@ -89,7 +151,7 @@ def sanitize_sql_message(
     str_replace : list, optional
         A list of tuples specifying string replacements, by default [].
     maxlen : int, optional
-        The maximum length for SQL-compatible keys, by default 63.
+        Maximum length of the returned identifier. Longer strings are truncated. Default is 63 (PostgreSQL identifier limit).
 
     Returns
     -------
@@ -114,74 +176,18 @@ def sanitize_sql_message(
             key = _reverse_parts(original_key, reverse_properties_separated_by)
         for args in str_replace:
             key = key.replace(*args)
-        key = _drop_nonsql_chars(key)
+        key = normalize_identifier(
+            key,
+            maxlen=maxlen,
+            make_snake=False,
+            ensure_leading_alpha=False,
+            sep_policy="remove",
+        )  # These values are set to guarantee backwards compatibility, as existing warehouse data was already processed with these settings
         key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
         updated_column_renames[original_key] = key
         sanitized_sql_message[key] = value
     return sanitized_sql_message, updated_column_renames
-
-
-def camel_to_snake(name: str) -> str:
-    """
-    Convert CamelCase string to snake_case.
-
-    c.f. https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case
-    """
-    pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-
-    return pattern.sub("_", name).lower()
-
-
-def sanitize_identifier(name: str, maxlen: int = 62) -> str:
-    """Sanitize a string for use as a file path or database identifier.
-
-    This function removes accents from characters and replaces non-alphanumeric
-    characters with underscores, making the name safe for both file systems
-    and database identifiers.
-
-    Parameters
-    ----------
-    name : str
-        The original name that may contain accented characters or special symbols.
-    maxlen : int, optional
-        Maximum length for the identifier, by default 62
-
-    Returns
-    -------
-    str
-        A sanitized version of the name suitable for file paths and database identifiers.
-
-    Examples
-    --------
-    >>> sanitize_identifier("Vigilância Ambiental")
-    'vigilancia_ambiental'
-    >>> sanitize_identifier("Projeto São Paulo")
-    'projeto_sao_paulo'
-    >>> sanitize_identifier("myProjectName")
-    'my_project_name'
-    >>> sanitize_identifier("123invalid")
-    '_123invalid'
-    """
-    normalized = unicodedata.normalize("NFD", name)
-    name = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
-
-    name = camel_to_snake(name)
-
-    sanitized = re.sub(r"[ \-./]", "_", name)
-
-    sanitized = re.sub(r"[^a-zA-Z0-9_]", "", sanitized)
-
-    sanitized = sanitized.lower()
-
-    sanitized = sanitized.strip("_")
-
-    if not re.match(r"^[a-zA-Z_]", sanitized):
-        sanitized = "_" + sanitized
-
-    result = sanitized[:maxlen] if sanitized else "_"
-
-    return result
 
 
 def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
