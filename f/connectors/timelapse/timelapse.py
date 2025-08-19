@@ -13,7 +13,7 @@ import pandas as pd
 
 from f.common_logic.azure_operations import download_blob_to_temp
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
-from f.common_logic.db_transformations import camel_to_snake
+from f.common_logic.identifier_utils import camel_to_snake
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
