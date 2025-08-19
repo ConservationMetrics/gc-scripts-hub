@@ -216,9 +216,7 @@ def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
         if key in special_case_keys:
             final_key = key
         else:
-            new_key = (
-                re.sub("([a-z0-9])([A-Z])", r"\1_\2", key).replace("-", "_").lower()
-            )
+            new_key = camel_to_snake(key).replace("-", "_")
             base_key = new_key[:61] if len(new_key) > 63 else new_key
             final_key = base_key
             if len(new_key) > 63:
