@@ -284,7 +284,7 @@ def download_project_observations_and_attachments(
     return observations, skipped_attachments, attachment_failed
 
 
-def transform_comapeo_observations(observations, project_name, project_id):
+def transform_comapeo_observations(observations, project_name, project_id=None):
     """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
 
     Parameters
@@ -293,8 +293,8 @@ def transform_comapeo_observations(observations, project_name, project_id):
         A list of raw observation data from the CoMapeo API.
     project_name : str
         The name of the project these observations belong to.
-    project_id : str
-        The unique identifier of the project.
+    project_id : str, optional
+        The unique identifier of the project. If not provided, this field will be omitted from the output.
 
     Returns
     -------
@@ -314,7 +314,8 @@ def transform_comapeo_observations(observations, project_name, project_id):
 
         # Add project-specific information to properties
         observation["project_name"] = project_name
-        observation["project_id"] = project_id
+        if project_id is not None:
+            observation["project_id"] = project_id
         observation["data_source"] = "CoMapeo"
 
         # Create GeoJSON Feature
