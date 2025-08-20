@@ -37,7 +37,8 @@ def main(
 
 def _generate_deterministic_id(feature):
     """
-    Generate a deterministic UUID based on feature content.
+    Generate a deterministic UUID based on MD5 hash of feature content
+    and UUID namespace for deterministic generation.
 
     Parameters
     ----------
@@ -49,22 +50,16 @@ def _generate_deterministic_id(feature):
     str
         Deterministic UUID string based on feature content.
     """
-    # Create a canonical representation of the feature for hashing
-    # Include geometry and properties, but exclude any existing id
     content_for_hash = {
         "type": feature["type"],
         "geometry": feature["geometry"],
         "properties": feature.get("properties", {}),
     }
 
-    # Convert to JSON string with sorted keys for consistent hashing
     content_json = json.dumps(content_for_hash, sort_keys=True, separators=(",", ":"))
 
-    # Create MD5 hash of the content
     content_hash = hashlib.md5(content_json.encode("utf-8")).hexdigest()
 
-    # Convert hash to UUID format (using UUID namespace for deterministic generation)
-    # This ensures the result looks like a proper UUID
     deterministic_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, content_hash)
 
     return str(deterministic_uuid)
@@ -93,10 +88,9 @@ def transform_geojson_data(geojson_path):
 
     transformed_geojson_data = []
     for i, feature in enumerate(geojson_data["features"]):
-        # Generate unique ID if not present in the feature
         feature_id = feature.get("id")
+
         if feature_id is None:
-            # Generate deterministic UUID based on feature content
             feature_id = _generate_deterministic_id(feature)
             logger.info(f"Generated deterministic ID for feature {i}: {feature_id}")
 
