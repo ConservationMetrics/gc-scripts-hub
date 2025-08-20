@@ -170,6 +170,8 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: datasetAvailable
+                - id: state
+                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -242,7 +244,7 @@ value:
       - '12':
           fixed: true
           fullHeight: false
-          h: 4
+          h: 5
           w: 10
           x: 1
           'y': 1
@@ -267,7 +269,9 @@ value:
                 Dataset name:
                   type: string
                   description: "\U0001F3F7️ Enter the name you wish to give your dataset. You will be able to find your dataset by this name in other Guardian Connector tools."
-                  customErrorMessage: Must be no longer than 61 characters.
+                  customErrorMessage: >-
+                    Must be no longer than 61 characters, and cannot contain
+                    line breaks.
                   default: ''
                   disableVariablePicker: true
                   nullable: false
@@ -309,7 +313,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 5
+          'y': 6
         '3':
           fixed: true
           fullHeight: false
@@ -512,7 +516,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 6
+          'y': 7
         '3':
           fixed: true
           fullHeight: false
@@ -549,9 +553,9 @@ value:
                 refreshOn:
                   - id: state
                     key: datasetAvailable
-                suggestedRefreshOn:
                   - id: state
                     key: validSqlname
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -624,9 +628,9 @@ value:
       - '12':
           fixed: true
           fullHeight: false
-          h: 4
-          w: 10
-          x: 1
+          h: 5
+          w: 12
+          x: 0
           'y': 1
         '3':
           fixed: true
@@ -675,8 +679,10 @@ value:
             text:
               type: static
               value: >-
-                Drag and drop files into this box, or click to select them. Then
-                click "Upload File" to finish before going to the next step.
+                Drag and drop files into this box, or click to select them.
+
+                Then click "Upload File" to finish before going to the next
+                step.
               connections: []
               expr: '"Drag and drop files or click to select them"'
           customCss:
@@ -691,7 +697,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 5
+          'y': 6
         '3':
           fixed: true
           fullHeight: false
@@ -902,7 +908,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 6
+          'y': 7
         '3':
           fixed: true
           fullHeight: false
@@ -1507,17 +1513,32 @@ value:
           type: textcomponent
           actions: []
           componentInput:
-            type: templatev2
+            type: runnable
+            autoRefresh: true
             connections: []
             eval: ✍️ Ready to write this dataset to your warehouse?
+            fields: {}
             fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 4 Eval of saveLabel
+              inlineScript:
+                content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Eval_of_saveLabel
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
               value: false
             disableNoText:
               type: static
-              value: false
+              value: true
             style:
               type: static
               value: Body
@@ -1888,7 +1909,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'checkAvailability:rawscript/c1780cd5fb1cf51bdf828e6b715d95e89fb32c94777696c5550d322be9eb85fb':
+    'checkAvailability:rawscript/7526ffedf8ad00abfac544df6271d0c3d954e618fb40e0acdd502816491f83ac':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
@@ -1906,6 +1927,10 @@ policy:
       one_of_inputs: {}
       static_inputs: {}
     'formStepper:rawscript/e7b0e49657b06a7708790b18798cf973862248f7f05c01d38fc6c61c3ee8f348':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'saveLabel:rawscript/1e9c0df5f9976b417b52d7f0096b1ce27d8dbc3bf1d28b80a24f2660254bc27d':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
