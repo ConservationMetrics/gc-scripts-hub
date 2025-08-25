@@ -57,6 +57,9 @@ def transform_geojson_data(geojson_path):
 
     transformed_geojson_data = []
     for i, feature in enumerate(geojson_data["features"]):
+        # TODO: consider using a more deterministic ID generation method,
+        # once we are ready to tackle the challenge of appending data
+        # to existing tables with existing IDs
         feature_id = feature.get("id", str(uuid.uuid4()))
 
         transformed_feature = {
