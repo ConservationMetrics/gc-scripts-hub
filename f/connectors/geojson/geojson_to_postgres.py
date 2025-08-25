@@ -1,7 +1,6 @@
 # requirements:
 # psycopg2-binary
 
-import hashlib
 import json
 import logging
 import uuid
@@ -35,41 +34,6 @@ def main(
         delete_geojson_file(geojson_path)
 
 
-def _generate_deterministic_id(feature):
-    """
-    Generate a deterministic UUID based on feature content.
-
-    Parameters
-    ----------
-    feature : dict
-        GeoJSON feature object.
-
-    Returns
-    -------
-    str
-        Deterministic UUID string based on feature content.
-    """
-    # Create a canonical representation of the feature for hashing
-    # Include geometry and properties, but exclude any existing id
-    content_for_hash = {
-        "type": feature["type"],
-        "geometry": feature["geometry"],
-        "properties": feature.get("properties", {}),
-    }
-
-    # Convert to JSON string with sorted keys for consistent hashing
-    content_json = json.dumps(content_for_hash, sort_keys=True, separators=(",", ":"))
-
-    # Create MD5 hash of the content
-    content_hash = hashlib.md5(content_json.encode("utf-8")).hexdigest()
-
-    # Convert hash to UUID format (using UUID namespace for deterministic generation)
-    # This ensures the result looks like a proper UUID
-    deterministic_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, content_hash)
-
-    return str(deterministic_uuid)
-
-
 def transform_geojson_data(geojson_path):
     """
     Transforms GeoJSON data from a file into a list of dictionaries suitable for database insertion.
@@ -83,7 +47,7 @@ def transform_geojson_data(geojson_path):
     -------
     list
         A list of dictionaries where each dictionary represents a GeoJSON feature with keys:
-        '_id' for the feature's unique identifier (generated if not present in source),
+        '_id' for the feature's unique identifier (random UUID if not present in source),
         'g__type' for the geometry type,
         'g__coordinates' for the geometry coordinates,
         and any additional properties from the feature.
@@ -93,12 +57,10 @@ def transform_geojson_data(geojson_path):
 
     transformed_geojson_data = []
     for i, feature in enumerate(geojson_data["features"]):
-        # Generate unique ID if not present in the feature
-        feature_id = feature.get("id")
-        if feature_id is None:
-            # Generate deterministic UUID based on feature content
-            feature_id = _generate_deterministic_id(feature)
-            logger.info(f"Generated deterministic ID for feature {i}: {feature_id}")
+        # TODO: consider using a more deterministic ID generation method,
+        # once we are ready to tackle the challenge of appending data
+        # to existing tables with existing IDs
+        feature_id = feature.get("id", str(uuid.uuid4()))
 
         transformed_feature = {
             "_id": feature_id,

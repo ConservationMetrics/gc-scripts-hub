@@ -64,7 +64,7 @@ def test_script_e2e(pg_database):
 
 
 def test_transform_geojson_data_with_missing_ids():
-    """Test that features without IDs get auto-generated UUIDs."""
+    """Test that features without IDs get auto-generated random UUIDs."""
     # Create a temporary GeoJSON file without IDs
     geojson_data = {
         "type": "FeatureCollection",
@@ -117,7 +117,7 @@ def test_transform_geojson_data_with_missing_ids():
 
 
 def test_transform_geojson_data_all_missing_ids():
-    """Test that all features without IDs get unique auto-generated UUIDs."""
+    """Test that all features without IDs get unique auto-generated random UUIDs."""
     # Create a temporary GeoJSON file with no IDs
     geojson_data = {
         "type": "FeatureCollection",
@@ -156,8 +156,8 @@ def test_transform_geojson_data_all_missing_ids():
         Path(temp_path).unlink()
 
 
-def test_transform_geojson_data_deterministic_ids():
-    """Test that deterministic IDs are generated consistently for the same content."""
+def test_transform_geojson_data_random_uuids():
+    """Test that random UUIDs are generated for features without IDs."""
     # Create a temporary GeoJSON file with no IDs
     geojson_data = {
         "type": "FeatureCollection",
@@ -179,15 +179,18 @@ def test_transform_geojson_data_deterministic_ids():
         transformed_data_1 = transform_geojson_data(temp_path)
         transformed_data_2 = transform_geojson_data(temp_path)
 
-        # Check that the same feature generates the same ID both times
+        # Check that different random UUIDs are generated each time
         assert len(transformed_data_1) == 1
         assert len(transformed_data_2) == 1
-        assert transformed_data_1[0]["_id"] == transformed_data_2[0]["_id"]
+        assert transformed_data_1[0]["_id"] != transformed_data_2[0]["_id"]
 
-        # Check that the ID is a valid UUID string
-        feature_id = transformed_data_1[0]["_id"]
-        assert len(feature_id) == 36  # UUID length
-        assert feature_id.count("-") == 4  # UUID format
+        # Check that both IDs are valid UUID strings
+        feature_id_1 = transformed_data_1[0]["_id"]
+        feature_id_2 = transformed_data_2[0]["_id"]
+        assert len(feature_id_1) == 36  # UUID length
+        assert feature_id_1.count("-") == 4  # UUID format
+        assert len(feature_id_2) == 36  # UUID length
+        assert feature_id_2.count("-") == 4  # UUID format
 
     finally:
         # Clean up
