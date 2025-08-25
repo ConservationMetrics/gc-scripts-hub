@@ -3,6 +3,7 @@
 
 import json
 import logging
+import uuid
 from pathlib import Path
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
@@ -37,25 +38,32 @@ def transform_geojson_data(geojson_path):
     """
     Transforms GeoJSON data from a file into a list of dictionaries suitable for database insertion.
 
-    Args:
-        geojson_path (str or Path): The file path to the GeoJSON file.
+    Parameters
+    ----------
+    geojson_path : str or Path
+        The file path to the GeoJSON file.
 
-    Returns:
-        list: A list of dictionaries where each dictionary represents a GeoJSON feature with keys:
-              '_id' for the feature's unique identifier,
-              'g__type' for the geometry type,
-              'g__coordinates' for the geometry coordinates,
-              and any additional properties from the feature.
+    Returns
+    -------
+    list
+        A list of dictionaries where each dictionary represents a GeoJSON feature with keys:
+        '_id' for the feature's unique identifier (random UUID if not present in source),
+        'g__type' for the geometry type,
+        'g__coordinates' for the geometry coordinates,
+        and any additional properties from the feature.
     """
     with open(geojson_path, "r") as f:
         geojson_data = json.load(f)
 
     transformed_geojson_data = []
-    for feature in geojson_data["features"]:
+    for i, feature in enumerate(geojson_data["features"]):
+        # TODO: consider using a more deterministic ID generation method,
+        # once we are ready to tackle the challenge of appending data
+        # to existing tables with existing IDs
+        feature_id = feature.get("id", str(uuid.uuid4()))
+
         transformed_feature = {
-            "_id": feature[
-                "id"
-            ],  # Assuming that the GeoJSON feature has unique "id" field that can be used as the primary key
+            "_id": feature_id,
             "g__type": feature["geometry"]["type"],
             "g__coordinates": feature["geometry"]["coordinates"],
             **feature.get("properties", {}),

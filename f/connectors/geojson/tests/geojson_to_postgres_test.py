@@ -1,6 +1,10 @@
+import json
+import tempfile
+from pathlib import Path
+
 import psycopg2
 
-from f.connectors.geojson.geojson_to_postgres import main
+from f.connectors.geojson.geojson_to_postgres import main, transform_geojson_data
 
 geojson_fixture_path = "f/connectors/geojson/tests/assets/"
 
@@ -57,3 +61,137 @@ def test_script_e2e(pg_database):
                 "SELECT * FROM information_schema.tables WHERE table_name = 'my_geojson_data__columns'"
             )
             assert cursor.fetchone() is None
+
+
+def test_transform_geojson_data_with_missing_ids():
+    """Test that features without IDs get auto-generated random UUIDs."""
+    # Create a temporary GeoJSON file without IDs
+    geojson_data = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [1.0, 2.0]},
+                "properties": {"name": "Test Point"},
+            },
+            {
+                "type": "Feature",
+                "id": "existing_id",
+                "geometry": {"type": "Point", "coordinates": [3.0, 4.0]},
+                "properties": {"name": "Point with ID"},
+            },
+        ],
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".geojson", delete=False) as f:
+        json.dump(geojson_data, f)
+        temp_path = f.name
+
+    try:
+        # Transform the data
+        transformed_data = transform_geojson_data(temp_path)
+
+        # Check that we have 2 features
+        assert len(transformed_data) == 2
+
+        # Check that both features have _id fields
+        assert all("_id" in feature for feature in transformed_data)
+
+        # Check that existing ID is preserved
+        existing_id_feature = next(
+            f for f in transformed_data if f["_id"] == "existing_id"
+        )
+        assert existing_id_feature["name"] == "Point with ID"
+
+        # Check that auto-generated ID is a valid UUID string
+        auto_generated_feature = next(
+            f for f in transformed_data if f["_id"] != "existing_id"
+        )
+        assert auto_generated_feature["name"] == "Test Point"
+        assert len(auto_generated_feature["_id"]) == 36  # UUID length
+        assert auto_generated_feature["_id"].count("-") == 4  # UUID format
+
+    finally:
+        # Clean up
+        Path(temp_path).unlink()
+
+
+def test_transform_geojson_data_all_missing_ids():
+    """Test that all features without IDs get unique auto-generated random UUIDs."""
+    # Create a temporary GeoJSON file with no IDs
+    geojson_data = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [i, i]},
+                "properties": {"name": f"Point {i}"},
+            }
+            for i in range(3)
+        ],
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".geojson", delete=False) as f:
+        json.dump(geojson_data, f)
+        temp_path = f.name
+
+    try:
+        # Transform the data
+        transformed_data = transform_geojson_data(temp_path)
+
+        # Check that we have 3 features
+        assert len(transformed_data) == 3
+
+        # Check that all features have unique _id fields
+        ids = [feature["_id"] for feature in transformed_data]
+        assert len(set(ids)) == 3  # All IDs should be unique
+
+        # Check that all IDs are valid UUID strings
+        for feature_id in ids:
+            assert len(feature_id) == 36  # UUID length
+            assert feature_id.count("-") == 4  # UUID format
+
+    finally:
+        # Clean up
+        Path(temp_path).unlink()
+
+
+def test_transform_geojson_data_random_uuids():
+    """Test that random UUIDs are generated for features without IDs."""
+    # Create a temporary GeoJSON file with no IDs
+    geojson_data = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [1.0, 2.0]},
+                "properties": {"name": "Test Point", "value": 42},
+            }
+        ],
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".geojson", delete=False) as f:
+        json.dump(geojson_data, f)
+        temp_path = f.name
+
+    try:
+        # Transform the data twice
+        transformed_data_1 = transform_geojson_data(temp_path)
+        transformed_data_2 = transform_geojson_data(temp_path)
+
+        # Check that different random UUIDs are generated each time
+        assert len(transformed_data_1) == 1
+        assert len(transformed_data_2) == 1
+        assert transformed_data_1[0]["_id"] != transformed_data_2[0]["_id"]
+
+        # Check that both IDs are valid UUID strings
+        feature_id_1 = transformed_data_1[0]["_id"]
+        feature_id_2 = transformed_data_2[0]["_id"]
+        assert len(feature_id_1) == 36  # UUID length
+        assert feature_id_1.count("-") == 4  # UUID format
+        assert len(feature_id_2) == 36  # UUID length
+        assert feature_id_2.count("-") == 4  # UUID format
+
+    finally:
+        # Clean up
+        Path(temp_path).unlink()
