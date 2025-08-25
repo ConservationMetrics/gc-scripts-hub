@@ -6,6 +6,12 @@ from pathlib import Path
 
 import filetype
 import fiona
+
+# pandas requires openpyxl installed separately to read .xlsx files
+# it has to be imported in this module despite also being listed in
+# data_conversion.script.lock; otherwise, the script will complain about
+# "Missing optional dependency 'openpyxl'"
+import openpyxl  # noqa: F401
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
@@ -52,14 +58,31 @@ def detect_structured_data_type(file_path: str) -> str:
         }
         detected_type = extension_map.get(path.suffix.lower(), "unsupported")
         if detected_type != "unsupported":
+            # For JSON files, check if they're actually GeoJSON
+            if detected_type == "json":
+                return _detect_json_subtype(path)
             logger.info(f"File {path.name} detected as {detected_type} (by extension)")
         return detected_type
 
     def _detect_json_subtype(path: Path) -> str:
-        """Distinguish between JSON and GeoJSON."""
+        """Distinguish between JSON and GeoJSON using extension and content sniffing."""
         if path.suffix.lower() == ".geojson":
-            logger.info(f"File {path.name} detected as geojson")
+            logger.info(f"File {path.name} detected as geojson (by extension)")
             return "geojson"
+
+        # For .json files, check content to detect GeoJSON
+        if path.suffix.lower() == ".json":
+            try:
+                with path.open(encoding="utf-8") as f:
+                    data = json.load(f)
+
+                if isinstance(data, dict) and data.get("type") == "FeatureCollection":
+                    logger.info(f"File {path.name} detected as geojson (by content)")
+                    return "geojson"
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+                # If we can't parse it, fall back to json
+                pass
+
         logger.info(f"File {path.name} detected as json")
         return "json"
 
@@ -161,25 +184,27 @@ def convert_data(file_path: str, file_format: str):
 
     Returns
     -------
-    Union[list[list[str]], dict]
-        Converted data as CSV (list of lists) or GeoJSON (dict).
+    tuple
+        A tuple containing (converted_data, output_format) where:
+        - converted_data: Union[list[list[str]], dict] - Converted data as CSV (list of lists) or GeoJSON (dict)
+        - output_format: str - The output format ('csv' for tabular data, 'geojson' for spatial data)
     """
     path = Path(file_path)
     logger.debug(f"Converting {file_path} with format {file_format}")
 
     match file_format:
         case "csv":
-            return read_csv(path)
+            return read_csv(path), "csv"
         case "xlsx" | "xls":
-            return excel_to_csv(path)
+            return excel_to_csv(path), "csv"
         case "json":
-            return json_to_csv(path)
+            return json_to_csv(path), "csv"
         case "geojson":
-            return read_geojson(path)
+            return read_geojson(path), "geojson"
         case "gpx":
-            return gpx_to_geojson(path)
+            return gpx_to_geojson(path), "geojson"
         case "kml":
-            return kml_to_geojson(path)
+            return kml_to_geojson(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -446,9 +471,15 @@ def gpx_to_geojson(path: Path):
                     if v not in (None, "", "None")
                 }
 
+                # Generate unique ID for the feature
+                feature_id = final_properties.get(
+                    "name", f"waypoint_{waypoint_index + 1}"
+                )
+
                 features.append(
                     {
                         "type": "Feature",
+                        "id": feature_id,
                         "geometry": dict(feature["geometry"]),
                         "properties": final_properties,
                     }
@@ -561,9 +592,13 @@ def kml_to_geojson(path: Path):
                 k: v for k, v in final_properties.items() if v not in (None, "", "None")
             }
 
+            # Generate unique ID for the feature
+            feature_id = final_properties.get("name", f"placemark_{i + 1}")
+
             features.append(
                 {
                     "type": "Feature",
+                    "id": feature_id,
                     "geometry": dict(feature["geometry"]),
                     "properties": final_properties,
                 }

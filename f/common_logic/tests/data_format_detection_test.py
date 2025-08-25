@@ -47,6 +47,31 @@ def test_structured_data_type__geojson_format(tmp_path: Path):
     assert detect_structured_data_type(file_path) == "geojson"
 
 
+def test_structured_data_type__geojson_with_json_extension(tmp_path: Path):
+    """Test that GeoJSON files with .json extension are correctly detected."""
+    file_path = tmp_path / "test.json"
+    file_path.write_text(
+        '{"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [0, 0]}, "properties": {}}]}'
+    )
+    assert detect_structured_data_type(file_path) == "geojson"
+
+
+def test_structured_data_type__geojson_with_json_extension_minimal(tmp_path: Path):
+    """Test minimal valid GeoJSON with .json extension."""
+    file_path = tmp_path / "minimal.json"
+    file_path.write_text('{"type": "FeatureCollection", "features": []}')
+    # This should still be detected as json because read_geojson would reject empty features
+    # but the detection should identify it as geojson based on structure
+    assert detect_structured_data_type(file_path) == "geojson"
+
+
+def test_structured_data_type__regular_json_with_json_extension(tmp_path: Path):
+    """Test that regular JSON files are still detected as JSON, not GeoJSON."""
+    file_path = tmp_path / "regular.json"
+    file_path.write_text('{"name": "John", "age": 30, "city": "New York"}')
+    assert detect_structured_data_type(file_path) == "json"
+
+
 def test_structured_data_type__excel_format(tmp_path: Path):
     file_path = tmp_path / "test.xlsx"
     df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
@@ -59,6 +84,11 @@ def test_structured_data_type__excel_format(tmp_path: Path):
     file_path = tmp_path / "test.xls"
     df.to_excel(file_path, index=False)
 
+    assert detect_structured_data_type(file_path) == "xlsx"
+
+
+def test_structured_data_type__kobotoolbox_excel_export():
+    file_path = Path(__file__).parent / "assets" / "kobotoolbox_submissions.xlsx"
     assert detect_structured_data_type(file_path) == "xlsx"
 
 

@@ -8,6 +8,11 @@ def _validate_geojson_structure(result, expected_feature_count):
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == expected_feature_count
 
+    # Ensure all features have IDs (required for database insertion)
+    for i, feature in enumerate(result["features"]):
+        assert "id" in feature, f"Feature {i} missing required 'id' field"
+        assert feature["id"], f"Feature {i} has empty 'id' field"
+
 
 def _validate_point_geometry(feature):
     """Helper to validate point geometry structure."""
@@ -47,7 +52,8 @@ def _assert_osmand_property(props, key, expected_value=None):
 
 
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
-    result = convert_data(str(locusmap_points_gpx_file), "gpx")
+    result, output_format = convert_data(str(locusmap_points_gpx_file), "gpx")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, len(result["features"]))  # At least 2 waypoints
     assert len(result["features"]) >= 2
 
@@ -71,7 +77,8 @@ def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
 
 
 def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
-    result = convert_data(str(locusmap_points_kml_file), "kml")
+    result, output_format = convert_data(str(locusmap_points_kml_file), "kml")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
 
     for feat in result["features"]:
@@ -83,7 +90,8 @@ def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
 
 
 def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
-    result = convert_data(str(locusmap_tracks_kml_file), "kml")
+    result, output_format = convert_data(str(locusmap_tracks_kml_file), "kml")
+    assert output_format == "geojson"
 
     # Root-level structure check
     _validate_geojson_structure(result, 4)
@@ -144,7 +152,8 @@ def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
 
 
 def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
-    result = convert_data(str(locusmap_tracks_gpx_file), "gpx")
+    result, output_format = convert_data(str(locusmap_tracks_gpx_file), "gpx")
+    assert output_format == "geojson"
 
     # Root-level sanity checks
     _validate_geojson_structure(result, len(result["features"]))
@@ -200,7 +209,8 @@ def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
 
 
 def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
-    result = convert_data(str(garmin_sample_gpx_file), "gpx")
+    result, output_format = convert_data(str(garmin_sample_gpx_file), "gpx")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, len(result["features"]))
     assert len(result["features"]) > 2
 
@@ -241,7 +251,8 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
 
 
 def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
-    result = convert_data(str(kobotoolbox_csv_file), "csv")
+    result, output_format = convert_data(str(kobotoolbox_csv_file), "csv")
+    assert output_format == "csv"
 
     headers = result[0]
     assert "What community are you from?" in headers
@@ -264,7 +275,8 @@ def test_read_data__csv_only_headers(tmp_path):
 
 
 def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
-    result = convert_data(str(kobotoolbox_excel_file), "xlsx")
+    result, output_format = convert_data(str(kobotoolbox_excel_file), "xlsx")
+    assert output_format == "csv"
     headers = result[0]
     assert "What community are you from?" in headers
     assert "_id" in headers
@@ -293,7 +305,8 @@ def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_fi
 def test_convert_data__json(tmp_path):
     file = tmp_path / "test.json"
     file.write_text('[{"a": 1, "b": 2}, {"a": 3}]')
-    result = convert_data(str(file), "json")
+    result, output_format = convert_data(str(file), "json")
+    assert output_format == "csv"
     assert result == [["a", "b"], ["1", "2"], ["3", ""]]
 
 
@@ -305,7 +318,8 @@ def test_convert_data__json_empty(tmp_path):
 
 
 def test_read_data__mapeo_geojson(mapeo_geojson_file):
-    result = convert_data(str(mapeo_geojson_file), "geojson")
+    result, output_format = convert_data(str(mapeo_geojson_file), "geojson")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
     for feature in result["features"]:
@@ -319,7 +333,8 @@ def test_read_data__mapeo_geojson(mapeo_geojson_file):
 
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     """Test conversion of OSM Overpass GPX data with waypoints."""
-    result = convert_data(str(osm_overpass_gpx_file), "gpx")
+    result, output_format = convert_data(str(osm_overpass_gpx_file), "gpx")
+    assert output_format == "geojson"
 
     # Root-level structure validation
     _validate_geojson_structure(result, 15)
@@ -375,7 +390,8 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
 
 def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
     """Test reading of OSM Overpass GeoJSON data."""
-    result = convert_data(str(osm_overpass_geojson_file), "geojson")
+    result, output_format = convert_data(str(osm_overpass_geojson_file), "geojson")
+    assert output_format == "geojson"
 
     # Root-level structure validation
     _validate_geojson_structure(result, 15)
@@ -456,7 +472,8 @@ def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
 
 def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
     """Test conversion of OSM Overpass KML data with ExtendedData."""
-    result = convert_data(str(osm_overpass_kml_file), "kml")
+    result, output_format = convert_data(str(osm_overpass_kml_file), "kml")
+    assert output_format == "geojson"
 
     # Root-level structure validation
     _validate_geojson_structure(result, 15)
@@ -557,9 +574,15 @@ def test_osm_data_consistency_across_formats(
     osm_overpass_gpx_file, osm_overpass_geojson_file, osm_overpass_kml_file
 ):
     """Test that the same OSM data is consistent across GPX, GeoJSON, and KML formats."""
-    gpx_result = convert_data(str(osm_overpass_gpx_file), "gpx")
-    geojson_result = convert_data(str(osm_overpass_geojson_file), "geojson")
-    kml_result = convert_data(str(osm_overpass_kml_file), "kml")
+    gpx_result, gpx_format = convert_data(str(osm_overpass_gpx_file), "gpx")
+    geojson_result, geojson_format = convert_data(
+        str(osm_overpass_geojson_file), "geojson"
+    )
+    kml_result, kml_format = convert_data(str(osm_overpass_kml_file), "kml")
+
+    assert gpx_format == "geojson"
+    assert geojson_format == "geojson"
+    assert kml_format == "geojson"
 
     # All should have the same number of features
     assert len(gpx_result["features"]) == 15
@@ -653,7 +676,8 @@ def test_convert_data__geojson_with_invalid_top_level(
 
 
 def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
-    result = convert_data(str(googleearth_sample_kml_file), "kml")
+    result, output_format = convert_data(str(googleearth_sample_kml_file), "kml")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
     for feat in result["features"]:
@@ -698,7 +722,8 @@ def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
 
 
 def test_convert_data__gc_alerts_kml(alerts_kml_file):
-    result = convert_data(str(alerts_kml_file), "kml")
+    result, output_format = convert_data(str(alerts_kml_file), "kml")
+    assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
 
     for feat in result["features"]:
@@ -727,7 +752,8 @@ def test_convert_data__unsupported():
 
 def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
     """Test conversion of OsmAnd notes GPX data with photo attachments."""
-    result = convert_data(str(osmand_notes_gpx_file), "gpx")
+    result, output_format = convert_data(str(osmand_notes_gpx_file), "gpx")
+    assert output_format == "geojson"
 
     # Root-level structure validation
     _validate_geojson_structure(result, 10)
@@ -785,7 +811,8 @@ def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
 
 def test_convert_data__osmand_poi_gpx(osmand_poi_gpx_file):
     """Test conversion of OsmAnd POI GPX data with comprehensive metadata."""
-    result = convert_data(str(osmand_poi_gpx_file), "gpx")
+    result, output_format = convert_data(str(osmand_poi_gpx_file), "gpx")
+    assert output_format == "geojson"
 
     # Root-level structure validation
     _validate_geojson_structure(result, 3)
@@ -887,8 +914,11 @@ def test_osmand_data_consistency_across_formats(
     osmand_notes_gpx_file, osmand_poi_gpx_file
 ):
     """Test that OsmAnd GPX data is consistently parsed with all extensions captured."""
-    notes_result = convert_data(str(osmand_notes_gpx_file), "gpx")
-    poi_result = convert_data(str(osmand_poi_gpx_file), "gpx")
+    notes_result, notes_format = convert_data(str(osmand_notes_gpx_file), "gpx")
+    poi_result, poi_format = convert_data(str(osmand_poi_gpx_file), "gpx")
+
+    assert notes_format == "geojson"
+    assert poi_format == "geojson"
 
     # Notes should have 10 photo notes
     assert len(notes_result["features"]) == 10

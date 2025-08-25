@@ -153,6 +153,20 @@ def test_normalize_identifier_default_params():
     assert normalize_identifier("") == "_"
     assert normalize_identifier("!@#$%") == "_"
     assert normalize_identifier("___name___") == "name"
+    assert normalize_identifier("This is my dataset, ok?") == "this_is_my_dataset_ok"
+    assert normalize_identifier("Foo bar baz") == "foo_bar_baz"
+    assert normalize_identifier("Summary of results (Q1)") == "summary_of_results_q1"
+    assert normalize_identifier("2024 field survey data") == "_2024_field_survey_data"
+    assert normalize_identifier("Location 1 / Sector B") == "location_1___sector_b"
+    assert normalize_identifier("Foo bar's dataset!") == "foo_bars_dataset"
+    assert normalize_identifier("Table: Foo Bar 2") == "table_foo_bar_2"
+    assert normalize_identifier("Results - Phase 1") == "results___phase_1"
+    assert (
+        normalize_identifier(
+            "this is a very, very, very long dataset name that will get truncated safely"
+        )
+        == "this_is_a_very_very_very_long_dataset_name_that_will_get_trunca"
+    )
 
 
 def test_normalize_identifier_maxlen_param():
