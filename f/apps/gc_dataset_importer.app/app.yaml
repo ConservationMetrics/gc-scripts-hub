@@ -170,8 +170,6 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: datasetAvailable
-                - id: state
-                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -205,19 +203,9 @@ value:
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: runnableByName
-      name: 2 Toggle state.uploadSuccess
-      autoRefresh: false
+      name: Background Runnable 2
       fields: {}
-      inlineScript:
-        content: '!inline 2_toggle_state.uploadsuccess.inline_script.frontend.js'
-        language: frontend
-        path: f/apps/gc_dataset_importer/2_Toggle_state.uploadSuccess
-        refreshOn:
-          - id: uploadFile
-            key: result
-        suggestedRefreshOn: []
-      recomputeIds: []
-      recomputeOnInputChanged: true
+      hidden: true
     - type: runnableByName
       name: 3 Set data source state
       autoRefresh: false
@@ -765,18 +753,8 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
-                - id: state
-                  key: uploadErrorMessage
                 - id: selectFile
                   key: result
-                - id: state
-                  key: outputFormat
-                - id: state
-                  key: fileNameParsed
-                - id: state
-                  key: fileNameOriginal
-                - id: state
-                  key: uploadSuccess
           configuration:
             afterIcon:
               type: static
@@ -1901,7 +1879,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'bg_2:rawscript/92d2721c1e4f731d1c78cd2f57aa4d12246f8436e13c6ff4eca92407876a7ebb':
+    'bg_2:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
