@@ -1,0 +1,13 @@
+# py313
+annotated-types==0.7.0
+certifi==2025.8.3
+charset-normalizer==3.4.2
+idna==3.10
+psycopg2-binary==2.9.10
+pydantic==2.9.2
+pydantic-core==2.23.4
+pyodk==1.2.1
+requests==2.32.3
+toml==0.10.2
+typing-extensions==4.14.1
+urllib3==2.5.0

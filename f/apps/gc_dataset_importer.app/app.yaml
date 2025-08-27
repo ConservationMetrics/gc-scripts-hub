@@ -1,0 +1,1931 @@
+summary: GC Dataset Importer
+value:
+  css:
+    buttoncomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    checkboxcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+    containercomponent:
+      container:
+        class: ''
+        style: ''
+    fileinputcomponent:
+      container:
+        class: ''
+        style: ''
+    formcomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    steppercomponent:
+      container:
+        class: ''
+        style: ''
+    textcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+  fullscreen: false
+  grid:
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 1
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 0
+        'y': 0
+      id: pageTitle
+      data:
+        id: pageTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: Guardian Connector Dataset Importer
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Title
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 3
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 1
+        'y': 6
+      id: formTitle
+      data:
+        id: formTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: "\U0001F4E4 Upload a dataset file to your data warehouse"
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Subtitle
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 12
+        w: 8
+        x: 2
+        'y': 5
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 8
+        w: 2
+        x: 1
+        'y': 7
+      id: formStepper
+      data:
+        id: formStepper
+        type: steppercomponent
+        actions: []
+        componentInput:
+          type: runnable
+          autoRefresh: false
+          fields: {}
+          fieldType: any
+          recomputeOnInputChanged: false
+          runnable:
+            type: runnableByName
+            name: 0 Form stepper validations
+            inlineScript:
+              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
+              language: frontend
+              path: f/apps/gc_dataset_importer/0_Form_stepper_validations
+              suggestedRefreshOn:
+                - id: state
+                  key: datasetAvailable
+        configuration: {}
+        customCss:
+          container:
+            class: border-2 border-blue-300 border-dashed
+            style: ''
+        numberOfSubgrids: 4
+        onNext: []
+        onPrevious: []
+        tabs:
+          - Name your dataset
+          - Upload your file
+          - Choose data source
+          - Finalize
+  hiddenInlineScripts:
+    - type: runnableByName
+      name: Background Runnable 0
+      fields: {}
+      hidden: true
+      recomputeIds: []
+    - type: runnableByName
+      name: 2 File has been selected
+      autoRefresh: false
+      fields: {}
+      inlineScript:
+        content: '!inline 2_file_has_been_selected.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/2_File_has_been_selected
+        suggestedRefreshOn:
+          - id: selectFile
+            key: result
+      recomputeIds: []
+      recomputeOnInputChanged: true
+    - type: runnableByName
+      name: Background Runnable 2
+      fields: {}
+      hidden: true
+    - type: runnableByName
+      name: 3 Set data source state
+      autoRefresh: false
+      fields: {}
+      inlineScript:
+        content: '!inline 3_set_data_source_state.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/3_Set_data_source_state
+        refreshOn:
+          - id: dataSourceToggle
+            key: result
+        suggestedRefreshOn:
+          - id: dataSources
+            key: result
+          - id: state
+            key: dataSource
+      recomputeIds: []
+      recomputeOnInputChanged: true
+  hideLegacyTopBar: true
+  mobileViewOnSmallerScreens: false
+  norefreshbar: false
+  subgrids:
+    formStepper-0:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 5
+          w: 10
+          x: 1
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 8
+          w: 3
+          x: 0
+          'y': 1
+        id: enterDatasetName
+        data:
+          id: enterDatasetName
+          type: schemaformcomponent
+          actions: []
+          componentInput:
+            type: static
+            value:
+              order:
+                - Dataset name
+              properties:
+                Dataset name:
+                  type: string
+                  description: "\U0001F3F7️ Enter the name you wish to give your dataset. You will be able to find your dataset by this name in other Guardian Connector tools."
+                  customErrorMessage: >-
+                    Must be no longer than 61 characters, and cannot contain
+                    line breaks.
+                  default: ''
+                  disableVariablePicker: true
+                  nullable: false
+                  pattern: '^.{1,61}$'
+                  placeholder: ''
+              required:
+                - Dataset name
+            connections: []
+            expr: ''
+            fieldType: schema
+          configuration:
+            defaultValues:
+              type: static
+              value: {}
+              connections: []
+              expr: '{}'
+            displayType:
+              type: static
+              value: false
+            dynamicEnums:
+              type: static
+              value: {}
+            largeGap:
+              type: static
+              value: false
+          customCss:
+            description:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+            label:
+              class: ''
+              style: ''
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 6
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 10
+          'y': 5
+        id: checkAvailability
+        data:
+          id: checkAvailability
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields:
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: values
+                    componentId: enterDatasetName
+                expr: 'enterDatasetName.values["Dataset name"]'
+                fieldType: string
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
+            fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              type: runnableByName
+              name: 1 Check if database table exists
+              inlineScript:
+                content: '!inline 1_check_if_database_table_exists.inline_script.py'
+                lock: '!inline 1_check_if_database_table_exists.inline_script.lock'
+                language: python3
+                path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    dataset_name:
+                      type: string
+                      description: ''
+                      default: null
+                      originalType: string
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
+                  required:
+                    - db
+                    - dataset_name
+            transformer:
+              content: |-
+                state.datasetAvailable = result.tableExists !== true;
+                state.datasetName = result.datasetName;
+                state.validSqlname = result.validSqlName;
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn:
+                - id: state
+                  key: datasetAvailable
+                - id: state
+                  key: datasetName
+                - id: state
+                  key: validSqlname
+          configuration:
+            afterIcon:
+              type: static
+              value: ''
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                confirmationModal:
+                  description:
+                    type: static
+                    value: Are you sure?
+                  confirmationText:
+                    type: static
+                    value: Confirm
+                  title:
+                    type: static
+                    value: Title
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: true
+              connections:
+                - id: valid
+                  componentId: enterDatasetName
+              expr: '!enterDatasetName.valid'
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Check Availability
+            onError:
+              type: oneOf
+              configuration:
+                close:
+                  id:
+                    type: static
+                    value: ''
+                errorOverlay: {}
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                open:
+                  id:
+                    type: static
+                    value: ''
+                sendErrorToast:
+                  appendError:
+                    type: static
+                    value: true
+                  message:
+                    type: static
+                    value: An error occured
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: errorOverlay
+            onSuccess:
+              type: oneOf
+              configuration:
+                clearFiles:
+                  id:
+                    type: static
+                    value: ''
+                close:
+                  id:
+                    type: static
+                    value: ''
+                closeModal:
+                  modalId:
+                    type: static
+                    value: ''
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                none: {}
+                open:
+                  id:
+                    type: static
+                    value: ''
+                openModal:
+                  modalId:
+                    type: static
+                    value: ''
+                sendToast:
+                  message:
+                    type: static
+                    value: ''
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: none
+            size:
+              type: static
+              value: xs
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds:
+            - bg_0
+          verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: datasetNameResult
+        data:
+          id: datasetNameResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: result
+                componentId: submitDatasetName
+            eval: ''
+            expr: submitDatasetName.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 1 Eval of enterDatasetNameResult
+              inlineScript:
+                content: >-
+                  !inline
+                  1_eval_of_enterdatasetnameresult.inline_script.frontend.js
+                language: frontend
+                path: f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResult
+                refreshOn:
+                  - id: state
+                    key: datasetAvailable
+                  - id: state
+                    key: validSqlname
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+    formStepper-1:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 0
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 3
+          'y': 0
+        id: acceptedFormatsLabel
+        data:
+          id: acceptedFormatsLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: 'font-size: 0.7em;'
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 5
+          w: 12
+          x: 0
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 4
+          w: 3
+          x: 1
+          'y': 1
+        id: selectFile
+        data:
+          id: selectFile
+          type: fileinputcomponent
+          actions: []
+          configuration:
+            acceptedFileTypes:
+              type: static
+              value:
+                - text/csv
+                - application/gpx+xml
+                - application/vnd.google-earth.kml+xml
+                - application/vnd.google-earth.kmz
+                - >-
+                  application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                - application/vnd.ms-excel
+                - application/json
+              connections:
+                - id: result
+                  componentId: selectFile
+              expr: selectFile.result
+            allowMultiple:
+              type: static
+              value: false
+            disabled:
+              type: static
+              value: false
+              connections: []
+              expr: 'false'
+            includeMimeType:
+              type: static
+              value: false
+            submittedFileText:
+              type: static
+              value: Selected file
+              connections: []
+              expr: '"Selected file"'
+            text:
+              type: static
+              value: >-
+                Drag and drop files into this box, or click to select them.
+
+                Then click "Upload File" to finish before going to the next
+                step.
+              connections: []
+              expr: '"Drag and drop files or click to select them"'
+          customCss:
+            container:
+              class: ''
+              style: ''
+          onFileChange:
+            - bg_1
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 6
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: uploadFile
+        data:
+          id: uploadFile
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields:
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: validSqlname
+                    componentId: state
+                expr: state.validSqlname
+                fieldType: object
+              uploaded_file:
+                type: evalv2
+                value: null
+                connections:
+                  - id: result
+                    componentId: selectFile
+                expr: selectFile.result
+                fieldType: object
+            fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              type: runnableByName
+              name: 2 Upload and convert file
+              inlineScript:
+                content: '!inline 2_upload_and_convert_file.inline_script.py'
+                lock: '!inline 2_upload_and_convert_file.inline_script.lock'
+                language: python3
+                path: f/apps/gc_dataset_importer/2_Upload_and_convert_file
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    dataset_name:
+                      type: object
+                      description: ''
+                      default: null
+                    uploaded_file:
+                      type: object
+                      description: ''
+                      default: null
+                  required:
+                    - uploaded_file
+                    - dataset_name
+            transformer:
+              content: |
+                state.uploadSuccess = result[0];
+                state.uploadErrorMessage = result[1];
+                state.fileNameOriginal = selectFile.result[0].name;
+                state.fileNameParsed = result[2];
+                state.outputFormat = result[3];
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn:
+                - id: selectFile
+                  key: result
+          configuration:
+            afterIcon:
+              type: static
+              value: ''
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                confirmationModal:
+                  description:
+                    type: static
+                    value: Are you sure?
+                  confirmationText:
+                    type: static
+                    value: Confirm
+                  title:
+                    type: static
+                    value: Title
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: uploadButtonEnabled
+                  componentId: state
+              expr: '!state.uploadButtonEnabled === true'
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Upload File
+            onError:
+              type: oneOf
+              configuration:
+                close:
+                  id:
+                    type: static
+                    value: ''
+                errorOverlay: {}
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                open:
+                  id:
+                    type: static
+                    value: ''
+                sendErrorToast:
+                  appendError:
+                    type: static
+                    value: true
+                  message:
+                    type: static
+                    value: An error occurred. Please try again.
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: sendErrorToast
+            onSuccess:
+              type: oneOf
+              configuration:
+                clearFiles:
+                  id:
+                    type: static
+                    value: ''
+                close:
+                  id:
+                    type: static
+                    value: ''
+                closeModal:
+                  modalId:
+                    type: static
+                    value: ''
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                none: {}
+                open:
+                  id:
+                    type: static
+                    value: ''
+                openModal:
+                  modalId:
+                    type: static
+                    value: ''
+                sendToast:
+                  message:
+                    type: static
+                    value: File successfully uploaded!
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: sendToast
+            size:
+              type: static
+              value: xs
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 6
+        id: uploadFileResult
+        data:
+          id: uploadFileResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 2 Update result message
+              inlineScript:
+                content: '!inline 2_update_result_message.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/2_Update_result_message
+                refreshOn:
+                  - id: state
+                    key: uploadSuccess
+                  - id: state
+                    key: uploadProcessing
+                  - id: state
+                    key: uploadErrorMessage
+                  - id: state
+                    key: uploadButtonEnabled
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+    formStepper-2:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 2
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 1
+        id: dataSourceToggle
+        data:
+          id: dataSourceToggle
+          type: checkboxcomponent
+          actions: []
+          configuration:
+            defaultValue:
+              type: static
+            disabled:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Is this dataset from a known source or tool?
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: center
+          onToggle: []
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 0
+        id: dataSourceHint
+        data:
+          id: dataSourceHint
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >
+              (We use this to add a "data source" column to the dataset, and in
+              some cases, apply special formatting logic.)
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: |-
+                italic 
+                text-sm
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 6
+          x: 3
+          'y': 5
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 1
+        id: dataSources
+        data:
+          id: dataSources
+          type: selectcomponent
+          actions: []
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: result
+                  componentId: dataSourceToggle
+              expr: '!dataSourceToggle.result'
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: static
+              value:
+                - value: CoMapeo
+                  label: CoMapeo
+                - value: KoboToolbox
+                  label: KoboToolbox
+                - value: Mapeo
+                  label: Mapeo
+                - value: Locus Map
+                  label: Locus Map
+                - value: ODK
+                  label: ODK
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select an item
+            preselectFirst:
+              type: static
+              value: false
+          customCss:
+            input:
+              class: ''
+              style: ''
+              tooltip: >-
+                https://github.com/rob-balfre/svelte-select/blob/master/docs/theming_variables.md
+          onSelect:
+            - bg_3
+          recomputeIds: []
+          verticalAlignment: center
+    formStepper-3:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 0
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: finalizeTitle
+        data:
+          id: finalizeTitle
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "\U0001F4C4 Review summary"
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 1
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 0
+        id: datasetNameLabel
+        data:
+          id: datasetNameLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Dataset name:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 0
+        id: datasetName
+        data:
+          id: datasetName
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: evalv2
+            connections:
+              - id: datasetName
+                componentId: state
+            eval: '${selectFile.result[0].name}'
+            expr: state.datasetName
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 2
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 1
+        id: fileUploadedLabel
+        data:
+          id: fileUploadedLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'File uploaded:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 2
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 1
+        id: fileUploaded
+        data:
+          id: fileUploaded
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: fileNameOriginal
+                componentId: state
+            eval: state.fileName
+            expr: state.fileNameOriginal
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 2 Eval of fileUploaded
+              inlineScript:
+                content: '!inline 2_eval_of_fileuploaded.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/2_Eval_of_fileUploaded
+                refreshOn:
+                  - id: state
+                    key: fileNameOriginal
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 1
+        id: dataSourceLabel
+        data:
+          id: dataSourceLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Data source:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 2
+        id: dataSource
+        data:
+          id: dataSource
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            connections:
+              - id: result
+                componentId: dataSources
+            eval: 'Hello ${ctx.username}'
+            expr: dataSources.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 3 Eval of dataSource
+              inlineScript:
+                content: '!inline 3_eval_of_datasource.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/3_Eval_of_dataSource
+                refreshOn:
+                  - id: dataSources
+                    key: result
+                  - id: dataSourceToggle
+                    key: result
+                suggestedRefreshOn:
+                  - id: state
+                    key: dataSource
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 4
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 2
+        id: saveLabel
+        data:
+          id: saveLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ✍️ Ready to write this dataset to your warehouse?
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 4 Eval of saveLabel
+              inlineScript:
+                content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Eval_of_saveLabel
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: |-
+                italic 
+                text-sm
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 5
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 2
+        id: transformAndWrite
+        data:
+          id: transformAndWrite
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields:
+              data_source:
+                type: evalv2
+                value: null
+                connections:
+                  - id: dataSource
+                    componentId: state
+                expr: state.dataSource
+                fieldType: object
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: datasetName
+                    componentId: state
+                expr: state.datasetName
+                fieldType: object
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
+              filename_original:
+                type: evalv2
+                value: null
+                connections:
+                  - id: fileNameOriginal
+                    componentId: state
+                expr: state.fileNameOriginal
+                fieldType: object
+              filename_parsed:
+                type: evalv2
+                value: null
+                connections:
+                  - id: fileNameParsed
+                    componentId: state
+                expr: state.fileNameParsed
+                fieldType: object
+              output_format:
+                type: evalv2
+                value: null
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: state.outputFormat
+                fieldType: object
+              valid_sql_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: validSqlname
+                    componentId: state
+                expr: state.validSqlname
+                fieldType: object
+            fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              type: runnableByName
+              name: 4 Apply transformation and write to database
+              inlineScript:
+                content: >-
+                  !inline
+                  4_apply_transformation_and_write_to_database.inline_script.py
+                lock: >-
+                  !inline
+                  4_apply_transformation_and_write_to_database.inline_script.lock
+                language: python3
+                path: >-
+                  f/apps/gc_dataset_importer/4_Apply_transformation_and_write_to_database
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    data_source:
+                      type: object
+                      description: ''
+                      default: null
+                    dataset_name:
+                      type: object
+                      description: ''
+                      default: null
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
+                    filename_original:
+                      type: object
+                      description: ''
+                      default: null
+                    filename_parsed:
+                      type: object
+                      description: ''
+                      default: null
+                    output_format:
+                      type: object
+                      description: ''
+                      default: null
+                    valid_sql_name:
+                      type: object
+                      description: ''
+                      default: null
+                  required:
+                    - db
+                    - filename_original
+                    - filename_parsed
+                    - output_format
+                    - data_source
+                    - dataset_name
+                    - valid_sql_name
+            transformer:
+              content: |-
+                state.finalizeSuccess = result[0];
+                state.finalizeErrorMessage = result[1];
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn: []
+          configuration:
+            afterIcon:
+              type: static
+              value: ''
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                confirmationModal:
+                  description:
+                    type: static
+                    value: Are you sure?
+                  confirmationText:
+                    type: static
+                    value: Confirm
+                  title:
+                    type: static
+                    value: Title
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: finalizeSuccess
+                  componentId: state
+              expr: state.finalizeSuccess
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Save & Finish
+            onError:
+              type: oneOf
+              configuration:
+                close:
+                  id:
+                    type: static
+                    value: ''
+                errorOverlay: {}
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                open:
+                  id:
+                    type: static
+                    value: ''
+                sendErrorToast:
+                  appendError:
+                    type: static
+                    value: true
+                  message:
+                    type: static
+                    value: An error occured
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: errorOverlay
+            onSuccess:
+              type: oneOf
+              configuration:
+                clearFiles:
+                  id:
+                    type: static
+                    value: ''
+                close:
+                  id:
+                    type: static
+                    value: ''
+                closeModal:
+                  modalId:
+                    type: static
+                    value: ''
+                gotoUrl:
+                  newTab:
+                    type: static
+                    value: true
+                  url:
+                    type: static
+                    value: ''
+                none: {}
+                open:
+                  id:
+                    type: static
+                    value: ''
+                openModal:
+                  modalId:
+                    type: static
+                    value: ''
+                sendToast:
+                  message:
+                    type: static
+                    value: ''
+                setTab:
+                  setTab:
+                    type: static
+                    value: []
+              selected: none
+            size:
+              type: static
+              value: xs
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 12
+          x: 0
+          'y': 6
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 3
+        id: saveResult
+        data:
+          id: saveResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 4 Eval of saveResult
+              inlineScript:
+                content: '!inline 4_eval_of_saveresult.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Eval_of_saveResult
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                  - id: state
+                    key: dataSource
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+  theme:
+    type: inlined
+    css: ''
+  unusedInlineScripts: []
+policy:
+  allowed_s3_keys: []
+  execution_mode: publisher
+  s3_inputs: []
+  triggerables_v2:
+    'bg_0:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'bg_1:rawscript/aabe938468289958a90ebe7e964e513568364b412f31e199baf76bfb169c9dd7':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'bg_2:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'bg_3:rawscript/eb598dc66943f8daaeee655cf32953fb14eea371b4f886619c79b7161cd12f40':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'checkAvailability:rawscript/7526ffedf8ad00abfac544df6271d0c3d954e618fb40e0acdd502816491f83ac':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs:
+        db: '$res:f/connectors/postgresql'
+    'datasetNameResult:rawscript/a2ffe61faabfbb37e7b096e148027e3bd474dfe1d4593f50de2b244c072f53f9':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'dataSource:rawscript/03b0b24613940852c512362a2e9df99934b9f5b42d77052aa5b1967ea6045cbd':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'fileUploaded:rawscript/c8afc9500163ab5f943ef27cc21d42c5666fb94cec35ada3afc558d59f756b69':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'formStepper:rawscript/e7b0e49657b06a7708790b18798cf973862248f7f05c01d38fc6c61c3ee8f348':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'saveLabel:rawscript/1e9c0df5f9976b417b52d7f0096b1ce27d8dbc3bf1d28b80a24f2660254bc27d':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'saveResult:rawscript/08b9c653850e31a730c8cfa71d6fdc1c7049706954f31fda9b83e3e8dab3d265':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'transformAndWrite:rawscript/95352d8a2cc69d87b2de1d0d0df189a2fa1e905cc4c39e32741d8ea753f465c0':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs:
+        db: '$res:f/connectors/postgresql'
+    'uploadFile:rawscript/f5c54755b0a5a426bb22b0b67a3830affbae86ba989b394e6e3e01138ce2ecd1':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
+    'uploadFileResult:rawscript/f3be8a7b447df0154ed776fe3df0f23ca2461a544b8fb4d9b5cee4181b2f7b39':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
