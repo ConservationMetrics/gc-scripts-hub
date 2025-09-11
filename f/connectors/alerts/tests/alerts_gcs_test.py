@@ -61,6 +61,60 @@ def test_alert_id_generation(tmp_path):
         uuid.UUID(row["_id"])  # will raise ValueError if invalid
 
 
+def test_geometry_collection_validation(tmp_path):
+    """Test that GeometryCollection geometries raise ValueError."""
+    # Create a temporary GeoJSON file with GeometryCollection
+    geojson_with_geometry_collection = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "GeometryCollection",
+                    "geometries": [
+                        {
+                            "type": "LineString",
+                            "coordinates": [
+                                [-100.11945344942263, 25.327808970020767],
+                                [-100.11954328095104, 25.327808970020767],
+                            ],
+                        },
+                        {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [-100.11945344942263, 25.327808970020767],
+                                    [-100.11945344942263, 25.328078464606003],
+                                    [-100.11954328095104, 25.328078464606003],
+                                    [-100.11954328095104, 25.327808970020767],
+                                    [-100.11945344942263, 25.327808970020767],
+                                ]
+                            ],
+                        },
+                    ],
+                },
+                "id": "-123456+78910",
+                "properties": {"alert_id": "test_alert_123", "territory_id": 100},
+            }
+        ],
+    }
+
+    # Write the test GeoJSON to a temporary file
+    test_file = tmp_path / "test_geometry_collection.geojson"
+    with open(test_file, "w") as f:
+        import json
+
+        json.dump(geojson_with_geometry_collection, f)
+
+    geojson_files = [str(test_file)]
+
+    # Test that ValueError is raised
+    with pytest.raises(
+        ValueError, match="GeometryCollection geometries are not supported"
+    ):
+        prepare_alerts_data(tmp_path, geojson_files, "test_provider")
+
+
 @pytest.fixture
 def mock_alerts_storage_client(gcs_emulator_client):
     """Client to a mocked Google Cloud Storage account full of alerts"""
