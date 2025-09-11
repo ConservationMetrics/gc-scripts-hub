@@ -455,6 +455,15 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
         with full_path.open("r") as f:
             geojson_data = json.load(f)
 
+        # Check for GeometryCollection and fail if found
+        for feature in geojson_data.get("features", []):
+            geometry = feature.get("geometry", {})
+            if geometry.get("type") == "GeometryCollection":
+                raise ValueError(
+                    f"GeometryCollection geometries are not supported. "
+                    f"Found in file: {file_path}"
+                )
+
         for feature in geojson_data.get("features", []):
             # Extract feature-level properties and geometry
             props = feature.get("properties", {})
