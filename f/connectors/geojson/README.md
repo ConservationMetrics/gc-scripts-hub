@@ -18,3 +18,4 @@ This script reads a GeoJSON file and inserts its contents into a PostgreSQL tabl
 * The data is inserted as flat text fields — no geometry types or JSONB columns are used.
 * PostGIS is _not_ used at this stage. This approach may change based on requirements downstream.
 * Optionally, the input file is deleted after import.
+* Currently, this script does not handle GeometryCollection geometries. It will write the GeoJSON to the database, but the `g__coordinates` column will be empty.
