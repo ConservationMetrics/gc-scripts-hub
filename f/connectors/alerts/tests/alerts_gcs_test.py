@@ -379,3 +379,90 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     updated_gcs_md5_hash = base64.b64decode(updated_gcs_md5_hash_base64).hex()
 
     assert updated_md5_hash == updated_gcs_md5_hash
+
+
+@pytest.fixture
+def mock_alerts_storage_client_metadata_only(gcs_emulator_client):
+    """Client to a mocked Google Cloud Storage account with only metadata, no files for territory 100"""
+    storage_client = gcs_emulator_client
+
+    try:
+        bucket = storage_client.create_bucket(MOCK_BUCKET_NAME)
+    except google.api_core.exceptions.Conflict:
+        logger.warning("Bucket already exists. Attempting to get existing bucket.")
+        bucket = storage_client.bucket(MOCK_BUCKET_NAME)
+
+    def _upload_blob(bucket, source_file_name, destination_blob_name):
+        blob = bucket.blob(destination_blob_name)
+        blob.upload_from_filename(source_file_name)
+        logger.info(f"Uploaded {source_file_name} -> {destination_blob_name}")
+
+    # Upload only metadata file - no files for territory 100
+    alerts_filenames = [
+        "alerts_history.csv",
+    ]
+    for filename in alerts_filenames:
+        source_path = Path(assets_directory) / Path(filename).name
+        _upload_blob(bucket, source_path, filename)
+
+    yield storage_client
+
+
+def test_metadata_only_scenario(
+    pg_database, mock_alerts_storage_client_metadata_only, tmp_path
+):
+    """Test scenario where there are no files for territory_id but metadata exists"""
+    asset_storage = tmp_path / "datalake"
+
+    # This should not raise an assertion error even though no files exist for territory 100
+    # because metadata exists for territory 100 in alerts_history.csv
+    alerts_metadata = _main(
+        mock_alerts_storage_client_metadata_only,
+        MOCK_BUCKET_NAME,
+        "test_provider",
+        100,  # territory_id 100 has metadata but no files
+        pg_database,
+        "fake_alerts_metadata_only",
+        asset_storage,
+    )
+
+    # Check that metadata was written to the database
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            # Check that metadata table was created and has data
+            cursor.execute("SELECT COUNT(*) FROM fake_alerts_metadata_only__metadata")
+            metadata_count = cursor.fetchone()[0]
+            assert metadata_count > 0, "Metadata should be written to database"
+
+            # Check that alerts table was created but is empty (no files to process)
+            cursor.execute("SELECT COUNT(*) FROM fake_alerts_metadata_only")
+            alerts_count = cursor.fetchone()[0]
+            assert alerts_count == 0, (
+                "Alerts table should be empty since no files exist"
+            )
+
+    # Check that alerts metadata is returned (not None)
+    assert alerts_metadata is not None
+
+
+def test_no_files_no_metadata_scenario(
+    pg_database, mock_alerts_storage_client_metadata_only, tmp_path
+):
+    """Test scenario where there are no files and no metadata for territory_id - should raise assertion error"""
+    asset_storage = tmp_path / "datalake"
+
+    # This should raise an assertion error because no files exist for territory 999
+    # and no metadata exists for territory 999 in alerts_history.csv
+    with pytest.raises(
+        AssertionError,
+        match="No files found to download.*and no metadata found for territory_id 999",
+    ):
+        _main(
+            mock_alerts_storage_client_metadata_only,
+            MOCK_BUCKET_NAME,
+            "test_provider",
+            999,  # territory_id 999 has neither files nor metadata
+            pg_database,
+            "fake_alerts_no_data",
+            asset_storage,
+        )
