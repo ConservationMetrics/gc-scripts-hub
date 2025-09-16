@@ -50,7 +50,12 @@ def main(
 
     transformed_unposted_alerts = transform_alerts(unposted_alerts)
 
-    post_alerts(comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts)
+    alerts_failed = post_alerts(
+        comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts
+    )
+
+    if alerts_failed:
+        raise RuntimeError("Some alerts failed to post.")
 
 
 def get_alerts_from_db(db_connection_string, db_table_name: str):
@@ -210,13 +215,29 @@ def post_alerts(
         The headers to be included in the API request, such as authorization tokens.
     alerts : list[dict]
         A list of dictionaries, where each dictionary represents an alert to be posted to the CoMapeo API.
+
+    Returns
+    -------
+    bool
+        True if any alert failed to post, False if all alerts posted successfully.
     """
     logger.info("Posting alerts to CoMapeo API...")
 
-    for alert in alerts:
-        response = requests.post(
-            url=comapeo_alerts_endpoint, headers=comapeo_headers, json=alert
-        )
-        response.raise_for_status()
+    alerts_failed = False
+    successful_posts = 0
 
-    logger.info(f"{len(alerts)} alerts posted successfully.")
+    for alert in alerts:
+        try:
+            response = requests.post(
+                url=comapeo_alerts_endpoint, headers=comapeo_headers, json=alert
+            )
+            response.raise_for_status()
+            successful_posts += 1
+        except Exception as e:
+            logger.warning(
+                f"Failed to post alert {alert.get('sourceId', 'unknown')}: {e}. Skipping alert."
+            )
+            alerts_failed = True
+
+    logger.info(f"{successful_posts} alerts posted successfully.")
+    return alerts_failed
