@@ -108,7 +108,18 @@ def fetch_alerts_from_gfw(
     }
 
     response = requests.post(url, headers=headers, json=data)
-    response.raise_for_status()
+
+    if not response.ok:
+        # Try to get error message from response body
+        try:
+            error_body = response.json()
+            if isinstance(error_body, dict) and "message" in error_body:
+                logger.error(f"GFW API Error: {error_body['message']}")
+        except (ValueError, json.JSONDecodeError):
+            pass
+
+        response.raise_for_status()
+
     results = response.json().get("data", [])
 
     logger.info(f"Received {len(results)} alerts from GFW API.")
