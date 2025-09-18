@@ -110,7 +110,6 @@ def fetch_alerts_from_gfw(
     response = requests.post(url, headers=headers, json=data)
 
     if not response.ok:
-        # Try to get error message from response body
         try:
             error_body = response.json()
             if isinstance(error_body, dict) and "message" in error_body:
