@@ -99,7 +99,11 @@ def _main(
         alerts_metadata_filename,
     )
 
-    convert_tiffs_to_jpg(tiff_files)
+    # Convert TIFF files to JPG if any exist
+    if tiff_files:
+        convert_tiffs_to_jpg(tiff_files)
+    else:
+        logger.info("No TIFF files to convert to JPG.")
 
     prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
         alerts_metadata, territory_id, alerts_provider
@@ -205,22 +209,18 @@ def sync_gcs_to_local(
 
     bucket = storage_client.bucket(bucket_name)
 
+    # First, retrieve alerts metadata content from the root of the bucket
+    # and store it in memory (it's not a large file)
+    alerts_metadata_blob = bucket.blob(alerts_metadata_filename)
+    alerts_metadata = alerts_metadata_blob.download_as_text()
+
+    # Check if there's any metadata for this territory_id
+    df = pd.read_csv(StringIO(alerts_metadata))
+    has_metadata_for_territory = len(df.loc[df["territory_id"] == territory_id]) > 0
+
     # List all files in the GCS bucket in territory_id directory
     prefix = f"{territory_id}/"
     files_to_download = set(blob.name for blob in bucket.list_blobs(prefix=prefix))
-
-    assert len(files_to_download) > 0, (
-        f"No files found to download in bucket '{bucket_name}' with that prefix."
-    )
-
-    logger.info(
-        f"Found {len(files_to_download)} files to download from bucket '{bucket_name}'."
-    )
-
-    destination_path.mkdir(parents=True, exist_ok=True)
-
-    geojson_files = set()
-    tiff_files = set()
 
     # Filter files to download only geojson and tiff files
     files_to_download = {
@@ -228,6 +228,23 @@ def sync_gcs_to_local(
         for blob_name in files_to_download
         if blob_name.lower().endswith((".geojson", ".tif", ".tiff"))
     }
+
+    # Throw assertion error if both no files and no metadata exist for territory_id
+    if len(files_to_download) == 0 and not has_metadata_for_territory:
+        raise AssertionError(
+            f"No files found to download in bucket '{bucket_name}' with prefix '{prefix}' "
+            f"and no metadata found for territory_id {territory_id}."
+        )
+
+    logger.info(
+        f"Found {len(files_to_download)} files to download from bucket '{bucket_name}' "
+        f"and metadata exists for territory_id {territory_id}: {has_metadata_for_territory}."
+    )
+
+    destination_path.mkdir(parents=True, exist_ok=True)
+
+    geojson_files = set()
+    tiff_files = set()
 
     # Download files from the GCS bucket to the local directory
     for blob_name in files_to_download:
@@ -270,11 +287,6 @@ def sync_gcs_to_local(
             geojson_files.add(file_path_str)
         elif file_path_str.endswith((".tif", ".tiff")):
             tiff_files.add(file_path_str)
-
-    # Additionally, retrieve alerts metadata content from the root of the bucket
-    # and store it in memory (it's not a large file)
-    alerts_metadata_blob = bucket.blob(alerts_metadata_filename)
-    alerts_metadata = alerts_metadata_blob.download_as_text()
 
     logger.info("Successfully downloaded files from GCS bucket.")
 
