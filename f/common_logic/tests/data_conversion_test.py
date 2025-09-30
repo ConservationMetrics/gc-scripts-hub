@@ -649,6 +649,31 @@ def test_osm_data_consistency_across_formats(
     assert kml_bus["properties"]["amenity"] == "bus_station"
 
 
+def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
+    """Test that GeoJSON files with null geometry features are accepted."""
+    result, output_format = convert_data(str(geojson_with_null_geometry_file), "geojson")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
+
+    # Check that we have both valid and null geometry features
+    valid_features = [f for f in result["features"] if f["geometry"] is not None]
+    null_features = [f for f in result["features"] if f["geometry"] is None]
+    
+    assert len(valid_features) == 2
+    assert len(null_features) == 1
+    
+    # Validate the null geometry feature
+    null_feature = null_features[0]
+    assert null_feature["type"] == "Feature"
+    assert null_feature["geometry"] is None
+    assert null_feature["properties"]["name"] == "null_geometry_feature"
+    
+    # Validate that valid features still work properly
+    for feature in valid_features:
+        _validate_point_geometry(feature) if feature["geometry"]["type"] == "Point" else None
+        assert feature["properties"]["name"] in ["valid_point", "valid_line"]
+
+
 def test_convert_data__empty_geojson(empty_geojson_file):
     with pytest.raises(ValueError, match="GeoJSON contains no features"):
         convert_data(str(empty_geojson_file), "geojson")
