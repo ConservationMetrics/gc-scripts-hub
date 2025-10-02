@@ -336,8 +336,8 @@ def create_gfw_metadata_table(cursor, table_name):
         sql.SQL("""
         CREATE TABLE IF NOT EXISTS {metadata_table} (
             _id character varying(100) NOT NULL PRIMARY KEY,
-            month bigint,
-            year bigint,
+            month smallint,
+            year smallint,
             total_alerts bigint,
             description_alerts text,
             type_alert text,

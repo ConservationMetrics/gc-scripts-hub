@@ -566,11 +566,11 @@ def create_metadata_table(cursor, table_name):
             _id character varying(36) NOT NULL PRIMARY KEY,
             confidence real,
             description_alerts text,
-            month bigint,
+            month smallint,
             territory_id bigint,
             total_alerts bigint,
-            type_alert bigint,
-            year bigint,
+            type_alert smallint,
+            year smallint,
             data_source text
         );
     """).format(metadata_table=sql.Identifier(table_name))
