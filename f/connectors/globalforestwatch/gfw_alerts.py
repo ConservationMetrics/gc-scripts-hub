@@ -225,9 +225,9 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
     """
     Prepare GFW alerts metadata for database storage.
 
-    This function creates metadata records for all months from minimum_date
-    to the current month, tracking the alerts found or creating zero-count
-    records for months with no alerts. This ensures we track the full detection
+    This function creates metadata records for all days from minimum_date
+    to the current date, tracking the alerts found or creating zero-count
+    records for days with no alerts. This ensures we track the full detection
     range showing when the algorithm has been running.
 
     Parameters
@@ -242,19 +242,21 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
     Returns
     -------
     list of dict
-        A list containing metadata records for all months from minimum_date to current month.
+        A list containing metadata records for all days from minimum_date to current date.
     """
     logger.info("Preparing GFW alerts metadata.")
 
-    # Parse the minimum_date to get start year and month
+    # Parse the minimum_date to get start year, month, and day
     date_parts = minimum_date.split("-")
     start_year = int(date_parts[0])
     start_month = int(date_parts[1])
+    start_day = int(date_parts[2])
 
     # Get current date for end range
     current_date = datetime.now()
     end_year = current_date.year
     end_month = current_date.month
+    end_day = current_date.day
 
     # Map alert types to descriptions
     alert_descriptions = {
@@ -267,8 +269,8 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
 
     description_alerts = alert_descriptions.get(type_of_alert, "deforestation")
 
-    # Count alerts by month
-    alerts_by_month = {}
+    # Count alerts by day
+    alerts_by_day = {}
     for alert in alerts:
         # Extract date from alert (format varies by alert type)
         if type_of_alert == "nasa_viirs_fire_alerts":
@@ -277,55 +279,82 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
             date_str = alert.get(f"{type_of_alert}__date")
 
         if date_str:
-            # Parse date to get year and month
+            # Parse date to get year, month, and day
             date_parts = date_str.split("-")
             alert_year = int(date_parts[0])
             alert_month = int(date_parts[1])
+            alert_day = int(date_parts[2])
 
             # Only count alerts within our date range
             if (
                 alert_year > start_year
-                or (alert_year == start_year and alert_month >= start_month)
+                or (alert_year == start_year and alert_month > start_month)
+                or (
+                    alert_year == start_year
+                    and alert_month == start_month
+                    and alert_day >= start_day
+                )
             ) and (
                 alert_year < end_year
-                or (alert_year == end_year and alert_month <= end_month)
+                or (alert_year == end_year and alert_month < end_month)
+                or (
+                    alert_year == end_year
+                    and alert_month == end_month
+                    and alert_day <= end_day
+                )
             ):
-                month_key = (alert_year, alert_month)
-                alerts_by_month[month_key] = alerts_by_month.get(month_key, 0) + 1
+                day_key = (alert_year, alert_month, alert_day)
+                alerts_by_day[day_key] = alerts_by_day.get(day_key, 0) + 1
 
-    # Create metadata records for all months from start to current
+    # Create metadata records for all days from start to current
     metadata_records = []
 
     current_year = start_year
     current_month = start_month
+    current_day = start_day
 
-    while (current_year < end_year) or (
-        current_year == end_year and current_month <= end_month
+    while (
+        (current_year < end_year)
+        or (current_year == end_year and current_month < end_month)
+        or (
+            current_year == end_year
+            and current_month == end_month
+            and current_day <= end_day
+        )
     ):
-        # Get alert count for this month
-        month_key = (current_year, current_month)
-        month_alerts = alerts_by_month.get(month_key, 0)
+        # Get alert count for this day
+        day_key = (current_year, current_month, current_day)
+        day_alerts = alerts_by_day.get(day_key, 0)
 
         metadata_record = {
-            "_id": f"{type_of_alert}_{current_year}_{current_month:02d}",
+            "_id": f"{type_of_alert}_{current_year}_{current_month:02d}_{current_day:02d}",
             "month": current_month,
             "year": current_year,
-            "total_alerts": month_alerts,
+            "day": current_day,
+            "total_alerts": day_alerts,
             "description_alerts": description_alerts,
             "type_alert": type_of_alert,
             "data_source": "Global Forest Watch",
         }
         metadata_records.append(metadata_record)
 
-        # Move to next month
-        current_month += 1
-        if current_month > 12:
-            current_month = 1
-            current_year += 1
+        # Move to next day
+        current_day += 1
+        if (
+            current_day > 31
+            or (current_day > 30 and current_month in [4, 6, 9, 11])
+            or (current_day > 29 and current_month == 2)
+            or (current_day > 28 and current_month == 2 and current_year % 4 != 0)
+        ):
+            current_day = 1
+            current_month += 1
+            if current_month > 12:
+                current_month = 1
+                current_year += 1
 
-    total_alerts = sum(alerts_by_month.values())
+    total_alerts = sum(alerts_by_day.values())
     logger.info(
-        f"Prepared metadata for {len(metadata_records)} months ({start_year}-{start_month:02d} to {end_year}-{end_month:02d}): {total_alerts} total alerts distributed by month"
+        f"Prepared metadata for {len(metadata_records)} days ({start_year}-{start_month:02d}-{start_day:02d} to {end_year}-{end_month:02d}-{end_day:02d}): {total_alerts} total alerts distributed by day"
     )
     return metadata_records
 
@@ -338,6 +367,7 @@ def create_gfw_metadata_table(cursor, table_name):
             _id character varying(100) NOT NULL PRIMARY KEY,
             month smallint,
             year smallint,
+            day smallint,
             total_alerts bigint,
             description_alerts text,
             type_alert text,
