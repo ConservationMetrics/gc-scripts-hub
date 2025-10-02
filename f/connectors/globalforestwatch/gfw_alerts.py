@@ -5,12 +5,14 @@
 import json
 import logging
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import TypedDict
 
 import requests
+from psycopg2 import sql
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -49,15 +51,39 @@ def main(
     )
 
     rel_geojson_path = Path(db_table_name) / f"{db_table_name}.geojson"
+    full_geojson_path = Path(attachment_root) / rel_geojson_path
 
-    save_geojson_to_postgres(
-        db,
-        db_table_name,
-        rel_geojson_path,
-        attachment_root,
-        False,  # to not delete the GeoJSON file after its contents are written to the database.
+    # Only save to PostgreSQL if the GeoJSON file was created (i.e., there are alerts)
+    if full_geojson_path.exists():
+        save_geojson_to_postgres(
+            db,
+            db_table_name,
+            rel_geojson_path,
+            attachment_root,
+            False,  # to not delete the GeoJSON file after its contents are written to the database.
+        )
+        logger.info(f"GeoJSON data saved to PostgreSQL table [{db_table_name}].")
+    else:
+        logger.info(
+            f"No alerts found, skipping GeoJSON to PostgreSQL save for [{db_table_name}]."
+        )
+
+    # Prepare and write metadata
+    prepared_metadata = prepare_gfw_metadata(alerts, type_of_alert, minimum_date)
+
+    metadata_table_name = f"{db_table_name}__metadata"
+    logger.info(
+        f"Writing GFW alerts metadata to database table [{metadata_table_name}]."
     )
-    logger.info(f"GeoJSON data saved to PostgreSQL table [{db_table_name}].")
+
+    metadata_writer = StructuredDBWriter(
+        conninfo(db),
+        metadata_table_name,
+        predefined_schema=create_gfw_metadata_table,
+    )
+    metadata_writer.handle_output(prepared_metadata)
+
+    logger.info("GFW alerts metadata saved successfully.")
 
 
 def fetch_alerts_from_gfw(
@@ -193,3 +219,129 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
 
     logger.info("GeoJSON formatting complete.")
     return geojson
+
+
+def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
+    """
+    Prepare GFW alerts metadata for database storage.
+
+    This function creates metadata records for all months from minimum_date
+    to the current month, tracking the alerts found or creating zero-count
+    records for months with no alerts. This ensures we track the full detection
+    range showing when the algorithm has been running.
+
+    Parameters
+    ----------
+    alerts : list
+        A list of alerts fetched from GFW API.
+    type_of_alert : str
+        The type of alert being processed (e.g., 'nasa_viirs_fire_alerts', 'gfw_integrated_alerts').
+    minimum_date : str
+        The minimum date used for the query (format: YYYY-MM-DD).
+
+    Returns
+    -------
+    list of dict
+        A list containing metadata records for all months from minimum_date to current month.
+    """
+    logger.info("Preparing GFW alerts metadata.")
+
+    # Parse the minimum_date to get start year and month
+    date_parts = minimum_date.split("-")
+    start_year = int(date_parts[0])
+    start_month = int(date_parts[1])
+
+    # Get current date for end range
+    current_date = datetime.now()
+    end_year = current_date.year
+    end_month = current_date.month
+
+    # Map alert types to descriptions
+    alert_descriptions = {
+        "nasa_viirs_fire_alerts": "fires",
+        "gfw_integrated_alerts": "deforestation",
+        "glad_alerts": "deforestation",
+        "radd_alerts": "deforestation",
+        "modis_alerts": "deforestation",
+    }
+
+    description_alerts = alert_descriptions.get(type_of_alert, "deforestation")
+
+    # Count alerts by month
+    alerts_by_month = {}
+    for alert in alerts:
+        # Extract date from alert (format varies by alert type)
+        if type_of_alert == "nasa_viirs_fire_alerts":
+            date_str = alert.get("alert__date")
+        else:
+            date_str = alert.get(f"{type_of_alert}__date")
+
+        if date_str:
+            # Parse date to get year and month
+            date_parts = date_str.split("-")
+            alert_year = int(date_parts[0])
+            alert_month = int(date_parts[1])
+
+            # Only count alerts within our date range
+            if (
+                alert_year > start_year
+                or (alert_year == start_year and alert_month >= start_month)
+            ) and (
+                alert_year < end_year
+                or (alert_year == end_year and alert_month <= end_month)
+            ):
+                month_key = (alert_year, alert_month)
+                alerts_by_month[month_key] = alerts_by_month.get(month_key, 0) + 1
+
+    # Create metadata records for all months from start to current
+    metadata_records = []
+
+    current_year = start_year
+    current_month = start_month
+
+    while (current_year < end_year) or (
+        current_year == end_year and current_month <= end_month
+    ):
+        # Get alert count for this month
+        month_key = (current_year, current_month)
+        month_alerts = alerts_by_month.get(month_key, 0)
+
+        metadata_record = {
+            "_id": f"{type_of_alert}_{current_year}_{current_month:02d}",
+            "month": current_month,
+            "year": current_year,
+            "total_alerts": month_alerts,
+            "description_alerts": description_alerts,
+            "type_alert": type_of_alert,
+            "data_source": "Global Forest Watch",
+        }
+        metadata_records.append(metadata_record)
+
+        # Move to next month
+        current_month += 1
+        if current_month > 12:
+            current_month = 1
+            current_year += 1
+
+    total_alerts = sum(alerts_by_month.values())
+    logger.info(
+        f"Prepared metadata for {len(metadata_records)} months ({start_year}-{start_month:02d} to {end_year}-{end_month:02d}): {total_alerts} total alerts distributed by month"
+    )
+    return metadata_records
+
+
+def create_gfw_metadata_table(cursor, table_name):
+    """Create the metadata table for GFW alerts."""
+    cursor.execute(
+        sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {metadata_table} (
+            _id character varying(100) NOT NULL PRIMARY KEY,
+            month bigint,
+            year bigint,
+            total_alerts bigint,
+            description_alerts text,
+            type_alert text,
+            data_source text
+        );
+    """).format(metadata_table=sql.Identifier(table_name))
+    )

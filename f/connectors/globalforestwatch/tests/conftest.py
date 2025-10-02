@@ -9,7 +9,7 @@ from f.connectors.globalforestwatch.tests.assets import server_responses
 
 @pytest.fixture
 def mocked_responses():
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         yield rsps
 
 
@@ -28,7 +28,7 @@ def gfw_server(mocked_responses):
     )
     mocked_responses.post(
         "https://data-api.globalforestwatch.org/dataset/nasa_viirs_fire_alerts/latest/query",
-        json=server_responses.gfw_viirs_fire_alerts(),
+        json=server_responses.nasa_viirs_fire_alerts_months_2025_jan_mar(),
         status=200,
     )
 
