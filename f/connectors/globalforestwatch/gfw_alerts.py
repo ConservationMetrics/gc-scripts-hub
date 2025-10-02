@@ -272,7 +272,7 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
     # Count alerts by day
     alerts_by_day = {}
     for alert in alerts:
-        # Extract date from alert (format varies by alert type)
+        # Extract date from alert (field name is different for VIIRS fire alerts)
         if type_of_alert == "nasa_viirs_fire_alerts":
             date_str = alert.get("alert__date")
         else:
