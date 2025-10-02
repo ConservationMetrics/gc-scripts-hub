@@ -1,3 +1,7 @@
 pytest
 responses
 testing.postgresql
+pandas
+requests
+pyproj
+urllib3
