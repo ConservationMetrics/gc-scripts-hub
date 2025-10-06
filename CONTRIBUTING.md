@@ -1,6 +1,14 @@
 Thank you for contributing to the GuardianConnector Scripts Hub project!
 Here are some conventions we use to smooth things along.
 
+# Use of LLMs
+
+Our team maintains a separate document, [`CONTRIBUTING_LLM_GUIDELINES.md`](CONTRIBUTING_LLM_GUIDELINES.md) that covers rules and best practices for human contributors using AI and LLMs in code, data work, and team communication. Its guidelines carry the same weight as the core guidelines below, while remaining a distinct file due to its length and specialized content.
+
+> [!IMPORTANT]
+> All contributors should read the [LLM Contributing Guidelines](CONTRIBUTING_LLM_GUIDELINES.md).
+
+
 # Using GitHub
 
 We use GitHub to host code, track issues, and accept pull requests.
