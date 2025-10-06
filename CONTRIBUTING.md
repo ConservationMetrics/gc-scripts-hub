@@ -21,6 +21,10 @@ Prefer short lived features branches.
   the long-running feature branch (instead of review when merging the long-running branch to
   `main`)
 
+> [!TIP]
+> For concrete, example-driven guidance on managing long-running branches and stacking dependent PRs,
+> see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md).
+
 
 ## PR Review & Committing code
 
@@ -52,6 +56,11 @@ As a reviewer:
   clearer ways of solving the problem at hand), but do not comment only because
   the author did something differently than you would have. Use "FYI" in your
   comment to distinguish comments that do not require action by the author.
+
+> [!TIP]
+> If you're unsure how to break up a large PR, see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md)
+> for illustrative git commands.
+
 
 Merging branches and PRs to `main`:
 - The branch author should be the one to merge.
