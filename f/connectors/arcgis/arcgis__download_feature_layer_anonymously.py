@@ -26,6 +26,7 @@ from urllib3.util.retry import Retry
 from pyproj import Transformer
 
 from f.common_logic.file_operations import save_data_to_file
+from f.common_logic.data_conversion import slugify
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -34,30 +35,17 @@ logger.addHandler(logging.NullHandler())
 DEFAULT_RETRY = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["HEAD", "GET", "OPTIONS"])
 
 
-def slugify(value: Any, allow_unicode: bool = False) -> str:
-    """A safe slugify utility.
-
-    - Converts to str, normalizes unicode, optionally keeps unicode.
-    - Returns an ASCII-ish slug of the input suitable for file names.
-    - Returns 'unnamed' for empty inputs.
-    """
-    value = "" if value is None else str(value)
-    if not value:
-        return "unnamed"
-
-    if allow_unicode:
-        value = unicodedata.normalize("NFKC", value)
-    else:
-        value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-
-    value = value.lower()
-    # keep alphanumerics, underscores, spaces and hyphens
-    value = re.sub(r"[^\w\s-]", "", value)
-    value = re.sub(r"[-\s]+", "-", value).strip("-_ ")
-    return value or "unnamed"
-
-
 def make_session(retry: Retry = DEFAULT_RETRY, timeout: int = 30) -> requests.Session:
+    """
+    Create a requests.Session with default retry and timeout settings.
+
+    Args:
+        retry (Retry): Retry configuration for HTTP requests.
+        timeout (int): Default timeout (in seconds) for all requests.
+
+    Returns:
+        requests.Session: Configured session instance.
+    """
     session = requests.Session()
     adapter = HTTPAdapter(max_retries=retry)
     session.mount("https://", adapter)
@@ -164,6 +152,7 @@ def fetch_features(
 
     while True:
         logger.debug("Querying %s with offset %s", query_url, params["resultOffset"])
+
         resp = session.get(query_url, params=params)
 
         try:

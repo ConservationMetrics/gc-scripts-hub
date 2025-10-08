@@ -608,3 +608,25 @@ def kml_to_geojson(path: Path):
         raise ValueError("No valid features found in input file")
 
     return {"type": "FeatureCollection", "features": features}
+
+def slugify(value: Any, allow_unicode: bool = False) -> str:
+    """A safe slugify utility.
+
+    - Converts to str, normalizes unicode, optionally keeps unicode.
+    - Returns an ASCII-ish slug of the input suitable for file names.
+    - Returns 'unnamed' for empty inputs.
+    """
+    value = "" if value is None else str(value)
+    if not value:
+        return "unnamed"
+
+    if allow_unicode:
+        value = unicodedata.normalize("NFKC", value)
+    else:
+        value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+
+    value = value.lower()
+    # keep alphanumerics, underscores, spaces and hyphens
+    value = re.sub(r"[^\w\s-]", "", value)
+    value = re.sub(r"[-\s]+", "-", value).strip("-_ ")
+    return value or "unnamed"
