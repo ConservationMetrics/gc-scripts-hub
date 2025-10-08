@@ -5,3 +5,6 @@ pandas
 requests
 pyproj
 urllib3
+fiona
+filetype
+openpyxl

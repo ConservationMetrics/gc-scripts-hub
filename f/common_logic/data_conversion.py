@@ -1,11 +1,14 @@
 import csv
 import json
 import logging
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import unicodedata
 
 import filetype
 import fiona
+from typing import Any
 
 # pandas requires openpyxl installed separately to read .xlsx files
 # it has to be imported in this module despite also being listed in

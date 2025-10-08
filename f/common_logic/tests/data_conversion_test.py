@@ -1,6 +1,6 @@
 import pytest
 
-from f.common_logic.data_conversion import convert_data
+from f.common_logic.data_conversion import convert_data, slugify
 
 
 def _validate_geojson_structure(result, expected_feature_count):
@@ -943,3 +943,10 @@ def test_osmand_data_consistency_across_formats(
 
         # Should have OsmAnd extensions (at least visited_date)
         _assert_osmand_property(props, "visited_date")
+
+def test_slugify_empty_and_unicode():
+    assert slugify(None) == "unnamed"
+    assert slugify("") == "unnamed"
+    assert slugify("Hello World!") == "hello-world"
+    assert slugify("Café", allow_unicode=False) == "cafe"
+
