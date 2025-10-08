@@ -1,12 +1,12 @@
 > [!IMPORTANT]
-> This document contains mandatory **human-facing guidelines** for LLM use by the IGP Team.
+> This document contains mandatory **human-facing guidelines** for LLM use in this repository.
 > It is not intended as _input_ for LLMs.
 
 # IGP Contributing Guidelines with respect to LLMs
 
 ## Intro
 
-Here at Conservation Metrics we are a passionate but small team. We believe that Large Language Models (LLMs) offer a powerful tool to enhance our efficiency and accelerate conservation impact.  At its best, we can add virtual AI team members at very low cost.
+We are a passionate but small team of contributors. We believe that Large Language Models (LLMs) offer a powerful tool to enhance our efficiency and accelerate conservation impact.  At its best, we can add virtual AI team members at very low cost.
 
 This can refer to anything from the ChatGPT web chat portal, to a chat-driven IDE integration like Cursor, to a fully automated AI Agent like Jules or Codex.
 
@@ -16,7 +16,7 @@ This document sets guidelines for the appropriate use (and non-use) of LLMs in o
 
 The guidance in the rest of this document aims to uphold two core tenets:
 
-**Software developers on the engineering team should FEEL OWNERSHIP over the codebase.**
+**Software developers should FEEL OWNERSHIP over the codebase.**
 
 * There is value in being able to speak knowledgably about what is easy/hard, possible/impossible in meetings and other scenarios away from LLMs.
 * It’s important to be able to quickly diagnose and solve bugs, outages, or performance problems in production-facing deployments where sensitive environments sits, making it more challenging to interact with LLMs.
@@ -25,9 +25,9 @@ The guidance in the rest of this document aims to uphold two core tenets:
 
 Your teammates chose to work with you, not with your AI assistant. Honor that choice by ensuring your communications reflect your genuine understanding and perspective.
 
-* Delivering correct code and clear prose demonstrates competence and care for your teammates' time
-* Advancing discussions in meetings and conversations with your own insights and questions shows respect for the collaborative process
-* The risk of poor AI output belongs with the AI user.  Never allow it to waste your teammates’ time.
+* Delivering correct code and clear prose demonstrates competence.
+* Advancing discussions in meetings and conversations with your own insights and questions shows respect for the collaborative process.
+* The risk of poor AI output belongs with the AI user.  Never allow it to waste your collaborators' time.
 
 ## Master your tools, find what works for you
 
@@ -46,7 +46,7 @@ Ultimately we keep the same expectations we’ve had for years, from [the contri
 * For documentation and dialogue, LLMs tend to be verbose and rephrase content across different sections in a highly redundant manner, or include implementation details that are better off being included in the body of a PR. Please carefully review documentation to cull excessive details before submitting.
 * Keep scope in-check: limit PRs to the goal at hand. No extra code beyond what is absolutely necessary to solve the problem the user provides (LLMs love to fix unrelated technical debt).
 
-Whether a human or LLM authored it, all merged code is subject to the same expectations we’d have of a trusted human team member.
+Whether a human or LLM authored it, all merged code is subject to the same expectations we’d have of a trusted human contributor.
 
 ## Be the human in the loop
 
@@ -171,7 +171,7 @@ The following are things that we intentionally leave out-of-scope for now.  Eith
 
 NOTE: There are dozens of articles focused more on getting better output from an LLM (prompt engineering, vibe-coding workflows, etc). We omit those here because they are likely to change and also more personal than the concerns at the team level that this document aims to address.
 
-The following are relevant to *responsible use* of LLMs or to the use of LLMs o*n distributed/collaborative team projects.*
+The following are relevant to *responsible use* of LLMs or to the use of LLMs o*n distributed/collaborative projects.*
 
 * CMI Guardian Connector [Contributing Guidelines](https://github.com/ConservationMetrics/gc-scripts-hub/blob/main/CONTRIBUTING.md)
 * [**Best Practices for Large Language Models**](https://guides.library.cmu.edu/LLM_best_practices)
