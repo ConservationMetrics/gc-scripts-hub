@@ -2,7 +2,7 @@
 > This document contains mandatory **human-facing guidelines** for LLM use in this repository.
 > It is not intended as _input_ for LLMs.
 
-# IGP Contributing Guidelines with respect to LLMs
+# Contributing Guidelines with respect to LLMs
 
 ## Intro
 
