@@ -1,7 +1,7 @@
 # py: 3.13
 attrs==25.4.0
-certifi==2025.10.5
-charset-normalizer==3.4.3
+certifi
+charset-normalizer
 click==8.3.0
 click-plugins==1.1.1.2
 cligj==0.7.2
@@ -15,7 +15,7 @@ pandas==2.3.3
 pyproj==3.7.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
-requests==2.32.5
+requests
 six==1.17.0
 tzdata==2025.2
-urllib3==2.5.0
+urllib3
