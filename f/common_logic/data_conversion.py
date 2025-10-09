@@ -2,13 +2,13 @@ import csv
 import json
 import logging
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
-import unicodedata
+from typing import Any
 
 import filetype
 import fiona
-from typing import Any
 
 # pandas requires openpyxl installed separately to read .xlsx files
 # it has to be imported in this module despite also being listed in
@@ -622,12 +622,15 @@ def kml_to_geojson(path: Path):
 
     return {"type": "FeatureCollection", "features": features}
 
+
 def slugify(value: Any, allow_unicode: bool = False) -> str:
     """A safe slugify utility.
 
     - Converts to str, normalizes unicode, optionally keeps unicode.
     - Returns an ASCII-ish slug of the input suitable for file names.
     - Returns 'unnamed' for empty inputs.
+
+    Source: https://github.com/django/django/blob/main/django/utils/text.py#L453
     """
     value = "" if value is None else str(value)
     if not value:
@@ -636,7 +639,11 @@ def slugify(value: Any, allow_unicode: bool = False) -> str:
     if allow_unicode:
         value = unicodedata.normalize("NFKC", value)
     else:
-        value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+        value = (
+            unicodedata.normalize("NFKD", value)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
 
     value = value.lower()
     # keep alphanumerics, underscores, spaces and hyphens
