@@ -70,6 +70,8 @@ For information on developing scripts, see the [Windmill Scripts quickstart](htt
 You may develop within Windmill's code editor, or locally.  Developing locally has the advantage
 of being able to run tests.
 
+For users of Visual Studio Code, there is an extension that allows you to code locally, while testing your code in your Windmill workspace. See Windmill's [local development documentation](https://www.windmill.dev/docs/advanced/local_development) for more information.
+
 If you developed on the server, sync your remote changes into Git version control once done:
 
     wmill sync pull --skip-variables  # optionally add --raw to clobber your local repo
