@@ -1,50 +1,45 @@
-"""
-Refactored ArcGIS feature service fetcher with improvements requested.
-Implements fixes for issues: imports organization, improved slugify, logging & error handling,
-robust layer fetching, single consistent file output using save_data_to_file,
-separation of concerns (metadata fetching, feature fetching, transformation, saving, attachments),
-main function improvements (type hints, folder slugification), and performance tweaks.
-
-Includes unit tests (pytest) at the bottom. Tests mock HTTP and file operations.
-"""
-
 from __future__ import annotations
 
-# Standard library
 import json
 import logging
-import re
-import unicodedata
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
-# Third-party
 import pandas as pd
 import requests
+from pyproj import Transformer
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from pyproj import Transformer
 
-from f.common_logic.file_operations import save_data_to_file
 from f.common_logic.data_conversion import slugify
+from f.common_logic.file_operations import save_data_to_file
 
-# Configure module logger
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-DEFAULT_RETRY = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["HEAD", "GET", "OPTIONS"])
+DEFAULT_RETRY = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["HEAD", "GET", "OPTIONS"],
+)
 
 
 def make_session(retry: Retry = DEFAULT_RETRY, timeout: int = 30) -> requests.Session:
     """
     Create a requests.Session with default retry and timeout settings.
 
-    Args:
-        retry (Retry): Retry configuration for HTTP requests.
-        timeout (int): Default timeout (in seconds) for all requests.
+    Parameters
+    ----------
+    retry : Retry
+        Retry configuration for HTTP requests.
 
-    Returns:
-        requests.Session: Configured session instance.
+    timeout : int
+        Default timeout (in seconds) for all requests.
+
+    Returns
+    -------
+    requests.Session
+        Configured session instance.
     """
     session = requests.Session()
     adapter = HTTPAdapter(max_retries=retry)
@@ -62,21 +57,32 @@ def _wrap_timeout(request_func, timeout):
     This helper is mainly intended for wrapping network calls (e.g. `requests.get`),
     ensuring that all requests enforce a timeout and log errors consistently.
 
-    Args:
-        func: The callable to execute (must accept a `timeout` keyword argument).
-        *args: Positional arguments to pass to the callable.
-        timeout: Maximum time in seconds before the call times out (default: 30).
-        **kwargs: Keyword arguments to pass to the callable.
+    Parameters
+    ----------
+    func : Function
+        The callable to execute (must accept a `timeout` keyword argument).
+    *args :
+        Positional arguments to pass to the callable.
+    timeout : int
+        Maximum time in seconds before the call times out (default: 30).
+    **kwargs :
+        Keyword arguments to pass to the callable.
 
-    Returns:
+    Returns
+    -------
+    Function
         The result of the wrapped function if successful.
 
-    Raises:
-        requests.Timeout: If the function call exceeds the given timeout.
-        requests.RequestException: If any other request-related error occurs.
+    Raises
+    ------
+    requests.Timeout
+        If the function call exceeds the given timeout.
+    requests.RequestException
+        If any other request-related error occurs.
 
-    Side effects:
-        Logs timeout and request errors with the function name for easier debugging.
+    Side effects
+    ------------
+    Logs timeout and request errors with the function name for easier debugging.
     """
 
     def wrapped(method, url, **kwargs):
@@ -87,7 +93,9 @@ def _wrap_timeout(request_func, timeout):
     return wrapped
 
 
-def get_layer_metadata(session: requests.Session, subdomain: str, service_id: str, feature_id: str) -> Dict[str, Any]:
+def get_layer_metadata(
+    session: requests.Session, subdomain: str, service_id: str, feature_id: str
+) -> Dict[str, Any]:
     """
     Fetch the metadata of a feature service layer and return its name.
 
@@ -138,7 +146,11 @@ def fetch_features(
 
     Returns list of attribute dicts with geometry preserved.
     """
-    query_url = f"{base_feature_url}/{layer_index}/query" if layer_index is not None else f"{base_feature_url}/query"
+    query_url = (
+        f"{base_feature_url}/{layer_index}/query"
+        if layer_index is not None
+        else f"{base_feature_url}/query"
+    )
     params = {
         "where": where_clause,
         "outFields": "*",
@@ -187,11 +199,25 @@ def fetch_features(
     return all_records
 
 
-def transform_record_geometry(record: Dict[str, Any], transformer: Transformer) -> Dict[str, Any]:
-    """Given a single record with possible __geometry, add WGS84 lon/lat coordinates for geojson output.
+def transform_record_geometry(
+    record: Dict[str, Any], transformer: Transformer
+) -> Dict[str, Any]:
+    """
+    Given a single record with possible __geometry, add WGS84 lon/lat coordinates for geojson output.
 
-    - transformer should convert from source CRS to EPSG:4326.
-    - leaves record unchanged if no geometry.
+    Parameters
+    ----------
+
+    record: Dict
+        a single record with possible __geometry
+    transformer: Transformer
+        should convert from source CRS to EPSG:4326.
+
+    Returns
+    -------
+
+    Dict
+        The same record that was passed as a parameter, mutated
     """
     geom = record.get("__geometry")
     if not geom:
@@ -210,9 +236,15 @@ def transform_record_geometry(record: Dict[str, Any], transformer: Transformer) 
             coords.append([list(transformer.transform(x, y)) for x, y in path])
         # Flatten single-path to LineString, else MultiLineString
         if len(coords) == 1:
-            record["__geojson_geometry"] = {"type": "LineString", "coordinates": coords[0]}
+            record["__geojson_geometry"] = {
+                "type": "LineString",
+                "coordinates": coords[0],
+            }
         else:
-            record["__geojson_geometry"] = {"type": "MultiLineString", "coordinates": coords}
+            record["__geojson_geometry"] = {
+                "type": "MultiLineString",
+                "coordinates": coords,
+            }
         return record
 
     # Polygons (rings)
@@ -239,7 +271,9 @@ def build_geojson(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
     return {"type": "FeatureCollection", "features": features}
 
 
-def save_output_geojson(geojson: Dict[str, Any], filename: Path, storage_path: Optional[Path]) -> None:
+def save_output_geojson(
+    geojson: Dict[str, Any], filename: Path, storage_path: Optional[Path]
+) -> None:
     filename.parent.mkdir(parents=True, exist_ok=True)
     # Use provided helper for saving to configured storage, plus local dump
     save_data_to_file(geojson, filename.name, storage_path, file_type="geojson")
@@ -337,9 +371,16 @@ def fetch_data(
             objid = rec.get("OBJECTID") or rec.get("objectid") or rec.get("ObjectID")
             if objid is not None:
                 try:
-                    download_attachments_for_feature(session, base_feature_url, int(objid), attachments_root / str(objid))
+                    download_attachments_for_feature(
+                        session,
+                        base_feature_url,
+                        int(objid),
+                        attachments_root / str(objid),
+                    )
                 except Exception as exc:
-                    logger.exception("Failed to download attachments for object %s: %s", objid, exc)
+                    logger.exception(
+                        "Failed to download attachments for object %s: %s", objid, exc
+                    )
 
     logger.info("Saved layer %s to %s", layer_name, filename)
     return filename

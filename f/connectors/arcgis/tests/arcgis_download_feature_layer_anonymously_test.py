@@ -3,39 +3,31 @@ from __future__ import annotations
 # Standard library
 import json
 import logging
-import re
-import unicodedata
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-import unittest
+from typing import Any, Dict
 
 # Third-party
-import pandas as pd
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from pyproj import Transformer
-import psycopg2
 
-from f.common_logic.file_operations import save_data_to_file
-
-from f.connectors.arcgis.arcgis__download_feature_layer_anonymously import make_session, get_layer_metadata, fetch_features, transform_record_geometry, build_geojson, save_output_geojson, download_attachments_for_feature, fetch_data
+from f.connectors.arcgis.arcgis_download_feature_layer_anonymously import (
+    build_geojson,
+    fetch_data,
+    fetch_features,
+    get_layer_metadata,
+    transform_record_geometry,
+)
 
 # Configure module logger
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-# ----------------------
-# Unit tests (pytest)
-# ----------------------
 
-if __name__ == "__main__":
-    # Quick smoke when run directly
-    logging.basicConfig(level=logging.INFO)
-    print("Module loaded. Run pytest to execute unit tests.")
-
-def _create_test_session(monkeypatch, metadata_resp: Dict[str, Any], query_resp: Dict[str, Any]):
+def _create_test_session(
+    monkeypatch, metadata_resp: Dict[str, Any], query_resp: Dict[str, Any]
+):
     """Helper to create a fake session by monkeypatching requests.Session.get"""
+
     class DummyResp:
         def __init__(self, data, status=200, is_binary=False):
             self._data = data
@@ -97,19 +89,29 @@ def _create_test_session(monkeypatch, metadata_resp: Dict[str, Any], query_resp:
 
 # The tests below use pytest style. They assume pytest is available where run.
 
+
 def test_get_layer_metadata_and_fetch_features(monkeypatch, tmp_path):
     metadata = {"layers": [{"id": 2, "name": "Test Layer"}]}
-    features = {"features": [{"attributes": {"OBJECTID": 1}, "geometry": {"x": 1113194.907, "y": 1118889.974}}]}
+    features = {
+        "features": [
+            {
+                "attributes": {"OBJECTID": 1},
+                "geometry": {"x": 1113194.907, "y": 1118889.974},
+            }
+        ]
+    }
 
     session = _create_test_session(monkeypatch, metadata, features)
 
     # call functions
-    
+
     md = get_layer_metadata(session, "sub", "svc", "feat")
     assert "layers" in md
 
-    records = fetch_features(session, "https://sub.arcgis.com/svc/FeatureServer", layer_index=2)
-    
+    records = fetch_features(
+        session, "https://sub.arcgis.com/svc/FeatureServer", layer_index=2
+    )
+
     assert isinstance(records, list) and records
     assert records[0]["OBJECTID"] == 1
 
@@ -126,7 +128,14 @@ def test_transform_and_build_geojson(monkeypatch):
 
 def test_fetch_data_flow(monkeypatch, tmp_path):
     metadata = {"layers": [{"id": 2, "name": "Test Layer"}]}
-    features = {"features": [{"attributes": {"OBJECTID": 1, "name": "A"}, "geometry": {"x": 1113194.907, "y": 1118889.974}}]}
+    features = {
+        "features": [
+            {
+                "attributes": {"OBJECTID": 1, "name": "A"},
+                "geometry": {"x": 1113194.907, "y": 1118889.974},
+            }
+        ]
+    }
     session = _create_test_session(monkeypatch, metadata, features)
 
     # Clean up any existing file that might interfere with the test
@@ -138,14 +147,15 @@ def test_fetch_data_flow(monkeypatch, tmp_path):
     saved = {}
 
     def fake_save(obj, name, storage_path, file_type=None):
-        print(f"DEBUG: fake_save called with name={name}, storage_path={storage_path}, file_type={file_type}")
+        print(
+            f"DEBUG: fake_save called with name={name}, storage_path={storage_path}, file_type={file_type}"
+        )
         saved["name"] = name
         saved["path"] = storage_path
         saved["obj"] = obj
 
         # Actually create the file so out.exists() returns True
         import json
-        import os
         from pathlib import Path
 
         # Create the file in the expected location that fetch_data returns
@@ -157,16 +167,20 @@ def test_fetch_data_flow(monkeypatch, tmp_path):
         if file_type in {"geojson", "json"}:
             with open(expected_path, "w") as f:
                 json.dump(obj, f)
-            print(f"DEBUG: File created successfully")
+            print("DEBUG: File created successfully")
 
         print(f"DEBUG: File exists after creation: {expected_path.exists()}")
 
     # Patch the function in the module that imports and uses it
-    import f.connectors.arcgis.arcgis__download_feature_layer_anonymously as main_module
+    import f.connectors.arcgis.arcgis_download_feature_layer_anonymously as main_module
 
-    print(f"DEBUG: Original main_module.save_data_to_file: {main_module.save_data_to_file}")
+    print(
+        f"DEBUG: Original main_module.save_data_to_file: {main_module.save_data_to_file}"
+    )
     monkeypatch.setattr(main_module, "save_data_to_file", fake_save)
-    print(f"DEBUG: After monkeypatch, main_module.save_data_to_file: {main_module.save_data_to_file}")
+    print(
+        f"DEBUG: After monkeypatch, main_module.save_data_to_file: {main_module.save_data_to_file}"
+    )
 
     out = fetch_data(
         subdomain="sub",

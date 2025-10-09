@@ -1,6 +1,0 @@
-[project]
-name = "f"
-version = "0.1.0"
-description = "My Windmill helpers"
-readme = "README.md"
-requires-python = ">=3.10"
