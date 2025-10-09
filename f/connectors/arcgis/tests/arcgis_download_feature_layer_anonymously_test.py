@@ -12,8 +12,8 @@ from pyproj import Transformer
 
 from f.connectors.arcgis.arcgis_download_feature_layer_anonymously import (
     build_geojson,
-    fetch_data,
     fetch_features,
+    fetch_layer_data,
     get_layer_metadata,
     transform_record_geometry,
 )
@@ -126,7 +126,7 @@ def test_transform_and_build_geojson(monkeypatch):
     assert gc["features"][0]["geometry"]["type"] == "Point"
 
 
-def test_fetch_data_flow(monkeypatch, tmp_path):
+def test_fetch_layer_data_flow(monkeypatch, tmp_path):
     metadata = {"layers": [{"id": 2, "name": "Test Layer"}]}
     features = {
         "features": [
@@ -158,8 +158,8 @@ def test_fetch_data_flow(monkeypatch, tmp_path):
         import json
         from pathlib import Path
 
-        # Create the file in the expected location that fetch_data returns
-        # This must be exactly where fetch_data expects it for out.exists() to work
+        # Create the file in the expected location that fetch_layer_data returns
+        # This must be exactly where fetch_layer_data expects it for out.exists() to work
         expected_path = Path("outputs/svc/test-layer.geojson")
         print(f"DEBUG: Creating file at {expected_path.absolute()}")
         expected_path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,7 +182,7 @@ def test_fetch_data_flow(monkeypatch, tmp_path):
         f"DEBUG: After monkeypatch, main_module.save_data_to_file: {main_module.save_data_to_file}"
     )
 
-    out = fetch_data(
+    out = fetch_layer_data(
         subdomain="sub",
         service_id="svc",
         feature_id="feat",

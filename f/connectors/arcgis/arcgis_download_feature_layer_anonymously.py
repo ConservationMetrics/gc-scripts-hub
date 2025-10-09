@@ -309,7 +309,7 @@ def download_attachments_for_feature(
         logger.info("Downloaded attachment %s", file_path)
 
 
-def fetch_data(
+def fetch_layer_data(
     subdomain: str,
     service_id: str,
     feature_id: str,
@@ -400,7 +400,7 @@ def main(
     results: List[Path] = []
     session = make_session()
     for li in layer_index_list:
-        path = fetch_data(
+        path = fetch_layer_data(
             subdomain=subdomain,
             service_id=service_id,
             feature_id=feature_id,
