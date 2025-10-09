@@ -412,5 +412,5 @@ def main(
         )
         results.append(path)
 
-    logger.info("Finished fetching all layers.")
+    logger.info(f"Finished fetching all layers, {len(results)} fetched.")
     return results
