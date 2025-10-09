@@ -14,6 +14,6 @@ Note: we have opted not to use the [ArcGIS API for Python](https://developers.ar
 
 # `arcgis_download_feature_layer_anonymously`: Download Feature Layers from ArcGIS API Anonymously
 
-This script fetches the contents of a list of ArcGIS feature layers and stores and stores them to the specified directory.
+This script fetches the contents of a list of ArcGIS feature layers, and stores them to the specified directory.
 
-Usage of this script DOESN'T require you to have an ArcGIS account.
+Unlike `arcgis_feature_layer`, usage of this script **does not** require you to have an ArcGIS account.
