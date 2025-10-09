@@ -96,7 +96,41 @@ def geojson_with_invalid_geometry_file(tmp_path):
                 "geometry": {"type": "Point", "coordinates": "foo,bar"},
                 "properties": {},
             },
-            {"type": "Feature", "geometry": None, "properties": {"name": "ghost"}},
+            {
+                "type": "Feature", 
+                "geometry": {"type": "LineString", "coordinates": {"invalid": "structure"}},
+                "properties": {"name": "invalid_line"}
+            },
+        ],
+    }
+    path.write_text(json.dumps(data))
+    return path
+
+
+@pytest.fixture
+def geojson_with_null_geometry_file(tmp_path):
+    path = tmp_path / "null_geometry.geojson"
+    data = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "id": "valid_point_1",
+                "geometry": {"type": "Point", "coordinates": [1.0, 2.0]},
+                "properties": {"name": "valid_point"},
+            },
+            {
+                "type": "Feature", 
+                "id": "null_geometry_1",
+                "geometry": None, 
+                "properties": {"name": "null_geometry_feature"}
+            },
+            {
+                "type": "Feature",
+                "id": "valid_line_1",
+                "geometry": {"type": "LineString", "coordinates": [[1.0, 2.0], [3.0, 4.0]]},
+                "properties": {"name": "valid_line"},
+            },
         ],
     }
     path.write_text(json.dumps(data))

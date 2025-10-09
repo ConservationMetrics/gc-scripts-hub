@@ -1,9 +1,21 @@
 Thank you for contributing to the GuardianConnector Scripts Hub project!
 Here are some conventions we use to smooth things along.
 
+# Use of LLMs
+
+Our team maintains a separate document, [`CONTRIBUTING_LLM_GUIDELINES.md`](CONTRIBUTING_LLM_GUIDELINES.md) that covers rules and best practices for human contributors using AI and LLMs in code, data work, and team communication. Its guidelines carry the same weight as the core guidelines below, while remaining a distinct file due to its length and specialized content.
+
+> [!IMPORTANT]
+> All contributors should read the [LLM Contributing Guidelines](CONTRIBUTING_LLM_GUIDELINES.md).
+
+
 # Using GitHub
 
 We use GitHub to host code, track issues, and accept pull requests.
+
+## GitHub Issues & Labels
+
+Create new Github Issues using the templates wherever possible.
 
 ## Git Branching
 
@@ -17,31 +29,46 @@ Prefer short lived features branches.
   the long-running feature branch (instead of review when merging the long-running branch to
   `main`)
 
+> [!TIP]
+> For concrete, example-driven guidance on managing long-running branches and stacking dependent PRs,
+> see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md).
 
-## GitHub Issues & Labels
-
-Create new Github Issues using the templates wherever possible.
 
 ## PR Review & Committing code
 
-Multiple commits or PRs can be created for an Issue. e.g. each implementation step might get its own PR.
+Keep scope in-check: limit PRs to the goal at hand.  No extra code beyond what is absolutely
+necessary to solve the problem the user provides.  We encourage multiple commits or PRs for an
+Issue. e.g. each implementation step might get its own PR.
 
 Code review is encouraged as a powerful tool for learning.  Benefits include
 - Spread knowledge of the code base throughout the team: reviewing code is a remarkably effective way to learn the codebase.
 - Expose everyone to different approaches.
 - Ensure code is readable (and therefore maintainable).
-- Yield better software (but ultimately the responsibility
-  for bug-free code is on the code author, not the reviewer).
+- Yield better software.
 
-Code review is not limited to approval/rejection of PRs. Also consider involving a collaborator
-earlier in the process, before the code is finished.  Ask them for a narrower review—e.g., a
+As code author:
+- The first reviewer of the code or documentation that you submit should be YOU!  (More at https://blog.beanbaginc.com/2014/12/01/practicing-effective-self-review/)
+- Ultimately the responsibility for bug-free code is on the code author, not the reviewer.
+- Code review is not limited to approval/rejection of PRs. Consider involving a collaborator
+earlier in the process, before the code is finished. Ask them for a narrower review—e.g., a
 design review or to focus on a specific part of the code change.
 
 As a reviewer:
-- be kind & helpful, but do not be "nice" for the sake of avoiding conflict.
+- [This Code Review Checklist](http://web.archive.org/web/20180219163514/https://blog.fogcreek.com/increase-defect-detection-with-our-code-review-checklist-example/)
+  gives concrete examples of what reviewers should look for.
+- Be kind & helpful, but do not be "nice" for the sake of avoiding conflict.
 - "I find this very hard to follow" is valid feedback, even if the code's behavior is technically correct.
 - Ability for code review to find defects diminishes with longer PRs: Feel free to reject any
   review that adds more than 400 lines of new code. (no upper limit on deletions!)
+- Feel free to use code review as an instructional forum (for example suggesting
+  clearer ways of solving the problem at hand), but do not comment only because
+  the author did something differently than you would have. Use "FYI" in your
+  comment to distinguish comments that do not require action by the author.
+
+> [!TIP]
+> If you're unsure how to break up a large PR, see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md)
+> for illustrative git commands.
+
 
 Merging branches and PRs to `main`:
 - The branch author should be the one to merge.
@@ -69,6 +96,16 @@ Do not merge branches if CircleCI is not green.
 
 
 # Coding & Documentation Style
+
+When possible, prefer **pure functions**, because they are easier to reason
+about and easier to test. (A pure function's return is only determined by its
+input values, not influenced by hidden or internal
+state:
+[[pure vs non-pure example](https://stackoverflow.com/a/22733240/850883)]). Our
+team is fine with the fact that writing a pure function may require a few more
+parameters than a stateful method, and/or might not use object-oriented
+programming at all.
+
 
 ## Prettier & ESLint for JavaScript, JSON, & SCSS
 

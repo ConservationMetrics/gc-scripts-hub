@@ -282,7 +282,10 @@ def read_geojson(path: Path):
     NOTE: this function uses manual parsing for better validation and error messages.
     Both fiona.open() and geojson.geometry.is_valid() are too permissive with invalid
     GeoJSON files - they focus on data extraction rather than format compliance (e.g. accept
-    empty features, missing properties, null geometries).
+    empty features, missing properties).
+
+    Features with null geometry are accepted as-is, as upstream sources sometimes
+    provide features with null geometry which should be preserved in the output.
 
     Returns
     -------
@@ -306,10 +309,17 @@ def read_geojson(path: Path):
             raise ValueError(f"Feature at index {i} is not a dictionary")
         if feature.get("type") != "Feature":
             raise ValueError(f"Feature at index {i} must have type 'Feature'")
-        if "geometry" not in feature or feature["geometry"] is None:
-            raise ValueError(f"Feature at index {i} missing geometry")
-        if not isinstance(feature["geometry"].get("coordinates"), list):
-            raise ValueError(f"Feature at index {i} has invalid geometry coordinates")
+        if "geometry" not in feature:
+            raise ValueError(f"Feature at index {i} missing geometry field")
+
+        # Accept null geometry as-is (upstream sources sometimes provide this)
+        geometry = feature["geometry"]
+        if geometry is not None:
+            if not isinstance(geometry.get("coordinates"), list):
+                raise ValueError(
+                    f"Feature at index {i} has invalid geometry coordinates"
+                )
+
         if "properties" not in feature or feature["properties"] is None:
             raise ValueError(f"Feature at index {i} missing properties")
 
