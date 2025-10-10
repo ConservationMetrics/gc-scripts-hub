@@ -1,0 +1,56 @@
+summary: ''
+description: ''
+lock: >-
+  !inline
+  f/connectors/arcgis/arcgis__download_feature_layer_anonymously.script.lock
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties:
+    attachment_root:
+      type: string
+      description: ''
+      default: /persistent-storage/datalake
+      originalType: string
+    download_attachments:
+      type: boolean
+      description: ''
+      default: false
+    feature_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    folder_name:
+      type: string
+      description: ''
+      default: ''
+      originalType: string
+    layer_index_list:
+      type: array
+      description: ''
+      default: null
+      items:
+        type: number
+      originalType: 'number[]'
+    output_format:
+      type: string
+      description: ''
+      default: geojson
+      originalType: string
+    service_id:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+    subdomain:
+      type: string
+      description: ''
+      default: null
+      originalType: string
+  required:
+    - subdomain
+    - service_id
+    - feature_id
+    - layer_index_list
