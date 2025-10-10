@@ -2,6 +2,8 @@
 
 This script can retrieve various types of alerts, such as GLAD and Integrated Forest Alerts, from the [Global Forest Watch Data API](https://data-api.globalforestwatch.org/), for a given bounding box. The alerts are then formatted as GeoJSON and stored in a PostgreSQL database. The script also saves the GeoJSON files to a specified directory for further use.
 
+The script automatically creates metadata records tracking the detection range from the specified minimum date to the current month, ensuring accurate monitoring coverage information even when no alerts are found. Note that each alert source is updated daily on the GFW API, so we use the date that the script is run to determine the latest date of the detection range.
+
 Currently, we support fetching the following alerts from GFW:
 
 * [Integrated deforestation alerts](https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about)
