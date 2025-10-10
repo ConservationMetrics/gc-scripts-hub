@@ -1,4 +1,9 @@
 # requirements:
+# filetype~=1.2
+# fiona~=1.10
+# openpyxl~=3.1
+# pandas~=2.2
+# pyproj~=3.7
 # psycopg2-binary
 # requests~=2.32
 
