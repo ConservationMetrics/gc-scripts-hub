@@ -1,3 +1,12 @@
+# requirements:
+# filetype~=1.2
+# fiona~=1.10
+# openpyxl~=3.1
+# pandas~=2.2
+# pyproj~=3.7
+# psycopg2-binary
+# requests~=2.32
+
 from __future__ import annotations
 
 import json
@@ -14,8 +23,43 @@ from urllib3.util.retry import Retry
 from f.common_logic.data_conversion import slugify
 from f.common_logic.file_operations import save_data_to_file
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
+
+
+def main(
+    subdomain: str,
+    service_id: str,
+    feature_id: str,
+    layer_index_list: List[int],
+    download_attachments: bool = False,
+    output_format: str = "geojson",
+    folder_name: str = "arcgis",
+    attachment_root: str = "/persistent-storage/datalake",
+) -> List[Path]:
+    storage_path = Path(attachment_root) / slugify(folder_name)
+
+    results: List[Path] = []
+
+    session = make_session()
+
+    for li in layer_index_list:
+        path = fetch_layer_data(
+            subdomain=subdomain,
+            service_id=service_id,
+            feature_id=feature_id,
+            layer_index=li,
+            download_attachments=download_attachments,
+            output_format=output_format,
+            storage_path=storage_path,
+            session=session,
+        )
+        results.append(path)
+
+    logger.info(f"Finished fetching all layers, {len(results)} fetched.")
+
+    return results
+
 
 DEFAULT_RETRY = Retry(
     total=3,
@@ -26,7 +70,7 @@ DEFAULT_RETRY = Retry(
 
 def make_session(retry: Retry = DEFAULT_RETRY, timeout: int = 30) -> requests.Session:
     """
-    Create a requests.Session with default retry and timeout settings.
+    Create a requests. Session with default retry and timeout settings.
 
     Parameters
     ----------
@@ -276,7 +320,8 @@ def save_output_geojson(
 ) -> None:
     filename.parent.mkdir(parents=True, exist_ok=True)
     # Use provided helper for saving to configured storage, plus local dump
-    save_data_to_file(geojson, filename.name, storage_path, file_type="geojson")
+    # save_data_to_file adds the extension, so pass filename.stem not filename.name
+    save_data_to_file(geojson, filename.stem, storage_path, file_type="geojson")
 
 
 def download_attachments_for_feature(
@@ -287,9 +332,12 @@ def download_attachments_for_feature(
 ) -> None:
     attachments_dir.mkdir(parents=True, exist_ok=True)
     info_url = f"{base_feature_url}/{object_id}/attachments"
+
     resp = session.get(info_url, params={"f": "json"})
     resp.raise_for_status()
+
     info = resp.json()
+
     for attachment in info.get("attachmentInfos", []):
         aid = attachment.get("id")
         name = attachment.get("name") or f"att_{aid}"
@@ -367,13 +415,14 @@ def fetch_layer_data(
 
     if download_attachments:
         attachments_root = (storage_path or Path.cwd()) / f"{service_id}_attachments"
+        layer_url = f"{base_feature_url}/{layer_index}"
         for rec in records:
             objid = rec.get("OBJECTID") or rec.get("objectid") or rec.get("ObjectID")
             if objid is not None:
                 try:
                     download_attachments_for_feature(
                         session,
-                        base_feature_url,
+                        layer_url,
                         int(objid),
                         attachments_root / str(objid),
                     )
@@ -384,33 +433,3 @@ def fetch_layer_data(
 
     logger.info("Saved layer %s to %s", layer_name, filename)
     return filename
-
-
-def main(
-    subdomain: str,
-    service_id: str,
-    feature_id: str,
-    layer_index_list: List[int],
-    download_attachments: bool = False,
-    output_format: str = "geojson",
-    folder_name: str = "",
-    attachment_root: str = "/persistent-storage/datalake",
-) -> List[Path]:
-    storage_path = Path(attachment_root) / slugify(folder_name)
-    results: List[Path] = []
-    session = make_session()
-    for li in layer_index_list:
-        path = fetch_layer_data(
-            subdomain=subdomain,
-            service_id=service_id,
-            feature_id=feature_id,
-            layer_index=li,
-            download_attachments=download_attachments,
-            output_format=output_format,
-            storage_path=storage_path,
-            session=session,
-        )
-        results.append(path)
-
-    logger.info(f"Finished fetching all layers, {len(results)} fetched.")
-    return results
