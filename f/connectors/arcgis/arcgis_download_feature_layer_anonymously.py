@@ -315,7 +315,8 @@ def save_output_geojson(
 ) -> None:
     filename.parent.mkdir(parents=True, exist_ok=True)
     # Use provided helper for saving to configured storage, plus local dump
-    save_data_to_file(geojson, filename.name, storage_path, file_type="geojson")
+    # save_data_to_file adds the extension, so pass filename.stem not filename.name
+    save_data_to_file(geojson, filename.stem, storage_path, file_type="geojson")
 
 
 def download_attachments_for_feature(
@@ -409,13 +410,14 @@ def fetch_layer_data(
 
     if download_attachments:
         attachments_root = (storage_path or Path.cwd()) / f"{service_id}_attachments"
+        layer_url = f"{base_feature_url}/{layer_index}"
         for rec in records:
             objid = rec.get("OBJECTID") or rec.get("objectid") or rec.get("ObjectID")
             if objid is not None:
                 try:
                     download_attachments_for_feature(
                         session,
-                        base_feature_url,
+                        layer_url,
                         int(objid),
                         attachments_root / str(objid),
                     )
