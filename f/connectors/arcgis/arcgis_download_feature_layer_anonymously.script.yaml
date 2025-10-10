@@ -27,14 +27,14 @@ schema:
     service_id:
       type: string
       description: >-
-        The service identifier in the ArcGIS URL path (e.g., 'kR0hsNZYfkbTfrRz'). 
+        The service identifier in the ArcGIS URL path (e.g., 'abC10FgHjKjzYX'). 
         This typically appears after the subdomain in the feature service URL.
       default: null
       originalType: string
     feature_id:
       type: string
       description: >-
-        The name of the feature service (e.g., 'AlertData_2024'). This is the 
+        The name of the feature service (e.g., 'MyGISData_2024'). This is the 
         human-readable identifier for the ArcGIS FeatureServer.
       default: null
       originalType: string
