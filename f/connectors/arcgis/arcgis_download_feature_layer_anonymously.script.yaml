@@ -1,5 +1,5 @@
-summary: ''
-description: ''
+summary: 'ArcGIS: Download Feature Layers Anonymously'
+description: 'This script fetches the contents of a list of ArcGIS feature layers, and stores them to the specified directory. Unlike `arcgis_feature_layer`, usage of this script **does not** require you to have an ArcGIS account.'
 lock: >-
   !inline
   f/connectors/arcgis/arcgis__download_feature_layer_anonymously.script.lock
@@ -7,47 +7,74 @@ kind: script
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
+  order:
+    - subdomain
+    - service_id
+    - feature_id
+    - layer_index_list
+    - output_format
+    - download_attachments
+    - folder_name
+    - attachment_root
   properties:
-    attachment_root:
+    subdomain:
       type: string
-      description: ''
-      default: /persistent-storage/datalake
-      originalType: string
-    download_attachments:
-      type: boolean
-      description: ''
-      default: false
-    feature_id:
-      type: string
-      description: ''
+      description: >-
+        The ArcGIS subdomain (e.g., 'services1' or 'services'). This forms part 
+        of the ArcGIS REST API URL: `https://{subdomain}.arcgis.com/...`
       default: null
       originalType: string
-    folder_name:
+    service_id:
       type: string
-      description: ''
-      default: ''
+      description: >-
+        The service identifier in the ArcGIS URL path (e.g., 'kR0hsNZYfkbTfrRz'). 
+        This typically appears after the subdomain in the feature service URL.
+      default: null
+      originalType: string
+    feature_id:
+      type: string
+      description: >-
+        The name of the feature service (e.g., 'AlertData_2024'). This is the 
+        human-readable identifier for the ArcGIS FeatureServer.
+      default: null
       originalType: string
     layer_index_list:
       type: array
-      description: ''
+      description: >-
+        A list of layer indices to download from the feature service. Each 
+        feature service can contain multiple layers, identified by numeric 
+        indices (e.g., [0, 1, 2]).
       default: null
       items:
         type: number
       originalType: 'number[]'
     output_format:
       type: string
-      description: ''
+      description: >-
+        The output file format for downloaded data. Supported formats are 
+        'geojson' (default) for spatial data or 'csv' for tabular data.
       default: geojson
       originalType: string
-    service_id:
+    download_attachments:
+      type: boolean
+      description: >-
+        Whether to download attachments (e.g., photos, audio files) associated 
+        with features. Attachments are commonly present in Survey123 data.
+      default: false
+    folder_name:
       type: string
-      description: ''
-      default: null
+      description: >-
+        The folder name within the attachment root where data and attachments 
+        will be stored. The full path will be `{attachment_root}/{folder_name}/`.
+      default: 'arcgis'
       originalType: string
-    subdomain:
+    attachment_root:
       type: string
-      description: ''
-      default: null
+      description: >-
+        A path where ArcGIS data and attachments will be stored. Downloaded 
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{folder_name}/...`
+      default: /persistent-storage/datalake
       originalType: string
   required:
     - subdomain

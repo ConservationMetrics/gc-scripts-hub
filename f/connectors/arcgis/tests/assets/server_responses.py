@@ -60,3 +60,60 @@ def arcgis_attachments():
             },
         ]
     }
+
+
+def arcgis_metadata_anonymous():
+    """Metadata response for anonymous feature server"""
+    return {
+        "currentVersion": 11.1,
+        "serviceDescription": "Test Anonymous Feature Layer",
+        "layers": [
+            {
+                "id": 0,
+                "name": "Test Anonymous Layer",
+                "type": "Feature Layer",
+                "geometryType": "esriGeometryPoint",
+            }
+        ],
+        "tables": [],
+        "spatialReference": {"wkid": 102100, "latestWkid": 3857},
+    }
+
+
+def arcgis_features_anonymous():
+    """Features response for anonymous feature server (returns raw ArcGIS format, not GeoJSON)"""
+    return {
+        "objectIdFieldName": "OBJECTID",
+        "globalIdFieldName": "globalid",
+        "geometryType": "esriGeometryPoint",
+        "spatialReference": {"wkid": 102100, "latestWkid": 3857},
+        "fields": [
+            {"name": "OBJECTID", "type": "esriFieldTypeOID", "alias": "OBJECTID"},
+            {"name": "globalid", "type": "esriFieldTypeGlobalID", "alias": "GlobalID"},
+            {
+                "name": "what_is_your_name",
+                "type": "esriFieldTypeString",
+                "alias": "What is your name?",
+            },
+            {
+                "name": "what_is_the_date_and_time",
+                "type": "esriFieldTypeDate",
+                "alias": "What is the date and time?",
+            },
+        ],
+        "features": [
+            {
+                "attributes": {
+                    "OBJECTID": 1,
+                    "globalid": "12345678-1234-5678-1234-567812345678",
+                    "what_is_your_name": "Community mapper",
+                    "what_is_the_date_and_time": 1741017060000,
+                },
+                "geometry": {
+                    "x": -8228661.123,
+                    "y": 4972614.456,
+                    "spatialReference": {"wkid": 102100, "latestWkid": 3857},
+                },
+            }
+        ],
+    }

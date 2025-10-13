@@ -14,9 +14,9 @@ Note: we have opted not to use the [ArcGIS API for Python](https://developers.ar
 
 # `arcgis_download_feature_layer_anonymously`: Download Feature Layers from ArcGIS API Anonymously
 
-This script fetches the contents of a list of ArcGIS feature layers from an ArcGIS Server, and stores and stores them to the specified directory.
+This script fetches the contents of a list of ArcGIS feature layers, and stores them to the specified directory.
 
-Usage of this script DOESN'T require you to have an ArcGIS account.
+Unlike `arcgis_feature_layer`, usage of this script **does not** require you to have an ArcGIS account.
 
 In order to use it, you will need:
 - domain: where the ArcGIS server is hosted.
@@ -27,6 +27,4 @@ In order to use it, you will need:
 - output_format: could be `geojson` or `csv`
 - download_attachments: whether to download attachments if there are any or not.
 
-The entry point for all of this information is an ArcGIS REST Services Directory URL.
-Like [this example ArcGIS REST Services Directory URL](https://sampleserver6.arcgisonline.com/arcgis/rest/services).
-
+The place to find all of this information is an ArcGIS REST Services Directory URL. This is how it looks like: `https://{domain}.arcgisonline.com/{service_id}/arcgis/rest/services/{feature_id}/FeatureServer`. If you open this URL endpoint in your browser, you will also see a list of all the layers that are available in the service.
