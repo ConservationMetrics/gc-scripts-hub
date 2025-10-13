@@ -52,8 +52,19 @@ There is no way to sync custom resource types to a Windmill workspace, so you wi
 
 ## Development
 
+### Developing scripts
+
 In Windmill, scripts can be written in Python, TypeScript, Go, and a number of other languages. Flows and apps can 
 be built through the Windmill UI.
+
+For information on developing scripts, see the [Windmill Scripts quickstart](https://www.windmill.dev/docs/getting_started/scripts_quickstart).
+
+You may develop within Windmill's code editor, or locally. Developing locally has the advantage
+of being able to run tests.
+
+For users of Visual Studio Code, there is an extension that allows you to code locally, while testing your code in your Windmill workspace. See Windmill's [local development documentation](https://www.windmill.dev/docs/advanced/local_development) for more information.
+
+### Organization of the code
 
 The `f/` directory is designated for storing code in a workspace folder, and will be used when synchronizing the contents 
 of this repository with a server.
@@ -65,12 +76,43 @@ Note that Windmill also designates a `u/` directory for storing code per user on
 convention in this repository. See [Windmill's local development guide](https://www.windmill.dev/docs/advanced/local_development) 
 for more information on these directories and how they are synchronized with a server.
 
-For information on developing scripts, see the [Windmill Scripts quickstart](https://www.windmill.dev/docs/getting_started/scripts_quickstart).
+### Coding Standards
 
-You may develop within Windmill's code editor, or locally.  Developing locally has the advantage
-of being able to run tests.
+To maintain consistency across the repository, please follow these conventions when developing scripts:
 
-For users of Visual Studio Code, there is an extension that allows you to code locally, while testing your code in your Windmill workspace. See Windmill's [local development documentation](https://www.windmill.dev/docs/advanced/local_development) for more information.
+#### Language and Dependencies
+* While Windmill supports multiple languages (Python, TypeScript, Go, etc.), for ETL-related workflows, use Python to maintain consistency across the repository.
+* Use Python 3.11 when setting dependencies in `script.lock` and `requirements-test.txt` files, as it is the latest stable version we use for our Windmill instances and in CircleCI.
+
+#### Script Metadata
+* Add a clear summary for each script in the `.script.yaml` file.
+* Add descriptions for all parameters in the `.script.yaml` file. These descriptions surface in the Windmill UI and help users understand how to configure scripts.
+
+#### Testing Requirements
+* Always include end-to-end tests that call the script's `main` function.
+* For scripts that interact with external servers (e.g. APIs), define a mock server in `tests/conftest.py` with sample responses in `tests/assets/server_responses.py`.
+* Place all other test assets (sample files, fixtures, etc.) in `tests/assets/`.
+
+#### Code Organization
+* Place reusable code in an appropriate module within `common_logic/` rather than duplicating code across scripts.
+* Always place the `main` function first in each script file, above helper functions.
+* Use consistent import ordering and structure.
+
+#### Documentation
+* Always add docstrings to functions and modules:
+  * Use NumPy format for Python docstrings
+  * Use JSDoc for JavaScript/TypeScript
+* Add information about your script to the folder's `README.md`, including:
+  * What the script does and when to use it
+  * Where to find required parameters (access tokens, hash IDs, API endpoints, etc.); screenshots can be helpful and are welcome
+  * Any special setup or configuration requirements
+  * Examples of usage where appropriate
+
+#### When in Doubt
+* Refer to existing scripts in the repository as examples of these conventions in practice. 
+* Ask the maintainers of this repository for guidance.
+
+### Syncing Changes
 
 If you developed on the server, sync your remote changes into Git version control once done:
 
