@@ -78,15 +78,35 @@ If you developed on the server, sync your remote changes into Git version contro
     # TODO: git add, commit, etc
 
 
-## Running Tests
+## Tests
 
-You can run tests using tox:
+### Running tests with the `tox` test runner
 
-    tox
+Make sure you have Python installed locally or create a virtual environment for your test runner.
 
-The virtual env for each script under test is defined according to the
-`«scriptname».script.lock` file that Windmill creates.  This means that you'll need to have
-Windmill create it, either by running the script being tested _at least once in Windmill itself_, or using the CLI:
+Install the following dependencies:
+  ```bash
+  pip install 'tox>=4.15.0,<5' 'tox-docker~=5.0'
+  ```
+
+Then you can run all tests using tox:
+  ```bash
+  tox
+  ```
+
+If you are using homebrew you might have better luck using `pipx` or `uvx` to manage the virtual environment for the
+test runner:
+  ```bash
+  # Install test runner and run test in one go
+  uvx --with tox-docker tox
+  ```
+
+The `tox-docker` test runner dependency is only required
+to run the `alerts` test suite; others can run with only `tox`.
+
+### Individual Test Suites
+
+Each script in `gc-scripts-hub` defines its own virtual env according to the `«scriptname».script.lock` file that Windmill creates.  This means that to test, you'll need to have Windmill create it, either by running the script being tested _at least once in Windmill itself_, or using the CLI:
 
     wmill script generate-metadata
 
