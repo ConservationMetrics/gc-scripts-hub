@@ -82,11 +82,11 @@ To maintain consistency across the repository, please follow these conventions w
 
 #### Language and Dependencies
 * While Windmill supports multiple languages (Python, TypeScript, Go, etc.), for ETL-related workflows, use Python to maintain consistency across the repository.
-* Use Python 3.11 when setting dependencies in `script.lock` and `requirements-test.txt` files, as it is the latest stable version we use for our Windmill instances and in CircleCI.
+* Use Python 3.11 when setting dependencies in `«name».script.lock` and `requirements-test.txt` files, as it is the latest stable version we use for our Windmill instances and in CircleCI.
 
 #### Script Metadata
-* Add a clear summary for each script in the `.script.yaml` file.
-* Add descriptions for all parameters in the `.script.yaml` file. These descriptions surface in the Windmill UI and help users understand how to configure scripts.
+* Add a clear summary for each script in the `«name».script.yaml` file.
+* Add descriptions for all parameters in the `«name».script.yaml` file. These descriptions surface in the Windmill UI and help users understand how to configure scripts.
 
 #### Testing Requirements
 * Always include end-to-end tests that call the script's `main` function.
@@ -107,6 +107,10 @@ To maintain consistency across the repository, please follow these conventions w
   * Where to find required parameters (access tokens, hash IDs, API endpoints, etc.); screenshots can be helpful and are welcome
   * Any special setup or configuration requirements
   * Examples of usage where appropriate
+
+
+#### Filing Issues and Pull Requests
+* For issues about specific scripts, flows, or apps, prefix your issue title with `[«name»]` in order to enhance searchability. You are also encouraged to add a tag for the specific folder where the code is located, like `connectors` or `common_logic`.
 
 #### When in Doubt
 * Refer to existing scripts in the repository as examples of these conventions in practice. 
