@@ -2,7 +2,7 @@ summary: 'ArcGIS: Download Feature Layers Anonymously'
 description: 'This script fetches the contents of a list of ArcGIS feature layers, and stores them to the specified directory. Unlike `arcgis_feature_layer`, usage of this script **does not** require you to have an ArcGIS account.'
 lock: >-
   !inline
-  f/connectors/arcgis/arcgis__download_feature_layer_anonymously.script.lock
+  f/connectors/arcgis/arcgis_download_feature_layer_anonymously.script.lock
 kind: script
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
