@@ -14,7 +14,7 @@ from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresq
 
 
 # https://hub.windmill.dev/resource_types/272/odk_config
-class odk_config(TypedDict):
+class odk(TypedDict):
     base_url: str
     username: str
     password: str
@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_temp_config(odk_config: odk_config) -> Path:
+def get_temp_config(odk: odk) -> Path:
     """Create a temporary TOML configuration file for PyODK and return its path.
 
     This configuration file is used by PyODK to set up a Client for interacting
@@ -48,26 +48,26 @@ def get_temp_config(odk_config: odk_config) -> Path:
     temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".toml")
     temp_file.write(f"""
 [central]
-base_url = "{odk_config["base_url"]}"
-username = "{odk_config["username"]}"
-password = "{odk_config["password"]}"
-default_project_id = {odk_config["default_project_id"]}
+base_url = "{odk["base_url"]}"
+username = "{odk["username"]}"
+password = "{odk["password"]}"
+default_project_id = {odk["default_project_id"]}
 """)
     temp_file.close()
     return Path(temp_file.name)
 
 
 def main(
-    odk_config: odk_config,
+    odk: odk,
     form_id: str,
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    config_path = get_temp_config(odk_config)
+    config_path = get_temp_config(odk)
 
     try:
-        project_id = odk_config["default_project_id"]
+        project_id = odk["default_project_id"]
         client = Client(config_path=str(config_path))
 
         form_data = download_form_responses_and_attachments(

@@ -39,16 +39,16 @@ schema:
         of the form as can be found in the ODK Central web interface.
       default: null
       originalType: string
-    odk_config:
+    odk:
       type: object
       description: >-
         An ODK Central server URL, username, password, and project ID for an ODK
         project.
       default: null
-      format: resource-odk_config
+      format: resource-odk
       originalType: string
   required:
-    - odk_config
+    - odk
     - form_id
     - db
     - db_table_name
