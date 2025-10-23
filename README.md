@@ -21,8 +21,26 @@ Some of the tools available in the Guardian Connector Scripts Hub are:
 * Scripts to export data from a database into a specific format (e.g., GeoJSON).
 * An app to import and transform datasets from a variety of file formats and sources into a PostgreSQL database.
 
-![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
+![Available scripts, flows, and apps in gc-scripts-hub](docs/gc-scripts-hub.jpg)
 _A Windmill Workspace populated with some of the tools in this repository._
+
+## User Roles
+
+In Windmill, there are a number of roles that can be assigned to users, each with different permissions and responsibilities.
+
+Windmill has an [official documentation page](https://www.windmill.dev/docs/core_concepts/roles_and_permissions) that covers the core concepts of roles and permissions in Windmill. 
+
+For a Windmill workspace, you will want at least one [admin](https://www.windmill.dev/docs/core_concepts/roles_and_permissions#admin) user to manage the workspace and configurations. However, you can also set up [operator](https://www.windmill.dev/docs/core_concepts/roles_and_permissions#operator) users with a more limited set of permissions to execute scripts and monitor their progress.
+
+By default, Windmill operators are able to run scripts, set schedules, and create resources and variables. We recommend turning off the ability to create resources and variables for operators, and only allowing them to execute scripts and monitor their progress.
+
+To do this, when logged in as an admin you can navigate to the **Workspace Settings** page, and under the **Users** tab, you can modify the **Operator Settings**. Disable all settings except Runs and Schedules:
+
+![Windmill Operator Settings](docs/operator-settings.jpg)
+
+Lastly, for operator users to have access to all of the Folders containing the workspace scripts, flows, and apps (e.g. the subdirectories in the `f/` directory), you will need to add a group to which the operator user belongs to all of the folders containing these like `export` and `connectors`. For example, you could add the default `g/all` group to all of the folders containing these, as all users are members of this group by default. You can do this in the **Folders & Groups** page in the Windmill web app:
+
+![Windmill Folders](docs/folders.jpg)
 
 ## Deploying the code to Windmill workspaces
 
@@ -76,7 +94,6 @@ If you developed on the server, sync your remote changes into Git version contro
 
     wmill sync pull --skip-variables  # optionally add --raw to clobber your local repo
     # TODO: git add, commit, etc
-
 
 ## Tests
 
