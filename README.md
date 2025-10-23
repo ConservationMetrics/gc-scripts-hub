@@ -21,7 +21,7 @@ Some of the tools available in the Guardian Connector Scripts Hub are:
 * Scripts to export data from a database into a specific format (e.g., GeoJSON).
 * An app to import and transform datasets from a variety of file formats and sources into a PostgreSQL database.
 
-![Available scripts, flows, and apps in gc-scripts-hub](gc-scripts-hub.jpg)
+![Available scripts, flows, and apps in gc-scripts-hub](docs/gc-scripts-hub.jpg)
 _A Windmill Workspace populated with some of the tools in this repository._
 
 ## User Roles
@@ -34,9 +34,13 @@ For a Windmill workspace, you will want at least one [admin](https://www.windmil
 
 By default, Windmill operators are able to run scripts, set schedules, and create resources and variables. We recommend turning off the ability to create resources and variables for operators, and only allowing them to execute scripts and monitor their progress.
 
-To do this, when logged in as an admin you can navigate to the **Workspace Settings** page, and under the **Users** tab, you can modify the **Operator Settings**. Disable all settings except Runs and Schedules.
+To do this, when logged in as an admin you can navigate to the **Workspace Settings** page, and under the **Users** tab, you can modify the **Operator Settings**. Disable all settings except Runs and Schedules:
 
-Lastly, for operator users to have access to all of the Folders containing the workspace scripts, flows, and apps, in **Folders & Groups**, you will need to add a group to which the operator user belongs to all of the folders containing these like `export`, `connectors`, `apps`. For example, you could add the `g/all` group to all of the folders containing these, as all users are members of this group by default. 
+![Windmill Operator Settings](docs/operator-settings.jpg)
+
+Lastly, for operator users to have access to all of the Folders containing the workspace scripts, flows, and apps (e.g. the subdirectories in the `f/` directory), you will need to add a group to which the operator user belongs to all of the folders containing these like `export` and `connectors`. For example, you could add the default `g/all` group to all of the folders containing these, as all users are members of this group by default. You can do this in the **Folders & Groups** page in the Windmill web app:
+
+![Windmill Folders](docs/folders.jpg)
 
 ## Deploying the code to Windmill workspaces
 
