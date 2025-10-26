@@ -49,9 +49,9 @@ def main(
             service_id=service_id,
             feature_id=feature_id,
             layer_index=li,
+            storage_path=storage_path,
             download_attachments=download_attachments,
             output_format=output_format,
-            storage_path=storage_path,
             session=session,
         )
         results.append(path)
@@ -362,9 +362,9 @@ def fetch_layer_data(
     service_id: str,
     feature_id: str,
     layer_index: int,
+    storage_path: Path,
     download_attachments: bool = False,
     output_format: str = "geojson",
-    storage_path: Optional[Path] = None,
     transformer: Transformer | None = None,
     session: Optional[requests.Session] = None,
 ) -> Path:
@@ -389,12 +389,12 @@ def fetch_layer_data(
 
     layer_name = slugify(layer_obj.get("name", f"layer_{layer_index}"))
 
-    outputs_dir = Path("outputs") / service_id
-    filename = outputs_dir / f"{layer_name}.{output_format}"
+    filename = storage_path / f"{layer_name}.{output_format}"
+    relative_output = Path(storage_path.name) / f"{layer_name}.{output_format}"
 
     if filename.exists():
         logger.info("File %s already exists. Skipping download.", filename)
-        return filename
+        return relative_output
 
     base_feature_url = f"https://{subdomain}.arcgis.com/{service_id}/arcgis/rest/services/{feature_id}/FeatureServer"
 
@@ -414,7 +414,7 @@ def fetch_layer_data(
         save_output_geojson(geojson, filename, storage_path)
 
     if download_attachments:
-        attachments_root = (storage_path or Path.cwd()) / f"{service_id}_attachments"
+        attachments_root = storage_path / f"{service_id}_attachments"
         layer_url = f"{base_feature_url}/{layer_index}"
         for rec in records:
             objid = rec.get("OBJECTID") or rec.get("objectid") or rec.get("ObjectID")
@@ -432,4 +432,4 @@ def fetch_layer_data(
                     )
 
     logger.info("Saved layer %s to %s", layer_name, filename)
-    return filename
+    return relative_output
