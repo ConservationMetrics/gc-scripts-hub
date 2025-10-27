@@ -26,7 +26,7 @@ def test_prepare_alerts_metadata():
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
     prepared_alerts_metadata, alert_statistics = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider"
+        alerts_metadata, 100, "test_provider", max_months_lookback=None
     )
 
     # Check that alerts statistics is the latest month and year in the CSV
@@ -39,8 +39,12 @@ def test_metadata_id_stability():
     alerts_history_csv = Path(assets_directory, "alerts_history.csv")
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
-    first, _ = prepare_alerts_metadata(alerts_metadata, 100, "test_provider")
-    second, _ = prepare_alerts_metadata(alerts_metadata, 100, "test_provider")
+    first, _ = prepare_alerts_metadata(
+        alerts_metadata, 100, "test_provider", max_months_lookback=None
+    )
+    second, _ = prepare_alerts_metadata(
+        alerts_metadata, 100, "test_provider", max_months_lookback=None
+    )
 
     # Order shouldn't matter but just to be safe, sort by _id
     first_ids = sorted(r["_id"] for r in first)
@@ -158,6 +162,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
         pg_database,
         "fake_alerts",
         asset_storage,
+        max_months_lookback=None,
     )
 
     # Alerts are written to a SQL Table
@@ -308,6 +313,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
         pg_database,
         "fake_alerts",
         asset_storage,
+        max_months_lookback=None,
     )
 
     assert alerts_metadata is None
@@ -325,6 +331,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         pg_database,
         "fake_alerts",
         asset_storage,
+        max_months_lookback=None,
     )
 
     tif_file_path = (
@@ -340,6 +347,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         pg_database,
         "fake_alerts",
         asset_storage,
+        max_months_lookback=None,
     )
 
     # Check that the file MD5 hash has not changed, since the file was not updated
@@ -367,6 +375,7 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
         pg_database,
         "fake_alerts",
         asset_storage,
+        max_months_lookback=None,
     )
 
     # Now, the file MD5 hash should have changed, since the file was updated
@@ -424,6 +433,7 @@ def test_metadata_only_scenario(
         pg_database,
         "fake_alerts_metadata_only",
         asset_storage,
+        max_months_lookback=None,
     )
 
     # Check that metadata was written to the database
@@ -465,4 +475,5 @@ def test_no_files_no_metadata_scenario(
             pg_database,
             "fake_alerts_no_data",
             asset_storage,
+            max_months_lookback=None,
         )

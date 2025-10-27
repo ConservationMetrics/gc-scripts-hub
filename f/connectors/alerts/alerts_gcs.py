@@ -5,6 +5,7 @@
 # pandas~=2.2
 # pillow~=10.3
 # psycopg2-binary
+# python-dateutil~=2.8
 # requests~=2.32
 
 import base64
@@ -12,10 +13,12 @@ import hashlib
 import json
 import logging
 import uuid
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
@@ -30,6 +33,26 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def _calculate_cutoff_date(max_months_lookback):
+    """Calculate the cutoff year/month for filtering alerts.
+
+    Parameters
+    ----------
+    max_months_lookback : int or None
+        Maximum number of months to look back. If None, returns None (no filtering).
+
+    Returns
+    -------
+    tuple of (int, int) or None
+        A tuple of (year, month) representing the cutoff date, or None if no filtering.
+    """
+    if max_months_lookback is None:
+        return None
+
+    cutoff_date = datetime.now() - relativedelta(months=max_months_lookback)
+    return (cutoff_date.year, cutoff_date.month)
+
+
 def main(
     gcp_service_acct: gcp_service_account,
     alerts_bucket: str,
@@ -38,6 +61,7 @@ def main(
     db: postgresql,
     db_table_name: str,
     destination_path: str = "/persistent-storage/datalake/change_detection/alerts",
+    max_months_lookback: int = None,
 ):
     """
     Wrapper around _main() that instantiates the GCP client.
@@ -55,6 +79,7 @@ def main(
         db,
         db_table_name,
         destination_path,
+        max_months_lookback,
     )
 
 
@@ -66,6 +91,7 @@ def _main(
     db: postgresql,
     db_table_name: str,
     destination_path: str,
+    max_months_lookback: int = None,
 ):
     """Download alerts to warehouse storage and index them in a database.
 
@@ -84,6 +110,9 @@ def _main(
         The name of the database table to write alerts to.
     destination_path : str, optional
         The local directory to save files
+    max_months_lookback : int, optional
+        Maximum number of months to look back when processing alerts.
+        If None, all historical data will be processed.
 
     Returns
     -------
@@ -97,6 +126,7 @@ def _main(
         alerts_bucket,
         territory_id,
         alerts_metadata_filename,
+        max_months_lookback,
     )
 
     # Convert TIFF files to JPG if any exist
@@ -106,7 +136,7 @@ def _main(
         logger.info("No TIFF files to convert to JPG.")
 
     prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
-        alerts_metadata, territory_id, alerts_provider
+        alerts_metadata, territory_id, alerts_provider, max_months_lookback
     )
 
     prepared_alerts_data = prepare_alerts_data(
@@ -175,6 +205,7 @@ def sync_gcs_to_local(
     bucket_name,
     territory_id,
     alerts_metadata_filename,
+    max_months_lookback=None,
 ):
     """Download files from a GCS bucket to a local directory.
 
@@ -189,6 +220,9 @@ def sync_gcs_to_local(
         The path prefix for which files should be downloaded.
     alerts_metadata_filename : str
         An additional file to sync from the GCS bucket.
+    max_months_lookback : int, optional
+        Maximum number of months to look back when filtering files.
+        If None, all files will be downloaded.
 
     Returns
     -------
@@ -218,6 +252,9 @@ def sync_gcs_to_local(
     df = pd.read_csv(StringIO(alerts_metadata))
     has_metadata_for_territory = len(df.loc[df["territory_id"] == territory_id]) > 0
 
+    # Calculate cutoff date if max_months_lookback is specified
+    cutoff_date = _calculate_cutoff_date(max_months_lookback)
+
     # List all files in the GCS bucket in territory_id directory
     prefix = f"{territory_id}/"
     files_to_download = set(blob.name for blob in bucket.list_blobs(prefix=prefix))
@@ -228,6 +265,29 @@ def sync_gcs_to_local(
         for blob_name in files_to_download
         if blob_name.lower().endswith((".geojson", ".tif", ".tiff"))
     }
+
+    # Filter by date if cutoff_date is specified
+    if cutoff_date is not None:
+        cutoff_year, cutoff_month = cutoff_date
+        filtered_files = set()
+        for blob_name in files_to_download:
+            # Path format: <territory_id>/(vector|raster)/<year>/<month>/filename
+            parts = blob_name.split("/")
+            if len(parts) >= 4:
+                try:
+                    year = int(parts[2])
+                    month = int(parts[3])
+                    # Keep file if (year, month) >= (cutoff_year, cutoff_month)
+                    if (year, month) >= (cutoff_year, cutoff_month):
+                        filtered_files.add(blob_name)
+                except (ValueError, IndexError):
+                    logger.warning(f"Could not parse date from path: {blob_name}")
+                    continue
+        files_to_download = filtered_files
+        logger.info(
+            f"Filtered files to {len(files_to_download)} based on "
+            f"max_months_lookback={max_months_lookback} (cutoff: {cutoff_year}/{cutoff_month})"
+        )
 
     # Throw assertion error if both no files and no metadata exist for territory_id
     if len(files_to_download) == 0 and not has_metadata_for_territory:
@@ -336,7 +396,9 @@ def convert_tiffs_to_jpg(tiff_files):
     logger.info("Successfully converted TIFF files to JPEG.")
 
 
-def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
+def prepare_alerts_metadata(
+    alerts_metadata, territory_id, alerts_provider, max_months_lookback=None
+):
     """
     Prepare alerts metadata by filtering and processing CSV data.
 
@@ -355,6 +417,9 @@ def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
     territory_id : int
         The identifier for the territory used to filter the metadata.
     alerts_provider : str
+    max_months_lookback : int, optional
+        Maximum number of months to look back when filtering metadata.
+        If None, all metadata will be processed.
 
     Returns
     -------
@@ -388,6 +453,22 @@ def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
     df = pd.read_csv(StringIO(alerts_metadata))
     filtered_df = df.loc[df["territory_id"] == territory_id]
 
+    # Filter by date if max_months_lookback is specified
+    cutoff_date = _calculate_cutoff_date(max_months_lookback)
+    if cutoff_date is not None:
+        cutoff_year, cutoff_month = cutoff_date
+        filtered_df = filtered_df[
+            (filtered_df["year"] > cutoff_year)
+            | (
+                (filtered_df["year"] == cutoff_year)
+                & (filtered_df["month"] >= cutoff_month)
+            )
+        ]
+        logger.info(
+            f"Filtered metadata to {len(filtered_df)} rows based on "
+            f"max_months_lookback={max_months_lookback} (cutoff: {cutoff_year}/{cutoff_month})"
+        )
+
     # Hash each row into a unique UUID; this will be used as the primary key for the metadata table
     # The hash is based on the most important columns for the metadata table, so that changes in other columns do not affect the hash
     filtered_df["_id"] = pd.util.hash_pandas_object(
@@ -406,6 +487,11 @@ def prepare_alerts_metadata(alerts_metadata, territory_id, alerts_provider):
     prepared_alerts_metadata = filtered_df.to_dict("records")
 
     logger.info("Successfully prepared alerts metadata.")
+
+    # Handle empty DataFrame case (all data filtered out)
+    if filtered_df.empty:
+        logger.info("No metadata rows after filtering.")
+        return [], None
 
     # Determine latest month and year
     latest_month_year = (
