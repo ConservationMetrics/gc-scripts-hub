@@ -481,7 +481,7 @@ def test_no_files_no_metadata_scenario(
         )
 
 
-@patch("f.connectors.alerts.alerts_gcs.datetime")
+@patch("f.common_logic.date_utils.datetime")
 def test_max_months_lookback_alerts_data_filtering(mock_datetime, tmp_path):
     """Test that max_months_lookback correctly filters alert files by date"""
     # Mock current date to October 2025
@@ -522,7 +522,7 @@ def test_max_months_lookback_alerts_data_filtering(mock_datetime, tmp_path):
     assert prepared_filtered[0]["alert_id"] == "test_alert_456"
 
 
-@patch("f.connectors.alerts.alerts_gcs.datetime")
+@patch("f.common_logic.date_utils.datetime")
 def test_max_months_lookback_metadata_filtering(mock_datetime):
     """Test that max_months_lookback correctly filters metadata by date"""
     # Mock current date to October 2025
@@ -558,7 +558,7 @@ def test_max_months_lookback_metadata_filtering(mock_datetime):
     assert "recent_alert_1" in descriptions
 
 
-@patch("f.connectors.alerts.alerts_gcs.datetime")
+@patch("f.common_logic.date_utils.datetime")
 def test_max_months_lookback_e2e(
     mock_datetime, pg_database, mock_alerts_storage_client, tmp_path
 ):

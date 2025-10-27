@@ -5,7 +5,6 @@
 # pandas~=2.2
 # pillow~=10.3
 # psycopg2-binary
-# python-dateutil~=2.8
 # requests~=2.32
 
 import base64
@@ -13,17 +12,16 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
 import pandas as pd
-from dateutil.relativedelta import relativedelta
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
 from psycopg2 import sql
 
+from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
 # type names that refer to Windmill Resources
@@ -31,26 +29,6 @@ gcp_service_account = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def _calculate_cutoff_date(max_months_lookback):
-    """Calculate the cutoff year/month for filtering alerts.
-
-    Parameters
-    ----------
-    max_months_lookback : int or None
-        Maximum number of months to look back. If None, returns None (no filtering).
-
-    Returns
-    -------
-    tuple of (int, int) or None
-        A tuple of (year, month) representing the cutoff date, or None if no filtering.
-    """
-    if max_months_lookback is None:
-        return None
-
-    cutoff_date = datetime.now() - relativedelta(months=max_months_lookback)
-    return (cutoff_date.year, cutoff_date.month)
 
 
 def main(
@@ -253,7 +231,7 @@ def sync_gcs_to_local(
     has_metadata_for_territory = len(df.loc[df["territory_id"] == territory_id]) > 0
 
     # Calculate cutoff date if max_months_lookback is specified
-    cutoff_date = _calculate_cutoff_date(max_months_lookback)
+    cutoff_date = calculate_cutoff_date(max_months_lookback)
 
     # List all files in the GCS bucket in territory_id directory
     prefix = f"{territory_id}/"
@@ -454,7 +432,7 @@ def prepare_alerts_metadata(
     filtered_df = df.loc[df["territory_id"] == territory_id]
 
     # Filter by date if max_months_lookback is specified
-    cutoff_date = _calculate_cutoff_date(max_months_lookback)
+    cutoff_date = calculate_cutoff_date(max_months_lookback)
     if cutoff_date is not None:
         cutoff_year, cutoff_month = cutoff_date
         filtered_df = filtered_df[
