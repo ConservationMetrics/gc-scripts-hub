@@ -14,6 +14,7 @@ schema:
     - db
     - db_table_name
     - destination_path
+    - max_months_lookback
   properties:
     alerts_bucket:
       type: string
@@ -58,6 +59,14 @@ schema:
         The territory ID (areas of interest) for which change detection alerts
         will be retrieved. This ID is used to filter and process relevant
         alerts.
+      default: null
+    max_months_lookback:
+      type: integer
+      description: >-
+        Maximum number of months to look back when processing alerts. Only alerts
+        from the last N months will be downloaded and processed. This helps bound
+        memory usage when dealing with large historical datasets. If null or not
+        specified, all historical data will be processed.
       default: null
   required:
     - gcp_service_acct
