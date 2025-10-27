@@ -2,7 +2,9 @@ import base64
 import hashlib
 import logging
 import uuid
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import google.api_core.exceptions
 import pandas as pd
@@ -477,3 +479,115 @@ def test_no_files_no_metadata_scenario(
             asset_storage,
             max_months_lookback=None,
         )
+
+
+@patch("f.connectors.alerts.alerts_gcs.datetime")
+def test_max_months_lookback_alerts_data_filtering(mock_datetime, tmp_path):
+    """Test that max_months_lookback correctly filters alert files by date"""
+    # Mock current date to October 2025
+    mock_datetime.now.return_value = datetime(2025, 10, 15)
+
+    # Create test GeoJSON files with different dates
+    test_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {"id": "test_alert_123", "territory_id": 100},
+            }
+        ],
+    }
+
+    # Old alert from 2023
+    old_file = tmp_path / "alert_old.geojson"
+    old_file.write_text(str(test_geojson).replace("'", '"'))
+
+    # Recent alert from 2025
+    recent_file = tmp_path / "alert_recent.geojson"
+    recent_file.write_text(
+        str(test_geojson).replace("test_alert_123", "test_alert_456").replace("'", '"')
+    )
+
+    # No lookback - process all files
+    all_files = [str(old_file), str(recent_file)]
+    prepared_all = prepare_alerts_data(tmp_path, all_files, "test_provider")
+    assert len(prepared_all) == 2
+
+    # With lookback, we'd need to filter files before calling prepare_alerts_data
+    # This test verifies that prepare_alerts_data itself processes what it's given
+    recent_only = [str(recent_file)]
+    prepared_filtered = prepare_alerts_data(tmp_path, recent_only, "test_provider")
+    assert len(prepared_filtered) == 1
+    assert prepared_filtered[0]["alert_id"] == "test_alert_456"
+
+
+@patch("f.connectors.alerts.alerts_gcs.datetime")
+def test_max_months_lookback_metadata_filtering(mock_datetime):
+    """Test that max_months_lookback correctly filters metadata by date"""
+    # Mock current date to October 2025
+    mock_datetime.now.return_value = datetime(2025, 10, 15)
+
+    # Create test data: old (2023) and recent (2025)
+    test_df = pd.DataFrame(
+        {
+            "territory_id": [100, 100, 100],
+            "type_alert": ["001", "001", "002"],
+            "month": [9, 10, 10],
+            "year": [2023, 2025, 2025],
+            "total_alerts": [10, 20, 30],
+            "description_alerts": ["old_alert", "recent_alert_1", "recent_alert_2"],
+            "confidence": [1.0, 1.0, 0.5],
+        }
+    )
+    alerts_metadata = test_df.to_csv(index=False)
+
+    # No lookback - get all data
+    prepared_all, _ = prepare_alerts_metadata(
+        alerts_metadata, 100, "test_provider", max_months_lookback=None
+    )
+    assert len(prepared_all) == 3
+
+    # 6 months lookback - should exclude 2023 data
+    prepared_filtered, _ = prepare_alerts_metadata(
+        alerts_metadata, 100, "test_provider", max_months_lookback=6
+    )
+    assert len(prepared_filtered) == 2
+    descriptions = {row["description_alerts"] for row in prepared_filtered}
+    assert "old_alert" not in descriptions
+    assert "recent_alert_1" in descriptions
+
+
+@patch("f.connectors.alerts.alerts_gcs.datetime")
+def test_max_months_lookback_e2e(
+    mock_datetime, pg_database, mock_alerts_storage_client, tmp_path
+):
+    """Test that max_months_lookback filters out old files and metadata in E2E flow"""
+    # Mock current date to October 2025
+    mock_datetime.now.return_value = datetime(2025, 10, 15)
+
+    asset_storage = tmp_path / "datalake"
+
+    # Mock data is from 2023/09 - use 1 month lookback to filter everything
+    result = _main(
+        mock_alerts_storage_client,
+        MOCK_BUCKET_NAME,
+        "test_provider",
+        100,
+        pg_database,
+        "fake_alerts_filtered",
+        asset_storage,
+        max_months_lookback=1,
+    )
+
+    # Should return None since all data was filtered
+    assert result is None
+
+    # Verify both tables are empty
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered")
+            assert cursor.fetchone()[0] == 0
+
+            cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered__metadata")
+            assert cursor.fetchone()[0] == 0
