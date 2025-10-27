@@ -5,21 +5,25 @@ import psycopg2
 
 from f.connectors.globalforestwatch.gfw_alerts import (
     main,
+    prepare_gfw_metadata,
 )
 
 
 @patch("f.connectors.globalforestwatch.gfw_alerts.datetime")
-def test_script_e2e(mock_datetime, gfw_server, pg_database, tmp_path):
+@patch("f.common_logic.date_utils.datetime")
+def test_script_e2e(mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_database, tmp_path):
     # Mock current date to be October 2025
-    mock_datetime.now.return_value = datetime(2025, 10, 15)
+    mock_datetime_utils.now.return_value = datetime(2025, 10, 15)
+    mock_datetime_gfw.now.return_value = datetime(2025, 10, 15)
 
     asset_storage = tmp_path / "datalake"
 
+    # Fetch alerts from last 22 months (roughly equivalent to 2024-01-01 start)
     main(
         gfw_server.gfw_api,
         "[[[-73.9731, 40.7644], [-73.9819, 40.7681], [-73.9580, 40.8003], [-73.9493, 40.7967], [-73.9731, 40.7644]]]",
         "gfw_integrated_alerts",
-        "2024-01-01",
+        22,  # ~22 months covers from Dec 2023 to Oct 2025
         pg_database,
         "gfw_alerts",
         asset_storage,
@@ -46,10 +50,10 @@ def test_script_e2e(mock_datetime, gfw_server, pg_database, tmp_path):
     # Test metadata tables are created and populated
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            # Check gfw_alerts metadata table (should have ~653 records: Jan 1, 2024 - Oct 15, 2025)
+            # Check gfw_alerts metadata table (should have ~685 records: Dec 1, 2023 - Oct 15, 2025)
             cursor.execute("SELECT COUNT(*) FROM gfw_alerts__metadata")
             record_count = cursor.fetchone()[0]
-            assert record_count >= 650  # Approximate count for ~653 days
+            assert record_count >= 680  # Approximate count for ~685 days
 
             # Check that July 2024 has 4 alerts (from mock data) - should be on specific days
             cursor.execute(
@@ -86,21 +90,25 @@ def test_script_e2e(mock_datetime, gfw_server, pg_database, tmp_path):
 
 
 @patch("f.connectors.globalforestwatch.gfw_alerts.datetime")
-def test_metadata_daily_tracking(mock_datetime, gfw_server, pg_database, tmp_path):
+@patch("f.common_logic.date_utils.datetime")
+def test_metadata_daily_tracking(
+    mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_database, tmp_path
+):
     """Test that metadata tracks daily alert counts for full detection range."""
     # Mock current date to be May 15, 2025
-    mock_datetime.now.return_value = datetime(2025, 5, 15)
+    mock_datetime_utils.now.return_value = datetime(2025, 5, 15)
+    mock_datetime_gfw.now.return_value = datetime(2025, 5, 15)
 
     asset_storage = tmp_path / "datalake"
 
     # Use gfw_server fixture VIIRS mock (pre-seeded in conftest)
 
-    # Run with minimum_date from January 1, 2025 (should create ~135 days of metadata: Jan 1 - May 15)
+    # Run with 5 months lookback (should create ~135 days of metadata: Jan 1 - May 15)
     main(
         gfw_server.gfw_api,
         "[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
         "nasa_viirs_fire_alerts",
-        "2025-01-01",
+        5,  # 5 months back from May 15 = Jan 1
         pg_database,
         "gfw_daily_test",
         asset_storage,
@@ -108,17 +116,18 @@ def test_metadata_daily_tracking(mock_datetime, gfw_server, pg_database, tmp_pat
 
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            # Check that we have metadata records for all days (Jan 1 - May 15, 2025 = ~135 days)
+            # Check that we have metadata records for all days (Dec 1, 2024 - May 15, 2025 = ~165 days)
+            # 5 months back from May 15 = Dec 15, start from Dec 1
             cursor.execute("SELECT COUNT(*) FROM gfw_daily_test__metadata")
             record_count = cursor.fetchone()[0]
-            assert record_count >= 130  # Approximate count for ~135 days
+            assert record_count >= 160  # Approximate count for ~165 days
 
-            # Check that we have records for all months from Jan to May 2025
+            # Check that we have records for all months from Dec 2024 to May 2025
             cursor.execute(
                 "SELECT DISTINCT year, month FROM gfw_daily_test__metadata ORDER BY year, month"
             )
             months = cursor.fetchall()
-            expected_months = [(2025, i) for i in range(1, 6)]  # Jan-May 2025
+            expected_months = [(2024, 12)] + [(2025, i) for i in range(1, 6)]  # Dec 2024 - May 2025
             assert months == expected_months
 
             # Check that day field is populated for all records
@@ -166,3 +175,79 @@ def test_metadata_daily_tracking(mock_datetime, gfw_server, pg_database, tmp_pat
                 "SELECT DISTINCT description_alerts FROM gfw_daily_test__metadata"
             )
             assert cursor.fetchone()[0] == "fires"
+
+
+@patch("f.common_logic.date_utils.datetime")
+def test_max_months_lookback_metadata_filtering(mock_datetime):
+    """Test that max_months_lookback correctly filters metadata by date range"""
+    # Mock current date to October 2025
+    mock_datetime.now.return_value = datetime(2025, 10, 15)
+
+    # Create mock alerts from different dates
+    alerts = [
+        {"alert__date": "2024-01-15"},  # Old - 21 months ago
+        {"alert__date": "2025-07-10"},  # Recent - 3 months ago
+        {"alert__date": "2025-10-01"},  # Very recent - current month
+    ]
+
+    # 22 months lookback - processes from ~Dec 2023 to now
+    prepared_all = prepare_gfw_metadata(alerts, "nasa_viirs_fire_alerts", 22)
+    # Should have ~685 days (Dec 1, 2023 to Oct 15, 2025)
+    assert len(prepared_all) >= 680
+
+    # 6 months lookback - only process last 6+ months
+    prepared_filtered = prepare_gfw_metadata(alerts, "nasa_viirs_fire_alerts", 6)
+    # Should have ~198-210 days (April 1 to Oct 15, 2025)
+    assert len(prepared_filtered) < 220
+    assert len(prepared_filtered) >= 190
+
+    # Verify only recent months are included
+    years_months = {(record["year"], record["month"]) for record in prepared_filtered}
+    # Should not include January 2024 (too old)
+    assert (2024, 1) not in years_months
+    # Should include recent months like July, August, September, October 2025
+    assert (2025, 10) in years_months
+
+
+@patch("f.connectors.globalforestwatch.gfw_alerts.datetime")
+@patch("f.common_logic.date_utils.datetime")
+def test_max_months_lookback_e2e(
+    mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_database, tmp_path
+):
+    """Test that max_months_lookback limits API query and metadata records in E2E flow"""
+    # Mock current date to October 2025
+    mock_datetime_utils.now.return_value = datetime(2025, 10, 15)
+    mock_datetime_gfw.now.return_value = datetime(2025, 10, 15)
+
+    asset_storage = tmp_path / "datalake"
+
+    # Run with 3 months lookback - should query API from July 1, 2025
+    # and create ~107 days of metadata (July 1 - Oct 15, 2025)
+    main(
+        gfw_server.gfw_api,
+        "[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
+        "nasa_viirs_fire_alerts",
+        3,  # 3 months lookback
+        pg_database,
+        "gfw_lookback_test",
+        asset_storage,
+    )
+
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            # Should have ~107 days (July 1 - Oct 15, 2025)
+            # Note: cutoff starts from first day of month
+            cursor.execute("SELECT COUNT(*) FROM gfw_lookback_test__metadata")
+            record_count = cursor.fetchone()[0]
+            assert record_count < 115
+            assert record_count >= 100
+
+            # Verify only recent months are included
+            cursor.execute(
+                "SELECT DISTINCT year, month FROM gfw_lookback_test__metadata ORDER BY year, month"
+            )
+            months = cursor.fetchall()
+            # Should only have July-October 2025
+            for year, month in months:
+                assert year == 2025
+                assert month >= 7  # July or later

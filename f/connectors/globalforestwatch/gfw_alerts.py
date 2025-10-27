@@ -12,6 +12,7 @@ from typing import TypedDict
 import requests
 from psycopg2 import sql
 
+from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
@@ -30,7 +31,7 @@ def main(
     gfw: gfw,
     bounding_box: str,
     type_of_alert: str,
-    minimum_date: str,
+    max_months_lookback: int,
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
@@ -38,7 +39,7 @@ def main(
     storage_path = Path(attachment_root) / db_table_name
 
     alerts = fetch_alerts_from_gfw(
-        gfw["api_key"], bounding_box, type_of_alert, minimum_date
+        gfw["api_key"], bounding_box, type_of_alert, max_months_lookback
     )
 
     alerts_geojson = format_alerts_as_geojson(alerts, type_of_alert)
@@ -69,7 +70,7 @@ def main(
         )
 
     # Prepare and write metadata
-    prepared_metadata = prepare_gfw_metadata(alerts, type_of_alert, minimum_date)
+    prepared_metadata = prepare_gfw_metadata(alerts, type_of_alert, max_months_lookback)
 
     metadata_table_name = f"{db_table_name}__metadata"
     logger.info(
@@ -87,7 +88,10 @@ def main(
 
 
 def fetch_alerts_from_gfw(
-    api_key: gfw, bounding_box: str, type_of_alert: str, minimum_date: str
+    api_key: gfw,
+    bounding_box: str,
+    type_of_alert: str,
+    max_months_lookback: int,
 ):
     """
     Get alerts from GFW API using the provided API key and bounding box.
@@ -100,8 +104,8 @@ def fetch_alerts_from_gfw(
         The bounding box coordinates for the area of interest.
     type_of_alert : str
         The type of alert to fetch from the GFW API.
-    minimum_date : str
-        The minimum date for filtering alerts.
+    max_months_lookback : int
+        Number of months to look back when fetching alerts.
 
     # GFW API documentation: https://www.globalforestwatch.org/help/developers/guides/query-data-for-a-custom-geometry/
     # TODO: Figure out a workaround for the maximum allowed payload size of 6291556 bytes
@@ -111,7 +115,14 @@ def fetch_alerts_from_gfw(
     list
         A list of alerts fetched from the GFW API.
     """
-    logger.info("Fetching alerts from GFW API...")
+    # Calculate start date from lookback period
+    cutoff_date = calculate_cutoff_date(max_months_lookback)
+    cutoff_year, cutoff_month = cutoff_date
+    start_date = f"{cutoff_year}-{cutoff_month:02d}-01"
+
+    logger.info(
+        f"Fetching alerts from GFW API for last {max_months_lookback} months (starting from {start_date})..."
+    )
     url = f"https://data-api.globalforestwatch.org/dataset/{type_of_alert}/latest/query"
     headers = {
         "x-api-key": api_key,
@@ -129,7 +140,7 @@ def fetch_alerts_from_gfw(
             f"SELECT latitude, longitude, "
             f"{'alert__date, confidence__cat' if type_of_alert == 'nasa_viirs_fire_alerts' else f'{type_of_alert}__date, {type_of_alert}__confidence'} "
             f"FROM results WHERE "
-            f"{'alert__date' if type_of_alert == 'nasa_viirs_fire_alerts' else f'{type_of_alert}__date'} >= '{minimum_date}'"
+            f"{'alert__date' if type_of_alert == 'nasa_viirs_fire_alerts' else f'{type_of_alert}__date'} >= '{start_date}'"
         ),
     }
 
@@ -221,11 +232,11 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
     return geojson
 
 
-def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
+def prepare_gfw_metadata(alerts: list, type_of_alert: str, max_months_lookback: int):
     """
     Prepare GFW alerts metadata for database storage.
 
-    This function creates metadata records for all days from minimum_date
+    This function creates metadata records for all days from the lookback period
     to the current date, tracking the alerts found or creating zero-count
     records for days with no alerts. This ensures we track the full detection
     range showing when the algorithm has been running.
@@ -236,21 +247,20 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
         A list of alerts fetched from GFW API.
     type_of_alert : str
         The type of alert being processed (e.g., 'nasa_viirs_fire_alerts', 'gfw_integrated_alerts').
-    minimum_date : str
-        The minimum date used for the query (format: YYYY-MM-DD).
+    max_months_lookback : int
+        Number of months to look back when processing metadata.
 
     Returns
     -------
     list of dict
-        A list containing metadata records for all days from minimum_date to current date.
+        A list containing metadata records for all days from the lookback period to current date.
     """
     logger.info("Preparing GFW alerts metadata.")
 
-    # Parse the minimum_date to get start year, month, and day
-    date_parts = minimum_date.split("-")
-    start_year = int(date_parts[0])
-    start_month = int(date_parts[1])
-    start_day = int(date_parts[2])
+    # Calculate start date from lookback period
+    cutoff_date = calculate_cutoff_date(max_months_lookback)
+    start_year, start_month = cutoff_date
+    start_day = 1  # Start from the first day of the month
 
     # Get current date for end range
     current_date = datetime.now()
@@ -354,7 +364,9 @@ def prepare_gfw_metadata(alerts: list, type_of_alert: str, minimum_date: str):
 
     total_alerts = sum(alerts_by_day.values())
     logger.info(
-        f"Prepared metadata for {len(metadata_records)} days ({start_year}-{start_month:02d}-{start_day:02d} to {end_year}-{end_month:02d}-{end_day:02d}): {total_alerts} total alerts distributed by day"
+        f"Prepared metadata for {len(metadata_records)} days (last {max_months_lookback} months: "
+        f"{start_year}-{start_month:02d}-{start_day:02d} to {end_year}-{end_month:02d}-{end_day:02d}): "
+        f"{total_alerts} total alerts distributed by day"
     )
     return metadata_records
 
