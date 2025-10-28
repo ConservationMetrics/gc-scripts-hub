@@ -10,7 +10,7 @@ schema:
     - type_of_alert
     - gfw
     - bounding_box
-    - minimum_date
+    - max_months_lookback
     - db
     - db_table_name
     - attachment_root
@@ -46,14 +46,13 @@ schema:
         for example: 
         `[[[-55.2308,5.6945],[-55.2158,5.6945],[-55.2158,5.7055],[-55.2308,5.7055],[-55.2308,5.6945]]]`
       default: null
-    minimum_date:
-      type: string
+    max_months_lookback:
+      type: integer
       description: >-
-        The minimum date for fetching alerts. This should be in the format
-        YYYY-MM-DD. For example, to fetch alerts from January 1, 2025, use
-        `2025-01-01`.
-      default: "2025-01-01"
-      originalType: string
+        Number of months to look back when fetching alerts. For example, if set to 6,
+        the script will fetch alerts from the last 6 months. This determines both the
+        API query date range and the metadata records created.
+      default: 6
     db:
       type: object
       description: The database connection parameters for storing tabular data.
@@ -75,7 +74,7 @@ schema:
     - type_of_alert
     - gfw
     - bounding_box
-    - minimum_date
+    - max_months_lookback
     - db
     - db_table_name
     - attachment_root
