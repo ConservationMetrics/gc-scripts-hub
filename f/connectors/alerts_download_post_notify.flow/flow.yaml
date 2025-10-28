@@ -14,6 +14,9 @@ value:
           alerts_provider:
             type: javascript
             expr: flow_input.alerts_provider
+          max_months_lookback:
+            type: javascript
+            expr: flow_input.max_months_lookback
           db:
             type: javascript
             expr: flow_input.db
@@ -76,6 +79,8 @@ schema:
   order:
     - gcp_service_acct
     - alerts_bucket
+    - alerts_provider
+    - max_months_lookback
     - territory_id
     - db
     - db_table_name
@@ -95,6 +100,14 @@ schema:
       description: The name of the alerts provider.
       default: null
       originalType: string
+    max_months_lookback:
+      type: integer
+      description: >-
+        Maximum number of months to look back when processing alerts. Only alerts
+        from the last N months will be downloaded and processed. This helps bound
+        memory usage when dealing with large historical datasets. If null or not
+        specified, all historical data will be processed.
+      default: 1
     comapeo:
       type: object
       description: >
@@ -160,6 +173,7 @@ schema:
     - gcp_service_acct
     - alerts_bucket
     - alerts_provider
+    - max_months_lookback
     - territory_id
     - db
     - db_table_name

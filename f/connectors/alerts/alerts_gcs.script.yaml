@@ -67,7 +67,7 @@ schema:
         from the last N months will be downloaded and processed. This helps bound
         memory usage when dealing with large historical datasets. If null or not
         specified, all historical data will be processed.
-      default: null
+      default: 1
   required:
     - gcp_service_acct
     - alerts_bucket
