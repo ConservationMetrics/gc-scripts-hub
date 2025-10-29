@@ -114,6 +114,7 @@ def test_script_e2e_excel_format(arcgis_anonymous_server, tmp_path):
 def test_script_e2e_csv_format(arcgis_anonymous_server, tmp_path):
     """Test downloading features as CSV format"""
     asset_storage = tmp_path / "datalake"
+    folder_name = "arcgis_csv"
 
     output_files = main(
         subdomain=arcgis_anonymous_server.subdomain,
@@ -122,19 +123,18 @@ def test_script_e2e_csv_format(arcgis_anonymous_server, tmp_path):
         layer_index_list=[0],
         download_attachments=False,
         output_format="csv",
-        folder_name="arcgis_csv",
+        folder_name=folder_name,
         attachment_root=str(asset_storage),
     )
 
-    # CSV format saves to outputs/ directory (unlike geojson which saves to storage_path)
+    # Returns relative path, but file is saved to storage_path
     assert len(output_files) == 1
     output_file = output_files[0]
-    assert output_file.exists()
     assert output_file.suffix == ".csv"
-
-    # Clean up
-    output_file.unlink()
-    output_file.parent.rmdir()
+    
+    # Verify file actually exists at the full path
+    expected_file = asset_storage / folder_name / "test-anonymous-layer.csv"
+    assert expected_file.exists()
 
 
 def test_script_e2e_multiple_layers(arcgis_anonymous_server, tmp_path):
