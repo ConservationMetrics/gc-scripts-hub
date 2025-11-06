@@ -45,6 +45,23 @@ The request header must include an access token in the format:
 
 This endpoint retrieves the binary data of a specific attachment, such as a photo, associated with a project. The response will contain the raw binary content of the file, which can be saved or processed as needed.
 
+### `GET /projects/abc123/preset/preset_doc_id`
+
+```json
+{
+  "name": "My Preset",
+  "terms": ["term1", "term2"],
+  "color": "#000000"
+  ...
+}
+```
+
+This endpoint retrieves the preset data for a given preset `docId`. Per the [CoMapeo schema documentation](https://github.com/digidem/comapeo-schema/blob/main/schema/preset/v1.json), presets define how map entities are displayed to the user. They define the category that is assigned to an observation, the icon used on the map, and the fields / questions shown to the user when they create or edit the entity on the map. 
+
+Currently, we use this endpoint in the Fetch Observations script to fetch **some** of the preset data for a given observation that we think our users are most interested in having available in properties.
+
+A future TODO is to fetch all of the preset data, and the icons, for safeguarding and other purposes.
+
 # `comapeo_alerts`: Post Alerts to CoMapeo API
 
 This script fetches alerts data from a database and posts it to a CoMapeo server.

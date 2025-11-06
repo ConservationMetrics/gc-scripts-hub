@@ -349,7 +349,6 @@ def transform_comapeo_observations(
     features = []
 
     for observation in observations:
-        # Create a copy to avoid modifying the original
         observation = observation.copy()
 
         # Flatten tags into observation
@@ -392,6 +391,7 @@ def transform_comapeo_observations(
                     # Add color
                     if "color" in preset_data:
                         observation["color"] = preset_data["color"]
+                    # NOTE: presetRef returns much more than this (c.f. SAMPLE_PRESETS in tests/assets/server_responses.py)
 
         # Convert all keys (except docId) from camelCase to snake_case
         special_case_keys = {"docId"}
