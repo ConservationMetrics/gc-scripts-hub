@@ -60,7 +60,7 @@ This endpoint retrieves the preset data for a given preset `docId`. Per the [CoM
 
 Currently, we use this endpoint in the Fetch Observations script to fetch **some** of the preset data for a given observation that we think our users are most interested in having available in properties.
 
-A future TODO is to fetch all of the preset data, and the icons, for safeguarding and other purposes.
+A future TODO is to fetch all of the preset data, and the icons, for safeguarding and other purposes. https://github.com/ConservationMetrics/gc-scripts-hub/issues/178
 
 # `comapeo_alerts`: Post Alerts to CoMapeo API
 
