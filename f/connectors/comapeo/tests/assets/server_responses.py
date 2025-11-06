@@ -232,11 +232,25 @@ def comapeo_project_observations(uri, project_id):
                 if original_url:
                     # Extract the path after /attachments/ to preserve type and filename
                     if "/attachments/" in original_url:
-                        path_part = original_url.split("/attachments/", 1)[1]
+                        path_after_attachments = original_url.split("/attachments/", 1)[
+                            1
+                        ]
+                        # Extract just type and name (skip the driveDiscoveryId)
+                        parts = path_after_attachments.split("/")
+                        if len(parts) >= 3:
+                            type_and_name = "/".join(
+                                parts[1:]
+                            )  # Skip driveDiscoveryId, keep type and name
+                        else:
+                            type_and_name = (
+                                path_after_attachments.split("/", 1)[-1]
+                                if "/" in path_after_attachments
+                                else path_after_attachments
+                            )
                         # Use a mock driveDiscoveryId for test data
                         drive_discovery_id = "d40591d48d01318d3e6d0af02aa07b6b8ba4f31acbecca4e1c921468bc1fe6e4"
                         attachment["url"] = (
-                            f"{uri}/projects/{project_id}/attachments/{drive_discovery_id}/{path_part}"
+                            f"{uri}/projects/{project_id}/attachments/{drive_discovery_id}/{type_and_name}"
                         )
                     else:
                         # Fallback for old format
@@ -247,6 +261,30 @@ def comapeo_project_observations(uri, project_id):
         observations.append(obs_copy)
 
     return {"data": observations}
+
+
+def comapeo_preset(uri, project_id, preset_doc_id):
+    """Return preset data for a given preset docId."""
+    # Find the preset in SAMPLE_PRESETS by docId
+    for preset in SAMPLE_PRESETS:
+        if preset["docId"] == preset_doc_id:
+            # Update URLs to use the provided URI and project_id
+            preset_copy = preset.copy()
+            if "fieldRefs" in preset_copy:
+                preset_copy["fieldRefs"] = [
+                    {
+                        **field_ref,
+                        "url": f"{uri}/projects/{project_id}/field/{field_ref['docId']}",
+                    }
+                    for field_ref in preset_copy["fieldRefs"]
+                ]
+            if "iconRef" in preset_copy:
+                preset_copy["iconRef"] = {
+                    **preset_copy["iconRef"],
+                    "url": f"{uri}/projects/{project_id}/icon/{preset_copy['iconRef']['docId']}",
+                }
+            return {"data": preset_copy}
+    return {"data": None}
 
 
 def comapeo_alerts():

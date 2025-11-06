@@ -11,7 +11,7 @@ from f.connectors.comapeo.tests.assets import server_responses
 
 @pytest.fixture
 def mocked_responses():
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         yield rsps
 
 
@@ -39,11 +39,43 @@ def comapeoserver_observations(mocked_responses):
         json=server_responses.comapeo_project_observations(server_url, project_id),
         status=200,
     )
+    # Mock photo attachments
     mocked_responses.get(
         re.compile(rf"{server_url}/projects/{project_id}/attachments/.+/photo/.+"),
         body=open("f/connectors/comapeo/tests/assets/capybara.jpg", "rb").read(),
         content_type="image/jpg",
         headers={"Content-Length": "11044"},
+    )
+    # Mock audio attachments
+    audio_body = b"fake audio data" * 7  # Make it ~100 bytes to match Content-Length
+    mocked_responses.get(
+        re.compile(rf"{server_url}/projects/{project_id}/attachments/.+/audio/.+"),
+        body=audio_body,
+        content_type="audio/mpeg",
+        headers={"Content-Length": str(len(audio_body))},
+    )
+
+    # Mock preset endpoints for all presets in SAMPLE_PRESETS
+    # Note: Order matters - specific URLs must be registered before regex patterns
+    for preset in server_responses.SAMPLE_PRESETS:
+        preset_doc_id = preset["docId"]
+        preset_response = server_responses.comapeo_preset(
+            server_url, project_id, preset_doc_id
+        )
+        mocked_responses.get(
+            f"{server_url}/projects/{project_id}/preset/{preset_doc_id}",
+            json=preset_response,
+            status=200,
+        )
+
+    # Mock preset endpoint for any other preset (returns None for presets not in SAMPLE_PRESETS)
+    # This regex must come AFTER specific URL matches
+    mocked_responses.get(
+        re.compile(
+            rf"{re.escape(server_url)}/projects/{re.escape(project_id)}/preset/.+"
+        ),
+        json={"data": None},
+        status=200,
     )
 
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)

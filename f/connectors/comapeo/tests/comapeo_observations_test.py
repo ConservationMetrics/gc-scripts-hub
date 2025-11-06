@@ -1,9 +1,11 @@
 import psycopg2
 
 from f.connectors.comapeo.comapeo_observations import (
+    fetch_preset,
     main,
     transform_comapeo_observations,
 )
+from f.connectors.comapeo.tests.assets import server_responses
 from f.connectors.comapeo.tests.assets.server_responses import SAMPLE_OBSERVATIONS
 
 
@@ -29,14 +31,16 @@ def test_transform_comapeo_observations():
     assert properties1["project_id"] == "forest_expedition"
     assert properties1["data_source"] == "CoMapeo"
     assert properties1["notes"] == "Rapid"
-    # New fields from updated API structure
+
+    # Check that key fields are present
     assert "version_id" in properties1
     assert "original_version_id" in properties1
     assert "schema_name" in properties1
     assert properties1["schema_name"] == "observation"
     assert "deleted" in properties1
     assert properties1["deleted"] == "False"
-    # Flattened metadata fields
+
+    # Check that metadata fields are present
     assert "manual_location" in properties1
     assert properties1["manual_location"] == "False"
     assert "position_timestamp" in properties1
@@ -54,8 +58,11 @@ def test_transform_comapeo_observations():
     assert "mocked" in properties1
     assert properties1["mocked"] == "False"
     assert "links" in properties1
+
     # presetRef should not be present
     assert "preset_ref" not in properties1
+    # Note: Preset fields (category, terms, color) are not tested here since
+    # preset fetching requires server_url/access_token. These are tested in e2e test.
 
     feature2 = result[1]
     assert feature2["type"] == "Feature"
@@ -76,6 +83,66 @@ def test_transform_comapeo_observations():
     # In the test data, attachments are still in array format, so they'll be stringified
     assert "attachments" in properties2
     assert isinstance(properties2["attachments"], str)
+
+
+def test_fetch_preset(mocked_responses):
+    """Test the preset fetching function."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+
+    # Test successful preset fetch
+    preset_doc_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
+    preset_response = server_responses.comapeo_preset(
+        server_url, project_id, preset_doc_id
+    )
+
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset/{preset_doc_id}",
+        json=preset_response,
+        status=200,
+    )
+
+    result = fetch_preset(server_url, access_token, project_id, preset_doc_id)
+
+    assert result is not None
+    assert result["name"] == "Camp"
+    assert result["color"] == "#B209B2"
+    assert isinstance(result["terms"], list)
+    assert "campsite" in result["terms"]
+
+    # Test preset not found (returns None)
+    unknown_preset_id = "unknown_preset_id"
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset/{unknown_preset_id}",
+        json={"data": None},
+        status=200,
+    )
+
+    result = fetch_preset(server_url, access_token, project_id, unknown_preset_id)
+    assert result is None
+
+    # Test HTTP error (returns None)
+    error_preset_id = "error_preset_id"
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset/{error_preset_id}",
+        status=404,
+    )
+
+    result = fetch_preset(server_url, access_token, project_id, error_preset_id)
+    assert result is None
+
+    # Test invalid JSON response (returns None)
+    invalid_json_preset_id = "invalid_json_preset_id"
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset/{invalid_json_preset_id}",
+        body="not json",
+        status=200,
+        content_type="text/plain",
+    )
+
+    result = fetch_preset(server_url, access_token, project_id, invalid_json_preset_id)
+    assert result is None
 
 
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
@@ -111,10 +178,10 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             assert "data_source" in columns
             assert "g__type" in columns
             assert "g__coordinates" in columns
-            # Check that new fields from updated API structure are present
             assert "version_id" in columns
             assert "original_version_id" in columns
             assert "schema_name" in columns
+
             # Check that flattened metadata fields are present
             assert "manual_location" in columns
             assert "position_timestamp" in columns
@@ -125,8 +192,13 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             assert "accuracy" in columns
             assert "mocked" in columns
             assert "links" in columns
+
             # presetRef should not be present
             assert "preset_ref" not in columns
+            # Preset fields should be present
+            assert "category" in columns
+            assert "terms" in columns
+            assert "color" in columns
 
             # Check geometry data
             cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")
@@ -173,6 +245,23 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             )
             attachments = cursor.fetchone()[0]
             assert "capybara.jpg" in attachments
+
+            # Check that preset fields are properly stored
+            cursor.execute(
+                "SELECT category, terms, color FROM comapeo_forest_expedition WHERE \"docId\" = 'doc_id_1'"
+            )
+            row = cursor.fetchone()
+            assert row[0] == "Camp"  # category from preset name
+            assert row[1] == "campsite, camping, hunting"  # terms as comma-separated
+            assert row[2] == "#B209B2"  # color
+
+            cursor.execute(
+                "SELECT category, terms, color FROM comapeo_forest_expedition WHERE \"docId\" = 'doc_id_2'"
+            )
+            row = cursor.fetchone()
+            assert row[0] == "Water Source"  # category from preset name
+            assert row[1] == "water, stream, river, well"  # terms as comma-separated
+            assert row[2] == "#00A8FF"  # color
 
         # comapeo_river_mapping SQL Table does not exist (it's in the blocklist)
         with conn.cursor() as cursor:

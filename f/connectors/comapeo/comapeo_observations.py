@@ -284,7 +284,46 @@ def download_project_observations_and_attachments(
     return observations, skipped_attachments, attachment_failed
 
 
-def transform_comapeo_observations(observations, project_name, project_id=None):
+def fetch_preset(server_url, access_token, project_id, preset_doc_id):
+    """Fetch a preset from the CoMapeo API.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    access_token : str
+        The access token for authentication.
+    project_id : str
+        The unique identifier of the project.
+    preset_doc_id : str
+        The document ID of the preset to fetch.
+
+    Returns
+    -------
+    dict or None
+        The preset data if successful, None otherwise.
+    """
+    url = f"{server_url}/projects/{project_id}/preset/{preset_doc_id}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        preset_data = response.json().get("data")
+        return preset_data
+    except (
+        requests.exceptions.RequestException,
+        requests.exceptions.JSONDecodeError,
+    ) as e:
+        logger.warning(f"Failed to fetch preset {preset_doc_id}: {e}")
+        return None
+
+
+def transform_comapeo_observations(
+    observations, project_name, project_id=None, server_url=None, access_token=None
+):
     """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
 
     Parameters
@@ -295,6 +334,10 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
         The name of the project these observations belong to.
     project_id : str, optional
         The unique identifier of the project. If not provided, this field will be omitted from the output.
+    server_url : str, optional
+        The base URL of the CoMapeo server. Required for preset fetching.
+    access_token : str, optional
+        The access token for authentication. Required for preset fetching.
 
     Returns
     -------
@@ -304,36 +347,55 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
     features = []
 
     for observation in observations:
-        # Create k/v pairs for each tag
+        # Create a copy to avoid modifying the original
+        observation = observation.copy()
+
+        # Flatten tags into observation
         for key, value in observation.pop("tags", {}).items():
             observation[key] = value
 
         # Extract and flatten metadata fields
         metadata = observation.pop("metadata", {})
         if metadata:
-            observation["manual_location"] = metadata.get("manualLocation", None)
+            observation["manual_location"] = metadata.get("manualLocation")
             position = metadata.get("position", {})
             if position:
-                observation["position_timestamp"] = position.get("timestamp", None)
+                observation["position_timestamp"] = position.get("timestamp")
                 coords = position.get("coords", {})
                 if coords:
-                    observation["altitude"] = coords.get("altitude", None)
-                    observation["altitude_accuracy"] = coords.get(
-                        "altitudeAccuracy", None
-                    )
-                    observation["heading"] = coords.get("heading", None)
-                    observation["speed"] = coords.get("speed", None)
-                    observation["accuracy"] = coords.get("accuracy", None)
-                observation["mocked"] = position.get("mocked", None)
+                    observation["altitude"] = coords.get("altitude")
+                    observation["altitude_accuracy"] = coords.get("altitudeAccuracy")
+                    observation["heading"] = coords.get("heading")
+                    observation["speed"] = coords.get("speed")
+                    observation["accuracy"] = coords.get("accuracy")
+                observation["mocked"] = position.get("mocked")
 
-        # Remove presetRef (not storing it)
-        observation.pop("presetRef", None)
+        # Fetch and extract preset data
+        preset_ref = observation.pop("presetRef", None)
+        if preset_ref and server_url and access_token and project_id:
+            preset_doc_id = preset_ref.get("docId")
+            if preset_doc_id:
+                preset_data = fetch_preset(
+                    server_url, access_token, project_id, preset_doc_id
+                )
+                if preset_data:
+                    # Add name as category
+                    if "name" in preset_data:
+                        observation["category"] = preset_data["name"]
+                    # Add terms as comma-separated string
+                    if "terms" in preset_data and isinstance(
+                        preset_data["terms"], list
+                    ):
+                        observation["terms"] = ", ".join(preset_data["terms"])
+                    # Add color
+                    if "color" in preset_data:
+                        observation["color"] = preset_data["color"]
 
-        # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
-        special_case_keys = set(["docId"])
+        # Convert all keys (except docId) from camelCase to snake_case
+        special_case_keys = {"docId"}
         observation = normalize_and_snakecase_keys(observation, special_case_keys)
 
-        # Add project-specific information to properties
+        # Add project-specific information
         observation["project_name"] = project_name
         if project_id is not None:
             observation["project_id"] = project_id
@@ -407,7 +469,7 @@ def download_and_transform_comapeo_data(
 
         # Transform observations to GeoJSON features
         features = transform_comapeo_observations(
-            observations, project_name, project_id
+            observations, project_name, project_id, server_url, access_token
         )
 
         # Store observations as a GeoJSON FeatureCollection
