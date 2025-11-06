@@ -36,11 +36,26 @@ def test_transform_comapeo_observations():
     assert properties1["schema_name"] == "observation"
     assert "deleted" in properties1
     assert properties1["deleted"] == "False"
-    # Nested objects are stringified
-    assert "metadata" in properties1
-    assert isinstance(properties1["metadata"], str)
-    assert "preset_ref" in properties1
-    assert isinstance(properties1["preset_ref"], str)
+    # Flattened metadata fields
+    assert "manual_location" in properties1
+    assert properties1["manual_location"] == "False"
+    assert "position_timestamp" in properties1
+    assert properties1["position_timestamp"] == "2024-10-14T20:18:10.658Z"
+    assert "altitude" in properties1
+    assert properties1["altitude"] == "39.29999923706055"
+    assert "altitude_accuracy" in properties1
+    assert properties1["altitude_accuracy"] == "0.6382266283035278"
+    assert "heading" in properties1
+    assert properties1["heading"] == "0"
+    assert "speed" in properties1
+    assert properties1["speed"] == "0.013057432137429714"
+    assert "accuracy" in properties1
+    assert properties1["accuracy"] == "3.7899999618530273"
+    assert "mocked" in properties1
+    assert properties1["mocked"] == "False"
+    assert "links" in properties1
+    # presetRef should not be present
+    assert "preset_ref" not in properties1
 
     feature2 = result[1]
     assert feature2["type"] == "Feature"
@@ -100,8 +115,18 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             assert "version_id" in columns
             assert "original_version_id" in columns
             assert "schema_name" in columns
-            assert "metadata" in columns
-            assert "preset_ref" in columns
+            # Check that flattened metadata fields are present
+            assert "manual_location" in columns
+            assert "position_timestamp" in columns
+            assert "altitude" in columns
+            assert "altitude_accuracy" in columns
+            assert "heading" in columns
+            assert "speed" in columns
+            assert "accuracy" in columns
+            assert "mocked" in columns
+            assert "links" in columns
+            # presetRef should not be present
+            assert "preset_ref" not in columns
 
             # Check geometry data
             cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")

@@ -308,6 +308,27 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
         for key, value in observation.pop("tags", {}).items():
             observation[key] = value
 
+        # Extract and flatten metadata fields
+        metadata = observation.pop("metadata", {})
+        if metadata:
+            observation["manual_location"] = metadata.get("manualLocation", None)
+            position = metadata.get("position", {})
+            if position:
+                observation["position_timestamp"] = position.get("timestamp", None)
+                coords = position.get("coords", {})
+                if coords:
+                    observation["altitude"] = coords.get("altitude", None)
+                    observation["altitude_accuracy"] = coords.get(
+                        "altitudeAccuracy", None
+                    )
+                    observation["heading"] = coords.get("heading", None)
+                    observation["speed"] = coords.get("speed", None)
+                    observation["accuracy"] = coords.get("accuracy", None)
+                observation["mocked"] = position.get("mocked", None)
+
+        # Remove presetRef (not storing it)
+        observation.pop("presetRef", None)
+
         # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
         special_case_keys = set(["docId"])
         observation = normalize_and_snakecase_keys(observation, special_case_keys)
