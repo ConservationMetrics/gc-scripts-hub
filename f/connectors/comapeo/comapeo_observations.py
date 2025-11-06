@@ -151,7 +151,9 @@ def download_attachment(url, headers, save_path, existing_file_stems):
     Parameters
     ----------
     url : str
-        The URL of the file to be downloaded.
+        The URL of the file to be downloaded. Expected format:
+        .../attachments/{driveDiscoveryId}/{type}/{name}
+        where type is 'photo' or 'audio' and name is a hash.
     headers : dict
         A dictionary of HTTP headers to send with the request, such as authentication tokens.
     save_path : str

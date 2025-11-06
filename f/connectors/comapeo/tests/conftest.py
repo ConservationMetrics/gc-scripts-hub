@@ -40,16 +40,21 @@ def comapeoserver_observations(mocked_responses):
         status=200,
     )
     # Mock photo attachments
+    photo_body = b"fake photo data" * 100  # Make it ~1600 bytes
     mocked_responses.get(
-        re.compile(rf"{server_url}/projects/{project_id}/attachments/.+/photo/.+"),
-        body=open("f/connectors/comapeo/tests/assets/capybara.jpg", "rb").read(),
-        content_type="image/jpg",
-        headers={"Content-Length": "11044"},
+        re.compile(
+            rf"{re.escape(server_url)}/projects/{re.escape(project_id)}/attachments/.+/photo/.+"
+        ),
+        body=photo_body,
+        content_type="image/jpeg",
+        headers={"Content-Length": str(len(photo_body))},
     )
     # Mock audio attachments
     audio_body = b"fake audio data" * 7  # Make it ~100 bytes to match Content-Length
     mocked_responses.get(
-        re.compile(rf"{server_url}/projects/{project_id}/attachments/.+/audio/.+"),
+        re.compile(
+            rf"{re.escape(server_url)}/projects/{re.escape(project_id)}/attachments/.+/audio/.+"
+        ),
         body=audio_body,
         content_type="audio/mpeg",
         headers={"Content-Length": str(len(audio_body))},

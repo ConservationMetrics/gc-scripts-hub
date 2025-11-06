@@ -118,7 +118,6 @@ def test_fetch_preset(mocked_responses):
         json={"data": None},
         status=200,
     )
-
     result = fetch_preset(server_url, access_token, project_id, unknown_preset_id)
     assert result is None
 
@@ -158,7 +157,11 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
 
     # Attachments are saved to disk
     assert (
-        asset_storage / "comapeo" / "forest_expedition" / "attachments" / "capybara.jpg"
+        asset_storage
+        / "comapeo"
+        / "forest_expedition"
+        / "attachments"
+        / "a1b2c3d4e5f6g7h8.jpg"
     ).exists()
 
     with psycopg2.connect(**pg_database) as conn:
@@ -244,7 +247,7 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
                 "SELECT attachments FROM comapeo_forest_expedition WHERE \"docId\" = 'doc_id_2'"
             )
             attachments = cursor.fetchone()[0]
-            assert "capybara.jpg" in attachments
+            assert "a1b2c3d4e5f6g7h8.jpg" in attachments
 
             # Check that preset fields are properly stored
             cursor.execute(

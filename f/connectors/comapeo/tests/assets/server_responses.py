@@ -57,7 +57,7 @@ SAMPLE_OBSERVATIONS = [
         "deleted": False,
         "attachments": [
             {
-                "url": "http://comapeo.example.org/projects/forest_expedition/attachments/d40591d48d01318d3e6d0af02aa07b6b8ba4f31acbecca4e1c921468bc1fe6e4/photo/capybara.jpg"
+                "url": "http://comapeo.example.org/projects/forest_expedition/attachments/d40591d48d01318d3e6d0af02aa07b6b8ba4f31acbecca4e1c921468bc1fe6e4/photo/a1b2c3d4e5f6g7h8"
             }
         ],
         "tags": {
@@ -218,46 +218,18 @@ def comapeo_projects(uri):
 
 
 def comapeo_project_observations(uri, project_id):
-    # Update attachment URLs to use the provided URI and project_id
-    # New route format: /projects/:projectPublicId/attachments/:driveDiscoveryId/:type/:name
+    """Update attachment URLs to use the provided URI and project_id"""
     observations = []
     for obs in SAMPLE_OBSERVATIONS:
         obs_copy = obs.copy()
-        # Deep copy attachments to avoid modifying the original
         if "attachments" in obs_copy:
             obs_copy["attachments"] = [att.copy() for att in obs_copy["attachments"]]
             for attachment in obs_copy["attachments"]:
-                # Extract the attachment path from the original URL or use a default
                 original_url = attachment.get("url", "")
-                if original_url:
-                    # Extract the path after /attachments/ to preserve type and filename
-                    if "/attachments/" in original_url:
-                        path_after_attachments = original_url.split("/attachments/", 1)[
-                            1
-                        ]
-                        # Extract just type and name (skip the driveDiscoveryId)
-                        parts = path_after_attachments.split("/")
-                        if len(parts) >= 3:
-                            type_and_name = "/".join(
-                                parts[1:]
-                            )  # Skip driveDiscoveryId, keep type and name
-                        else:
-                            type_and_name = (
-                                path_after_attachments.split("/", 1)[-1]
-                                if "/" in path_after_attachments
-                                else path_after_attachments
-                            )
-                        # Use a mock driveDiscoveryId for test data
-                        drive_discovery_id = "d40591d48d01318d3e6d0af02aa07b6b8ba4f31acbecca4e1c921468bc1fe6e4"
-                        attachment["url"] = (
-                            f"{uri}/projects/{project_id}/attachments/{drive_discovery_id}/{type_and_name}"
-                        )
-                    else:
-                        # Fallback for old format
-                        drive_discovery_id = f"drive_discovery_{obs_copy['docId']}"
-                        attachment["url"] = (
-                            f"{uri}/projects/{project_id}/attachments/{drive_discovery_id}/photo/capybara.jpg"
-                        )
+                if original_url and "/attachments/" in original_url:
+                    path_after_projects = original_url.split("/projects/", 1)[1]
+                    _, *rest = path_after_projects.split("/")
+                    attachment["url"] = f"{uri}/projects/{project_id}/{'/'.join(rest)}"
         observations.append(obs_copy)
 
     return {"data": observations}
