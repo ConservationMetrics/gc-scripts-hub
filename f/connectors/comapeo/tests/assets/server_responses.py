@@ -131,6 +131,77 @@ SAMPLE_OBSERVATIONS = [
 ]
 
 
+SAMPLE_PRESETS = [
+    {
+        "docId": "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/279",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/279",
+        "schemaName": "preset",
+        "createdAt": "2024-10-14T02:41:33.288Z",
+        "updatedAt": "2024-10-14T02:41:33.288Z",
+        "links": [],
+        "deleted": False,
+        "name": "Camp",
+        "geometry": ["point"],
+        "tags": {
+            "type": "camp",
+        },
+        "addTags": {},
+        "removeTags": {},
+        "fieldRefs": [
+            {
+                "docId": "f32559383eb90a8b07433673159006249b1fe91783d901667696c3d44a847829",
+                "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/269",
+                "url": "http://comapeo.example.org/projects/forest_expedition/field/f32559383eb90a8b07433673159006249b1fe91783d901667696c3d44a847829",
+            },
+        ],
+        "terms": ["campsite", "camping", "hunting"],
+        "iconRef": {
+            "docId": "5e6c51c296690354a00e31acbbb872d79e516389481af2dbabd96af5e4d033ce",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/51",
+            "url": "http://comapeo.example.org/projects/forest_expedition/icon/5e6c51c296690354a00e31acbbb872d79e516389481af2dbabd96af5e4d033ce",
+        },
+        "color": "#B209B2",
+    },
+    {
+        "docId": "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/281",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/281",
+        "schemaName": "preset",
+        "createdAt": "2024-10-15T03:15:22.145Z",
+        "updatedAt": "2024-10-15T03:15:22.145Z",
+        "links": [],
+        "deleted": False,
+        "name": "Water Source",
+        "geometry": ["point"],
+        "tags": {
+            "type": "water",
+        },
+        "addTags": {},
+        "removeTags": {},
+        "fieldRefs": [
+            {
+                "docId": "a987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba09",
+                "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/270",
+                "url": "http://comapeo.example.org/projects/forest_expedition/field/a987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba09",
+            },
+            {
+                "docId": "b876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98",
+                "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/271",
+                "url": "http://comapeo.example.org/projects/forest_expedition/field/b876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98",
+            },
+        ],
+        "terms": ["water", "stream", "river", "well"],
+        "iconRef": {
+            "docId": "c765432109fedcba8765432109fedcba8765432109fedcba8765432109fedcba87",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/52",
+            "url": "http://comapeo.example.org/projects/forest_expedition/icon/c765432109fedcba8765432109fedcba8765432109fedcba8765432109fedcba87",
+        },
+        "color": "#00A8FF",
+    },
+]
+
+
 def comapeo_projects(uri):
     return {
         "data": [
