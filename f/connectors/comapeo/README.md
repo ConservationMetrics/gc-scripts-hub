@@ -66,7 +66,7 @@ Currently, we use this endpoint in the Fetch Observations script to fetch **some
 
 ### `GET /projects/abc123/icon/icon_doc_id`
 
-This endpoint retrieves the binary data of a specific icon file associated with a preset. The response will contain the raw binary content of the file (typically an image file like PNG or SVG), which is saved to disk with a sanitized filename based on the preset's name. Icons are saved in the `icons/` directory, at the same level as the `attachments/` directory.
+This endpoint retrieves the binary data of a specific icon file associated with a preset. The response will contain the raw binary content of the file (typically a PNG image), which is saved to disk with a sanitized filename based on the preset's name. Icons are saved in the `icons/` directory, at the same level as the `attachments/` directory.
 
 # `comapeo_alerts`: Post Alerts to CoMapeo API
 
