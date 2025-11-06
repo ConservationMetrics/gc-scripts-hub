@@ -1,4 +1,5 @@
 import psycopg2
+import requests
 
 from f.connectors.comapeo.comapeo_observations import (
     fetch_preset,
@@ -91,6 +92,9 @@ def test_fetch_preset(mocked_responses):
     access_token = "test_token"
     project_id = "forest_expedition"
 
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
     # Test successful preset fetch
     preset_doc_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
     preset_response = server_responses.comapeo_preset(
@@ -103,7 +107,7 @@ def test_fetch_preset(mocked_responses):
         status=200,
     )
 
-    result = fetch_preset(server_url, access_token, project_id, preset_doc_id)
+    result = fetch_preset(server_url, session, project_id, preset_doc_id)
 
     assert result is not None
     assert result["name"] == "Camp"
@@ -118,7 +122,7 @@ def test_fetch_preset(mocked_responses):
         json={"data": None},
         status=200,
     )
-    result = fetch_preset(server_url, access_token, project_id, unknown_preset_id)
+    result = fetch_preset(server_url, session, project_id, unknown_preset_id)
     assert result is None
 
     # Test HTTP error (returns None)
@@ -128,7 +132,7 @@ def test_fetch_preset(mocked_responses):
         status=404,
     )
 
-    result = fetch_preset(server_url, access_token, project_id, error_preset_id)
+    result = fetch_preset(server_url, session, project_id, error_preset_id)
     assert result is None
 
     # Test invalid JSON response (returns None)
@@ -140,7 +144,7 @@ def test_fetch_preset(mocked_responses):
         content_type="text/plain",
     )
 
-    result = fetch_preset(server_url, access_token, project_id, invalid_json_preset_id)
+    result = fetch_preset(server_url, session, project_id, invalid_json_preset_id)
     assert result is None
 
 
