@@ -45,7 +45,7 @@ def test_transform_comapeo_observations():
     )  # camelCase animal-type converted to snake_case
     assert (
         properties2["attachments"]
-        == "[{'url': 'http://comapeo.example.org/projects/forest_expedition/attachments/doc_id_2/photo/capybara.jpg'}]"
+        == "[{'url': 'http://comapeo.example.org/projects/forest_expedition/attachments/drive_discovery_doc_id_2/photo/capybara.jpg'}]"
     )
     # Note: when processing CoMapeo API data, attachments are transformed to a string (composed of a comma-separated list
     # of attachment filenames) in the `download_project_observations_and_attachments` function, which is called earlier in

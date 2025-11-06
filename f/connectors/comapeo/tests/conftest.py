@@ -35,7 +35,7 @@ def comapeoserver_observations(mocked_responses):
         status=200,
     )
     mocked_responses.get(
-        f"{server_url}/projects/{project_id}/observations",
+        f"{server_url}/projects/{project_id}/observation",
         json=server_responses.comapeo_project_observations(server_url, project_id),
         status=200,
     )
@@ -72,7 +72,7 @@ def comapeoserver_alerts(mocked_responses):
     mocked_responses.get(
         comapeo_alerts_endpoint,
         json=server_responses.comapeo_alerts(),
-        status=201,
+        status=200,
     )
 
     mocked_responses.post(

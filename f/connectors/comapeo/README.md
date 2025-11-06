@@ -23,7 +23,7 @@ The request header must include an access token in the format:
 }
 ```
 
-### `GET /projects/abc123/observations`
+### `GET /projects/abc123/observation`
 
 ```json
 {

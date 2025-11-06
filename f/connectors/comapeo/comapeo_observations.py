@@ -234,7 +234,7 @@ def download_project_observations_and_attachments(
     tuple
         A tuple containing (observations, skipped_attachments, attachment_failed).
     """
-    url = f"{server_url}/projects/{project_id}/observations"
+    url = f"{server_url}/projects/{project_id}/observation"
     headers = {
         "Authorization": f"Bearer {access_token}",
     }

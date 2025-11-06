@@ -22,7 +22,7 @@ SAMPLE_OBSERVATIONS = [
         "lon": 2.3522,
         "attachments": [
             {
-                "url": "http://comapeo.example.org/projects/forest_expedition/attachments/doc_id_2/photo/capybara.jpg"
+                "url": "http://comapeo.example.org/projects/forest_expedition/attachments/drive_discovery_doc_id_2/photo/capybara.jpg"
             }
         ],
         "tags": {
@@ -64,13 +64,16 @@ def comapeo_projects(uri):
 
 def comapeo_project_observations(uri, project_id):
     # Update attachment URLs to use the provided URI and project_id
+    # New route format: /projects/:projectPublicId/attachments/:driveDiscoveryId/:type/:name
     observations = []
     for obs in SAMPLE_OBSERVATIONS:
         obs_copy = obs.copy()
         if "attachments" in obs_copy:
             for attachment in obs_copy["attachments"]:
+                # Use a mock driveDiscoveryId for test data
+                drive_discovery_id = f"drive_discovery_{obs_copy['docId']}"
                 attachment["url"] = (
-                    f"{uri}/projects/{project_id}/attachments/{obs_copy['docId']}/photo/capybara.jpg"
+                    f"{uri}/projects/{project_id}/attachments/{drive_discovery_id}/photo/capybara.jpg"
                 )
         observations.append(obs_copy)
 
