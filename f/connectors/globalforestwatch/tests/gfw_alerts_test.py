@@ -11,7 +11,9 @@ from f.connectors.globalforestwatch.gfw_alerts import (
 
 @patch("f.connectors.globalforestwatch.gfw_alerts.datetime")
 @patch("f.common_logic.date_utils.datetime")
-def test_script_e2e(mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_database, tmp_path):
+def test_script_e2e(
+    mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_database, tmp_path
+):
     # Mock current date to be October 2025
     mock_datetime_utils.now.return_value = datetime(2025, 10, 15)
     mock_datetime_gfw.now.return_value = datetime(2025, 10, 15)
@@ -77,7 +79,9 @@ def test_script_e2e(mock_datetime_utils, mock_datetime_gfw, gfw_server, pg_datab
             assert zero_alert_days >= 600  # Most days should have 0 alerts
 
             # Check that day field is populated
-            cursor.execute("SELECT day FROM gfw_alerts__metadata WHERE day IS NOT NULL LIMIT 1")
+            cursor.execute(
+                "SELECT day FROM gfw_alerts__metadata WHERE day IS NOT NULL LIMIT 1"
+            )
             assert cursor.fetchone()[0] is not None
 
             cursor.execute(
@@ -127,11 +131,15 @@ def test_metadata_daily_tracking(
                 "SELECT DISTINCT year, month FROM gfw_daily_test__metadata ORDER BY year, month"
             )
             months = cursor.fetchall()
-            expected_months = [(2024, 12)] + [(2025, i) for i in range(1, 6)]  # Dec 2024 - May 2025
+            expected_months = [(2024, 12)] + [
+                (2025, i) for i in range(1, 6)
+            ]  # Dec 2024 - May 2025
             assert months == expected_months
 
             # Check that day field is populated for all records
-            cursor.execute("SELECT COUNT(*) FROM gfw_daily_test__metadata WHERE day IS NOT NULL")
+            cursor.execute(
+                "SELECT COUNT(*) FROM gfw_daily_test__metadata WHERE day IS NOT NULL"
+            )
             assert cursor.fetchone()[0] == record_count
 
             # Check that we have some days with alerts (January and March should have alerts)
@@ -163,9 +171,7 @@ def test_metadata_daily_tracking(
             assert zero_alert_days >= 100  # Most days should have 0 alerts
 
             # Verify all records have correct data source and type
-            cursor.execute(
-                "SELECT DISTINCT data_source FROM gfw_daily_test__metadata"
-            )
+            cursor.execute("SELECT DISTINCT data_source FROM gfw_daily_test__metadata")
             assert cursor.fetchone()[0] == "Global Forest Watch"
 
             cursor.execute("SELECT DISTINCT type_alert FROM gfw_daily_test__metadata")
@@ -177,11 +183,14 @@ def test_metadata_daily_tracking(
             assert cursor.fetchone()[0] == "fires"
 
 
+@patch("f.connectors.globalforestwatch.gfw_alerts.datetime")
 @patch("f.common_logic.date_utils.datetime")
-def test_max_months_lookback_metadata_filtering(mock_datetime):
+def test_max_months_lookback_metadata_filtering(mock_datetime_utils, mock_datetime_gfw):
     """Test that max_months_lookback correctly filters metadata by date range"""
-    # Mock current date to October 2025
-    mock_datetime.now.return_value = datetime(2025, 10, 15)
+    # Mock current date to October 15, 2025
+    mock_date = datetime(2025, 10, 15)
+    mock_datetime_utils.now.return_value = mock_date
+    mock_datetime_gfw.now.return_value = mock_date
 
     # Create mock alerts from different dates
     alerts = [
@@ -196,10 +205,10 @@ def test_max_months_lookback_metadata_filtering(mock_datetime):
     assert len(prepared_all) >= 680
 
     # 6 months lookback - only process last 6+ months
+    # With mocked date Oct 15, 2025: cutoff is April 2025, so start is April 1, 2025
+    # Days: April (30) + May (31) + June (30) + July (31) + Aug (31) + Sep (30) + Oct (15) = 198
     prepared_filtered = prepare_gfw_metadata(alerts, "nasa_viirs_fire_alerts", 6)
-    # Should have ~198-210 days (April 1 to Oct 15, 2025)
-    assert len(prepared_filtered) < 220
-    assert len(prepared_filtered) >= 190
+    assert len(prepared_filtered) == 198
 
     # Verify only recent months are included
     years_months = {(record["year"], record["month"]) for record in prepared_filtered}
