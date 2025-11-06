@@ -38,8 +38,11 @@ def main(
     server_url = comapeo["server_url"]
     access_token = comapeo["access_token"]
 
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
     comapeo_projects = fetch_comapeo_projects(
-        server_url, access_token, comapeo_project_blocklist
+        server_url, session, comapeo_project_blocklist
     )
 
     # Run culminates in success if there were no projects returned by the API
@@ -53,7 +56,7 @@ def main(
 
     comapeo_projects_geojson, attachment_failed = download_and_transform_comapeo_data(
         server_url,
-        access_token,
+        session,
         comapeo_projects,
         attachment_root,
     )
@@ -88,15 +91,17 @@ def main(
         raise RuntimeError("Some attachments failed to download.")
 
 
-def fetch_comapeo_projects(server_url, access_token, comapeo_project_blocklist):
+def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
     """
     Fetches a list of projects from the CoMapeo API, excluding any projects
     specified in the blocklist.
 
     Parameters
     ----------
-    server: comapeo_server
-        For authenticating with the CoMapeo API
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
     comapeo_project_blocklist : list
         A list of project IDs to be excluded from the fetched results.
 
@@ -108,10 +113,8 @@ def fetch_comapeo_projects(server_url, access_token, comapeo_project_blocklist):
     """
 
     url = f"{server_url}/projects"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    payload = {}
     logger.info("Fetching projects from CoMapeo API...")
-    response = requests.request("GET", url, headers=headers, data=payload)
+    response = session.get(url)
 
     response.raise_for_status()
     results = response.json().get("data", [])
@@ -144,16 +147,18 @@ def build_existing_file_set(directory):
     return {Path(f).stem for f in files}  # just base names, no extensions
 
 
-def download_attachment(url, headers, save_path, existing_file_stems):
+def download_attachment(url, session, save_path, existing_file_stems):
     """
     Downloads a file from a specified URL and saves it to a given path.
 
     Parameters
     ----------
     url : str
-        The URL of the file to be downloaded.
-    headers : dict
-        A dictionary of HTTP headers to send with the request, such as authentication tokens.
+        The URL of the file to be downloaded. Expected format:
+        .../attachments/{driveDiscoveryId}/{type}/{name}
+        where type is 'photo' or 'audio' and name is a hash.
+    session : requests.Session
+        A requests session with authentication headers configured.
     save_path : str
         The file system path where the downloaded file will be saved.
     existing_file_stems : set
@@ -191,7 +196,7 @@ def download_attachment(url, headers, save_path, existing_file_stems):
         return (full_path.name if full_path else base_name), skipped_attachments
 
     try:
-        response = requests.get(url, headers=headers)
+        response = session.get(url)
         response.raise_for_status()
 
         content_type = response.headers.get("Content-Type", "")
@@ -212,7 +217,7 @@ def download_attachment(url, headers, save_path, existing_file_stems):
 
 
 def download_project_observations_and_attachments(
-    server_url, access_token, project_id, project_name, attachment_root
+    server_url, session, project_id, project_name, attachment_root
 ):
     """Download observations and their attachments for a specific project from the CoMapeo API.
 
@@ -220,8 +225,8 @@ def download_project_observations_and_attachments(
     ----------
     server_url : str
         The base URL of the CoMapeo server.
-    access_token : str
-        The access token for authentication.
+    session : requests.Session
+        A requests session with authentication headers configured.
     project_id : str
         The unique identifier of the project.
     project_name : str
@@ -234,13 +239,10 @@ def download_project_observations_and_attachments(
     tuple
         A tuple containing (observations, skipped_attachments, attachment_failed).
     """
-    url = f"{server_url}/projects/{project_id}/observations"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-    }
+    url = f"{server_url}/projects/{project_id}/observation"
 
     logger.info(f"Fetching project (ID: {project_id})...")
-    response = requests.get(url, headers=headers)
+    response = session.get(url)
 
     try:
         observations = response.json().get("data", [])
@@ -266,7 +268,7 @@ def download_project_observations_and_attachments(
                 if "url" in attachment:
                     file_name, skipped = download_attachment(
                         attachment["url"],
-                        headers,
+                        session,
                         str(attachment_dir / Path(attachment["url"]).name),
                         existing_file_stems,
                     )
@@ -284,7 +286,43 @@ def download_project_observations_and_attachments(
     return observations, skipped_attachments, attachment_failed
 
 
-def transform_comapeo_observations(observations, project_name, project_id=None):
+def fetch_preset(server_url, session, project_id, preset_doc_id):
+    """Fetch a preset from the CoMapeo API.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+    preset_doc_id : str
+        The document ID of the preset to fetch.
+
+    Returns
+    -------
+    dict or None
+        The preset data if successful, None otherwise.
+    """
+    url = f"{server_url}/projects/{project_id}/preset/{preset_doc_id}"
+
+    try:
+        response = session.get(url)
+        response.raise_for_status()
+        preset_data = response.json().get("data")
+        return preset_data
+    except (
+        requests.exceptions.RequestException,
+        requests.exceptions.JSONDecodeError,
+    ) as e:
+        logger.warning(f"Failed to fetch preset {preset_doc_id}: {e}")
+        return None
+
+
+def transform_comapeo_observations(
+    observations, project_name, project_id=None, server_url=None, session=None
+):
     """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
 
     Parameters
@@ -295,6 +333,10 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
         The name of the project these observations belong to.
     project_id : str, optional
         The unique identifier of the project. If not provided, this field will be omitted from the output.
+    server_url : str, optional
+        The base URL of the CoMapeo server. Required for preset fetching.
+    session : requests.Session, optional
+        A requests session with authentication headers configured. Required for preset fetching.
 
     Returns
     -------
@@ -304,15 +346,55 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
     features = []
 
     for observation in observations:
-        # Create k/v pairs for each tag
+        observation = observation.copy()
+
+        # Flatten tags into observation
         for key, value in observation.pop("tags", {}).items():
             observation[key] = value
 
-        # Convert all keys (except docId) from camelCase to snake_case, handling key collisions and char limits
-        special_case_keys = set(["docId"])
+        # Extract and flatten metadata fields
+        metadata = observation.pop("metadata", {})
+        if metadata:
+            observation["manual_location"] = metadata.get("manualLocation")
+            position = metadata.get("position", {})
+            if position:
+                observation["position_timestamp"] = position.get("timestamp")
+                coords = position.get("coords", {})
+                if coords:
+                    observation["altitude"] = coords.get("altitude")
+                    observation["altitude_accuracy"] = coords.get("altitudeAccuracy")
+                    observation["heading"] = coords.get("heading")
+                    observation["speed"] = coords.get("speed")
+                    observation["accuracy"] = coords.get("accuracy")
+                observation["mocked"] = position.get("mocked")
+
+        # Fetch and extract preset data
+        preset_ref = observation.pop("presetRef", None)
+        if preset_ref and server_url and session and project_id:
+            preset_doc_id = preset_ref.get("docId")
+            if preset_doc_id:
+                preset_data = fetch_preset(
+                    server_url, session, project_id, preset_doc_id
+                )
+                if preset_data:
+                    # Add name as category
+                    if "name" in preset_data:
+                        observation["category"] = preset_data["name"]
+                    # Add terms as comma-separated string
+                    if "terms" in preset_data and isinstance(
+                        preset_data["terms"], list
+                    ):
+                        observation["terms"] = ", ".join(preset_data["terms"])
+                    # Add color
+                    if "color" in preset_data:
+                        observation["color"] = preset_data["color"]
+                    # NOTE: presetRef returns much more than this (c.f. SAMPLE_PRESETS in tests/assets/server_responses.py)
+
+        # Convert all keys (except docId) from camelCase to snake_case
+        special_case_keys = {"docId"}
         observation = normalize_and_snakecase_keys(observation, special_case_keys)
 
-        # Add project-specific information to properties
+        # Add project-specific information
         observation["project_name"] = project_name
         if project_id is not None:
             observation["project_id"] = project_id
@@ -344,7 +426,7 @@ def transform_comapeo_observations(observations, project_name, project_id=None):
 
 def download_and_transform_comapeo_data(
     server_url,
-    access_token,
+    session,
     comapeo_projects,
     attachment_root,
 ):
@@ -353,8 +435,10 @@ def download_and_transform_comapeo_data(
 
     Parameters
     ----------
-    comapeo_server : dict
-        A dictionary containing the 'server_url' and 'access_token' keys for the CoMapeo server.
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
     comapeo_projects : list
         A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
     attachment_root : str
@@ -380,13 +464,13 @@ def download_and_transform_comapeo_data(
         # Download all observations and attachments for this project
         observations, skipped_attachments, project_attachment_failed = (
             download_project_observations_and_attachments(
-                server_url, access_token, project_id, project_name, attachment_root
+                server_url, session, project_id, project_name, attachment_root
             )
         )
 
         # Transform observations to GeoJSON features
         features = transform_comapeo_observations(
-            observations, project_name, project_id
+            observations, project_name, project_id, server_url, session
         )
 
         # Store observations as a GeoJSON FeatureCollection
