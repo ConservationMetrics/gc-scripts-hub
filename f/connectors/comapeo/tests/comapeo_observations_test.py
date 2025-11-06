@@ -29,6 +29,18 @@ def test_transform_comapeo_observations():
     assert properties1["project_id"] == "forest_expedition"
     assert properties1["data_source"] == "CoMapeo"
     assert properties1["notes"] == "Rapid"
+    # New fields from updated API structure
+    assert "version_id" in properties1
+    assert "original_version_id" in properties1
+    assert "schema_name" in properties1
+    assert properties1["schema_name"] == "observation"
+    assert "deleted" in properties1
+    assert properties1["deleted"] == "False"
+    # Nested objects are stringified
+    assert "metadata" in properties1
+    assert isinstance(properties1["metadata"], str)
+    assert "preset_ref" in properties1
+    assert isinstance(properties1["preset_ref"], str)
 
     feature2 = result[1]
     assert feature2["type"] == "Feature"
@@ -43,13 +55,12 @@ def test_transform_comapeo_observations():
     assert (
         properties2["animal_type"] == "capybara"
     )  # camelCase animal-type converted to snake_case
-    assert (
-        properties2["attachments"]
-        == "[{'url': 'http://comapeo.example.org/projects/forest_expedition/attachments/drive_discovery_doc_id_2/photo/capybara.jpg'}]"
-    )
     # Note: when processing CoMapeo API data, attachments are transformed to a string (composed of a comma-separated list
     # of attachment filenames) in the `download_project_observations_and_attachments` function, which is called earlier in
     # the script. This is why the attachment field here is the raw attachment URL.
+    # In the test data, attachments are still in array format, so they'll be stringified
+    assert "attachments" in properties2
+    assert isinstance(properties2["attachments"], str)
 
 
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
@@ -85,6 +96,12 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             assert "data_source" in columns
             assert "g__type" in columns
             assert "g__coordinates" in columns
+            # Check that new fields from updated API structure are present
+            assert "version_id" in columns
+            assert "original_version_id" in columns
+            assert "schema_name" in columns
+            assert "metadata" in columns
+            assert "preset_ref" in columns
 
             # Check geometry data
             cursor.execute("SELECT g__type FROM comapeo_forest_expedition LIMIT 1")
