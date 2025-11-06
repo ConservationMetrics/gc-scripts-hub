@@ -2,6 +2,7 @@ import psycopg2
 import requests
 
 from f.connectors.comapeo.comapeo_observations import (
+    download_file,
     fetch_preset,
     main,
     transform_comapeo_observations,
@@ -15,11 +16,13 @@ def test_transform_comapeo_observations():
     project_name = "Forest Expedition"
     project_id = "forest_expedition"
 
-    result = transform_comapeo_observations(
+    result, skipped_icons, icon_failed = transform_comapeo_observations(
         SAMPLE_OBSERVATIONS, project_name, project_id
     )
 
     assert len(result) == len(SAMPLE_OBSERVATIONS)
+    assert skipped_icons == 0
+    assert icon_failed is False
 
     feature1 = result[0]
     assert feature1["type"] == "Feature"
@@ -86,7 +89,7 @@ def test_transform_comapeo_observations():
     assert isinstance(properties2["attachments"], str)
 
 
-def test_fetch_preset(mocked_responses):
+def test_fetch_preset(mocked_responses, tmp_path):
     """Test the preset fetching function."""
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
@@ -107,13 +110,41 @@ def test_fetch_preset(mocked_responses):
         status=200,
     )
 
-    result = fetch_preset(server_url, session, project_id, preset_doc_id)
+    result, skipped, failed = fetch_preset(
+        server_url, session, project_id, preset_doc_id
+    )
 
     assert result is not None
     assert result["name"] == "Camp"
     assert result["color"] == "#B209B2"
     assert isinstance(result["terms"], list)
     assert "campsite" in result["terms"]
+    assert skipped == 0
+    assert failed is False
+
+    # Test preset fetch with icon downloading
+    icon_dir = tmp_path / "icons"
+    existing_icon_stems = set()
+    icon_doc_id = preset_response["data"]["iconRef"]["docId"]
+    icon_body = b"fake icon data" * 10
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/icon/{icon_doc_id}",
+        body=icon_body,
+        content_type="image/png",
+        headers={"Content-Length": str(len(icon_body))},
+    )
+
+    preset_data, skipped, failed = fetch_preset(
+        server_url, session, project_id, preset_doc_id, icon_dir, existing_icon_stems
+    )
+
+    assert preset_data is not None
+    assert skipped == 0
+    assert failed is False
+    # Verify icon was downloaded
+    icon_path = icon_dir / "camp.png"
+    assert icon_path.exists()
+    assert icon_path.read_bytes() == icon_body
 
     # Test preset not found (returns None)
     unknown_preset_id = "unknown_preset_id"
@@ -122,8 +153,12 @@ def test_fetch_preset(mocked_responses):
         json={"data": None},
         status=200,
     )
-    result = fetch_preset(server_url, session, project_id, unknown_preset_id)
+    result, skipped, failed = fetch_preset(
+        server_url, session, project_id, unknown_preset_id
+    )
     assert result is None
+    assert skipped == 0
+    assert failed is False
 
     # Test HTTP error (returns None)
     error_preset_id = "error_preset_id"
@@ -132,8 +167,12 @@ def test_fetch_preset(mocked_responses):
         status=404,
     )
 
-    result = fetch_preset(server_url, session, project_id, error_preset_id)
+    result, skipped, failed = fetch_preset(
+        server_url, session, project_id, error_preset_id
+    )
     assert result is None
+    assert skipped == 0
+    assert failed is False
 
     # Test invalid JSON response (returns None)
     invalid_json_preset_id = "invalid_json_preset_id"
@@ -144,8 +183,112 @@ def test_fetch_preset(mocked_responses):
         content_type="text/plain",
     )
 
-    result = fetch_preset(server_url, session, project_id, invalid_json_preset_id)
+    result, skipped, failed = fetch_preset(
+        server_url, session, project_id, invalid_json_preset_id
+    )
     assert result is None
+    assert skipped == 0
+    assert failed is False
+
+
+def test_download_file(mocked_responses, tmp_path):
+    """Test the file downloading function."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    icon_dir = tmp_path / "icons"
+    icon_dir.mkdir(parents=True)
+
+    # Test successful PNG icon download
+    icon_url = f"{server_url}/projects/test_project/icon/test_icon_id"
+    icon_body = b"fake png icon data" * 10
+    mocked_responses.get(
+        icon_url,
+        body=icon_body,
+        content_type="image/png",
+        headers={"Content-Length": str(len(icon_body))},
+    )
+
+    existing_icon_stems = set()
+    file_name, skipped = download_file(
+        icon_url, session, str(icon_dir / "test_icon"), existing_icon_stems
+    )
+
+    assert file_name == "test_icon.png"
+    assert skipped == 0
+    icon_path = icon_dir / "test_icon.png"
+    assert icon_path.exists()
+    assert icon_path.read_bytes() == icon_body
+
+    # Test icon download when file already exists (skip)
+    existing_icon_stems.add("existing_icon")
+    existing_icon_path = icon_dir / "existing_icon.png"
+    existing_icon_path.write_bytes(b"existing icon data")
+
+    file_name, skipped = download_file(
+        icon_url, session, str(icon_dir / "existing_icon"), existing_icon_stems
+    )
+
+    assert file_name == "existing_icon.png"
+    assert skipped == 1
+    # Verify file wasn't overwritten
+    assert existing_icon_path.read_bytes() == b"existing icon data"
+
+    # Test HTTP error (404)
+    error_icon_url = f"{server_url}/projects/test_project/icon/not_found_icon"
+    mocked_responses.get(error_icon_url, status=404)
+
+    file_name, skipped = download_file(
+        error_icon_url, session, str(icon_dir / "error_icon"), existing_icon_stems
+    )
+
+    assert file_name is None
+    assert skipped == 1
+    assert not (icon_dir / "error_icon").exists()
+
+    # Test HTTP error (500)
+    server_error_url = f"{server_url}/projects/test_project/icon/server_error_icon"
+    mocked_responses.get(server_error_url, status=500)
+
+    file_name, skipped = download_file(
+        server_error_url,
+        session,
+        str(icon_dir / "server_error_icon"),
+        existing_icon_stems,
+    )
+
+    assert file_name is None
+    assert skipped == 1
+
+    # Test missing Content-Type header (should save without extension)
+    no_content_type_url = (
+        f"{server_url}/projects/test_project/icon/no_content_type_icon"
+    )
+    no_content_type_body = b"icon data without content type"
+    mocked_responses.get(
+        no_content_type_url,
+        body=no_content_type_body,
+        headers={
+            "Content-Length": str(len(no_content_type_body)),
+            "Content-Type": "",
+        },
+    )
+
+    file_name, skipped = download_file(
+        no_content_type_url,
+        session,
+        str(icon_dir / "no_content_type_icon"),
+        existing_icon_stems,
+    )
+
+    assert file_name == "no_content_type_icon"
+    assert skipped == 0
+    no_content_type_path = icon_dir / "no_content_type_icon"
+    assert no_content_type_path.exists()
+    assert no_content_type_path.read_bytes() == no_content_type_body
 
 
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
@@ -166,6 +309,14 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
         / "forest_expedition"
         / "attachments"
         / "a1b2c3d4e5f6g7h8.jpg"
+    ).exists()
+
+    # Icons are saved to disk with sanitized preset names
+    assert (
+        asset_storage / "comapeo" / "forest_expedition" / "icons" / "camp.png"
+    ).exists()
+    assert (
+        asset_storage / "comapeo" / "forest_expedition" / "icons" / "water_source.png"
     ).exists()
 
     with psycopg2.connect(**pg_database) as conn:
