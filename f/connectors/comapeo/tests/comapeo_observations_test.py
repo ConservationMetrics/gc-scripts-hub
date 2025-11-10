@@ -3,6 +3,7 @@ import requests
 
 from f.connectors.comapeo.comapeo_observations import (
     download_file,
+    download_project_observations_and_attachments,
     fetch_preset,
     main,
     transform_comapeo_observations,
@@ -87,6 +88,240 @@ def test_transform_comapeo_observations():
     # In the test data, attachments are still in array format, so they'll be stringified
     assert "attachments" in properties2
     assert isinstance(properties2["attachments"], str)
+
+
+def test_transform_comapeo_observations_with_icon_failures(mocked_responses, tmp_path):
+    """Test that icon failures are properly counted in stats."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    project_name = "Forest Expedition"
+    attachment_root = str(tmp_path)
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    # Create observations with presetRefs that will fail to download icons
+    observations = [
+        {
+            "docId": "doc_id_1",
+            "lat": -33.8688,
+            "lon": 151.2093,
+            "presetRef": {
+                "docId": "preset_1",
+            },
+        },
+        {
+            "docId": "doc_id_2",
+            "lat": 48.8566,
+            "lon": 2.3522,
+            "presetRef": {
+                "docId": "preset_2",
+            },
+        },
+    ]
+
+    # Mock preset endpoints to return valid presets with iconRefs
+    for i, preset_id in enumerate(["preset_1", "preset_2"], 1):
+        preset_response = {
+            "data": {
+                "name": f"Preset {i}",
+                "iconRef": {
+                    "docId": f"icon_{i}",
+                    "url": f"{server_url}/projects/{project_id}/icon/icon_{i}",
+                },
+            }
+        }
+        mocked_responses.get(
+            f"{server_url}/projects/{project_id}/preset/{preset_id}",
+            json=preset_response,
+            status=200,
+        )
+        # Mock icon endpoints to fail (404)
+        mocked_responses.get(
+            f"{server_url}/projects/{project_id}/icon/icon_{i}",
+            status=404,
+        )
+
+    features, stats = transform_comapeo_observations(
+        observations,
+        project_name,
+        project_id,
+        server_url,
+        session,
+        attachment_root,
+    )
+
+    assert len(features) == 2
+    assert stats["icon_failed"] == 2  # Both icons failed
+    assert stats["skipped_icons"] == 0
+
+
+def test_transform_comapeo_observations_with_skipped_icons(mocked_responses, tmp_path):
+    """Test that skipped icons are properly counted in stats."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    project_name = "Forest Expedition"
+    attachment_root = str(tmp_path)
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    # Create icon directory and pre-existing icon file
+    # The icon filename is based on normalize_identifier(preset_name)
+    # "TestPreset" normalizes to "test_preset"
+    icon_dir = tmp_path / "comapeo" / "forest_expedition" / "icons"
+    icon_dir.mkdir(parents=True)
+    (icon_dir / "test_preset.png").write_bytes(b"existing icon")
+
+    observations = [
+        {
+            "docId": "doc_id_1",
+            "lat": -33.8688,
+            "lon": 151.2093,
+            "presetRef": {
+                "docId": "preset_1",
+            },
+        },
+    ]
+
+    # Mock preset endpoint
+    preset_response = {
+        "data": {
+            "name": "TestPreset",
+            "iconRef": {
+                "docId": "icon_1",
+                "url": f"{server_url}/projects/{project_id}/icon/icon_1",
+            },
+        }
+    }
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset/preset_1",
+        json=preset_response,
+        status=200,
+    )
+
+    features, stats = transform_comapeo_observations(
+        observations,
+        project_name,
+        project_id,
+        server_url,
+        session,
+        attachment_root,
+    )
+
+    assert len(features) == 1
+    assert stats["skipped_icons"] == 1  # Icon was skipped (already exists)
+    assert stats["icon_failed"] == 0
+
+
+def test_download_project_observations_and_attachments_with_failures(
+    mocked_responses, tmp_path
+):
+    """Test that attachment failures are properly counted in stats."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    project_name = "Forest Expedition"
+    attachment_root = str(tmp_path)
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    # Mock observations endpoint with observations that have attachments
+    observations_response = {
+        "data": [
+            {
+                "docId": "doc_1",
+                "attachments": [
+                    {"url": f"{server_url}/attachments/attachment1.jpg"},
+                    {"url": f"{server_url}/attachments/attachment2.jpg"},
+                ],
+            },
+            {
+                "docId": "doc_2",
+                "attachments": [
+                    {"url": f"{server_url}/attachments/attachment3.jpg"},
+                ],
+            },
+        ]
+    }
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/observation",
+        json=observations_response,
+        status=200,
+    )
+
+    # Mock some attachments to succeed and some to fail
+    mocked_responses.get(
+        f"{server_url}/attachments/attachment1.jpg",
+        body=b"successful attachment",
+        content_type="image/jpeg",
+        status=200,
+    )
+    # attachment2.jpg will fail (404)
+    mocked_responses.get(
+        f"{server_url}/attachments/attachment2.jpg",
+        status=404,
+    )
+    # attachment3.jpg will fail (500)
+    mocked_responses.get(
+        f"{server_url}/attachments/attachment3.jpg",
+        status=500,
+    )
+
+    observations, stats = download_project_observations_and_attachments(
+        server_url, session, project_id, project_name, attachment_root
+    )
+
+    assert len(observations) == 2
+    assert stats["attachment_failed"] == 2  # Two attachments failed
+    assert stats["skipped_attachments"] == 0
+
+
+def test_download_project_observations_and_attachments_with_skipped(
+    mocked_responses, tmp_path
+):
+    """Test that skipped attachments are properly counted in stats."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    project_name = "Forest Expedition"
+    attachment_root = str(tmp_path)
+
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+
+    # Create attachment directory and pre-existing attachment file
+    attachment_dir = tmp_path / "comapeo" / "forest_expedition" / "attachments"
+    attachment_dir.mkdir(parents=True)
+    (attachment_dir / "attachment1.jpg").write_bytes(b"existing attachment")
+
+    # Mock observations endpoint
+    observations_response = {
+        "data": [
+            {
+                "docId": "doc_1",
+                "attachments": [
+                    {"url": f"{server_url}/attachments/attachment1.jpg"},
+                ],
+            },
+        ]
+    }
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/observation",
+        json=observations_response,
+        status=200,
+    )
+
+    observations, stats = download_project_observations_and_attachments(
+        server_url, session, project_id, project_name, attachment_root
+    )
+
+    assert len(observations) == 1
+    assert stats["skipped_attachments"] == 1  # Attachment was skipped (already exists)
+    assert stats["attachment_failed"] == 0
 
 
 def test_fetch_preset(mocked_responses, tmp_path):
@@ -246,7 +481,7 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     assert file_name is None
-    assert skipped == 1
+    assert skipped == 0  # Errors are not skips
     assert not (icon_dir / "error_icon").exists()
 
     # Test HTTP error (500)
@@ -261,7 +496,7 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     assert file_name is None
-    assert skipped == 1
+    assert skipped == 0  # Errors are not skips
 
     # Test missing Content-Type header (should save without extension)
     no_content_type_url = (

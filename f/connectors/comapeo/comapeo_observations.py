@@ -183,13 +183,14 @@ def download_file(url, session, save_path, existing_file_stems):
     """
     skipped_count = 0
     base_name = Path(save_path).name
+    base_stem = Path(save_path).stem
 
-    if base_name in existing_file_stems:
-        logger.debug(f"{base_name} already exists, skipping download.")
+    if base_stem in existing_file_stems:
+        logger.debug(f"{base_stem} already exists, skipping download.")
         skipped_count += 1
         # Try to find matching full filename (with extension)
         full_path = next(
-            (f for f in Path(save_path).parent.glob(f"{base_name}.*")), None
+            (f for f in Path(save_path).parent.glob(f"{base_stem}.*")), None
         )
         return (full_path.name if full_path else base_name), skipped_count
 
@@ -211,7 +212,7 @@ def download_file(url, session, save_path, existing_file_stems):
 
     except Exception as e:
         logger.error(f"Exception during download: {e}")
-        return None, 1
+        return None, 0
 
 
 def download_project_observations_and_attachments(
