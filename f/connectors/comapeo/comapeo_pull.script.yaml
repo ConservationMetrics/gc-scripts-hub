@@ -1,6 +1,6 @@
 summary: 'CoMapeo: Fetch Observations and Tracks'
 description: This script fetches observations and tracks from the REST API of a CoMapeo archive server.
-lock: '!inline f/connectors/comapeo/comapeo_observations.script.lock'
+lock: '!inline f/connectors/comapeo/comapeo_pull.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
