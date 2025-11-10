@@ -16,13 +16,13 @@ def test_transform_comapeo_observations():
     project_name = "Forest Expedition"
     project_id = "forest_expedition"
 
-    result, skipped_icons, icon_failed = transform_comapeo_observations(
+    result, stats = transform_comapeo_observations(
         SAMPLE_OBSERVATIONS, project_name, project_id
     )
 
     assert len(result) == len(SAMPLE_OBSERVATIONS)
-    assert skipped_icons == 0
-    assert icon_failed is False
+    assert stats["skipped_icons"] == 0
+    assert stats["icon_failed"] == 0
 
     feature1 = result[0]
     assert feature1["type"] == "Feature"

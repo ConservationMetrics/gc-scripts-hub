@@ -4,6 +4,7 @@
 
 import logging
 import mimetypes
+from collections import Counter
 from os import listdir
 from pathlib import Path
 from typing import TypedDict
@@ -378,18 +379,17 @@ def transform_comapeo_observations(
     -------
     features : list
         A list of GeoJSON Feature objects with transformed properties and geometry.
-    skipped_icons : int
-        The number of icons skipped due to already existing on disk.
-    icon_failed : bool
-        A flag indicating if any icon downloads failed.
+    stats : Counter
+        A Counter containing statistics about the transformation process:
+        - 'skipped_icons': The number of icons skipped due to already existing on disk.
+        - 'icon_failed': The number of icon downloads that failed (0 or 1).
     """
     features = []
+    stats = Counter()
 
     # Set up icon directory and existing icon stems if attachment_root is provided
     icon_dir = None
     existing_icon_stems = None
-    skipped_icons = 0
-    icon_failed = False
 
     if attachment_root and project_id:
         sanitized_project_name = normalize_identifier(project_name)
@@ -432,9 +432,9 @@ def transform_comapeo_observations(
                     icon_dir,
                     existing_icon_stems,
                 )
-                skipped_icons += icon_skipped
+                stats["skipped_icons"] += icon_skipped
                 if icon_error:
-                    icon_failed = True
+                    stats["icon_failed"] = 1
                 if preset_data:
                     # Add name as category
                     if "name" in preset_data:
@@ -480,7 +480,7 @@ def transform_comapeo_observations(
 
         features.append(feature)
 
-    return features, skipped_icons, icon_failed
+    return features, stats
 
 
 def download_and_transform_comapeo_data(
@@ -528,7 +528,7 @@ def download_and_transform_comapeo_data(
         )
 
         # Transform observations to GeoJSON features
-        features, skipped_icons, icon_failed = transform_comapeo_observations(
+        features, stats = transform_comapeo_observations(
             observations, project_name, project_id, server_url, session, attachment_root
         )
 
@@ -544,8 +544,8 @@ def download_and_transform_comapeo_data(
                 f"Skipped downloading {skipped_attachments} media attachment(s)."
             )
 
-        if skipped_icons > 0:
-            logger.info(f"Skipped downloading {skipped_icons} icon(s).")
+        if stats["skipped_icons"] > 0:
+            logger.info(f"Skipped downloading {stats['skipped_icons']} icon(s).")
 
         if project_attachment_failed:
             attachment_failed = True
