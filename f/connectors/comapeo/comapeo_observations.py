@@ -376,14 +376,12 @@ def transform_comapeo_observations(
 
     Returns
     -------
-    tuple
-        A tuple containing:
-        - features : list
-            A list of GeoJSON Feature objects with transformed properties and geometry.
-        - skipped_icons : int
-            The number of icons skipped due to already existing on disk.
-        - icon_failed : bool
-            A flag indicating if any icon downloads failed.
+    features : list
+        A list of GeoJSON Feature objects with transformed properties and geometry.
+    skipped_icons : int
+        The number of icons skipped due to already existing on disk.
+    icon_failed : bool
+        A flag indicating if any icon downloads failed.
     """
     features = []
 
