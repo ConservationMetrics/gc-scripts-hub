@@ -55,7 +55,7 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_projects_geojson, attachment_failed = download_and_transform_comapeo_data(
+    comapeo_projects_geojson, stats = download_and_transform_comapeo_data(
         server_url,
         session,
         comapeo_projects,
@@ -88,7 +88,7 @@ def main(
                 f"No features found in project {project_name}. Nothing to save."
             )
 
-    if attachment_failed:
+    if stats["attachment_failed"] > 0:
         raise RuntimeError("Some attachments failed to download.")
 
 
@@ -235,7 +235,9 @@ def download_project_observations_and_attachments(
     Returns
     -------
     tuple
-        A tuple containing (observations, skipped_attachments, attachment_failed).
+        A tuple containing (observations, stats) where stats is a Counter with:
+        - 'skipped_attachments': The number of attachments skipped due to already existing on disk.
+        - 'attachment_failed': The number of attachment downloads that failed.
     """
     url = f"{server_url}/projects/{project_id}/observation"
 
@@ -256,8 +258,7 @@ def download_project_observations_and_attachments(
     )
     existing_file_stems = build_existing_file_set(attachment_dir)
 
-    skipped_attachments = 0
-    attachment_failed = False
+    stats = Counter()
 
     for observation in observations:
         if "attachments" in observation:
@@ -270,18 +271,18 @@ def download_project_observations_and_attachments(
                         str(attachment_dir / Path(attachment["url"]).name),
                         existing_file_stems,
                     )
-                    skipped_attachments += skipped
+                    stats["skipped_attachments"] += skipped
                     if file_name is not None:
                         filenames.append(file_name)
                     else:
                         logger.error(
                             f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
                         )
-                        attachment_failed = True
+                        stats["attachment_failed"] += 1
 
             observation["attachments"] = ", ".join(filenames)
 
-    return observations, skipped_attachments, attachment_failed
+    return observations, stats
 
 
 def fetch_preset(
@@ -382,7 +383,7 @@ def transform_comapeo_observations(
     stats : Counter
         A Counter containing statistics about the transformation process:
         - 'skipped_icons': The number of icons skipped due to already existing on disk.
-        - 'icon_failed': The number of icon downloads that failed (0 or 1).
+        - 'icon_failed': The number of icon downloads that failed.
     """
     features = []
     stats = Counter()
@@ -434,7 +435,7 @@ def transform_comapeo_observations(
                 )
                 stats["skipped_icons"] += icon_skipped
                 if icon_error:
-                    stats["icon_failed"] = 1
+                    stats["icon_failed"] += 1
                 if preset_data:
                     # Add name as category
                     if "name" in preset_data:
@@ -509,26 +510,28 @@ def download_and_transform_comapeo_data(
         A tuple containing:
         - comapeo_data : dict
             A dictionary where keys are project names and values are GeoJSON FeatureCollections.
-        - attachment_failed : bool
-            A flag indicating if any attachment downloads failed.
+        - stats : Counter
+            A Counter containing aggregated statistics across all projects:
+        - 'skipped_attachments': Total number of attachments skipped.
+        - 'attachment_failed': Total number of attachment downloads that failed.
+        - 'skipped_icons': Total number of icons skipped.
+        - 'icon_failed': Total number of icon downloads that failed.
     """
 
     comapeo_data = {}
-    attachment_failed = False
+    stats = Counter()
 
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
 
         # Download all observations and attachments for this project
-        observations, skipped_attachments, project_attachment_failed = (
-            download_project_observations_and_attachments(
-                server_url, session, project_id, project_name, attachment_root
-            )
+        observations, attachment_stats = download_project_observations_and_attachments(
+            server_url, session, project_id, project_name, attachment_root
         )
 
         # Transform observations to GeoJSON features
-        features, stats = transform_comapeo_observations(
+        features, icon_stats = transform_comapeo_observations(
             observations, project_name, project_id, server_url, session, attachment_root
         )
 
@@ -539,18 +542,24 @@ def download_and_transform_comapeo_data(
             "features": features,
         }
 
-        if skipped_attachments > 0:
-            logger.info(
-                f"Skipped downloading {skipped_attachments} media attachment(s)."
+        # Aggregate statistics
+        stats["skipped_attachments"] += attachment_stats["skipped_attachments"]
+        stats["attachment_failed"] += attachment_stats["attachment_failed"]
+        stats["skipped_icons"] += icon_stats["skipped_icons"]
+        stats["icon_failed"] += icon_stats["icon_failed"]
+
+        # Log failures (not skips, as skips are expected behavior)
+        if attachment_stats["attachment_failed"] > 0:
+            logger.warning(
+                f"{attachment_stats['attachment_failed']} attachment download(s) failed for project {project_name}."
             )
 
-        if stats["skipped_icons"] > 0:
-            logger.info(f"Skipped downloading {stats['skipped_icons']} icon(s).")
-
-        if project_attachment_failed:
-            attachment_failed = True
+        if icon_stats["icon_failed"] > 0:
+            logger.warning(
+                f"{icon_stats['icon_failed']} icon download(s) failed for project {project_name}."
+            )
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s)."
         )
-    return comapeo_data, attachment_failed
+    return comapeo_data, stats
