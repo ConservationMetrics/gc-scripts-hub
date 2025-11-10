@@ -356,6 +356,24 @@ def comapeo_project_observations(uri, project_id):
     return {"data": observations}
 
 
+def comapeo_project_tracks(uri, project_id):
+    """Return track data for a given project."""
+    tracks = []
+    for track in SAMPLE_TRACK:
+        track_copy = track.copy()
+        # Update presetRef URL if present
+        if "presetRef" in track_copy and track_copy["presetRef"]:
+            preset_ref = track_copy["presetRef"]
+            if "docId" in preset_ref:
+                track_copy["presetRef"] = {
+                    **preset_ref,
+                    "url": f"{uri}/projects/{project_id}/preset/{preset_ref['docId']}",
+                }
+        tracks.append(track_copy)
+
+    return {"data": tracks}
+
+
 def comapeo_preset(uri, project_id, preset_doc_id):
     """Return preset data for a given preset docId."""
     # Find the preset in SAMPLE_PRESETS by docId
