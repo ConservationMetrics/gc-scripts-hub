@@ -1,8 +1,10 @@
-# `comapeo_observations`: Fetch Observations from CoMapeo API
+# `comapeo_pull`: Fetch Observations and Tracks from CoMapeo API
 
-This script fetches data from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data and attachments.
+This script fetches observations and tracks from the REST API of a [CoMapeo archive server](https://github.com/digidem/comapeo-core/tree/server/src/server), which stores data from multiple CoMapeo projects. Each project contains observation data, track data, and attachments.
 
-For each project, the observations data is stored in a table prefixed by `table_prefix`. For example, with a `table_prefix` of "comapeo" and a `name` of "My Mapeo Project", this script will create a Postgres table named `comapeo_my_mapeo_project`. Attachment files (e.g. photos and audio) will be stored in the following directory schema: `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
+For each project, the observations and tracks data are stored in separate tables prefixed by `table_prefix` with `_observations` and `_tracks` suffixes. For example, with a `table_prefix` of "comapeo" and a `name` of "My Mapeo Project", this script will create Postgres tables named `comapeo_my_mapeo_project_observations` and `comapeo_my_mapeo_project_tracks`. Attachment files (e.g. photos and audio) will be stored in the following directory schema: `{attachment_root}/comapeo/my_mapeo_project/attachments/...`
+
+Note: Tracks do not have attachments, so no attachment downloading is performed for tracks.
 
 ## Endpoints
 
@@ -41,6 +43,31 @@ The request header must include an access token in the format:
 }
 ```
 
+### `GET /projects/abc123/track`
+
+```json
+{
+  "docId": "track_xyz",
+  "createdAt": "2024-10-09T08:07:06.543.Z",
+  "updatedAt": "2024-10-09T08:07:06.543.Z",
+  "deleted": false,
+  "locations": [
+    {
+      "timestamp": "2024-10-09T08:07:06.543Z",
+      "mocked": false,
+      "coords": {
+        "latitude": -12,
+        "longitude": 34
+      }
+    },
+    ...
+  ],
+  "tags": {}
+}
+```
+
+Tracks are stored with LineString geometry (from the `locations` array coordinates) and a parallel `timestamps` array in the database. The timestamps array corresponds to each coordinate point in the LineString, with index 0 in both arrays aligning.
+
 ### `GET /projects/abc123/attachments/attachment2_hash/photo/blob2_hash`
 
 This endpoint retrieves the binary data of a specific attachment, such as a photo, associated with a project. The response will contain the raw binary content of the file, which can be saved or processed as needed.
@@ -58,7 +85,7 @@ This endpoint retrieves the binary data of a specific attachment, such as a phot
 
 This endpoint retrieves the preset data for a given preset `docId`. Per the [CoMapeo schema documentation](https://github.com/digidem/comapeo-schema/blob/main/schema/preset/v1.json), presets define how map entities are displayed to the user. They define the category that is assigned to an observation, the icon used on the map, and the fields / questions shown to the user when they create or edit the entity on the map. 
 
-Currently, we use this endpoint in the Fetch Observations script to fetch **some** of the preset data for a given observation that we think our users are most interested in having available in properties.
+Currently, we use this endpoint in the Fetch Observations and Tracks script to fetch **some** of the preset data for a given observation or track that we think our users are most interested in having available in properties.
 
 A future TODO is to fetch all of the preset data, and the icons, for safeguarding and other purposes. https://github.com/ConservationMetrics/gc-scripts-hub/issues/178
 
