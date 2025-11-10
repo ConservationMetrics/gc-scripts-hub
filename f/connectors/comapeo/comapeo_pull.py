@@ -5,6 +5,7 @@
 import json
 import logging
 import mimetypes
+from collections import Counter
 from os import listdir
 from pathlib import Path
 from typing import TypedDict
@@ -55,7 +56,7 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_projects_geojson, attachment_failed = download_and_transform_comapeo_data(
+    comapeo_projects_geojson, stats = download_and_transform_comapeo_data(
         server_url,
         session,
         comapeo_projects,
@@ -98,7 +99,7 @@ def main(
                 f"No {data_type} features found in project {project_name}. Nothing to save."
             )
 
-    if attachment_failed:
+    if stats["attachment_failed"] > 0:
         raise RuntimeError("Some attachments failed to download.")
 
 
@@ -158,20 +159,18 @@ def build_existing_file_set(directory):
     return {Path(f).stem for f in files}  # just base names, no extensions
 
 
-def download_attachment(url, session, save_path, existing_file_stems):
+def download_file(url, session, save_path, existing_file_stems):
     """
     Downloads a file from a specified URL and saves it to a given path.
 
     Parameters
     ----------
     url : str
-        The URL of the file to be downloaded. Expected format:
-        .../attachments/{driveDiscoveryId}/{type}/{name}
-        where type is 'photo' or 'audio' and name is a hash.
+        The URL of the file to be downloaded.
     session : requests.Session
         A requests session with authentication headers configured.
     save_path : str
-        The file system path where the downloaded file will be saved.
+        The file system path where the downloaded file will be saved (without extension).
     existing_file_stems : set
         A set of existing file names (without extensions) to check against before downloading.
 
@@ -180,38 +179,38 @@ def download_attachment(url, session, save_path, existing_file_stems):
     tuple
         A tuple containing two values:
         - The name of the file if the download is successful, or None if an error occurs.
-        - The number of attachments skipped due to already existing on disk.
+        - The number of files skipped due to already existing on disk.
 
     Notes
     -----
     If the file already exists at the specified path, the function will skip downloading the file.
 
     The function attempts to determine the file extension based on the 'Content-Type'
-    header of the HTTP response from the CoMapeo Server. If the 'Content-Type' is not recognized,
+    header of the HTTP response. If the 'Content-Type' is not recognized,
     the file will be saved without an extension.
 
     The function intentionally does not raise exceptions. Instead, it logs errors and returns None,
     allowing the caller to handle the download failure gracefully.
-
     """
-    skipped_attachments = 0
+    skipped_count = 0
     base_name = Path(save_path).name
+    base_stem = Path(save_path).stem
 
-    if base_name in existing_file_stems:
-        logger.debug(f"{base_name} already exists, skipping download.")
-        skipped_attachments += 1
+    if base_stem in existing_file_stems:
+        logger.debug(f"{base_stem} already exists, skipping download.")
+        skipped_count += 1
         # Try to find matching full filename (with extension)
         full_path = next(
-            (f for f in Path(save_path).parent.glob(f"{base_name}.*")), None
+            (f for f in Path(save_path).parent.glob(f"{base_stem}.*")), None
         )
-        return (full_path.name if full_path else base_name), skipped_attachments
+        return (full_path.name if full_path else base_name), skipped_count
 
     try:
         response = session.get(url)
         response.raise_for_status()
 
-        content_type = response.headers.get("Content-Type", "")
-        extension = mimetypes.guess_extension(content_type) or ""
+        content_type = response.headers.get("Content-Type", "") or ""
+        extension = mimetypes.guess_extension(content_type) if content_type else ""
 
         file_name = base_name + extension
         save_path = Path(str(save_path) + extension)
@@ -220,11 +219,11 @@ def download_attachment(url, session, save_path, existing_file_stems):
         with open(save_path, "wb") as f:
             f.write(response.content)
         logger.info("Download completed.")
-        return file_name, skipped_attachments
+        return file_name, skipped_count
 
     except Exception as e:
         logger.error(f"Exception during download: {e}")
-        return None, 1
+        return None, 0
 
 
 def _fetch_comapeo_data(server_url, session, project_id, endpoint, data_type):
@@ -284,7 +283,9 @@ def download_project_observations(
     Returns
     -------
     tuple
-        A tuple containing (observations, skipped_attachments, attachment_failed).
+        A tuple containing (observations, stats) where stats is a Counter with:
+        - 'skipped_attachments': The number of attachments skipped due to already existing on disk.
+        - 'attachment_failed': The number of attachment downloads that failed.
     """
     observations = _fetch_comapeo_data(
         server_url, session, project_id, "observation", "observations"
@@ -297,32 +298,31 @@ def download_project_observations(
     )
     existing_file_stems = build_existing_file_set(attachment_dir)
 
-    skipped_attachments = 0
-    attachment_failed = False
+    stats = Counter()
 
     for observation in observations:
         if "attachments" in observation:
             filenames = []
             for attachment in observation["attachments"]:
                 if "url" in attachment:
-                    file_name, skipped = download_attachment(
+                    file_name, skipped = download_file(
                         attachment["url"],
                         session,
                         str(attachment_dir / Path(attachment["url"]).name),
                         existing_file_stems,
                     )
-                    skipped_attachments += skipped
+                    stats["skipped_attachments"] += skipped
                     if file_name is not None:
                         filenames.append(file_name)
                     else:
                         logger.error(
                             f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
                         )
-                        attachment_failed = True
+                        stats["attachment_failed"] += 1
 
             observation["attachments"] = ", ".join(filenames)
 
-    return observations, skipped_attachments, attachment_failed
+    return observations, stats
 
 
 def download_project_tracks(server_url, session, project_id):
@@ -347,8 +347,15 @@ def download_project_tracks(server_url, session, project_id):
     return _fetch_comapeo_data(server_url, session, project_id, "track", "tracks")
 
 
-def fetch_preset(server_url, session, project_id, preset_doc_id):
-    """Fetch a preset from the CoMapeo API.
+def fetch_preset(
+    server_url,
+    session,
+    project_id,
+    preset_doc_id,
+    icon_dir=None,
+    existing_icon_stems=None,
+):
+    """Fetch a preset from the CoMapeo API and optionally download its icon.
 
     Parameters
     ----------
@@ -360,11 +367,18 @@ def fetch_preset(server_url, session, project_id, preset_doc_id):
         The unique identifier of the project.
     preset_doc_id : str
         The document ID of the preset to fetch.
+    icon_dir : Path, optional
+        Directory where icons should be saved. If provided, icons will be downloaded.
+    existing_icon_stems : set, optional
+        Set of existing icon file names (without extensions) to check against before downloading.
 
     Returns
     -------
-    dict or None
-        The preset data if successful, None otherwise.
+    tuple
+        A tuple containing:
+        - preset_data (dict or None): The preset data if successful, None otherwise.
+        - skipped (int): Number of icons skipped (0 or 1).
+        - failed (bool): Whether icon download failed.
     """
     url = f"{server_url}/projects/{project_id}/preset/{preset_doc_id}"
 
@@ -372,17 +386,41 @@ def fetch_preset(server_url, session, project_id, preset_doc_id):
         response = session.get(url)
         response.raise_for_status()
         preset_data = response.json().get("data")
-        return preset_data
+
+        # Download icon if preset data exists and icon_dir is provided
+        if preset_data and icon_dir and existing_icon_stems is not None:
+            icon_ref = preset_data.get("iconRef")
+            if icon_ref and "url" in icon_ref:
+                preset_name = preset_data.get("name", "")
+                if preset_name:
+                    sanitized_name = normalize_identifier(preset_name)
+                    icon_save_path = icon_dir / sanitized_name
+                    file_name, skipped = download_file(
+                        icon_ref["url"],
+                        session,
+                        str(icon_save_path),
+                        existing_icon_stems,
+                    )
+                    if file_name is None:
+                        logger.error(
+                            f"Icon download failed for URL: {icon_ref['url']}. Preset: {preset_name}."
+                        )
+                        return preset_data, 0, True
+                    return preset_data, skipped, False
+        return preset_data, 0, False
     except (
         requests.exceptions.RequestException,
         requests.exceptions.JSONDecodeError,
     ) as e:
         logger.warning(f"Failed to fetch preset {preset_doc_id}: {e}")
-        return None
+        return None, 0, False
 
 
 def _apply_preset_data(item, preset_ref, server_url, session, project_id):
     """Apply preset data to an item if preset reference is available.
+
+    Note: This function does not download icons. For observations, use the inline
+    preset fetching in transform_comapeo_observations to enable icon downloading.
 
     Parameters
     ----------
@@ -400,7 +438,9 @@ def _apply_preset_data(item, preset_ref, server_url, session, project_id):
     if preset_ref and server_url and session and project_id:
         preset_doc_id = preset_ref.get("docId")
         if preset_doc_id:
-            preset_data = fetch_preset(server_url, session, project_id, preset_doc_id)
+            preset_data, _, _ = fetch_preset(
+                server_url, session, project_id, preset_doc_id
+            )
             if preset_data:
                 # Add name as category
                 if "name" in preset_data:
@@ -433,7 +473,12 @@ def _add_project_metadata(item, project_name, project_id):
 
 
 def transform_comapeo_observations(
-    observations, project_name, project_id=None, server_url=None, session=None
+    observations,
+    project_name,
+    project_id=None,
+    server_url=None,
+    session=None,
+    attachment_root=None,
 ):
     """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
 
@@ -449,13 +494,29 @@ def transform_comapeo_observations(
         The base URL of the CoMapeo server. Required for preset fetching.
     session : requests.Session, optional
         A requests session with authentication headers configured. Required for preset fetching.
+    attachment_root : str, optional
+        The root directory where attachments and icons are saved. Required for icon downloading.
 
     Returns
     -------
-    list
+    features : list
         A list of GeoJSON Feature objects with transformed properties and geometry.
+    stats : Counter
+        A Counter containing statistics about the transformation process:
+        - 'skipped_icons': The number of icons skipped due to already existing on disk.
+        - 'icon_failed': The number of icon downloads that failed.
     """
     features = []
+    stats = Counter()
+
+    # Set up icon directory and existing icon stems if attachment_root is provided
+    icon_dir = None
+    existing_icon_stems = None
+
+    if attachment_root and project_id:
+        sanitized_project_name = normalize_identifier(project_name)
+        icon_dir = Path(attachment_root) / "comapeo" / sanitized_project_name / "icons"
+        existing_icon_stems = build_existing_file_set(icon_dir)
 
     for observation in observations:
         observation = observation.copy()
@@ -482,7 +543,33 @@ def transform_comapeo_observations(
 
         # Fetch and extract preset data
         preset_ref = observation.pop("presetRef", None)
-        _apply_preset_data(observation, preset_ref, server_url, session, project_id)
+        if preset_ref and server_url and session and project_id:
+            preset_doc_id = preset_ref.get("docId")
+            if preset_doc_id:
+                preset_data, icon_skipped, icon_error = fetch_preset(
+                    server_url,
+                    session,
+                    project_id,
+                    preset_doc_id,
+                    icon_dir,
+                    existing_icon_stems,
+                )
+                stats["skipped_icons"] += icon_skipped
+                if icon_error:
+                    stats["icon_failed"] += 1
+                if preset_data:
+                    # Add name as category
+                    if "name" in preset_data:
+                        observation["category"] = preset_data["name"]
+                    # Add terms as comma-separated string
+                    if "terms" in preset_data and isinstance(
+                        preset_data["terms"], list
+                    ):
+                        observation["terms"] = ", ".join(preset_data["terms"])
+                    # Add color
+                    if "color" in preset_data:
+                        observation["color"] = preset_data["color"]
+                    # NOTE: presetRef returns much more than this (c.f. SAMPLE_PRESETS in tests/assets/server_responses.py)
 
         # Convert all keys (except docId) from camelCase to snake_case
         special_case_keys = {"docId"}
@@ -512,7 +599,7 @@ def transform_comapeo_observations(
 
         features.append(feature)
 
-    return features
+    return features, stats
 
 
 def transform_comapeo_tracks(
@@ -619,12 +706,16 @@ def download_and_transform_comapeo_data(
         - comapeo_data : dict
             A dictionary where keys are tuples of (project_name, data_type) and values are GeoJSON FeatureCollections.
             data_type is either "observations" or "tracks".
-        - attachment_failed : bool
-            A flag indicating if any attachment downloads failed.
+        - stats : Counter
+            A Counter containing aggregated statistics across all projects:
+            - 'skipped_attachments': Total number of attachments skipped.
+            - 'attachment_failed': Total number of attachment downloads that failed.
+            - 'skipped_icons': Total number of icons skipped.
+            - 'icon_failed': Total number of icon downloads that failed.
     """
 
     comapeo_data = {}
-    attachment_failed = False
+    stats = Counter()
 
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
@@ -632,15 +723,13 @@ def download_and_transform_comapeo_data(
         sanitized_project_name = normalize_identifier(project_name)
 
         # Download all observations and attachments for this project
-        observations, skipped_attachments, project_attachment_failed = (
-            download_project_observations(
-                server_url, session, project_id, project_name, attachment_root
-            )
+        observations, attachment_stats = download_project_observations(
+            server_url, session, project_id, project_name, attachment_root
         )
 
         # Transform observations to GeoJSON features
-        observation_features = transform_comapeo_observations(
-            observations, project_name, project_id, server_url, session
+        observation_features, icon_stats = transform_comapeo_observations(
+            observations, project_name, project_id, server_url, session, attachment_root
         )
 
         # Store observations as a GeoJSON FeatureCollection
@@ -663,15 +752,24 @@ def download_and_transform_comapeo_data(
             "features": track_features,
         }
 
-        if skipped_attachments > 0:
-            logger.info(
-                f"Skipped downloading {skipped_attachments} media attachment(s)."
+        # Aggregate statistics
+        stats["skipped_attachments"] += attachment_stats["skipped_attachments"]
+        stats["attachment_failed"] += attachment_stats["attachment_failed"]
+        stats["skipped_icons"] += icon_stats["skipped_icons"]
+        stats["icon_failed"] += icon_stats["icon_failed"]
+
+        # Log failures (not skips, as skips are expected behavior)
+        if attachment_stats["attachment_failed"] > 0:
+            logger.warning(
+                f"{attachment_stats['attachment_failed']} attachment download(s) failed for project {project_name}."
             )
 
-        if project_attachment_failed:
-            attachment_failed = True
+        if icon_stats["icon_failed"] > 0:
+            logger.warning(
+                f"{icon_stats['icon_failed']} icon download(s) failed for project {project_name}."
+            )
 
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s) and {len(tracks)} track(s)."
         )
-    return comapeo_data, attachment_failed
+    return comapeo_data, stats

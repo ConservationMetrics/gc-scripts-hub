@@ -77,6 +77,17 @@ def comapeoserver_observations(mocked_responses):
             json=preset_response,
             status=200,
         )
+        
+        # Mock icon endpoints for all presets with iconRef
+        if "iconRef" in preset:
+            icon_doc_id = preset["iconRef"]["docId"]
+            icon_body = b"fake icon data" * 10  # Make it ~150 bytes
+            mocked_responses.get(
+                f"{server_url}/projects/{project_id}/icon/{icon_doc_id}",
+                body=icon_body,
+                content_type="image/png",
+                headers={"Content-Length": str(len(icon_body))},
+            )
 
     # Mock preset endpoint for any other preset (returns None for presets not in SAMPLE_PRESETS)
     # This regex must come AFTER specific URL matches
@@ -86,6 +97,14 @@ def comapeoserver_observations(mocked_responses):
         ),
         json={"data": None},
         status=200,
+    )
+    
+    # Mock icon endpoint for any other icon (returns 404 for icons not in SAMPLE_PRESETS)
+    mocked_responses.get(
+        re.compile(
+            rf"{re.escape(server_url)}/projects/{re.escape(project_id)}/icon/.+"
+        ),
+        status=404,
     )
 
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)

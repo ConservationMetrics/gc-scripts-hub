@@ -78,16 +78,22 @@ This endpoint retrieves the binary data of a specific attachment, such as a phot
 {
   "name": "My Preset",
   "terms": ["term1", "term2"],
-  "color": "#000000"
+  "color": "#000000",
+  "iconRef": {
+    "docId": "icon_doc_id",
+    "url": "https://comapeo.example/projects/abc123/icon/icon_doc_id"
+  }
   ...
 }
 ```
 
 This endpoint retrieves the preset data for a given preset `docId`. Per the [CoMapeo schema documentation](https://github.com/digidem/comapeo-schema/blob/main/schema/preset/v1.json), presets define how map entities are displayed to the user. They define the category that is assigned to an observation, the icon used on the map, and the fields / questions shown to the user when they create or edit the entity on the map. 
 
-Currently, we use this endpoint in the Fetch Observations and Tracks script to fetch **some** of the preset data for a given observation or track that we think our users are most interested in having available in properties.
+Currently, we use this endpoint in the Fetch Observations and Tracks script to fetch **some** of the preset data for a given observation or track that we think our users are most interested in having available in properties. Icons referenced in the preset are also downloaded and saved to disk.
 
-A future TODO is to fetch all of the preset data, and the icons, for safeguarding and other purposes. https://github.com/ConservationMetrics/gc-scripts-hub/issues/178
+### `GET /projects/abc123/icon/icon_doc_id`
+
+This endpoint retrieves the binary data of a specific icon file associated with a preset. The response will contain the raw binary content of the file (typically a PNG image), which is saved to disk with a sanitized filename based on the preset's name. Icons are saved in the `icons/` directory, at the same level as the `attachments/` directory.
 
 # `comapeo_alerts`: Post Alerts to CoMapeo API
 
