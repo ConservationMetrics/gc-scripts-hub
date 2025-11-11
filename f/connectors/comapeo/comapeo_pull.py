@@ -2,6 +2,7 @@
 # psycopg2-binary
 # requests~=2.32
 
+import json
 import logging
 import mimetypes
 from collections import Counter
@@ -63,29 +64,39 @@ def main(
     )
 
     logger.info(
-        f"Downloaded CoMapeo data for {len(comapeo_projects_geojson)} projects. Saving data..."
+        f"Downloaded CoMapeo data for {len(comapeo_projects_geojson)} project data types. Saving data..."
     )
 
-    for project_name, geojson in comapeo_projects_geojson.items():
+    for (project_name, data_type), geojson in comapeo_projects_geojson.items():
         storage_path = Path(attachment_root) / db_table_prefix / project_name
+        table_suffix = f"_{data_type}"
         rel_geojson_path = (
-            Path(db_table_prefix) / project_name / f"{project_name}.geojson"
+            Path(db_table_prefix)
+            / project_name
+            / f"{project_name}{table_suffix}.geojson"
         )
 
         if geojson.get("features"):
-            logger.info(f"Saving data for project {project_name}...")
-            save_data_to_file(geojson, project_name, storage_path, file_type="geojson")
+            logger.info(
+                f"Saving {data_type} for project {project_name}...",
+            )
+            save_data_to_file(
+                geojson,
+                f"{project_name}{table_suffix}",
+                storage_path,
+                file_type="geojson",
+            )
 
             save_geojson_to_postgres(
                 db,
-                db_table_prefix + "_" + project_name,
+                db_table_prefix + "_" + project_name + table_suffix,
                 rel_geojson_path,
                 attachment_root,
                 False,
             )  # Do not delete the file after saving to Postgres
         else:
             logger.info(
-                f"No features found in project {project_name}. Nothing to save."
+                f"No {data_type} features found in project {project_name}. Nothing to save."
             )
 
     if stats["attachment_failed"] > 0:
@@ -215,7 +226,43 @@ def download_file(url, session, save_path, existing_file_stems):
         return None, 0
 
 
-def download_project_observations_and_attachments(
+def _fetch_comapeo_data(server_url, session, project_id, endpoint, data_type):
+    """Fetch data from a CoMapeo API endpoint.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+    endpoint : str
+        The endpoint path (e.g., "observation" or "track").
+    data_type : str
+        The type of data being fetched (e.g., "observations" or "tracks") for logging.
+
+    Returns
+    -------
+    list
+        A list of data items from the API response.
+    """
+    url = f"{server_url}/projects/{project_id}/{endpoint}"
+
+    logger.info(f"Fetching {data_type} for project (ID: {project_id})...")
+    response = session.get(url)
+
+    try:
+        data = response.json().get("data", [])
+    except requests.exceptions.JSONDecodeError:
+        logger.error("Failed to decode JSON from response.")
+        logger.info("Response received: ", response.text)
+        raise ValueError("Invalid JSON response received from server.")
+
+    return data
+
+
+def download_project_observations(
     server_url, session, project_id, project_name, attachment_root
 ):
     """Download observations and their attachments for a specific project from the CoMapeo API.
@@ -240,17 +287,9 @@ def download_project_observations_and_attachments(
         - 'skipped_attachments': The number of attachments skipped due to already existing on disk.
         - 'attachment_failed': The number of attachment downloads that failed.
     """
-    url = f"{server_url}/projects/{project_id}/observation"
-
-    logger.info(f"Fetching project (ID: {project_id})...")
-    response = session.get(url)
-
-    try:
-        observations = response.json().get("data", [])
-    except requests.exceptions.JSONDecodeError:
-        logger.error("Failed to decode JSON from response.")
-        logger.info("Response received: ", response.text)
-        raise ValueError("Invalid JSON response received from server.")
+    observations = _fetch_comapeo_data(
+        server_url, session, project_id, "observation", "observations"
+    )
 
     # Download attachments for all observations
     sanitized_project_name = normalize_identifier(project_name)
@@ -286,6 +325,28 @@ def download_project_observations_and_attachments(
     return observations, stats
 
 
+def download_project_tracks(server_url, session, project_id):
+    """Download tracks for a specific project from the CoMapeo API.
+
+    Note: Tracks do not have attachments, so no attachment downloading is performed.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+
+    Returns
+    -------
+    list
+        A list of track data from the CoMapeo API.
+    """
+    return _fetch_comapeo_data(server_url, session, project_id, "track", "tracks")
+
+
 def fetch_preset(
     server_url,
     session,
@@ -313,8 +374,11 @@ def fetch_preset(
 
     Returns
     -------
-    dict or None
-        The preset data if successful, None otherwise.
+    tuple
+        A tuple containing:
+        - preset_data (dict or None): The preset data if successful, None otherwise.
+        - skipped (int): Number of icons skipped (0 or 1).
+        - failed (bool): Whether icon download failed.
     """
     url = f"{server_url}/projects/{project_id}/preset/{preset_doc_id}"
 
@@ -350,6 +414,62 @@ def fetch_preset(
     ) as e:
         logger.warning(f"Failed to fetch preset {preset_doc_id}: {e}")
         return None, 0, False
+
+
+def _apply_preset_data(item, preset_ref, server_url, session, project_id):
+    """Apply preset data to an item if preset reference is available.
+
+    Note: This function does not download icons. For observations, use the inline
+    preset fetching in transform_comapeo_observations to enable icon downloading.
+
+    Parameters
+    ----------
+    item : dict
+        The item to apply preset data to (will be modified in place).
+    preset_ref : dict or None
+        The preset reference from the item.
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+    """
+    if preset_ref and server_url and session and project_id:
+        preset_doc_id = preset_ref.get("docId")
+        if preset_doc_id:
+            preset_data, _, _ = fetch_preset(
+                server_url, session, project_id, preset_doc_id
+            )
+            if preset_data:
+                # Add name as category
+                if "name" in preset_data:
+                    item["category"] = preset_data["name"]
+                # Add terms as comma-separated string
+                if "terms" in preset_data and isinstance(preset_data["terms"], list):
+                    item["terms"] = ", ".join(preset_data["terms"])
+                # Add color
+                if "color" in preset_data:
+                    item["color"] = preset_data["color"]
+                # NOTE: presetRef returns much more than this (c.f. SAMPLE_PRESETS in tests/assets/server_responses.py)
+
+
+def _add_project_metadata(item, project_name, project_id):
+    """Add project-specific metadata to an item.
+
+    Parameters
+    ----------
+    item : dict
+        The item to add metadata to (will be modified in place).
+    project_name : str
+        The name of the project.
+    project_id : str or None
+        The unique identifier of the project.
+    """
+    item["project_name"] = project_name
+    if project_id is not None:
+        item["project_id"] = project_id
+    item["data_source"] = "CoMapeo"
 
 
 def transform_comapeo_observations(
@@ -456,10 +576,7 @@ def transform_comapeo_observations(
         observation = normalize_and_snakecase_keys(observation, special_case_keys)
 
         # Add project-specific information
-        observation["project_name"] = project_name
-        if project_id is not None:
-            observation["project_id"] = project_id
-        observation["data_source"] = "CoMapeo"
+        _add_project_metadata(observation, project_name, project_id)
 
         # Create GeoJSON Feature
         # Currently, only Point observations with lat and lon fields are returned by the CoMapeo API
@@ -485,6 +602,83 @@ def transform_comapeo_observations(
     return features, stats
 
 
+def transform_comapeo_tracks(
+    tracks, project_name, project_id=None, server_url=None, session=None
+):
+    """Transform CoMapeo tracks into GeoJSON features with LineString geometry and timestamps.
+
+    Parameters
+    ----------
+    tracks : list
+        A list of raw track data from the CoMapeo API.
+    project_name : str
+        The name of the project these tracks belong to.
+    project_id : str, optional
+        The unique identifier of the project. If not provided, this field will be omitted from the output.
+    server_url : str, optional
+        The base URL of the CoMapeo server. Required for preset fetching.
+    session : requests.Session, optional
+        A requests session with authentication headers configured. Required for preset fetching.
+
+    Returns
+    -------
+    list
+        A list of GeoJSON Feature objects with transformed properties, LineString geometry, and timestamps.
+    """
+    features = []
+
+    for track in tracks:
+        track = track.copy()
+
+        # Flatten tags into track
+        for key, value in track.pop("tags", {}).items():
+            track[key] = value
+
+        # Extract locations and build coordinates and timestamps arrays
+        locations = track.pop("locations", [])
+        coordinates = []
+        timestamps = []
+
+        for location in locations:
+            coords = location.get("coords", {})
+            if "latitude" in coords and "longitude" in coords:
+                coordinates.append([coords["longitude"], coords["latitude"]])
+                timestamps.append(location.get("timestamp"))
+
+        # Fetch and extract preset data
+        preset_ref = track.pop("presetRef", None)
+        _apply_preset_data(track, preset_ref, server_url, session, project_id)
+
+        # Convert all keys (except docId) from camelCase to snake_case
+        special_case_keys = {"docId"}
+        track = normalize_and_snakecase_keys(track, special_case_keys)
+
+        # Add project-specific information
+        _add_project_metadata(track, project_name, project_id)
+
+        # Add timestamps as a JSON string array in properties
+        track["timestamps"] = json.dumps(timestamps) if timestamps else "[]"
+
+        # Create GeoJSON Feature with LineString geometry
+        feature = {
+            "type": "Feature",
+            # docId is the unique identifier for the track. We'll use it as the ID for the feature
+            # and also include it in the properties
+            "id": track["docId"],
+            "properties": {k: str(v) for k, v in track.items()},
+            "geometry": {
+                "type": "LineString",
+                "coordinates": coordinates,
+            }
+            if coordinates
+            else None,
+        }
+
+        features.append(feature)
+
+    return features
+
+
 def download_and_transform_comapeo_data(
     server_url,
     session,
@@ -492,7 +686,7 @@ def download_and_transform_comapeo_data(
     attachment_root,
 ):
     """
-    Downloads and transforms CoMapeo project data from the API, converting it into a GeoJSON FeatureCollection format and downloading any associated attachments.
+    Downloads and transforms CoMapeo project observations and tracks from the API, converting them into GeoJSON FeatureCollection format and downloading any associated attachments.
 
     Parameters
     ----------
@@ -510,13 +704,14 @@ def download_and_transform_comapeo_data(
     tuple
         A tuple containing:
         - comapeo_data : dict
-            A dictionary where keys are project names and values are GeoJSON FeatureCollections.
+            A dictionary where keys are tuples of (project_name, data_type) and values are GeoJSON FeatureCollections.
+            data_type is either "observations" or "tracks".
         - stats : Counter
             A Counter containing aggregated statistics across all projects:
-        - 'skipped_attachments': Total number of attachments skipped.
-        - 'attachment_failed': Total number of attachment downloads that failed.
-        - 'skipped_icons': Total number of icons skipped.
-        - 'icon_failed': Total number of icon downloads that failed.
+            - 'skipped_attachments': Total number of attachments skipped.
+            - 'attachment_failed': Total number of attachment downloads that failed.
+            - 'skipped_icons': Total number of icons skipped.
+            - 'icon_failed': Total number of icon downloads that failed.
     """
 
     comapeo_data = {}
@@ -525,22 +720,36 @@ def download_and_transform_comapeo_data(
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
         project_name = project["project_name"]
+        sanitized_project_name = normalize_identifier(project_name)
 
         # Download all observations and attachments for this project
-        observations, attachment_stats = download_project_observations_and_attachments(
+        observations, attachment_stats = download_project_observations(
             server_url, session, project_id, project_name, attachment_root
         )
 
         # Transform observations to GeoJSON features
-        features, icon_stats = transform_comapeo_observations(
+        observation_features, icon_stats = transform_comapeo_observations(
             observations, project_name, project_id, server_url, session, attachment_root
         )
 
         # Store observations as a GeoJSON FeatureCollection
-        sanitized_project_name = normalize_identifier(project_name)
-        comapeo_data[sanitized_project_name] = {
+        comapeo_data[(sanitized_project_name, "observations")] = {
             "type": "FeatureCollection",
-            "features": features,
+            "features": observation_features,
+        }
+
+        # Download tracks for this project
+        tracks = download_project_tracks(server_url, session, project_id)
+
+        # Transform tracks to GeoJSON features
+        track_features = transform_comapeo_tracks(
+            tracks, project_name, project_id, server_url, session
+        )
+
+        # Store tracks as a GeoJSON FeatureCollection
+        comapeo_data[(sanitized_project_name, "tracks")] = {
+            "type": "FeatureCollection",
+            "features": track_features,
         }
 
         # Aggregate statistics
@@ -561,6 +770,6 @@ def download_and_transform_comapeo_data(
             )
 
         logger.info(
-            f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s)."
+            f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s) and {len(tracks)} track(s)."
         )
     return comapeo_data, stats

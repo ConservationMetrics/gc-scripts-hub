@@ -5,7 +5,7 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.connectors.comapeo.comapeo_observations import comapeo_server
+from f.connectors.comapeo.comapeo_pull import comapeo_server
 from f.connectors.comapeo.tests.assets import server_responses
 
 
@@ -37,6 +37,11 @@ def comapeoserver_observations(mocked_responses):
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/observation",
         json=server_responses.comapeo_project_observations(server_url, project_id),
+        status=200,
+    )
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/track",
+        json=server_responses.comapeo_project_tracks(server_url, project_id),
         status=200,
     )
     # Mock photo attachments

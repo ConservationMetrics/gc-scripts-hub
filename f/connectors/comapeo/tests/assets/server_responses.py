@@ -202,6 +202,127 @@ SAMPLE_PRESETS = [
 ]
 
 
+SAMPLE_TRACK = [
+    {
+        "docId": "8e8d1002ca585382e97d8a7a9ab9ce04d484b2525b6d6e6335340c46ad430d24",
+        "versionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
+        "originalVersionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
+        "schemaName": "track",
+        "createdAt": "2024-10-14T20:43:23.268Z",
+        "updatedAt": "2024-10-14T20:43:23.268Z",
+        "links": [],
+        "deleted": False,
+        "locations": [
+            {
+                "timestamp": "2024-10-14T20:43:35.919Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8688,
+                    "longitude": 151.2093,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:46.658Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8689,
+                    "longitude": 151.2094,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:50.657Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8690,
+                    "longitude": 151.2095,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:51.840Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8691,
+                    "longitude": 151.2096,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:53.141Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8692,
+                    "longitude": 151.2097,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:54.282Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8693,
+                    "longitude": 151.2098,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:55.545Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8694,
+                    "longitude": 151.2099,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:56.525Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8695,
+                    "longitude": 151.2100,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:59.663Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8696,
+                    "longitude": 151.2101,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:02.181Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8697,
+                    "longitude": 151.2102,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:04.063Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8698,
+                    "longitude": 151.2103,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:06.656Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8699,
+                    "longitude": 151.2104,
+                },
+            },
+        ],
+        "observationRefs": [],
+        "tags": {
+            "notes": "Cool stream",
+        },
+        "presetRef": {
+            "docId": "d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/296",
+            "url": "http://comapeo.example.org/projects/forest_expedition/preset/d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
+        },
+    },
+]
+
+
 def comapeo_projects(uri):
     return {
         "data": [
@@ -233,6 +354,24 @@ def comapeo_project_observations(uri, project_id):
         observations.append(obs_copy)
 
     return {"data": observations}
+
+
+def comapeo_project_tracks(uri, project_id):
+    """Return track data for a given project."""
+    tracks = []
+    for track in SAMPLE_TRACK:
+        track_copy = track.copy()
+        # Update presetRef URL if present
+        if "presetRef" in track_copy and track_copy["presetRef"]:
+            preset_ref = track_copy["presetRef"]
+            if "docId" in preset_ref:
+                track_copy["presetRef"] = {
+                    **preset_ref,
+                    "url": f"{uri}/projects/{project_id}/preset/{preset_ref['docId']}",
+                }
+        tracks.append(track_copy)
+
+    return {"data": tracks}
 
 
 def comapeo_preset(uri, project_id, preset_doc_id):
