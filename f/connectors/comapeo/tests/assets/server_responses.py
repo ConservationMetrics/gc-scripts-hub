@@ -199,6 +199,63 @@ SAMPLE_PRESETS = [
         },
         "color": "#00A8FF",
     },
+    {
+        "docId": "237f202583456ecb4c689c4216e0651132b115307630a7f8d65571406efff3f5",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/282",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/282",
+        "schemaName": "preset",
+        "createdAt": "2024-11-15T02:55:01.277Z",
+        "updatedAt": "2024-11-15T02:55:01.277Z",
+        "links": [],
+        "deleted": False,
+        "name": "Clay",
+        "geometry": ["point"],
+        "tags": {
+            "type": "craft",
+            "craft": "clay",
+        },
+        "addTags": {},
+        "removeTags": {},
+        "fieldRefs": [],
+        "terms": [],
+        "iconRef": {
+            "docId": "04e7691f0ef9fc9985269f271c6a3bcdf578dd5f594a8d8b4214149c59851c43",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/71",
+            "url": "http://comapeo.example.org/projects/forest_expedition/icon/04e7691f0ef9fc9985269f271c6a3bcdf578dd5f594a8d8b4214149c59851c43",
+        },
+        "color": "#073B4C",
+    },
+    {
+        "docId": "adaf507c458fa0171c11ef31a1c7869db693de2b6d1f45cec7bb9cd4eb5c228b",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/283",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/283",
+        "schemaName": "preset",
+        "createdAt": "2024-11-15T02:55:01.277Z",
+        "updatedAt": "2024-11-15T02:55:01.277Z",
+        "links": [],
+        "deleted": False,
+        "name": "Community",
+        "geometry": ["point", "area"],
+        "tags": {
+            "place": "village",
+        },
+        "addTags": {},
+        "removeTags": {},
+        "fieldRefs": [
+            {
+                "docId": "c8eb3b7829ecba5a3bbbd8e4456e2069e6b215a3be7be2ac745992b1411df868",
+                "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/272",
+                "url": "http://comapeo.example.org/projects/forest_expedition/field/c8eb3b7829ecba5a3bbbd8e4456e2069e6b215a3be7be2ac745992b1411df868",
+            },
+        ],
+        "terms": ["village"],
+        "iconRef": {
+            "docId": "f97fea912772bb327a2d0d88de34fb1baae5df0771fa75c4e1f9a695c18a7aac",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/81",
+            "url": "http://comapeo.example.org/projects/forest_expedition/icon/f97fea912772bb327a2d0d88de34fb1baae5df0771fa75c4e1f9a695c18a7aac",
+        },
+        "color": "#B209B2",
+    },
 ]
 
 
