@@ -4,8 +4,11 @@ import psycopg2
 import requests
 
 from f.connectors.comapeo.comapeo_pull import (
+    build_preset_mapping,
     download_file,
+    download_preset_icons,
     download_project_observations,
+    fetch_all_presets,
     fetch_preset,
     main,
     transform_comapeo_observations,
@@ -14,6 +17,7 @@ from f.connectors.comapeo.comapeo_pull import (
 from f.connectors.comapeo.tests.assets import server_responses
 from f.connectors.comapeo.tests.assets.server_responses import (
     SAMPLE_OBSERVATIONS,
+    SAMPLE_PRESETS,
     SAMPLE_TRACK,
 )
 
@@ -22,14 +26,19 @@ def test_transform_comapeo_observations():
     """Test the transformation function with sample data."""
     project_name = "Forest Expedition"
     project_id = "forest_expedition"
+    
+    # Build preset mapping from SAMPLE_PRESETS with actual icon filenames
+    icon_filenames = {
+        "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24": "camp.png",
+        "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10": "water_source.png",
+    }
+    preset_mapping = build_preset_mapping(SAMPLE_PRESETS, icon_filenames)
 
-    result, stats = transform_comapeo_observations(
-        SAMPLE_OBSERVATIONS, project_name, project_id
+    result = transform_comapeo_observations(
+        SAMPLE_OBSERVATIONS, project_name, project_id, preset_mapping
     )
 
     assert len(result) == len(SAMPLE_OBSERVATIONS)
-    assert stats["skipped_icons"] == 0
-    assert stats["icon_failed"] == 0
 
     feature1 = result[0]
     assert feature1["type"] == "Feature"
@@ -72,8 +81,11 @@ def test_transform_comapeo_observations():
 
     # presetRef should not be present
     assert "preset_ref" not in properties1
-    # Note: Preset fields (category, terms, color) are not tested here since
-    # preset fetching requires server_url/access_token. These are tested in e2e test.
+    # Preset fields should be present (from preset mapping) including .png extension
+    assert properties1["category"] == "Camp"
+    assert properties1["terms"] == "campsite, camping, hunting"
+    assert properties1["color"] == "#B209B2"
+    assert properties1["category_icon"] == "camp.png"
 
     feature2 = result[1]
     assert feature2["type"] == "Feature"
@@ -94,6 +106,11 @@ def test_transform_comapeo_observations():
     # In the test data, attachments are still in array format, so they'll be stringified
     assert "attachments" in properties2
     assert isinstance(properties2["attachments"], str)
+    # Preset fields for observation 2 including .png extension
+    assert properties2["category"] == "Water Source"
+    assert properties2["terms"] == "water, stream, river, well"
+    assert properties2["color"] == "#00A8FF"
+    assert properties2["category_icon"] == "water_source.png"
 
 
 def test_transform_comapeo_tracks():
@@ -145,130 +162,152 @@ def test_transform_comapeo_tracks():
     assert "preset_ref" not in properties1
 
 
-def test_transform_comapeo_observations_with_icon_failures(mocked_responses, tmp_path):
-    """Test that icon failures are properly counted in stats."""
-    server_url = "http://comapeo.example.org"
-    access_token = "test_token"
-    project_id = "forest_expedition"
-    project_name = "Forest Expedition"
-    attachment_root = str(tmp_path)
-
-    session = requests.Session()
-    session.headers.update({"Authorization": f"Bearer {access_token}"})
-
-    # Create observations with presetRefs that will fail to download icons
-    observations = [
-        {
-            "docId": "doc_id_1",
-            "lat": -33.8688,
-            "lon": 151.2093,
-            "presetRef": {
-                "docId": "preset_1",
-            },
-        },
-        {
-            "docId": "doc_id_2",
-            "lat": 48.8566,
-            "lon": 2.3522,
-            "presetRef": {
-                "docId": "preset_2",
-            },
-        },
-    ]
-
-    # Mock preset endpoints to return valid presets with iconRefs
-    for i, preset_id in enumerate(["preset_1", "preset_2"], 1):
-        preset_response = {
-            "data": {
-                "name": f"Preset {i}",
-                "iconRef": {
-                    "docId": f"icon_{i}",
-                    "url": f"{server_url}/projects/{project_id}/icon/icon_{i}",
-                },
-            }
-        }
-        mocked_responses.get(
-            f"{server_url}/projects/{project_id}/preset/{preset_id}",
-            json=preset_response,
-            status=200,
-        )
-        # Mock icon endpoints to fail (404)
-        mocked_responses.get(
-            f"{server_url}/projects/{project_id}/icon/icon_{i}",
-            status=404,
-        )
-
-    features, stats = transform_comapeo_observations(
-        observations,
-        project_name,
-        project_id,
-        server_url,
-        session,
-        attachment_root,
-    )
-
-    assert len(features) == 2
-    assert stats["icon_failed"] == 2  # Both icons failed
-    assert stats["skipped_icons"] == 0
-
-
-def test_transform_comapeo_observations_with_skipped_icons(mocked_responses, tmp_path):
-    """Test that skipped icons are properly counted in stats."""
-    server_url = "http://comapeo.example.org"
-    access_token = "test_token"
-    project_id = "forest_expedition"
-    project_name = "Forest Expedition"
-    attachment_root = str(tmp_path)
-
-    session = requests.Session()
-    session.headers.update({"Authorization": f"Bearer {access_token}"})
-
-    # Create icon directory and pre-existing icon file
-    # The icon filename is based on normalize_identifier(preset_name)
-    # "TestPreset" normalizes to "test_preset"
-    icon_dir = tmp_path / "comapeo" / "forest_expedition" / "icons"
-    icon_dir.mkdir(parents=True)
-    (icon_dir / "test_preset.png").write_bytes(b"existing icon")
-
-    observations = [
-        {
-            "docId": "doc_id_1",
-            "lat": -33.8688,
-            "lon": 151.2093,
-            "presetRef": {
-                "docId": "preset_1",
-            },
-        },
-    ]
-
-    # Mock preset endpoint
-    preset_response = {
-        "data": {
-            "name": "TestPreset",
-            "iconRef": {
-                "docId": "icon_1",
-                "url": f"{server_url}/projects/{project_id}/icon/icon_1",
-            },
-        }
+def test_build_preset_mapping():
+    """Test the preset mapping builder."""
+    # Test without icon filenames
+    preset_mapping = build_preset_mapping(SAMPLE_PRESETS)
+    
+    # Check that all presets are in the mapping
+    assert len(preset_mapping) == len(SAMPLE_PRESETS)
+    
+    # Check the "Camp" preset (without icon filenames, should be just sanitized name)
+    camp_preset_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
+    assert camp_preset_id in preset_mapping
+    camp_data = preset_mapping[camp_preset_id]
+    assert camp_data["name"] == "Camp"
+    assert camp_data["terms"] == "campsite, camping, hunting"
+    assert camp_data["color"] == "#B209B2"
+    assert camp_data["icon_filename"] == "camp"
+    
+    # Test with icon filenames
+    icon_filenames = {
+        camp_preset_id: "camp.png",
+        "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10": "water_source.png",
     }
+    preset_mapping_with_icons = build_preset_mapping(SAMPLE_PRESETS, icon_filenames)
+    
+    # Check that icon filenames are included
+    camp_data_with_icon = preset_mapping_with_icons[camp_preset_id]
+    assert camp_data_with_icon["icon_filename"] == "camp.png"
+    
+    water_preset_id = "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10"
+    water_data_with_icon = preset_mapping_with_icons[water_preset_id]
+    assert water_data_with_icon["name"] == "Water Source"
+    assert water_data_with_icon["terms"] == "water, stream, river, well"
+    assert water_data_with_icon["color"] == "#00A8FF"
+    assert water_data_with_icon["icon_filename"] == "water_source.png"
+    
+    # Check preset with empty terms
+    clay_preset_id = "237f202583456ecb4c689c4216e0651132b115307630a7f8d65571406efff3f5"
+    assert clay_preset_id in preset_mapping
+    clay_data = preset_mapping[clay_preset_id]
+    assert clay_data["name"] == "Clay"
+    assert clay_data["terms"] == ""
+    assert clay_data["color"] == "#073B4C"
+    # No icon filename provided, should use sanitized name
+    assert clay_data["icon_filename"] == "clay"
+
+
+def test_fetch_all_presets(mocked_responses):
+    """Test fetching all presets for a project."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+    
+    # Mock the batch preset endpoint
+    presets_response = server_responses.comapeo_all_presets(server_url, project_id)
     mocked_responses.get(
-        f"{server_url}/projects/{project_id}/preset/preset_1",
-        json=preset_response,
+        f"{server_url}/projects/{project_id}/preset",
+        json=presets_response,
         status=200,
     )
+    
+    presets = fetch_all_presets(server_url, session, project_id)
+    
+    assert len(presets) == len(SAMPLE_PRESETS)
+    assert presets[0]["name"] == "Camp"
+    assert presets[1]["name"] == "Water Source"
 
-    features, stats = transform_comapeo_observations(
-        observations,
-        project_name,
-        project_id,
-        server_url,
-        session,
-        attachment_root,
-    )
 
-    assert len(features) == 1
-    assert stats["skipped_icons"] == 1  # Icon was skipped (already exists)
+def test_download_preset_icons(mocked_responses, tmp_path):
+    """Test downloading preset icons."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    icon_dir = tmp_path / "icons"
+    
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+    
+    # Get presets with icon URLs
+    presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
+    
+    # Mock icon downloads
+    for preset in presets[:2]:  # Only mock first 2 icons
+        icon_ref = preset.get("iconRef", {})
+        icon_url = icon_ref.get("url")
+        if icon_url:
+            icon_body = b"fake icon data"
+            mocked_responses.get(
+                icon_url,
+                body=icon_body,
+                content_type="image/png",
+            )
+    
+    stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
+    
+    assert stats["skipped_icons"] == 0
     assert stats["icon_failed"] == 0
+    
+    # Check that icon filenames are returned with extensions
+    assert len(icon_filenames) == 2
+    camp_preset_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
+    water_preset_id = "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10"
+    assert icon_filenames[camp_preset_id] == "camp.png"
+    assert icon_filenames[water_preset_id] == "water_source.png"
+    
+    # Verify icons were downloaded
+    assert (icon_dir / "camp.png").exists()
+    assert (icon_dir / "water_source.png").exists()
+    
+    # Test skipping existing icons
+    stats2, icon_filenames2 = download_preset_icons(presets[:2], icon_dir, session)
+    assert stats2["skipped_icons"] == 2
+    assert stats2["icon_failed"] == 0
+    # Should still return icon filenames even when skipped
+    assert icon_filenames2[camp_preset_id] == "camp.png"
+    assert icon_filenames2[water_preset_id] == "water_source.png"
+
+
+def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
+    """Test that icon download failures are properly counted."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    icon_dir = tmp_path / "icons"
+    
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+    
+    # Get presets with icon URLs
+    presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
+    
+    # Mock icon downloads to fail
+    for preset in presets[:2]:
+        icon_ref = preset.get("iconRef", {})
+        icon_url = icon_ref.get("url")
+        if icon_url:
+            mocked_responses.get(icon_url, status=404)
+    
+    stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
+    
+    assert stats["icon_failed"] == 2
+    assert stats["skipped_icons"] == 0
+    # Failed downloads should not be in icon_filenames
+    assert len(icon_filenames) == 0
 
 
 def test_download_project_observations_with_failures(
@@ -553,7 +592,7 @@ def test_download_file(mocked_responses, tmp_path):
     assert file_name is None
     assert skipped == 0  # Errors are not skips
 
-    # Test missing Content-Type header (should save without extension)
+    # Test missing Content-Type header (should default to .png for icons)
     no_content_type_url = (
         f"{server_url}/projects/test_project/icon/no_content_type_icon"
     )
@@ -574,9 +613,10 @@ def test_download_file(mocked_responses, tmp_path):
         existing_icon_stems,
     )
 
-    assert file_name == "no_content_type_icon"
+    # Defaults to .png when Content-Type is missing (common for icons)
+    assert file_name == "no_content_type_icon.png"
     assert skipped == 0
-    no_content_type_path = icon_dir / "no_content_type_icon"
+    no_content_type_path = icon_dir / "no_content_type_icon.png"
     assert no_content_type_path.exists()
     assert no_content_type_path.read_bytes() == no_content_type_body
 
@@ -600,6 +640,14 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
         / "attachments"
         / "a1b2c3d4e5f6g7h8.jpg"
     ).exists()
+
+    # Presets JSON is saved to disk
+    presets_json_path = asset_storage / "comapeo" / "forest_expedition" / "presets.json"
+    assert presets_json_path.exists()
+    with open(presets_json_path) as f:
+        presets_data = json.load(f)
+        assert "data" in presets_data
+        assert len(presets_data["data"]) > 0
 
     # Icons are saved to disk with sanitized preset names
     assert (
@@ -651,6 +699,7 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
             assert "category" in columns
             assert "terms" in columns
             assert "color" in columns
+            assert "category_icon" in columns
 
             # Check geometry data
             cursor.execute(
@@ -702,20 +751,22 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
 
             # Check that preset fields are properly stored
             cursor.execute(
-                "SELECT category, terms, color FROM comapeo_forest_expedition_observations WHERE \"docId\" = 'doc_id_1'"
+                "SELECT category, terms, color, category_icon FROM comapeo_forest_expedition_observations WHERE \"docId\" = 'doc_id_1'"
             )
             row = cursor.fetchone()
             assert row[0] == "Camp"  # category from preset name
             assert row[1] == "campsite, camping, hunting"  # terms as comma-separated
             assert row[2] == "#B209B2"  # color
+            assert row[3] == "camp.png"  # category_icon with extension
 
             cursor.execute(
-                "SELECT category, terms, color FROM comapeo_forest_expedition_observations WHERE \"docId\" = 'doc_id_2'"
+                "SELECT category, terms, color, category_icon FROM comapeo_forest_expedition_observations WHERE \"docId\" = 'doc_id_2'"
             )
             row = cursor.fetchone()
             assert row[0] == "Water Source"  # category from preset name
             assert row[1] == "water, stream, river, well"  # terms as comma-separated
             assert row[2] == "#00A8FF"  # color
+            assert row[3] == "water_source.png"  # category_icon with extension
 
         # Tracks from forest_expedition are written to a SQL Table in expected format
         with conn.cursor() as cursor:

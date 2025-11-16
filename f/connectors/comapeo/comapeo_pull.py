@@ -209,8 +209,12 @@ def download_file(url, session, save_path, existing_file_stems):
         response = session.get(url)
         response.raise_for_status()
 
-        content_type = response.headers.get("Content-Type", "") or ""
-        extension = mimetypes.guess_extension(content_type) if content_type else ""
+        content_type = response.headers.get("Content-Type", "")
+        extension = mimetypes.guess_extension(content_type) if content_type else None
+
+        # PNG is the default image type for icons c.f. https://github.com/digidem/comapeo-core/blob/main/src/icon-api.js
+        if not extension:
+            extension = ".png"
 
         file_name = base_name + extension
         save_path = Path(str(save_path) + extension)
@@ -416,6 +420,143 @@ def fetch_preset(
         return None, 0, False
 
 
+def fetch_all_presets(server_url, session, project_id):
+    """Fetch all presets for a project from the CoMapeo API.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+
+    Returns
+    -------
+    list
+        A list of preset data dictionaries from the API response.
+    """
+    url = f"{server_url}/projects/{project_id}/preset"
+    logger.info(f"Fetching all presets for project (ID: {project_id})...")
+
+    try:
+        response = session.get(url)
+        response.raise_for_status()
+        data = response.json().get("data", [])
+        logger.info(f"Fetched {len(data)} presets for project {project_id}.")
+        return data
+    except (
+        requests.exceptions.RequestException,
+        requests.exceptions.JSONDecodeError,
+    ) as e:
+        logger.warning(f"Failed to fetch presets for project {project_id}: {e}")
+        return []
+
+
+def download_preset_icons(presets, icon_dir, session):
+    """Download all icons from a list of presets.
+
+    Parameters
+    ----------
+    presets : list
+        A list of preset data dictionaries.
+    icon_dir : Path
+        Directory where icons should be saved.
+    session : requests.Session
+        A requests session with authentication headers configured.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - stats (Counter): Statistics with 'skipped_icons' and 'icon_failed' counts.
+        - icon_filenames (dict): Mapping of preset docId to actual downloaded filename (e.g., "camp.png").
+    """
+    stats = Counter()
+    icon_filenames = {}
+    existing_icon_stems = build_existing_file_set(icon_dir)
+
+    for preset in presets:
+        preset_doc_id = preset.get("docId")
+        icon_ref = preset.get("iconRef")
+        preset_name = preset.get("name", "")
+
+        if icon_ref and "url" in icon_ref and preset_name and preset_doc_id:
+            sanitized_name = normalize_identifier(preset_name)
+            icon_save_path = icon_dir / sanitized_name
+            file_name, skipped = download_file(
+                icon_ref["url"],
+                session,
+                str(icon_save_path),
+                existing_icon_stems,
+            )
+            stats["skipped_icons"] += skipped
+            if file_name is None:
+                logger.error(
+                    f"Icon download failed for URL: {icon_ref['url']}. Preset: {preset_name}."
+                )
+                stats["icon_failed"] += 1
+            else:
+                # Store the actual filename with extension
+                icon_filenames[preset_doc_id] = file_name
+                # Add to existing set for subsequent downloads in the same batch
+                existing_icon_stems.add(sanitized_name)
+
+    return stats, icon_filenames
+
+
+def build_preset_mapping(presets, icon_filenames=None):
+    """Build a mapping from preset docId to relevant fields for observations.
+
+    Parameters
+    ----------
+    presets : list
+        A list of preset data dictionaries.
+    icon_filenames : dict, optional
+        A mapping of preset docId to actual icon filename (e.g., "camp.png").
+        If not provided, icon_filename will be set to just the sanitized name.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping preset docId to a dict containing:
+        - 'name': The preset name (used as category)
+        - 'terms': Comma-separated terms string
+        - 'color': The preset color
+        - 'icon_filename': The actual icon filename (e.g., 'camp.png')
+    """
+    mapping = {}
+
+    for preset in presets:
+        doc_id = preset.get("docId")
+        if not doc_id:
+            continue
+
+        preset_data = {}
+
+        # Extract name (used as category)
+        if "name" in preset:
+            preset_data["name"] = preset["name"]
+            # Use actual icon filename if available, otherwise use sanitized name
+            if icon_filenames and doc_id in icon_filenames:
+                preset_data["icon_filename"] = icon_filenames[doc_id]
+            else:
+                preset_data["icon_filename"] = normalize_identifier(preset["name"])
+
+        # Extract terms as comma-separated string
+        if "terms" in preset and isinstance(preset["terms"], list):
+            preset_data["terms"] = ", ".join(preset["terms"])
+
+        # Extract color
+        if "color" in preset:
+            preset_data["color"] = preset["color"]
+
+        mapping[doc_id] = preset_data
+
+    return mapping
+
+
 def _apply_preset_data(item, preset_ref, server_url, session, project_id):
     """Apply preset data to an item if preset reference is available.
 
@@ -476,9 +617,7 @@ def transform_comapeo_observations(
     observations,
     project_name,
     project_id=None,
-    server_url=None,
-    session=None,
-    attachment_root=None,
+    preset_mapping=None,
 ):
     """Transform CoMapeo observations into GeoJSON features with proper metadata and geometry formatting.
 
@@ -490,33 +629,16 @@ def transform_comapeo_observations(
         The name of the project these observations belong to.
     project_id : str, optional
         The unique identifier of the project. If not provided, this field will be omitted from the output.
-    server_url : str, optional
-        The base URL of the CoMapeo server. Required for preset fetching.
-    session : requests.Session, optional
-        A requests session with authentication headers configured. Required for preset fetching.
-    attachment_root : str, optional
-        The root directory where attachments and icons are saved. Required for icon downloading.
+    preset_mapping : dict, optional
+        A dictionary mapping preset docId to preset data (name, terms, color, icon_filename).
+        If not provided, preset data will not be added to observations.
 
     Returns
     -------
     features : list
         A list of GeoJSON Feature objects with transformed properties and geometry.
-    stats : Counter
-        A Counter containing statistics about the transformation process:
-        - 'skipped_icons': The number of icons skipped due to already existing on disk.
-        - 'icon_failed': The number of icon downloads that failed.
     """
     features = []
-    stats = Counter()
-
-    # Set up icon directory and existing icon stems if attachment_root is provided
-    icon_dir = None
-    existing_icon_stems = None
-
-    if attachment_root and project_id:
-        sanitized_project_name = normalize_identifier(project_name)
-        icon_dir = Path(attachment_root) / "comapeo" / sanitized_project_name / "icons"
-        existing_icon_stems = build_existing_file_set(icon_dir)
 
     for observation in observations:
         observation = observation.copy()
@@ -541,35 +663,24 @@ def transform_comapeo_observations(
                     observation["accuracy"] = coords.get("accuracy")
                 observation["mocked"] = position.get("mocked")
 
-        # Fetch and extract preset data
+        # Apply preset data from mapping
         preset_ref = observation.pop("presetRef", None)
-        if preset_ref and server_url and session and project_id:
+        if preset_ref and preset_mapping:
             preset_doc_id = preset_ref.get("docId")
-            if preset_doc_id:
-                preset_data, icon_skipped, icon_error = fetch_preset(
-                    server_url,
-                    session,
-                    project_id,
-                    preset_doc_id,
-                    icon_dir,
-                    existing_icon_stems,
-                )
-                stats["skipped_icons"] += icon_skipped
-                if icon_error:
-                    stats["icon_failed"] += 1
-                if preset_data:
-                    # Add name as category
-                    if "name" in preset_data:
-                        observation["category"] = preset_data["name"]
-                    # Add terms as comma-separated string
-                    if "terms" in preset_data and isinstance(
-                        preset_data["terms"], list
-                    ):
-                        observation["terms"] = ", ".join(preset_data["terms"])
-                    # Add color
-                    if "color" in preset_data:
-                        observation["color"] = preset_data["color"]
-                    # NOTE: presetRef returns much more than this (c.f. SAMPLE_PRESETS in tests/assets/server_responses.py)
+            if preset_doc_id and preset_doc_id in preset_mapping:
+                preset_data = preset_mapping[preset_doc_id]
+                # Add name as category
+                if "name" in preset_data:
+                    observation["category"] = preset_data["name"]
+                # Add terms as comma-separated string
+                if "terms" in preset_data:
+                    observation["terms"] = preset_data["terms"]
+                # Add color
+                if "color" in preset_data:
+                    observation["color"] = preset_data["color"]
+                # Add icon filename as category_icon
+                if "icon_filename" in preset_data:
+                    observation["category_icon"] = preset_data["icon_filename"]
 
         # Convert all keys (except docId) from camelCase to snake_case
         special_case_keys = {"docId"}
@@ -599,7 +710,7 @@ def transform_comapeo_observations(
 
         features.append(feature)
 
-    return features, stats
+    return features
 
 
 def transform_comapeo_tracks(
@@ -722,14 +833,36 @@ def download_and_transform_comapeo_data(
         project_name = project["project_name"]
         sanitized_project_name = normalize_identifier(project_name)
 
+        # Set up project directories
+        project_dir = Path(attachment_root) / "comapeo" / sanitized_project_name
+        icon_dir = project_dir / "icons"
+
+        # Fetch all presets for this project
+        presets = fetch_all_presets(server_url, session, project_id)
+
+        # Save presets.json to disk
+        if presets:
+            save_data_to_file(
+                {"data": presets},
+                "presets",
+                project_dir,
+                file_type="json",
+            )
+
+        # Download all preset icons
+        icon_stats, icon_filenames = download_preset_icons(presets, icon_dir, session)
+
+        # Build preset mapping for use in transformations (with actual icon filenames)
+        preset_mapping = build_preset_mapping(presets, icon_filenames)
+
         # Download all observations and attachments for this project
         observations, attachment_stats = download_project_observations(
             server_url, session, project_id, project_name, attachment_root
         )
 
         # Transform observations to GeoJSON features
-        observation_features, icon_stats = transform_comapeo_observations(
-            observations, project_name, project_id, server_url, session, attachment_root
+        observation_features = transform_comapeo_observations(
+            observations, project_name, project_id, preset_mapping
         )
 
         # Store observations as a GeoJSON FeatureCollection

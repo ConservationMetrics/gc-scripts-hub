@@ -431,6 +431,28 @@ def comapeo_project_tracks(uri, project_id):
     return {"data": tracks}
 
 
+def comapeo_all_presets(uri, project_id):
+    """Return all presets for a project."""
+    presets = []
+    for preset in SAMPLE_PRESETS:
+        preset_copy = preset.copy()
+        if "fieldRefs" in preset_copy:
+            preset_copy["fieldRefs"] = [
+                {
+                    **field_ref,
+                    "url": f"{uri}/projects/{project_id}/field/{field_ref['docId']}",
+                }
+                for field_ref in preset_copy["fieldRefs"]
+            ]
+        if "iconRef" in preset_copy:
+            preset_copy["iconRef"] = {
+                **preset_copy["iconRef"],
+                "url": f"{uri}/projects/{project_id}/icon/{preset_copy['iconRef']['docId']}",
+            }
+        presets.append(preset_copy)
+    return {"data": presets}
+
+
 def comapeo_preset(uri, project_id, preset_doc_id):
     """Return preset data for a given preset docId."""
     # Find the preset in SAMPLE_PRESETS by docId
