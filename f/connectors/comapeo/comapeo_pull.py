@@ -439,7 +439,7 @@ def fetch_all_presets(server_url, session, project_id):
     """
     url = f"{server_url}/projects/{project_id}/preset"
     logger.info(f"Fetching all presets for project (ID: {project_id})...")
-
+    
     try:
         response = session.get(url)
         response.raise_for_status()
@@ -451,6 +451,40 @@ def fetch_all_presets(server_url, session, project_id):
         requests.exceptions.JSONDecodeError,
     ) as e:
         logger.warning(f"Failed to fetch presets for project {project_id}: {e}")
+        return []
+
+
+def fetch_all_fields(server_url, session, project_id):
+    """Fetch all fields for a project from the CoMapeo API.
+
+    Parameters
+    ----------
+    server_url : str
+        The base URL of the CoMapeo server.
+    session : requests.Session
+        A requests session with authentication headers configured.
+    project_id : str
+        The unique identifier of the project.
+
+    Returns
+    -------
+    list
+        A list of field data dictionaries from the API response.
+    """
+    url = f"{server_url}/projects/{project_id}/field"
+    logger.info(f"Fetching all fields for project (ID: {project_id})...")
+    
+    try:
+        response = session.get(url)
+        response.raise_for_status()
+        data = response.json().get("data", [])
+        logger.info(f"Fetched {len(data)} fields for project {project_id}.")
+        return data
+    except (
+        requests.exceptions.RequestException,
+        requests.exceptions.JSONDecodeError,
+    ) as e:
+        logger.warning(f"Failed to fetch fields for project {project_id}: {e}")
         return []
 
 
@@ -845,6 +879,18 @@ def download_and_transform_comapeo_data(
             save_data_to_file(
                 {"data": presets},
                 "presets",
+                project_dir,
+                file_type="json",
+            )
+
+        # Fetch all fields for this project
+        fields = fetch_all_fields(server_url, session, project_id)
+
+        # Save fields.json to disk
+        if fields:
+            save_data_to_file(
+                {"data": fields},
+                "fields",
                 project_dir,
                 file_type="json",
             )

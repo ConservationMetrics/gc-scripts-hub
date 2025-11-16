@@ -8,7 +8,7 @@ For example, with a `table_prefix` of "comapeo" and a `name` of "My Mapeo Projec
 
 **Attachments:** media attachment files (e.g. photos and audio) for observations will be stored in the following directory schema: `{attachment_root}/comapeo/{project_name}/attachments/...`. (Tracks do not have attachments, so no attachment downloading is performed for tracks.)
 
-**Presets:** In CoMapeo, category definitions are stored as `presetRef`. The complete preset configuration is saved as `{attachment_root}/comapeo/{project_name}/presets.json` for archiving and future interpretation by humans or large language models (see https://github.com/ConservationMetrics/gc-scripts-hub/issues/178 for more details). The script also extracts key fields from the presets (`name`, `terms`, `color`, and icon filename) to enrich observation and track data in the database, and adds a `category_icon` field to each observation that contains the icon filename (e.g., `"camp.png"`).
+**Presets and fields:** In CoMapeo, category definitions are stored as `presetRef`, and fields for each category are stored as `fieldRef`. The complete preset and field configurations are saved as `{attachment_root}/comapeo/{project_name}/presets.json` and `{attachment_root}/comapeo/{project_name}/fields.json`, respectively,for archiving and future interpretation by humans or large language models (see https://github.com/ConservationMetrics/gc-scripts-hub/issues/178 for more details). The script also extracts key fields from the presets (`name`, `terms`, `color`, and icon filename) to enrich observation and track data in the database, and adds a `category_icon` field to each observation that contains the icon filename (e.g., `"camp.png"`).
 
 **Icons:** icons for each preset will be stored in the following directory schema: `{attachment_root}/comapeo/{project_name}/icons/...`
 
@@ -106,6 +106,29 @@ This endpoint retrieves the binary data of a specific attachment, such as a phot
         "url": "https://comapeo.example/projects/abc123/icon/icon_doc_id"
       },
       "color": "#000000",
+      ...
+    },
+    ...
+  ]
+}
+```
+
+### `GET /projects/abc123/field`
+
+```json
+{
+  "data": [
+    {
+      "docId": "preset_doc_id",
+      ...
+      "schemaName": "field",
+      ...
+      "tagKey": "plant-species",
+      "type": "text",
+      "label": "Plant species",
+      "appearance": "multiline",
+      ...
+      "helperText": "What kind of plant?",
       ...
     },
     ...

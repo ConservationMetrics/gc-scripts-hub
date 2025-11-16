@@ -50,6 +50,12 @@ def comapeoserver_observations(mocked_responses):
         json=server_responses.comapeo_all_presets(server_url, project_id),
         status=200,
     )
+    # Mock batch field endpoint
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/field",
+        json=server_responses.comapeo_all_fields(server_url, project_id),
+        status=200,
+    )
     # Mock photo attachments
     photo_body = b"fake photo data" * 100  # Make it ~1600 bytes
     mocked_responses.get(

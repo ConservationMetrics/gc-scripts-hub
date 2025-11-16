@@ -8,6 +8,7 @@ from f.connectors.comapeo.comapeo_pull import (
     download_file,
     download_preset_icons,
     download_project_observations,
+    fetch_all_fields,
     fetch_all_presets,
     fetch_preset,
     main,
@@ -16,6 +17,7 @@ from f.connectors.comapeo.comapeo_pull import (
 )
 from f.connectors.comapeo.tests.assets import server_responses
 from f.connectors.comapeo.tests.assets.server_responses import (
+    SAMPLE_FIELDS,
     SAMPLE_OBSERVATIONS,
     SAMPLE_PRESETS,
     SAMPLE_TRACK,
@@ -230,6 +232,37 @@ def test_fetch_all_presets(mocked_responses):
     assert len(presets) == len(SAMPLE_PRESETS)
     assert presets[0]["name"] == "Camp"
     assert presets[1]["name"] == "Water Source"
+
+
+def test_fetch_all_fields(mocked_responses):
+    """Test fetching all fields for a project."""
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    
+    session = requests.Session()
+    session.headers.update({"Authorization": f"Bearer {access_token}"})
+    
+    # Mock the fields endpoint
+    fields_response = server_responses.comapeo_all_fields(server_url, project_id)
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/field",
+        json=fields_response,
+        status=200,
+    )
+    
+    fields = fetch_all_fields(server_url, session, project_id)
+    
+    assert len(fields) == len(SAMPLE_FIELDS)
+    # Check that field data contains expected keys
+    assert "tagKey" in fields[0]
+    assert "type" in fields[0]
+    assert "label" in fields[0]
+    assert "helperText" in fields[0]
+    # Check specific field values
+    assert fields[0]["tagKey"] == "campsite-notes"
+    assert fields[0]["type"] == "text"
+    assert fields[0]["label"] == "Campsite notes"
 
 
 def test_download_preset_icons(mocked_responses, tmp_path):
@@ -648,6 +681,18 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
         presets_data = json.load(f)
         assert "data" in presets_data
         assert len(presets_data["data"]) > 0
+
+    # Fields JSON is saved to disk
+    fields_json_path = asset_storage / "comapeo" / "forest_expedition" / "fields.json"
+    assert fields_json_path.exists()
+    with open(fields_json_path) as f:
+        fields_data = json.load(f)
+        assert "data" in fields_data
+        assert len(fields_data["data"]) > 0
+        # Check that field data contains expected keys
+        assert "tagKey" in fields_data["data"][0]
+        assert "type" in fields_data["data"][0]
+        assert "label" in fields_data["data"][0]
 
     # Icons are saved to disk with sanitized preset names
     assert (

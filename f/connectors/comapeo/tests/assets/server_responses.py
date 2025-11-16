@@ -130,6 +130,125 @@ SAMPLE_OBSERVATIONS = [
     },
 ]
 
+SAMPLE_TRACK = [
+    {
+        "docId": "8e8d1002ca585382e97d8a7a9ab9ce04d484b2525b6d6e6335340c46ad430d24",
+        "versionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
+        "originalVersionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
+        "schemaName": "track",
+        "createdAt": "2024-10-14T20:43:23.268Z",
+        "updatedAt": "2024-10-14T20:43:23.268Z",
+        "links": [],
+        "deleted": False,
+        "locations": [
+            {
+                "timestamp": "2024-10-14T20:43:35.919Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8688,
+                    "longitude": 151.2093,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:46.658Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8689,
+                    "longitude": 151.2094,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:50.657Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8690,
+                    "longitude": 151.2095,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:51.840Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8691,
+                    "longitude": 151.2096,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:53.141Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8692,
+                    "longitude": 151.2097,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:54.282Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8693,
+                    "longitude": 151.2098,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:55.545Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8694,
+                    "longitude": 151.2099,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:56.525Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8695,
+                    "longitude": 151.2100,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:43:59.663Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8696,
+                    "longitude": 151.2101,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:02.181Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8697,
+                    "longitude": 151.2102,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:04.063Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8698,
+                    "longitude": 151.2103,
+                },
+            },
+            {
+                "timestamp": "2024-10-14T20:44:06.656Z",
+                "mocked": False,
+                "coords": {
+                    "latitude": -33.8699,
+                    "longitude": 151.2104,
+                },
+            },
+        ],
+        "observationRefs": [],
+        "tags": {
+            "notes": "Cool stream",
+        },
+        "presetRef": {
+            "docId": "d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
+            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/296",
+            "url": "http://comapeo.example.org/projects/forest_expedition/preset/d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
+        },
+    },
+]
 
 SAMPLE_PRESETS = [
     {
@@ -258,124 +377,79 @@ SAMPLE_PRESETS = [
     },
 ]
 
-
-SAMPLE_TRACK = [
+SAMPLE_FIELDS = [
     {
-        "docId": "8e8d1002ca585382e97d8a7a9ab9ce04d484b2525b6d6e6335340c46ad430d24",
-        "versionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
-        "originalVersionId": "c4ef609ac927258982f0bd0384bd6bbabb9711d1e2859b616ce437428c04d58b/2",
-        "schemaName": "track",
-        "createdAt": "2024-10-14T20:43:23.268Z",
-        "updatedAt": "2024-10-14T20:43:23.268Z",
+        "docId": "f32559383eb90a8b07433673159006249b1fe91783d901667696c3d44a847829",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/269",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/269",
+        "schemaName": "field",
+        "createdAt": "2024-10-14T02:41:33.288Z",
+        "updatedAt": "2024-10-14T02:41:33.288Z",
         "links": [],
         "deleted": False,
-        "locations": [
-            {
-                "timestamp": "2024-10-14T20:43:35.919Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8688,
-                    "longitude": 151.2093,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:46.658Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8689,
-                    "longitude": 151.2094,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:50.657Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8690,
-                    "longitude": 151.2095,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:51.840Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8691,
-                    "longitude": 151.2096,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:53.141Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8692,
-                    "longitude": 151.2097,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:54.282Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8693,
-                    "longitude": 151.2098,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:55.545Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8694,
-                    "longitude": 151.2099,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:56.525Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8695,
-                    "longitude": 151.2100,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:43:59.663Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8696,
-                    "longitude": 151.2101,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:44:02.181Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8697,
-                    "longitude": 151.2102,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:44:04.063Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8698,
-                    "longitude": 151.2103,
-                },
-            },
-            {
-                "timestamp": "2024-10-14T20:44:06.656Z",
-                "mocked": False,
-                "coords": {
-                    "latitude": -33.8699,
-                    "longitude": 151.2104,
-                },
-            },
+        "tagKey": "campsite-notes",
+        "type": "text",
+        "label": "Campsite notes",
+        "appearance": "multiline",
+        "snakeCase": False,
+        "universal": False,
+        "helperText": "Notes about this campsite",
+    },
+    {
+        "docId": "a987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba09",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/270",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/270",
+        "schemaName": "field",
+        "createdAt": "2024-10-15T03:15:22.145Z",
+        "updatedAt": "2024-10-15T03:15:22.145Z",
+        "links": [],
+        "deleted": False,
+        "tagKey": "water-quality",
+        "type": "selectOne",
+        "label": "Water quality",
+        "appearance": "multiline",
+        "snakeCase": False,
+        "options": [
+            {"label": "Clean", "value": "Clean"},
+            {"label": "Murky", "value": "Murky"},
+            {"label": "Polluted", "value": "Polluted"},
         ],
-        "observationRefs": [],
-        "tags": {
-            "notes": "Cool stream",
-        },
-        "presetRef": {
-            "docId": "d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
-            "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/296",
-            "url": "http://comapeo.example.org/projects/forest_expedition/preset/d12c6db96bc415d1b71eceac4ce13efac63eda430fe16f42e1c50982d8341d4b",
-        },
+        "universal": False,
+        "helperText": "Observed water quality",
+    },
+    {
+        "docId": "b876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba98",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/271",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/271",
+        "schemaName": "field",
+        "createdAt": "2024-10-15T03:15:22.145Z",
+        "updatedAt": "2024-10-15T03:15:22.145Z",
+        "links": [],
+        "deleted": False,
+        "tagKey": "flow-rate",
+        "type": "text",
+        "label": "Flow rate",
+        "appearance": "multiline",
+        "snakeCase": False,
+        "universal": False,
+        "helperText": "Estimated flow rate (slow/medium/fast)",
+    },
+    {
+        "docId": "c8eb3b7829ecba5a3bbbd8e4456e2069e6b215a3be7be2ac745992b1411df868",
+        "versionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/272",
+        "originalVersionId": "41a045802b2196b509c8eb70c3b40fdee97f0fdb20d7a2ec9ccd2911ad6db2fe/272",
+        "schemaName": "field",
+        "createdAt": "2024-11-15T02:55:01.277Z",
+        "updatedAt": "2024-11-15T02:55:01.277Z",
+        "links": [],
+        "deleted": False,
+        "tagKey": "name",
+        "type": "text",
+        "label": "Name",
+        "appearance": "multiline",
+        "snakeCase": False,
+        "universal": True,
+        "helperText": "Common name of this place",
     },
 ]
 
@@ -475,6 +549,15 @@ def comapeo_preset(uri, project_id, preset_doc_id):
                 }
             return {"data": preset_copy}
     return {"data": None}
+
+
+def comapeo_all_fields(uri, project_id):
+    """Return all fields for a project."""
+    fields = []
+    for field in SAMPLE_FIELDS:
+        field_copy = field.copy()
+        fields.append(field_copy)
+    return {"data": fields}
 
 
 def comapeo_alerts():
