@@ -1,5 +1,6 @@
 # requirements:
 # psycopg2-binary
+# python-dateutil
 # requests~=2.32
 
 import json
