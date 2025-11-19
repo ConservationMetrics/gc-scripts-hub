@@ -222,7 +222,6 @@ def download_file(url, session, save_path, existing_file_stems):
         save_path.parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(response.content)
-        logger.info("Download completed.")
         return file_name, skipped_count
 
     except Exception as e:
@@ -319,9 +318,6 @@ def download_project_observations(
                     if file_name is not None:
                         filenames.append(file_name)
                     else:
-                        logger.error(
-                            f"Attachment download failed for URL: {attachment['url']}. Skipping attachment."
-                        )
                         stats["attachment_failed"] += 1
 
             observation["attachments"] = ", ".join(filenames)
@@ -439,7 +435,7 @@ def fetch_all_presets(server_url, session, project_id):
     """
     url = f"{server_url}/projects/{project_id}/preset"
     logger.info(f"Fetching all presets for project (ID: {project_id})...")
-    
+
     try:
         response = session.get(url)
         response.raise_for_status()
@@ -473,7 +469,7 @@ def fetch_all_fields(server_url, session, project_id):
     """
     url = f"{server_url}/projects/{project_id}/field"
     logger.info(f"Fetching all fields for project (ID: {project_id})...")
-    
+
     try:
         response = session.get(url)
         response.raise_for_status()
