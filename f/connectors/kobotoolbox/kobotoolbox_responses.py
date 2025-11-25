@@ -282,7 +282,7 @@ def download_form_responses_and_attachments(
     form_languages = ",".join(filter(None, languages)) if languages != [None] else None
 
     # Download form responses with pagination
-    # As of January 2026, the maximum page size is 1000 records
+    # As of January 2026, the maximum page size is 1000 records; c.f. https://community.kobotoolbox.org/t/important-changes-to-api-v2-data-result-limits/74610
     form_submissions = []
     skipped_attachments = 0
     limit = 1000
@@ -317,7 +317,9 @@ def download_form_responses_and_attachments(
     if skipped_attachments > 0:
         logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
 
-    logger.info(f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s) total.")
+    logger.info(
+        f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s) total."
+    )
     return form_submissions, form_name, form_languages
 
 
