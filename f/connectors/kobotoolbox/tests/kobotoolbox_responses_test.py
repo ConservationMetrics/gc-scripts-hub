@@ -174,3 +174,31 @@ def test_transform_kobotoolbox_form_data_from_csv():
         assert "g__coordinates" in submission
 
     assert result[0]["g__coordinates"] == [-55.963451, 2.164341]
+
+
+def test_pagination(koboserver_with_pagination, pg_database, tmp_path):
+    """Test that pagination correctly fetches all records across multiple pages."""
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_pagination_test"
+
+    main(
+        koboserver_with_pagination.account,
+        koboserver_with_pagination.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    # Verify all submissions were fetched and stored
+    with psycopg2.connect(**pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            # All 3 submissions from fixture should be present
+            assert cursor.fetchone()[0] == 3
+
+            # Verify that specific records from different "pages" are present
+            cursor.execute(f"SELECT _id FROM {table_name} ORDER BY _id")
+            ids = [row[0] for row in cursor.fetchall()]
+            assert "124961136" in ids
+            assert "125283733" in ids
+            assert "125340283" in ids
