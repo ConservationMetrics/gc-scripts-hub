@@ -282,7 +282,12 @@ def download_form_responses_and_attachments(
     form_languages = ",".join(filter(None, languages)) if languages != [None] else None
 
     # Download form responses with pagination
-    # As of January 2026, the maximum page size is 1000 records; c.f. https://community.kobotoolbox.org/t/important-changes-to-api-v2-data-result-limits/74610
+    # As of January 2026, the maximum page size is 1000 records
+    # See: https://community.kobotoolbox.org/t/important-changes-to-api-v2-assets-uid-asset-data-result-limits/74610/8
+    #
+    # Note: We do not specify a ?sort= parameter here, matching Kobo's example implementation
+    # linked above. This assumes the API provides a stable default sort order to ensure
+    # consistent pagination.
     form_submissions = []
     skipped_attachments = 0
     limit = 1000
