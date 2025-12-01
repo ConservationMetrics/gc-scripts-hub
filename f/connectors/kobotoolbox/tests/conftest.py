@@ -27,7 +27,8 @@ def _paginated_data_callback(request):
     parsed_url = urllib.parse.urlparse(request.url)
     query_params = urllib.parse.parse_qs(parsed_url.query)
     
-    limit = int(query_params.get("limit", [None])[0]) if query_params.get("limit") else None
+    # Default to 100 if limit not specified, matching API behavior as of January 2026
+    limit = int(query_params.get("limit", [100])[0])
     start = int(query_params.get("start", [0])[0])
     
     response_data = server_responses.kobo_form_submissions(

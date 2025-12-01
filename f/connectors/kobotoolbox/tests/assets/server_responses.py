@@ -213,7 +213,7 @@ def _get_all_submissions(uri, form_id):
         ]
 
 
-def kobo_form_submissions(uri, form_id, limit=None, start=0):
+def kobo_form_submissions(uri, form_id, limit=100, start=0):
     """
     Return paginated form submissions for testing.
     
@@ -224,7 +224,7 @@ def kobo_form_submissions(uri, form_id, limit=None, start=0):
     form_id : str
         The form ID
     limit : int, optional
-        The maximum number of results to return per page
+        The maximum number of results to return per page (default: 100, matching API behavior as of January 2026)
     start : int, optional
         The starting index for pagination (default: 0)
     
@@ -235,15 +235,6 @@ def kobo_form_submissions(uri, form_id, limit=None, start=0):
     """
     all_submissions = _get_all_submissions(uri, form_id)
     total_count = len(all_submissions)
-    
-    # If no limit specified, return all results
-    if limit is None:
-        return {
-            "count": total_count,
-            "next": None,
-            "previous": None,
-            "results": all_submissions,
-        }
     
     # Paginate results
     end = start + limit
