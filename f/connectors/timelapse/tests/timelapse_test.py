@@ -106,6 +106,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
             assert cursor.fetchone()[0] == 20
 
     assert (actual_storage_path / "TimelapseData.ddb").exists()
+    assert (actual_storage_path / "TimelapseTemplate.tdb").exists()
 
     assert (actual_storage_path / "Station1" / "Deployment1a" / "IMG_002.jpg").exists()
 
@@ -158,3 +159,4 @@ def test_second_run_adds_suffix(pg_database, tmp_path, timelapse_zip):
     assert second_path.name == "timelapse_export_1"
     assert second_path.parent == first_path.parent
     assert (second_path / "TimelapseData.ddb").exists()
+    assert (second_path / "TimelapseTemplate.tdb").exists()
