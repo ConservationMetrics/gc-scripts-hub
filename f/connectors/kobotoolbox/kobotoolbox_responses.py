@@ -281,7 +281,9 @@ def download_form_responses_and_attachments(
     languages = form_metadata.get("content", {}).get("translations", [])
     form_languages = ",".join(filter(None, languages)) if languages != [None] else None
 
-    # Download form responses with pagination
+    # Download form responses with pagination from Kobo
+    # (we do not paginate the INSERT, but instead accumulate all
+    # submissions in memory here)
     # As of January 2026, the maximum page size is 1000 records
     # See: https://community.kobotoolbox.org/t/important-changes-to-api-v2-assets-uid-asset-data-result-limits/74610/8
     #
