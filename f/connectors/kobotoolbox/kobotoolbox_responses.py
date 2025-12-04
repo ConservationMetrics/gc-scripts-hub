@@ -124,8 +124,9 @@ def download_form_metadata(
         "json",
     )
 
-    logger.info
-    f"Form metadata extracted, and saved to: {save_path}/{db_table_name}_metadata.json"
+    logger.info(
+        f"Form metadata extracted, and saved to: {save_path}/{db_table_name}_metadata.json"
+    )
 
     return form_metadata
 
@@ -280,26 +281,52 @@ def download_form_responses_and_attachments(
     languages = form_metadata.get("content", {}).get("translations", [])
     form_languages = ",".join(filter(None, languages)) if languages != [None] else None
 
-    # Next download the form responses.
-    # FIXME: need to paginate. Maximum results per page is 30000.
-    form_data_response = requests.get(data_uri, headers=headers)
-    form_data_response.raise_for_status()
-
-    form_submissions = form_data_response.json()["results"]
-
+    # Download form responses with pagination from Kobo
+    # (we do not paginate the INSERT, but instead accumulate all
+    # submissions in memory here)
+    # As of January 2026, the maximum page size is 1000 records
+    # See: https://community.kobotoolbox.org/t/important-changes-to-api-v2-assets-uid-asset-data-result-limits/74610/8
+    #
+    # Note: We do not specify a ?sort= parameter here, matching Kobo's example implementation
+    # linked above. This assumes the API provides a stable default sort order to ensure
+    # consistent pagination.
+    form_submissions = []
     skipped_attachments = 0
+    limit = 1000
+    start = 0
 
-    # Download attachments for each submission, if they exist
-    for submission in form_submissions:
-        if "_attachments" in submission:
-            skipped_attachments += _download_submission_attachments(
-                submission, db_table_name, attachment_root, headers
-            )
+    while True:
+        params = {"limit": limit, "start": start}
+        form_data_response = requests.get(data_uri, headers=headers, params=params)
+        form_data_response.raise_for_status()
+
+        data = form_data_response.json()
+        page_results = data["results"]
+        form_submissions.extend(page_results)
+
+        logger.info(
+            f"[Form {form_name}] Fetched {len(page_results)} records (start={start}, total so far: {len(form_submissions)})"
+        )
+
+        # Download attachments for each submission in this page, if they exist
+        for submission in page_results:
+            if "_attachments" in submission:
+                skipped_attachments += _download_submission_attachments(
+                    submission, db_table_name, attachment_root, headers
+                )
+
+        # Check if there are more pages
+        if not data.get("next"):
+            break
+
+        start += limit
 
     if skipped_attachments > 0:
         logger.info(f"Skipped downloading {skipped_attachments} media attachment(s).")
 
-    logger.info(f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s).")
+    logger.info(
+        f"[Form {form_name}] Downloaded {len(form_submissions)} submission(s) total."
+    )
     return form_submissions, form_name, form_languages
 
 

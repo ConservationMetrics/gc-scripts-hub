@@ -1,4 +1,5 @@
 import posixpath
+from urllib.parse import urlencode
 
 
 def kobo_form(uri, form_id, form_name):
@@ -93,12 +94,9 @@ def kobo_form(uri, form_id, form_name):
     }
 
 
-def kobo_form_submissions(uri, form_id):
-    return {
-        "count": 3,
-        "next": None,
-        "previous": None,
-        "results": [
+def _get_all_submissions(uri, form_id):
+    """Return all submission records for testing."""
+    return [
             {
                 "_id": 124961136,
                 "formhub/uuid": "f7bef041e8624f09946bff05ee5cbd4b",
@@ -212,5 +210,52 @@ def kobo_form_submissions(uri, form_id):
                 "_validation_status": {},
                 "_submitted_by": "afleishman",
             },
-        ],
+        ]
+
+
+def kobo_form_submissions(uri, form_id, limit=100, start=0):
+    """
+    Return paginated form submissions for testing.
+    
+    Parameters
+    ----------
+    uri : str
+        The base URI of the KoboToolbox server
+    form_id : str
+        The form ID
+    limit : int, optional
+        The maximum number of results to return per page (default: 100, matching API behavior as of January 2026)
+    start : int, optional
+        The starting index for pagination (default: 0)
+    
+    Returns
+    -------
+    dict
+        A paginated response with count, next, previous, and results
+    """
+    all_submissions = _get_all_submissions(uri, form_id)
+    total_count = len(all_submissions)
+    
+    # Paginate results
+    end = start + limit
+    results = all_submissions[start:end]
+    
+    # Build next URL if there are more results
+    next_url = None
+    if end < total_count:
+        next_params = {"limit": limit, "start": end}
+        next_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(next_params)}"
+    
+    # Build previous URL if we're not on the first page
+    previous_url = None
+    if start > 0:
+        prev_start = max(0, start - limit)
+        prev_params = {"limit": limit, "start": prev_start}
+        previous_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(prev_params)}"
+    
+    return {
+        "count": total_count,
+        "next": next_url,
+        "previous": previous_url,
+        "results": results,
     }
