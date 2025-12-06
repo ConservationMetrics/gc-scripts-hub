@@ -61,11 +61,12 @@ def transform_geojson_data(geojson_path):
         # once we are ready to tackle the challenge of appending data
         # to existing tables with existing IDs
         feature_id = feature.get("id", str(uuid.uuid4()))
+        geometry = feature.get("geometry")
 
         transformed_feature = {
             "_id": feature_id,
-            "g__type": feature["geometry"]["type"],
-            "g__coordinates": feature["geometry"]["coordinates"],
+            "g__type": geometry["type"] if geometry else None,
+            "g__coordinates": geometry["coordinates"] if geometry else None,
             **feature.get("properties", {}),
         }
         transformed_geojson_data.append(transformed_feature)
