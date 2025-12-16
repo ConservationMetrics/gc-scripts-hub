@@ -186,7 +186,9 @@ def download_file(url, session, save_path, existing_file_stems):
     -----
     If the file already exists at the specified path, the function will skip downloading the file.
 
-    The function determines the file extension using the following priority: 1. Content-Type header from HTTP response (when download succeeds), 2. URL path pattern inference.
+    The function determines the file extension using the following priority:
+    1. Content-Type header from HTTP response (when download succeeds),
+    2. URL path pattern inference.
 
     This ensures that even when Content-Type headers are missing or when downloads fail,
     the returned filename has a meaningful extension based on the CoMapeo API URL structure.
