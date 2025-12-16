@@ -411,7 +411,7 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
         status=500,
     )
 
-    observations, stats = download_project_observations(
+    observations, stats, failed_observations_info = download_project_observations(
         server_url, session, project_id, project_name, attachment_root
     )
 
@@ -424,6 +424,27 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
     # Failed downloads get extension inferred from URL path (/photo/ -> .jpg, /audio/ -> .m4a)
     assert observations[0]["attachments"] == "a1b2c3d4e5f6.jpg, f7e8d9c0b1a2.jpg"
     assert observations[1]["attachments"] == "1a2b3c4d5e6f.m4a"
+
+    # Check that failed observations info is tracked
+    assert len(failed_observations_info) == 2  # Both observations had failures
+    assert "doc_1" in failed_observations_info
+    assert "doc_2" in failed_observations_info
+
+    # Check error details for doc_1 (has 1 failed attachment out of 2)
+    doc_1_info = failed_observations_info["doc_1"]
+    assert len(doc_1_info["urls"]) == 1
+    assert (
+        f"{server_url}/projects/{project_id}/attachments/abc123/photo/f7e8d9c0b1a2"
+        in doc_1_info["urls"]
+    )
+
+    # Check error details for doc_2 (has 1 failed attachment)
+    doc_2_info = failed_observations_info["doc_2"]
+    assert len(doc_2_info["urls"]) == 1
+    assert (
+        f"{server_url}/projects/{project_id}/attachments/abc123/audio/1a2b3c4d5e6f"
+        in doc_2_info["urls"]
+    )
 
 
 def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
@@ -459,13 +480,14 @@ def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
         status=200,
     )
 
-    observations, stats = download_project_observations(
+    observations, stats, failed_observations_info = download_project_observations(
         server_url, session, project_id, project_name, attachment_root
     )
 
     assert len(observations) == 1
     assert stats["skipped_attachments"] == 1  # Attachment was skipped (already exists)
     assert stats["attachment_failed"] == 0
+    assert len(failed_observations_info) == 0  # No failures
 
 
 def test_fetch_preset(mocked_responses, tmp_path):
@@ -1015,3 +1037,80 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
                 )
             """)
             assert not cursor.fetchone()[0]
+
+
+def test_missing_attachments_geojson_created(
+    comapeoserver_with_failing_attachments, pg_database, tmp_path
+):
+    """Test that a missing attachments GeoJSON file is created when attachments fail to download."""
+    asset_storage = tmp_path / "datalake"
+
+    # Run the main script - it should raise RuntimeError due to failed attachment
+    try:
+        main(
+            comapeoserver_with_failing_attachments.comapeo_server,
+            comapeoserver_with_failing_attachments.comapeo_project_blocklist,
+            pg_database,
+            "comapeo",
+            asset_storage,
+        )
+        # If we get here, test should fail - we expected a RuntimeError
+        assert False, "Expected RuntimeError to be raised"
+    except RuntimeError as e:
+        # Verify error message contains expected information
+        error_msg = str(e)
+        assert "1 attachment(s) failed to download" in error_msg
+        assert "1 observation(s) affected" in error_msg
+        assert "missing_attachments.geojson" in error_msg
+
+    # Check that the missing attachments GeoJSON file was created despite the error
+    missing_attachments_path = (
+        asset_storage
+        / "comapeo"
+        / "forest_expedition"
+        / "forest_expedition_observations_missing_attachments.geojson"
+    )
+    assert missing_attachments_path.exists()
+
+    # Read and verify the contents
+    with open(missing_attachments_path) as f:
+        missing_data = json.load(f)
+
+    assert missing_data["type"] == "FeatureCollection"
+    assert len(missing_data["features"]) == 1
+
+    feature = missing_data["features"][0]
+    assert feature["id"] == "failing_obs"
+    assert "attachment_download_url" in feature["properties"]
+    assert "attachment_download_error" in feature["properties"]
+    server_url = comapeoserver_with_failing_attachments.comapeo_server["server_url"]
+    assert (
+        f"{server_url}/projects/forest_expedition/attachments/failing/photo/fail123"
+        in feature["properties"]["attachment_download_url"]
+    )
+    assert "Failed to download" in feature["properties"]["attachment_download_error"]
+
+
+def test_no_missing_attachments_geojson_when_all_succeed(
+    comapeoserver_observations, pg_database, tmp_path
+):
+    """Test that no missing attachments file is created when all downloads succeed."""
+    asset_storage = tmp_path / "datalake"
+
+    # Run the main script (all attachments should succeed based on fixture mocks)
+    main(
+        comapeoserver_observations.comapeo_server,
+        comapeoserver_observations.comapeo_project_blocklist,
+        pg_database,
+        "comapeo",
+        asset_storage,
+    )
+
+    # Check that no missing attachments GeoJSON file was created
+    missing_attachments_path = (
+        asset_storage
+        / "comapeo"
+        / "forest_expedition"
+        / "forest_expedition_observations_missing_attachments.geojson"
+    )
+    assert not missing_attachments_path.exists()
