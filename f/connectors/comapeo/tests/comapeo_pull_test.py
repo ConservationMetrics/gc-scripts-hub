@@ -339,8 +339,16 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
     
     assert stats["icon_failed"] == 2
     assert stats["skipped_icons"] == 0
-    # Failed downloads should not be in icon_filenames
-    assert len(icon_filenames) == 0
+    # Failed downloads are still recorded in icon_filenames with .png extension inferred from URL
+    assert len(icon_filenames) == 2
+    camp_preset_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
+    water_preset_id = "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10"
+    assert (
+        icon_filenames[camp_preset_id] == "camp.png"
+    )  # .png extension inferred from /icon/ in URL
+    assert (
+        icon_filenames[water_preset_id] == "water_source.png"
+    )  # .png extension inferred from /icon/ in URL
 
 
 def test_download_project_observations_with_failures(
@@ -357,19 +365,26 @@ def test_download_project_observations_with_failures(
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Mock observations endpoint with observations that have attachments
+    # Use realistic CoMapeo API URL structure with /photo/ path
     observations_response = {
         "data": [
             {
                 "docId": "doc_1",
                 "attachments": [
-                    {"url": f"{server_url}/attachments/attachment1.jpg"},
-                    {"url": f"{server_url}/attachments/attachment2.jpg"},
+                    {
+                        "url": f"{server_url}/projects/{project_id}/attachments/abc123/photo/a1b2c3d4e5f6"
+                    },
+                    {
+                        "url": f"{server_url}/projects/{project_id}/attachments/abc123/photo/f7e8d9c0b1a2"
+                    },
                 ],
             },
             {
                 "docId": "doc_2",
                 "attachments": [
-                    {"url": f"{server_url}/attachments/attachment3.jpg"},
+                    {
+                        "url": f"{server_url}/projects/{project_id}/attachments/abc123/audio/1a2b3c4d5e6f"
+                    },
                 ],
             },
         ]
@@ -382,19 +397,19 @@ def test_download_project_observations_with_failures(
 
     # Mock some attachments to succeed and some to fail
     mocked_responses.get(
-        f"{server_url}/attachments/attachment1.jpg",
+        f"{server_url}/projects/{project_id}/attachments/abc123/photo/a1b2c3d4e5f6",
         body=b"successful attachment",
         content_type="image/jpeg",
         status=200,
     )
-    # attachment2.jpg will fail (404)
+    # f7e8d9c0b1a2 will fail (404)
     mocked_responses.get(
-        f"{server_url}/attachments/attachment2.jpg",
+        f"{server_url}/projects/{project_id}/attachments/abc123/photo/f7e8d9c0b1a2",
         status=404,
     )
-    # attachment3.jpg will fail (500)
+    # 1a2b3c4d5e6f will fail (500) - this is an audio file
     mocked_responses.get(
-        f"{server_url}/attachments/attachment3.jpg",
+        f"{server_url}/projects/{project_id}/attachments/abc123/audio/1a2b3c4d5e6f",
         status=500,
     )
 
@@ -406,6 +421,11 @@ def test_download_project_observations_with_failures(
     assert stats["attachment_failed"] == 2  # Two attachments failed
     assert stats["skipped_attachments"] == 0
 
+    # Check that failed attachments are still recorded in the attachments field
+    # Successful download gets .jpg extension from Content-Type
+    # Failed downloads get extension inferred from URL path (/photo/ -> .jpg, /audio/ -> .m4a)
+    assert observations[0]["attachments"] == "a1b2c3d4e5f6.jpg, f7e8d9c0b1a2.jpg"
+    assert observations[1]["attachments"] == "1a2b3c4d5e6f.m4a"
 
 def test_download_project_observations_with_skipped(
     mocked_responses, tmp_path
@@ -575,12 +595,13 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     existing_icon_stems = set()
-    file_name, skipped = download_file(
+    file_name, skipped, failed = download_file(
         icon_url, session, str(icon_dir / "test_icon"), existing_icon_stems
     )
 
     assert file_name == "test_icon.png"
     assert skipped == 0
+    assert failed == 0
     icon_path = icon_dir / "test_icon.png"
     assert icon_path.exists()
     assert icon_path.read_bytes() == icon_body
@@ -590,12 +611,13 @@ def test_download_file(mocked_responses, tmp_path):
     existing_icon_path = icon_dir / "existing_icon.png"
     existing_icon_path.write_bytes(b"existing icon data")
 
-    file_name, skipped = download_file(
+    file_name, skipped, failed = download_file(
         icon_url, session, str(icon_dir / "existing_icon"), existing_icon_stems
     )
 
     assert file_name == "existing_icon.png"
     assert skipped == 1
+    assert failed == 0
     # Verify file wasn't overwritten
     assert existing_icon_path.read_bytes() == b"existing icon data"
 
@@ -603,29 +625,33 @@ def test_download_file(mocked_responses, tmp_path):
     error_icon_url = f"{server_url}/projects/test_project/icon/not_found_icon"
     mocked_responses.get(error_icon_url, status=404)
 
-    file_name, skipped = download_file(
+    file_name, skipped, failed = download_file(
         error_icon_url, session, str(icon_dir / "error_icon"), existing_icon_stems
     )
 
-    assert file_name is None
-    assert skipped == 0  # Errors are not skips
+    # Filename is still returned even on failure with inferred extension from URL path
+    assert file_name == "error_icon.png"  # .png inferred from /icon/ in URL
+    assert skipped == 0
+    assert failed == 1
     assert not (icon_dir / "error_icon").exists()
 
     # Test HTTP error (500)
     server_error_url = f"{server_url}/projects/test_project/icon/server_error_icon"
     mocked_responses.get(server_error_url, status=500)
 
-    file_name, skipped = download_file(
+    file_name, skipped, failed = download_file(
         server_error_url,
         session,
         str(icon_dir / "server_error_icon"),
         existing_icon_stems,
     )
 
-    assert file_name is None
-    assert skipped == 0  # Errors are not skips
+    # Filename is still returned even on failure with inferred extension from URL path
+    assert file_name == "server_error_icon.png"  # .png inferred from /icon/ in URL
+    assert skipped == 0
+    assert failed == 1
 
-    # Test missing Content-Type header (should default to .png for icons)
+    # Test missing Content-Type header with /icon/ URL (should infer .png from URL)
     no_content_type_url = (
         f"{server_url}/projects/test_project/icon/no_content_type_icon"
     )
@@ -639,19 +665,129 @@ def test_download_file(mocked_responses, tmp_path):
         },
     )
 
-    file_name, skipped = download_file(
+    file_name, skipped, failed = download_file(
         no_content_type_url,
         session,
         str(icon_dir / "no_content_type_icon"),
         existing_icon_stems,
     )
 
-    # Defaults to .png when Content-Type is missing (common for icons)
+    # Infers .png from /icon/ in URL when Content-Type is missing
     assert file_name == "no_content_type_icon.png"
     assert skipped == 0
+    assert failed == 0
     no_content_type_path = icon_dir / "no_content_type_icon.png"
     assert no_content_type_path.exists()
     assert no_content_type_path.read_bytes() == no_content_type_body
+
+    # Test missing Content-Type header with /photo/ URL (should infer .jpg from URL)
+    photo_dir = tmp_path / "attachments"
+    photo_no_ct_url = (
+        f"{server_url}/projects/test_project/attachments/abc/photo/photo_no_ct"
+    )
+    photo_no_ct_body = b"photo data without content type"
+    mocked_responses.get(
+        photo_no_ct_url,
+        body=photo_no_ct_body,
+        headers={
+            "Content-Length": str(len(photo_no_ct_body)),
+            "Content-Type": "",
+        },
+    )
+
+    file_name, skipped, failed = download_file(
+        photo_no_ct_url,
+        session,
+        str(photo_dir / "photo_no_ct"),
+        set(),
+    )
+
+    # Infers .jpg from /photo/ in URL when Content-Type is missing
+    assert file_name == "photo_no_ct.jpg"
+    assert skipped == 0
+    assert failed == 0
+    photo_no_ct_path = photo_dir / "photo_no_ct.jpg"
+    assert photo_no_ct_path.exists()
+    assert photo_no_ct_path.read_bytes() == photo_no_ct_body
+
+    # Test missing Content-Type header with /audio/ URL (should infer .m4a from URL)
+    audio_no_ct_url = (
+        f"{server_url}/projects/test_project/attachments/abc/audio/audio_no_ct"
+    )
+    audio_no_ct_body = b"audio data without content type"
+    mocked_responses.get(
+        audio_no_ct_url,
+        body=audio_no_ct_body,
+        headers={
+            "Content-Length": str(len(audio_no_ct_body)),
+            "Content-Type": "",
+        },
+    )
+
+    file_name, skipped, failed = download_file(
+        audio_no_ct_url,
+        session,
+        str(photo_dir / "audio_no_ct"),
+        set(),
+    )
+
+    # Infers .m4a from /audio/ in URL when Content-Type is missing
+    assert file_name == "audio_no_ct.m4a"
+    assert skipped == 0
+    assert failed == 0
+    audio_no_ct_path = photo_dir / "audio_no_ct.m4a"
+    assert audio_no_ct_path.exists()
+    assert audio_no_ct_path.read_bytes() == audio_no_ct_body
+
+    # Test photo URL failure (should infer .jpg extension from URL path)
+    photo_dir = tmp_path / "attachments"
+    photo_error_url = (
+        f"{server_url}/projects/test_project/attachments/abc123/photo/failed_photo"
+    )
+    mocked_responses.get(photo_error_url, status=404)
+
+    file_name, skipped, failed = download_file(
+        photo_error_url,
+        session,
+        str(photo_dir / "failed_photo"),
+        set(),
+    )
+
+    assert file_name == "failed_photo.jpg"  # .jpg inferred from /photo/ in URL
+    assert skipped == 0
+    assert failed == 1
+
+    # Test audio URL failure (should infer .m4a extension from URL path)
+    audio_error_url = (
+        f"{server_url}/projects/test_project/attachments/abc123/audio/failed_audio"
+    )
+    mocked_responses.get(audio_error_url, status=404)
+
+    file_name, skipped, failed = download_file(
+        audio_error_url,
+        session,
+        str(photo_dir / "failed_audio"),
+        set(),
+    )
+
+    assert file_name == "failed_audio.m4a"  # .m4a inferred from /audio/ in URL
+    assert skipped == 0
+    assert failed == 1
+
+    # Test generic URL failure (no recognizable pattern, no extension)
+    generic_error_url = f"{server_url}/some/random/path/generic_file"
+    mocked_responses.get(generic_error_url, status=404)
+
+    file_name, skipped, failed = download_file(
+        generic_error_url,
+        session,
+        str(tmp_path / "generic_file"),
+        set(),
+    )
+
+    assert file_name == "generic_file"  # No extension since URL pattern is unrecognized
+    assert skipped == 0
+    assert failed == 1
 
 
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):

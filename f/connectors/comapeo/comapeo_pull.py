@@ -177,33 +177,47 @@ def download_file(url, session, save_path, existing_file_stems):
     Returns
     -------
     tuple
-        A tuple containing two values:
-        - The name of the file if the download is successful, or None if an error occurs.
-        - The number of files skipped due to already existing on disk.
+        A tuple containing three values:
+        - The name of the file (always returned, even if download fails).
+        - The number of files skipped due to already existing on disk (0 or 1).
+        - The number of files that failed to download (0 or 1).
 
     Notes
     -----
     If the file already exists at the specified path, the function will skip downloading the file.
 
-    The function attempts to determine the file extension based on the 'Content-Type'
-    header of the HTTP response. If the 'Content-Type' is not recognized,
-    the file will be saved without an extension.
+    The function determines the file extension using the following priority:
+    1. Content-Type header from HTTP response (when download succeeds),
+    2. URL path pattern inference.
 
-    The function intentionally does not raise exceptions. Instead, it logs errors and returns None,
-    allowing the caller to handle the download failure gracefully.
+    This ensures that even when Content-Type headers are missing or when downloads fail,
+    the returned filename has a meaningful extension based on the CoMapeo API URL structure.
+
+    The function intentionally does not raise exceptions. Instead, it logs errors and returns
+    the expected filename along with a failed flag, allowing the caller to handle the
+    download failure gracefully.
     """
-    skipped_count = 0
     base_name = Path(save_path).name
     base_stem = Path(save_path).stem
 
     if base_stem in existing_file_stems:
         logger.debug(f"{base_stem} already exists, skipping download.")
-        skipped_count += 1
         # Try to find matching full filename (with extension)
         full_path = next(
             (f for f in Path(save_path).parent.glob(f"{base_stem}.*")), None
         )
-        return (full_path.name if full_path else base_name), skipped_count
+        return (full_path.name if full_path else base_name), 1, 0
+
+    def infer_extension_from_url(url):
+        """Infer file extension from URL path patterns."""
+        url_lower = url.lower()
+        if "/photo/" in url_lower:
+            return ".jpg"
+        elif "/audio/" in url_lower:
+            return ".m4a"
+        elif "/icon/" in url_lower:
+            return ".png"
+        return None
 
     try:
         response = session.get(url)
@@ -212,9 +226,9 @@ def download_file(url, session, save_path, existing_file_stems):
         content_type = response.headers.get("Content-Type", "")
         extension = mimetypes.guess_extension(content_type) if content_type else None
 
-        # PNG is the default image type for icons c.f. https://github.com/digidem/comapeo-core/blob/main/src/icon-api.js
+        # If Content-Type didn't provide an extension, infer from URL path
         if not extension:
-            extension = ".png"
+            extension = infer_extension_from_url(url)
 
         file_name = base_name + extension
         save_path = Path(str(save_path) + extension)
@@ -222,11 +236,16 @@ def download_file(url, session, save_path, existing_file_stems):
         save_path.parent.mkdir(parents=True, exist_ok=True)
         with open(save_path, "wb") as f:
             f.write(response.content)
-        return file_name, skipped_count
+        return file_name, 0, 0
 
     except Exception as e:
         logger.error(f"Exception during download: {e}")
-        return None, 0
+        # Return the expected filename even on failure
+        # Infer extension from URL path when Content-Type is unavailable
+        extension = infer_extension_from_url(url)
+
+        file_name = base_name + extension if extension else base_name
+        return file_name, 0, 1
 
 
 def _fetch_comapeo_data(server_url, session, project_id, endpoint, data_type):
@@ -308,17 +327,15 @@ def download_project_observations(
             filenames = []
             for attachment in observation["attachments"]:
                 if "url" in attachment:
-                    file_name, skipped = download_file(
+                    file_name, skipped, failed = download_file(
                         attachment["url"],
                         session,
                         str(attachment_dir / Path(attachment["url"]).name),
                         existing_file_stems,
                     )
                     stats["skipped_attachments"] += skipped
-                    if file_name is not None:
-                        filenames.append(file_name)
-                    else:
-                        stats["attachment_failed"] += 1
+                    stats["attachment_failed"] += failed
+                    filenames.append(file_name)
 
             observation["attachments"] = ", ".join(filenames)
 
@@ -395,13 +412,13 @@ def fetch_preset(
                 if preset_name:
                     sanitized_name = normalize_identifier(preset_name)
                     icon_save_path = icon_dir / sanitized_name
-                    file_name, skipped = download_file(
+                    file_name, skipped, failed = download_file(
                         icon_ref["url"],
                         session,
                         str(icon_save_path),
                         existing_icon_stems,
                     )
-                    if file_name is None:
+                    if failed:
                         logger.error(
                             f"Icon download failed for URL: {icon_ref['url']}. Preset: {preset_name}."
                         )
@@ -515,23 +532,22 @@ def download_preset_icons(presets, icon_dir, session):
         if icon_ref and "url" in icon_ref and preset_name and preset_doc_id:
             sanitized_name = normalize_identifier(preset_name)
             icon_save_path = icon_dir / sanitized_name
-            file_name, skipped = download_file(
+            file_name, skipped, failed = download_file(
                 icon_ref["url"],
                 session,
                 str(icon_save_path),
                 existing_icon_stems,
             )
             stats["skipped_icons"] += skipped
-            if file_name is None:
+            stats["icon_failed"] += failed
+            if failed:
                 logger.error(
                     f"Icon download failed for URL: {icon_ref['url']}. Preset: {preset_name}."
                 )
-                stats["icon_failed"] += 1
-            else:
-                # Store the actual filename with extension
-                icon_filenames[preset_doc_id] = file_name
-                # Add to existing set for subsequent downloads in the same batch
-                existing_icon_stems.add(sanitized_name)
+            # Always store the filename (even if download failed)
+            icon_filenames[preset_doc_id] = file_name
+            # Add to existing set for subsequent downloads in the same batch
+            existing_icon_stems.add(sanitized_name)
 
     return stats, icon_filenames
 
