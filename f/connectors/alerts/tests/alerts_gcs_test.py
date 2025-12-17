@@ -446,11 +446,12 @@ def test_metadata_only_scenario(
             metadata_count = cursor.fetchone()[0]
             assert metadata_count > 0, "Metadata should be written to database"
 
-            # Check that alerts table was created but is empty (no files to process)
-            cursor.execute("SELECT COUNT(*) FROM fake_alerts_metadata_only")
-            alerts_count = cursor.fetchone()[0]
-            assert alerts_count == 0, (
-                "Alerts table should be empty since no files exist"
+            # Check that alerts table was NOT created (no files to process)
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'fake_alerts_metadata_only'"
+            )
+            assert cursor.fetchone() is None, (
+                "Alerts table should not be created when there are no files to process"
             )
 
     # Check that alerts metadata is returned (not None)
@@ -583,11 +584,19 @@ def test_max_months_lookback_e2e(
     # Should return None since all data was filtered
     assert result is None
 
-    # Verify both tables are empty
+    # Verify both tables were NOT created (since there's no data to write)
     with psycopg2.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered")
-            assert cursor.fetchone()[0] == 0
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'fake_alerts_filtered'"
+            )
+            assert cursor.fetchone() is None, (
+                "Alerts table should not be created when there's no data"
+            )
 
-            cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered__metadata")
-            assert cursor.fetchone()[0] == 0
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = 'fake_alerts_filtered__metadata'"
+            )
+            assert cursor.fetchone() is None, (
+                "Metadata table should not be created when there's no data"
+            )
