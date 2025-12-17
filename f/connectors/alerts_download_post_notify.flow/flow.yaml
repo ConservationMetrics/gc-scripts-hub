@@ -61,10 +61,13 @@ value:
         input_transforms:
           alerts_statistics:
             type: javascript
-            expr: results.a
-          community_slug:
+            expr: results.a.alerts_statistics
+          instance_slug:
             type: javascript
-            expr: flow_input.community_slug
+            expr: flow_input.instance_slug
+          db_table_name:
+            type: javascript
+            expr: results.a.db_table_name
           twilio_message_template:
             type: javascript
             expr: flow_input.twilio_message_template
@@ -72,7 +75,7 @@ value:
         path: f/connectors/alerts/alerts_twilio
       continue_on_error: false
       skip_if:
-        expr: '!flow_input.twilio_message_template || !flow_input.community_slug || !results.a'
+        expr: '!flow_input.twilio_message_template || !flow_input.instance_slug || !results.a || !results.a.alerts_statistics || !results.a.db_table_name'
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
@@ -87,7 +90,7 @@ schema:
     - destination_path
     - comapeo
     - comapeo_project
-    - community_slug
+    - instance_slug
     - twilio_message_template
   properties:
     alerts_bucket:
@@ -120,13 +123,14 @@ schema:
       description: A project ID on the CoMapeo server where the alerts will be posted.
       default: ''
       nullable: false
-    community_slug:
+    instance_slug:
       type: string
       description: >-
-        The URL slug for the community, used to construct a link to the alerts
-        dashboard. This name is used for Twilio and must be provided for
+        The URL slug for the instance, used to construct a link to the alerts
+        dashboard. This name is used for the instance and must be provided for
         messages to be sent.
       default: ''
+      originalType: string
       nullable: false
     db:
       type: object

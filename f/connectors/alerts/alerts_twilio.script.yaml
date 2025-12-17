@@ -8,8 +8,9 @@ schema:
   type: object
   order:
     - alerts_statistics
+    - instance_slug
+    - db_table_name
     - twilio_message_template
-    - community_slug
   properties:
     alerts_statistics:
       type: object
@@ -18,14 +19,21 @@ schema:
         description of alerts.
       default: null
       properties: {}
-    community_slug:
+    instance_slug:
       type: string
       description: >-
-        The URL slug for the community, used to construct a link to the alerts
+        The URL slug for the instance, used to construct a link to the alerts
         dashboard. This name is used for Twilio and must be provided for
         messages to be sent.
       default: null
       originalType: string
+    db_table_name:
+      type: string
+      description: >-
+        The name of the database table where alerts are stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,53}$'
     twilio_message_template:
       type: object
       description: >-
@@ -36,5 +44,6 @@ schema:
       format: resource-twilio_message_template
   required:
     - alerts_statistics
-    - community_slug
+    - instance_slug
+    - db_table_name
     - twilio_message_template
