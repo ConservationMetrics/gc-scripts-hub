@@ -24,13 +24,18 @@ logger = logging.getLogger(__name__)
 
 def main(
     alerts_statistics: dict,
-    community_slug: str,
+    instance_slug: str,
+    db_table_name: str,
     twilio_message_template: twilio_message_template,
 ):
-    send_twilio_message(twilio_message_template, alerts_statistics, community_slug)
+    send_twilio_message(
+        twilio_message_template, alerts_statistics, instance_slug, db_table_name
+    )
 
 
-def send_twilio_message(twilio_message_template, alerts_statistics, community_slug):
+def send_twilio_message(
+    twilio_message_template, alerts_statistics, instance_slug, db_table_name
+):
     """
     Send a Twilio SMS message with alerts processing completion details.
 
@@ -51,8 +56,10 @@ def send_twilio_message(twilio_message_template, alerts_statistics, community_sl
     alerts_statistics : dict
         A dictionary containing statistics about the processed alerts, such as
         the total number of alerts, month and year, and a description.
-    community_slug : str
-        The slug of the community for which alerts are being processed.
+    instance_slug : str
+        The slug of the instance for which alerts are being processed.
+    db_table_name : str
+        The name of the database table where alerts are stored.
     """
     client = TwilioClient(
         twilio_message_template["account_sid"], twilio_message_template["auth_token"]
@@ -71,7 +78,7 @@ def send_twilio_message(twilio_message_template, alerts_statistics, community_sl
                     "1": alerts_statistics.get("total_alerts"),
                     "2": alerts_statistics.get("month_year"),
                     "3": alerts_statistics.get("description_alerts"),
-                    "4": f"https://explorer.{community_slug}.guardianconnector.net/alerts/alerts",
+                    "4": f"https://explorer.{instance_slug}.guardianconnector.net/alerts/{db_table_name}",
                 }
             ),
             messaging_service_sid=twilio_message_template.get("messaging_service_sid"),

@@ -140,7 +140,14 @@ def _main(
     )
     metadata_written = metadata_writer.handle_output(prepared_alerts_metadata)
 
-    return alerts_statistics if alerts_data_written or metadata_written else None
+    return (
+        {
+            "alerts_statistics": alerts_statistics,
+            "db_table_name": db_table_name,
+        }
+        if alerts_data_written or metadata_written
+        else None
+    )
 
 
 def _get_rel_filepath(local_file_path, territory_id):
