@@ -28,7 +28,7 @@ def test_transform_comapeo_observations():
     """Test the transformation function with sample data."""
     project_name = "Forest Expedition"
     project_id = "forest_expedition"
-    
+
     # Build preset mapping from SAMPLE_PRESETS with actual icon filenames
     icon_filenames = {
         "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24": "camp.png",
@@ -168,10 +168,10 @@ def test_build_preset_mapping():
     """Test the preset mapping builder."""
     # Test without icon filenames
     preset_mapping = build_preset_mapping(SAMPLE_PRESETS)
-    
+
     # Check that all presets are in the mapping
     assert len(preset_mapping) == len(SAMPLE_PRESETS)
-    
+
     # Check the "Camp" preset (without icon filenames, should be just sanitized name)
     camp_preset_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
     assert camp_preset_id in preset_mapping
@@ -180,25 +180,25 @@ def test_build_preset_mapping():
     assert camp_data["terms"] == "campsite, camping, hunting"
     assert camp_data["color"] == "#B209B2"
     assert camp_data["icon_filename"] == "camp"
-    
+
     # Test with icon filenames
     icon_filenames = {
         camp_preset_id: "camp.png",
         "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10": "water_source.png",
     }
     preset_mapping_with_icons = build_preset_mapping(SAMPLE_PRESETS, icon_filenames)
-    
+
     # Check that icon filenames are included
     camp_data_with_icon = preset_mapping_with_icons[camp_preset_id]
     assert camp_data_with_icon["icon_filename"] == "camp.png"
-    
+
     water_preset_id = "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10"
     water_data_with_icon = preset_mapping_with_icons[water_preset_id]
     assert water_data_with_icon["name"] == "Water Source"
     assert water_data_with_icon["terms"] == "water, stream, river, well"
     assert water_data_with_icon["color"] == "#00A8FF"
     assert water_data_with_icon["icon_filename"] == "water_source.png"
-    
+
     # Check preset with empty terms
     clay_preset_id = "237f202583456ecb4c689c4216e0651132b115307630a7f8d65571406efff3f5"
     assert clay_preset_id in preset_mapping
@@ -215,10 +215,10 @@ def test_fetch_all_presets(mocked_responses):
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    
+
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
-    
+
     # Mock the batch preset endpoint
     presets_response = server_responses.comapeo_all_presets(server_url, project_id)
     mocked_responses.get(
@@ -226,9 +226,9 @@ def test_fetch_all_presets(mocked_responses):
         json=presets_response,
         status=200,
     )
-    
+
     presets = fetch_all_presets(server_url, session, project_id)
-    
+
     assert len(presets) == len(SAMPLE_PRESETS)
     assert presets[0]["name"] == "Camp"
     assert presets[1]["name"] == "Water Source"
@@ -239,10 +239,10 @@ def test_fetch_all_fields(mocked_responses):
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    
+
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
-    
+
     # Mock the fields endpoint
     fields_response = server_responses.comapeo_all_fields(server_url, project_id)
     mocked_responses.get(
@@ -250,9 +250,9 @@ def test_fetch_all_fields(mocked_responses):
         json=fields_response,
         status=200,
     )
-    
+
     fields = fetch_all_fields(server_url, session, project_id)
-    
+
     assert len(fields) == len(SAMPLE_FIELDS)
     # Check that field data contains expected keys
     assert "tagKey" in fields[0]
@@ -271,13 +271,13 @@ def test_download_preset_icons(mocked_responses, tmp_path):
     access_token = "test_token"
     project_id = "forest_expedition"
     icon_dir = tmp_path / "icons"
-    
+
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
-    
+
     # Get presets with icon URLs
     presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
-    
+
     # Mock icon downloads
     for preset in presets[:2]:  # Only mock first 2 icons
         icon_ref = preset.get("iconRef", {})
@@ -289,23 +289,23 @@ def test_download_preset_icons(mocked_responses, tmp_path):
                 body=icon_body,
                 content_type="image/png",
             )
-    
+
     stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
-    
+
     assert stats["skipped_icons"] == 0
     assert stats["icon_failed"] == 0
-    
+
     # Check that icon filenames are returned with extensions
     assert len(icon_filenames) == 2
     camp_preset_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
     water_preset_id = "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10"
     assert icon_filenames[camp_preset_id] == "camp.png"
     assert icon_filenames[water_preset_id] == "water_source.png"
-    
+
     # Verify icons were downloaded
     assert (icon_dir / "camp.png").exists()
     assert (icon_dir / "water_source.png").exists()
-    
+
     # Test skipping existing icons
     stats2, icon_filenames2 = download_preset_icons(presets[:2], icon_dir, session)
     assert stats2["skipped_icons"] == 2
@@ -321,22 +321,22 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
     access_token = "test_token"
     project_id = "forest_expedition"
     icon_dir = tmp_path / "icons"
-    
+
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
-    
+
     # Get presets with icon URLs
     presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
-    
+
     # Mock icon downloads to fail
     for preset in presets[:2]:
         icon_ref = preset.get("iconRef", {})
         icon_url = icon_ref.get("url")
         if icon_url:
             mocked_responses.get(icon_url, status=404)
-    
+
     stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
-    
+
     assert stats["icon_failed"] == 2
     assert stats["skipped_icons"] == 0
     # Failed downloads are still recorded in icon_filenames with .png extension inferred from URL
@@ -351,9 +351,7 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
     )  # .png extension inferred from /icon/ in URL
 
 
-def test_download_project_observations_with_failures(
-    mocked_responses, tmp_path
-):
+def test_download_project_observations_with_failures(mocked_responses, tmp_path):
     """Test that attachment failures are properly counted in stats."""
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
@@ -413,7 +411,7 @@ def test_download_project_observations_with_failures(
         status=500,
     )
 
-    observations, stats = download_project_observations(
+    observations, stats, failed_observations_info = download_project_observations(
         server_url, session, project_id, project_name, attachment_root
     )
 
@@ -427,9 +425,29 @@ def test_download_project_observations_with_failures(
     assert observations[0]["attachments"] == "a1b2c3d4e5f6.jpg, f7e8d9c0b1a2.jpg"
     assert observations[1]["attachments"] == "1a2b3c4d5e6f.m4a"
 
-def test_download_project_observations_with_skipped(
-    mocked_responses, tmp_path
-):
+    # Check that failed observations info is tracked
+    assert len(failed_observations_info) == 2  # Both observations had failures
+    assert "doc_1" in failed_observations_info
+    assert "doc_2" in failed_observations_info
+
+    # Check error details for doc_1 (has 1 failed attachment out of 2)
+    doc_1_info = failed_observations_info["doc_1"]
+    assert len(doc_1_info["urls"]) == 1
+    assert (
+        f"{server_url}/projects/{project_id}/attachments/abc123/photo/f7e8d9c0b1a2"
+        in doc_1_info["urls"]
+    )
+
+    # Check error details for doc_2 (has 1 failed attachment)
+    doc_2_info = failed_observations_info["doc_2"]
+    assert len(doc_2_info["urls"]) == 1
+    assert (
+        f"{server_url}/projects/{project_id}/attachments/abc123/audio/1a2b3c4d5e6f"
+        in doc_2_info["urls"]
+    )
+
+
+def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
     """Test that skipped attachments are properly counted in stats."""
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
@@ -462,13 +480,14 @@ def test_download_project_observations_with_skipped(
         status=200,
     )
 
-    observations, stats = download_project_observations(
+    observations, stats, failed_observations_info = download_project_observations(
         server_url, session, project_id, project_name, attachment_root
     )
 
     assert len(observations) == 1
     assert stats["skipped_attachments"] == 1  # Attachment was skipped (already exists)
     assert stats["attachment_failed"] == 0
+    assert len(failed_observations_info) == 0  # No failures
 
 
 def test_fetch_preset(mocked_responses, tmp_path):
@@ -1018,3 +1037,80 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
                 )
             """)
             assert not cursor.fetchone()[0]
+
+
+def test_missing_attachments_geojson_created(
+    comapeoserver_with_failing_attachments, pg_database, tmp_path
+):
+    """Test that a missing attachments GeoJSON file is created when attachments fail to download."""
+    asset_storage = tmp_path / "datalake"
+
+    # Run the main script - it should raise RuntimeError due to failed attachment
+    try:
+        main(
+            comapeoserver_with_failing_attachments.comapeo_server,
+            comapeoserver_with_failing_attachments.comapeo_project_blocklist,
+            pg_database,
+            "comapeo",
+            asset_storage,
+        )
+        # If we get here, test should fail - we expected a RuntimeError
+        assert False, "Expected RuntimeError to be raised"
+    except RuntimeError as e:
+        # Verify error message contains expected information
+        error_msg = str(e)
+        assert "1 attachment(s) failed to download" in error_msg
+        assert "1 observation(s) affected" in error_msg
+        assert "missing_attachments.geojson" in error_msg
+
+    # Check that the missing attachments GeoJSON file was created despite the error
+    missing_attachments_path = (
+        asset_storage
+        / "comapeo"
+        / "forest_expedition"
+        / "forest_expedition_observations_missing_attachments.geojson"
+    )
+    assert missing_attachments_path.exists()
+
+    # Read and verify the contents
+    with open(missing_attachments_path) as f:
+        missing_data = json.load(f)
+
+    assert missing_data["type"] == "FeatureCollection"
+    assert len(missing_data["features"]) == 1
+
+    feature = missing_data["features"][0]
+    assert feature["id"] == "failing_obs"
+    assert "attachment_download_url" in feature["properties"]
+    assert "attachment_download_error" in feature["properties"]
+    server_url = comapeoserver_with_failing_attachments.comapeo_server["server_url"]
+    assert (
+        f"{server_url}/projects/forest_expedition/attachments/failing/photo/fail123"
+        in feature["properties"]["attachment_download_url"]
+    )
+    assert "Failed to download" in feature["properties"]["attachment_download_error"]
+
+
+def test_no_missing_attachments_geojson_when_all_succeed(
+    comapeoserver_observations, pg_database, tmp_path
+):
+    """Test that no missing attachments file is created when all downloads succeed."""
+    asset_storage = tmp_path / "datalake"
+
+    # Run the main script (all attachments should succeed based on fixture mocks)
+    main(
+        comapeoserver_observations.comapeo_server,
+        comapeoserver_observations.comapeo_project_blocklist,
+        pg_database,
+        "comapeo",
+        asset_storage,
+    )
+
+    # Check that no missing attachments GeoJSON file was created
+    missing_attachments_path = (
+        asset_storage
+        / "comapeo"
+        / "forest_expedition"
+        / "forest_expedition_observations_missing_attachments.geojson"
+    )
+    assert not missing_attachments_path.exists()

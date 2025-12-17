@@ -56,11 +56,13 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_projects_geojson, stats = download_and_transform_comapeo_data(
-        server_url,
-        session,
-        comapeo_projects,
-        attachment_root,
+    comapeo_projects_geojson, stats, total_failed_observations_count = (
+        download_and_transform_comapeo_data(
+            server_url,
+            session,
+            comapeo_projects,
+            attachment_root,
+        )
     )
 
     logger.info(
@@ -100,7 +102,12 @@ def main(
             )
 
     if stats["attachment_failed"] > 0:
-        raise RuntimeError("Some attachments failed to download.")
+        error_msg = (
+            f"{stats['attachment_failed']} attachment(s) failed to download. "
+            f"{total_failed_observations_count} observation(s) affected. "
+            f"See *_missing_attachments.geojson files for details."
+        )
+        raise RuntimeError(error_msg)
 
 
 def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
@@ -305,9 +312,10 @@ def download_project_observations(
     Returns
     -------
     tuple
-        A tuple containing (observations, stats) where stats is a Counter with:
-        - 'skipped_attachments': The number of attachments skipped due to already existing on disk.
-        - 'attachment_failed': The number of attachment downloads that failed.
+        A tuple containing (observations, stats, failed_observations_info) where:
+        - observations: list of observations with processed attachments
+        - stats: Counter with 'skipped_attachments' and 'attachment_failed' counts
+        - failed_observations_info: dict mapping observation docId to {observation, urls, errors}
     """
     observations = _fetch_comapeo_data(
         server_url, session, project_id, "observation", "observations"
@@ -321,10 +329,14 @@ def download_project_observations(
     existing_file_stems = build_existing_file_set(attachment_dir)
 
     stats = Counter()
+    failed_observations_info = {}
 
     for observation in observations:
         if "attachments" in observation:
             filenames = []
+            failed_urls = []
+            error_messages = []
+
             for attachment in observation["attachments"]:
                 if "url" in attachment:
                     file_name, skipped, failed = download_file(
@@ -337,9 +349,24 @@ def download_project_observations(
                     stats["attachment_failed"] += failed
                     filenames.append(file_name)
 
+                    if failed:
+                        failed_urls.append(attachment["url"])
+                        error_messages.append(
+                            f"Failed to download from {attachment['url']}"
+                        )
+
             observation["attachments"] = ", ".join(filenames)
 
-    return observations, stats
+            # Store error info separately if there were failures
+            if failed_urls:
+                obs_key = observation.get("docId", id(observation))
+                failed_observations_info[obs_key] = {
+                    "observation": observation.copy(),
+                    "urls": failed_urls,
+                    "errors": error_messages,
+                }
+
+    return observations, stats, failed_observations_info
 
 
 def download_project_tracks(server_url, session, project_id):
@@ -836,6 +863,72 @@ def transform_comapeo_tracks(
     return features
 
 
+def save_missing_attachments_geojson(
+    failed_observations_info,
+    project_name,
+    project_id,
+    preset_mapping,
+    project_dir,
+):
+    """Save observations with failed attachment downloads to a separate GeoJSON file.
+
+    Parameters
+    ----------
+    failed_observations_info : dict
+        Dictionary mapping observation IDs to error information (observation, urls, errors).
+    project_name : str
+        The name of the project.
+    project_id : str
+        The unique identifier of the project.
+    preset_mapping : dict
+        A dictionary mapping preset docId to preset data.
+    project_dir : Path
+        The directory where the file should be saved.
+
+    Returns
+    -------
+    int
+        The number of observations with failed attachments.
+    """
+    if not failed_observations_info:
+        return 0
+
+    failed_observations = [
+        data["observation"] for data in failed_observations_info.values()
+    ]
+    failed_features = transform_comapeo_observations(
+        failed_observations, project_name, project_id, preset_mapping
+    )
+
+    # Add error info to properties
+    for feature in failed_features:
+        obs_id = feature.get("id")
+        if obs_id in failed_observations_info:
+            feature["properties"]["attachment_download_url"] = "; ".join(
+                failed_observations_info[obs_id]["urls"]
+            )
+            feature["properties"]["attachment_download_error"] = "; ".join(
+                failed_observations_info[obs_id]["errors"]
+            )
+
+    # Save missing attachments GeoJSON
+    missing_attachments_geojson = {
+        "type": "FeatureCollection",
+        "features": failed_features,
+    }
+
+    table_suffix = "_observations"
+    sanitized_project_name = normalize_identifier(project_name)
+    save_data_to_file(
+        missing_attachments_geojson,
+        f"{sanitized_project_name}{table_suffix}_missing_attachments",
+        project_dir,
+        file_type="geojson",
+    )
+
+    return len(failed_observations_info)
+
+
 def download_and_transform_comapeo_data(
     server_url,
     session,
@@ -869,10 +962,13 @@ def download_and_transform_comapeo_data(
             - 'attachment_failed': Total number of attachment downloads that failed.
             - 'skipped_icons': Total number of icons skipped.
             - 'icon_failed': Total number of icon downloads that failed.
+        - total_failed_observations_count : int
+            Total count of observations with at least one failed attachment download.
     """
 
     comapeo_data = {}
     stats = Counter()
+    total_failed_observations_count = 0
 
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
@@ -914,14 +1010,26 @@ def download_and_transform_comapeo_data(
         preset_mapping = build_preset_mapping(presets, icon_filenames)
 
         # Download all observations and attachments for this project
-        observations, attachment_stats = download_project_observations(
-            server_url, session, project_id, project_name, attachment_root
+        observations, attachment_stats, failed_observations_info = (
+            download_project_observations(
+                server_url, session, project_id, project_name, attachment_root
+            )
         )
 
         # Transform observations to GeoJSON features
         observation_features = transform_comapeo_observations(
             observations, project_name, project_id, preset_mapping
         )
+
+        # Save observations with failed attachments to a separate GeoJSON file
+        failed_count = save_missing_attachments_geojson(
+            failed_observations_info,
+            project_name,
+            project_id,
+            preset_mapping,
+            project_dir,
+        )
+        total_failed_observations_count += failed_count
 
         # Store observations as a GeoJSON FeatureCollection
         comapeo_data[(sanitized_project_name, "observations")] = {
@@ -963,4 +1071,4 @@ def download_and_transform_comapeo_data(
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s) and {len(tracks)} track(s)."
         )
-    return comapeo_data, stats
+    return comapeo_data, stats, total_failed_observations_count
