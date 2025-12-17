@@ -121,24 +121,34 @@ def _main(
         destination_path, geojson_files, alerts_provider
     )
 
-    logger.info(f"Writing alerts to the database table [{db_table_name}].")
-    alerts_writer = StructuredDBWriter(
-        conninfo(db),
-        db_table_name,
-        predefined_schema=create_alerts_table,
-    )
-    alerts_data_written = alerts_writer.handle_output(prepared_alerts_data)
+    # Only write alerts data if there's data to write
+    alerts_data_written = False
+    if prepared_alerts_data:
+        logger.info(f"Writing alerts to the database table [{db_table_name}].")
+        alerts_writer = StructuredDBWriter(
+            conninfo(db),
+            db_table_name,
+            predefined_schema=create_alerts_table,
+        )
+        alerts_data_written = alerts_writer.handle_output(prepared_alerts_data)
+    else:
+        logger.info("No alerts data to write to the database.")
 
-    alerts_metadata_table_name = f"{db_table_name}__metadata"
-    logger.info(
-        f"Writing alerts metadata to the database table [{alerts_metadata_table_name}]."
-    )
-    metadata_writer = StructuredDBWriter(
-        conninfo(db),
-        alerts_metadata_table_name,
-        predefined_schema=create_metadata_table,
-    )
-    metadata_written = metadata_writer.handle_output(prepared_alerts_metadata)
+    # Only write metadata if there's metadata to write
+    metadata_written = False
+    if prepared_alerts_metadata:
+        alerts_metadata_table_name = f"{db_table_name}__metadata"
+        logger.info(
+            f"Writing alerts metadata to the database table [{alerts_metadata_table_name}]."
+        )
+        metadata_writer = StructuredDBWriter(
+            conninfo(db),
+            alerts_metadata_table_name,
+            predefined_schema=create_metadata_table,
+        )
+        metadata_written = metadata_writer.handle_output(prepared_alerts_metadata)
+    else:
+        logger.info("No alerts metadata to write to the database.")
 
     return alerts_statistics if alerts_data_written or metadata_written else None
 
