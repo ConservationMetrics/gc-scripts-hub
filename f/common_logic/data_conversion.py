@@ -659,22 +659,17 @@ def smart_xml_to_geojson(path: Path):
     """
     Converts a SMART patrol XML file to GeoJSON format.
 
-    This function parses SMART Conservation Software patrol XML files and extracts
-    observations with full hierarchical context (patrol -> leg -> day -> waypoint -> observation).
-    Each observation includes spatial data (waypoint coordinates) and is returned as a
-    GeoJSON Feature with Point geometry.
+    Parameters
+    ----------
+    path : Path
+        Path to the SMART patrol XML file.
 
     Returns
     -------
     dict
-        GeoJSON FeatureCollection containing observation features with properties:
-        - Patrol-level fields (patrol_id, patrol_type, etc.)
-        - Leg-level fields (leg_id, leg_members, etc.)
-        - Day-level fields (day_date, day_start_time, etc.)
-        - Waypoint-level fields (waypoint_id, waypoint_x, waypoint_y, etc.)
-        - Observation-level fields (category, attributes, etc.)
+        GeoJSON FeatureCollection with observation features.
     """
-    # Import here to avoid forcing SMART dependencies (lxml, psycopg2) on all users of data_conversion.py
+    # Lazy import to avoid forcing SMART dependencies on all users of data_conversion.py
     from f.connectors.smart.smart_patrols import parse_smart_patrol_xml
 
     return parse_smart_patrol_xml(path)
