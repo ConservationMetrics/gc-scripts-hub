@@ -1,2 +1,7 @@
 summary: null
 display_name: apps
+extra_perms:
+  g/all: false
+  u/rudo: true
+owners:
+  - u/rudo

@@ -1,7 +1,6 @@
-summary: 'Shared logic for converting data'
+summary: Shared logic for converting data
 description: ''
 lock: '!inline f/common_logic/data_conversion.script.lock'
-has_preprocessor: false
 kind: script
 no_main_func: true
 schema:
