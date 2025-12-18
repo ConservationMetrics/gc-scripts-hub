@@ -10,18 +10,27 @@ def test_parse_smart_patrol_xml():
     """Test parsing SMART patrol XML file."""
     xml_path = Path("f/connectors/smart/tests/assets/SMART_000006_001.xml")
     
-    observations = parse_smart_patrol_xml(xml_path)
+    geojson = parse_smart_patrol_xml(xml_path)
     
-    # Check that we got observations (2 waypoints with multiple observations each)
-    assert len(observations) > 0
+    # Check that we got a valid GeoJSON FeatureCollection
+    assert geojson["type"] == "FeatureCollection"
+    assert "features" in geojson
+    
+    features = geojson["features"]
     
     # Waypoint 2 (id="2") has 8 observations
     # Waypoint 10 (id="10") has 3 observations
     # Total: 11 observations
-    assert len(observations) == 11
+    assert len(features) == 11
     
     # Check first observation (from waypoint 2)
-    first_obs = observations[0]
+    first_feature = features[0]
+    assert first_feature["type"] == "Feature"
+    assert "id" in first_feature
+    assert "properties" in first_feature
+    assert "geometry" in first_feature
+    
+    first_obs = first_feature["properties"]
     
     # Patrol-level fields
     assert first_obs["patrol_id"] == "SMART_000006-001"
@@ -61,18 +70,16 @@ def test_parse_smart_patrol_xml():
     assert first_obs["category"] == "humanactivity.timber.firewood."
     
     # Geometry fields
-    assert first_obs["g__type"] == "Point"
-    assert first_obs["g__coordinates"] == [-77.19774596, 38.7606911]
-    
-    # Data source
-    assert first_obs["data_source"] == "SMART"
+    assert first_feature["geometry"]["type"] == "Point"
+    assert first_feature["geometry"]["coordinates"] == [-77.19774596, 38.7606911]
     
     # Check that attributes are extracted correctly
     # Find the firewood observation
-    firewood_obs = next(
-        obs for obs in observations 
-        if obs["category"] == "humanactivity.timber.firewood."
+    firewood_feature = next(
+        f for f in features 
+        if f["properties"]["category"] == "humanactivity.timber.firewood."
     )
+    firewood_obs = firewood_feature["properties"]
     assert firewood_obs["threat"] == "residentialcommercialdevelopment.commericalindustrialareas."
     assert firewood_obs["treespecies_timber"] == "rosewood"
     assert firewood_obs["actiontakenitems"] == "confiscated"
@@ -80,18 +87,20 @@ def test_parse_smart_patrol_xml():
     assert firewood_obs["ageofsign"] == "veryold"
     
     # Find the waterhole observation
-    waterhole_obs = next(
-        obs for obs in observations 
-        if obs["category"] == "features.waterhole."
+    waterhole_feature = next(
+        f for f in features 
+        if f["properties"]["category"] == "features.waterhole."
     )
+    waterhole_obs = waterhole_feature["properties"]
     assert waterhole_obs["haswater"] is True
     assert waterhole_obs["species"] == "chordata_rl.mammalia_rl.cetartiodactyla_rl.hippopotamidae_rl.hippopotamus_rl.hippopotamusamphibius_rl10103."
     
     # Find the people observation
-    people_obs = next(
-        obs for obs in observations 
-        if obs["category"] == "humanactivity.people."
+    people_feature = next(
+        f for f in features 
+        if f["properties"]["category"] == "humanactivity.people."
     )
+    people_obs = people_feature["properties"]
     assert people_obs["sex"] == "unknown"
     assert people_obs["phonenumber"] == "231959932"
     assert people_obs["peoplearmed"] == "unarmed"
@@ -101,24 +110,25 @@ def test_parse_smart_patrol_xml():
     assert people_obs["personage"] == 90.0
     
     # Check second waypoint observations
-    waypoint_10_obs = [
-        obs for obs in observations 
-        if obs["waypoint_id"] == "10"
+    waypoint_10_features = [
+        f for f in features 
+        if f["properties"]["waypoint_id"] == "10"
     ]
-    assert len(waypoint_10_obs) == 3
+    assert len(waypoint_10_features) == 3
     
     # Check position observation from waypoint 10
-    position_obs = next(
-        obs for obs in waypoint_10_obs 
-        if obs["category"] == "position."
+    position_feature = next(
+        f for f in waypoint_10_features 
+        if f["properties"]["category"] == "position."
     )
+    position_obs = position_feature["properties"]
     assert position_obs["waypoint_id"] == "10"
     assert position_obs["waypoint_x"] == "-77.19774609"
     assert position_obs["waypoint_y"] == "38.76069271"
     assert position_obs["waypoint_time"] == "20:51:38"
     assert position_obs["positiontype"] == "start"
-    assert position_obs["g__type"] == "Point"
-    assert position_obs["g__coordinates"] == [-77.19774609, 38.76069271]
+    assert position_feature["geometry"]["type"] == "Point"
+    assert position_feature["geometry"]["coordinates"] == [-77.19774609, 38.76069271]
 
 
 def test_script_e2e(pg_database, tmp_path):
@@ -142,6 +152,10 @@ def test_script_e2e(pg_database, tmp_path):
     # Verify XML was saved to project folder
     saved_xml = asset_storage / "smart_patrol_test" / "SMART_000006_001.xml"
     assert saved_xml.exists()
+    
+    # Verify GeoJSON was saved to project folder
+    saved_geojson = asset_storage / "smart_patrol_test" / "smart_patrol_test.geojson"
+    assert saved_geojson.exists()
     
     # Verify database table was created and populated
     with psycopg2.connect(**pg_database) as conn:
