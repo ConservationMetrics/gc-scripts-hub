@@ -1,5 +1,5 @@
 summary: 'SMART: Import Patrol Data'
-description: 
+description: ''
 lock: '!inline f/connectors/smart/smart_patrols.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -12,12 +12,6 @@ schema:
     - db_table_name
     - attachment_root
   properties:
-    smart_patrols_path:
-      type: string
-      description: The path (in attachment root) to the SMART patrols XML file to import, e.g. "SMART_000006_001.xml".
-      default: null
-      originalType: string
-      pattern: '^SMART_.+\.xml$'
     attachment_root:
       type: string
       description: >-
@@ -37,6 +31,14 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
+    smart_patrols_path:
+      type: string
+      description: >-
+        The path (in attachment root) to the SMART patrols XML file to import,
+        e.g. "SMART_000006_001.xml".
+      default: null
+      originalType: string
+      pattern: ^SMART_.+\.xml$
   required:
     - smart_patrols_path
     - db

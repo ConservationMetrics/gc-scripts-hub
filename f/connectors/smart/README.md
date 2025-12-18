@@ -8,14 +8,17 @@ For more information on SMART, see the [SMART website](https://www.smartconserva
 
 SMART Desktop is a desktop application that serves as the central database for information recorded on animals, illegal activities, and conservation actions.
 
-### SMART Patrols script
+### `smart_patrols.py`
 
-This script is used to import patrol XML data that was exported from SMART Desktop.
+This script imports patrol XML data exported from SMART Desktop, extracting observations with full context (patrol, leg, day, waypoint metadata) and saving them to a PostgreSQL database. Each observation includes inherited contextual information such as patrol team, transport type, waypoint coordinates, and observation attributes.
 
-You can export patrol data from SMART Desktop by going to the "Patrols" menu and right clicking on a patrol and selecting "Export".
+The XML file is also saved to the project folder for reference and can be used to re-import the data later.
+
+> [!TIP]
+> You can export patrol data from SMART Desktop by going to the "Patrols" menu and right clicking on a patrol and selecting "Export".
 
 ## SMART Connect
 
 SMART Connect allows SMART users to store and manage data on a web connected database.
 
-### TODO: Add SMART Connect scripts
+**TODO: Add SMART Connect scripts**
