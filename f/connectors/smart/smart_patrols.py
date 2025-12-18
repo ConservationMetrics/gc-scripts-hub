@@ -8,7 +8,9 @@ from pathlib import Path
 
 from lxml import etree
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import postgresql
+from f.common_logic.file_operations import save_data_to_file
+from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ def main(
     attachment_root: str = "/persistent-storage/datalake",
 ):
     """
-    Parse SMART patrol XML and save observations to database.
+    Parse SMART patrol XML and save observations to database as GeoJSON.
 
     Parameters
     ----------
@@ -42,27 +44,45 @@ def main(
 
     logger.info(f"Reading SMART patrol XML from {xml_path}")
 
-    # Parse XML and extract observations
-    observations = parse_smart_patrol_xml(xml_path)
+    # Parse XML and extract observations as GeoJSON
+    observations_geojson = parse_smart_patrol_xml(xml_path)
 
-    logger.info(f"Extracted {len(observations)} observations from SMART patrol XML")
+    num_observations = len(observations_geojson.get("features", []))
+    logger.info(f"Extracted {num_observations} observations from SMART patrol XML")
 
-    # Save XML to project folder
-    save_path = Path(attachment_root) / db_table_name
-    save_path.mkdir(parents=True, exist_ok=True)
-    xml_save_path = save_path / xml_path.name
+    # Create project directory in datalake
+    project_dir = Path(attachment_root) / db_table_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save raw XML file to datalake
+    xml_save_path = project_dir / xml_path.name
     xml_save_path.write_text(xml_path.read_text())
-    logger.info(f"Saved XML file to: {xml_save_path}")
+    logger.info(f"Saved raw XML file to: {xml_save_path}")
 
-    # Write observations to database
-    if observations:
-        db_writer = StructuredDBWriter(
-            conninfo(db),
+    # Apply transformation to add data_source
+    observations_geojson = transform_smart_patrol_data(observations_geojson)
+
+    # Save GeoJSON file to datalake
+    if observations_geojson.get("features"):
+        save_data_to_file(
+            observations_geojson,
             db_table_name,
-            use_mapping_table=False,
-            reverse_properties_separated_by=None,
+            project_dir,
+            file_type="geojson",
         )
-        db_writer.handle_output(observations)
+        logger.info(
+            f"Saved GeoJSON file to: {project_dir / f'{db_table_name}.geojson'}"
+        )
+
+        # Write to database using geojson_to_postgres
+        geojson_rel_path = Path(db_table_name) / f"{db_table_name}.geojson"
+        save_geojson_to_postgres(
+            db=db,
+            db_table_name=db_table_name,
+            geojson_path=str(geojson_rel_path),
+            attachment_root=attachment_root,
+            delete_geojson_file=False,
+        )
         logger.info(
             f"SMART patrol observations successfully written to database table: [{db_table_name}]"
         )
@@ -70,9 +90,37 @@ def main(
         logger.warning("No observations found in SMART patrol XML")
 
 
-def parse_smart_patrol_xml(xml_path: Path) -> list[dict]:
+def transform_smart_patrol_data(data: dict, dataset_name: str = None) -> dict:
     """
-    Parse SMART patrol XML and extract observations with full context.
+    Apply SMART-specific transformations to patrol data.
+
+    This transformation adds the data_source field to identify the data as coming
+    from SMART Conservation Software.
+
+    Parameters
+    ----------
+    data : dict
+        GeoJSON FeatureCollection with SMART patrol observations.
+    dataset_name : str, optional
+        Human-readable name of the dataset (currently unused, included for
+        consistency with other transformation functions).
+
+    Returns
+    -------
+    dict
+        Transformed GeoJSON with data_source field added to all feature properties.
+    """
+    if "features" in data:
+        for feature in data["features"]:
+            if "properties" not in feature:
+                feature["properties"] = {}
+            feature["properties"]["data_source"] = "SMART"
+    return data
+
+
+def parse_smart_patrol_xml(xml_path: Path) -> dict:
+    """
+    Parse SMART patrol XML and extract observations with full context as GeoJSON.
 
     Parameters
     ----------
@@ -81,8 +129,8 @@ def parse_smart_patrol_xml(xml_path: Path) -> list[dict]:
 
     Returns
     -------
-    list[dict]
-        A list of observations with all contextual information.
+    dict
+        A GeoJSON FeatureCollection with observation features containing all contextual information.
     """
     tree = etree.parse(str(xml_path))
     root = tree.getroot()
@@ -174,9 +222,8 @@ def parse_smart_patrol_xml(xml_path: Path) -> list[dict]:
                         )
                         obs_id = hashlib.md5(id_string.encode()).hexdigest()
 
-                        # Build observation dict with all context
-                        obs_dict = {
-                            "_id": obs_id,
+                        # Build observation properties with all context
+                        properties = {
                             # Patrol-level info
                             "patrol_id": patrol_id,
                             "patrol_type": patrol_type,
@@ -205,13 +252,6 @@ def parse_smart_patrol_xml(xml_path: Path) -> list[dict]:
                             "waypoint_time": waypoint_time,
                             # Observation-level info
                             "category": category_key,
-                            # Geometry fields for GeoJSON compliance
-                            "g__type": "Point",
-                            "g__coordinates": [float(waypoint_x), float(waypoint_y)]
-                            if waypoint_x and waypoint_y
-                            else None,
-                            # Add data source
-                            "data_source": "SMART",
                         }
 
                         # Extract attributes
@@ -225,14 +265,29 @@ def parse_smart_patrol_xml(xml_path: Path) -> list[dict]:
                             s_value_elem = attribute.find("ns2:sValue", ns)
 
                             if item_key_elem is not None and item_key_elem.text:
-                                obs_dict[attr_key] = item_key_elem.text
+                                properties[attr_key] = item_key_elem.text
                             elif d_value_elem is not None and d_value_elem.text:
-                                obs_dict[attr_key] = float(d_value_elem.text)
+                                properties[attr_key] = float(d_value_elem.text)
                             elif b_value_elem is not None and b_value_elem.text:
-                                obs_dict[attr_key] = b_value_elem.text.lower() == "true"
+                                properties[attr_key] = (
+                                    b_value_elem.text.lower() == "true"
+                                )
                             elif s_value_elem is not None and s_value_elem.text:
-                                obs_dict[attr_key] = s_value_elem.text
+                                properties[attr_key] = s_value_elem.text
 
-                        observations.append(obs_dict)
+                        # Create GeoJSON Feature
+                        feature = {
+                            "type": "Feature",
+                            "id": obs_id,
+                            "properties": properties,
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [float(waypoint_x), float(waypoint_y)],
+                            }
+                            if waypoint_x and waypoint_y
+                            else None,
+                        }
 
-    return observations
+                        observations.append(feature)
+
+    return {"type": "FeatureCollection", "features": observations}
