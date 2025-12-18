@@ -216,6 +216,7 @@ def parse_smart_patrol_xml(xml_path: Path) -> dict:
                         obs_seq = observation_counter[category_key]
 
                         # Generate a unique and deterministic ID for this observation
+                        # Based on patrol_id, waypoint_id, category_key, and sequence number
                         id_string = (
                             f"{patrol_id}_{waypoint_id}_{category_key}_{obs_seq}"
                         )
