@@ -2,8 +2,11 @@
 # psycopg2-binary
 # lxml
 
+import hashlib
 import logging
 from pathlib import Path
+
+from lxml import etree
 
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
@@ -129,8 +132,161 @@ def parse_smart_patrol_xml(xml_path: Path) -> dict:
     dict
         A GeoJSON FeatureCollection with observation features containing all contextual information.
     """
-    # Use the parsing logic from data_conversion to avoid duplicating code
-    # and to ensure the app can use it without database dependencies
-    from f.common_logic.data_conversion import smart_xml_to_geojson
+    tree = etree.parse(str(xml_path))
+    root = tree.getroot()
 
-    return smart_xml_to_geojson(xml_path)
+    # Define namespace
+    ns = {"ns2": "http://www.smartconservationsoftware.org/xml/1.3/patrol"}
+
+    observations = []
+
+    # Extract patrol-level information
+    patrol_id = root.get("id")
+    patrol_type = root.get("patrolType")
+    patrol_start_date = root.get("startDate")
+    patrol_end_date = root.get("endDate")
+    patrol_is_armed = root.get("isArmed")
+
+    patrol_description = None
+    objective_elem = root.find("ns2:objective/ns2:description", ns)
+    if objective_elem is not None and objective_elem.text:
+        patrol_description = objective_elem.text
+
+    patrol_team = None
+    team_elem = root.find("ns2:team", ns)
+    if team_elem is not None:
+        patrol_team = team_elem.get("value")
+
+    patrol_comment = None
+    comment_elem = root.find("ns2:comment", ns)
+    if comment_elem is not None and comment_elem.text:
+        patrol_comment = comment_elem.text
+
+    # Process each leg
+    for leg in root.findall("ns2:legs", ns):
+        leg_id = leg.get("id")
+        leg_start_date = leg.get("startDate")
+        leg_end_date = leg.get("endDate")
+
+        transport_type = None
+        transport_elem = leg.find("ns2:transportType", ns)
+        if transport_elem is not None:
+            transport_type = transport_elem.get("value")
+
+        # Aggregate members
+        members_list = []
+        for member in leg.findall("ns2:members", ns):
+            given_name = member.get("givenName", "")
+            family_name = member.get("familyName", "")
+            if given_name or family_name:
+                members_list.append(f"{given_name} {family_name}".strip())
+        members = ", ".join(members_list) if members_list else None
+
+        mandate = None
+        mandate_elem = leg.find("ns2:mandate", ns)
+        if mandate_elem is not None:
+            mandate = mandate_elem.get("value")
+
+        # Process each day
+        for day in leg.findall("ns2:days", ns):
+            day_date = day.get("date")
+            day_start_time = day.get("startTime")
+            day_end_time = day.get("endTime")
+            day_rest_minutes = day.get("restMinutes")
+
+            # Process each waypoint
+            for waypoint in day.findall("ns2:waypoints", ns):
+                waypoint_id = waypoint.get("id")
+                waypoint_x = waypoint.get("x")  # longitude
+                waypoint_y = waypoint.get("y")  # latitude
+                waypoint_time = waypoint.get("time")
+
+                # Process each observation group
+                groups = waypoint.find("ns2:groups", ns)
+                if groups is not None:
+                    # Counter for multiple observations of same category at same waypoint
+                    observation_counter = {}
+                    for observation in groups.findall("ns2:observations", ns):
+                        category_key = observation.get("categoryKey")
+
+                        # Track observation count for this category at this waypoint
+                        observation_counter[category_key] = (
+                            observation_counter.get(category_key, 0) + 1
+                        )
+                        obs_seq = observation_counter[category_key]
+
+                        # Generate a unique and deterministic ID for this observation
+                        id_string = (
+                            f"{patrol_id}_{waypoint_id}_{category_key}_{obs_seq}"
+                        )
+                        obs_id = hashlib.md5(id_string.encode()).hexdigest()
+
+                        # Build observation properties with all context
+                        properties = {
+                            # Patrol-level info
+                            "patrol_id": patrol_id,
+                            "patrol_type": patrol_type,
+                            "patrol_start_date": patrol_start_date,
+                            "patrol_end_date": patrol_end_date,
+                            "patrol_is_armed": patrol_is_armed,
+                            "patrol_description": patrol_description,
+                            "patrol_team": patrol_team,
+                            "patrol_comment": patrol_comment,
+                            # Leg-level info
+                            "leg_id": leg_id,
+                            "leg_start_date": leg_start_date,
+                            "leg_end_date": leg_end_date,
+                            "leg_transport_type": transport_type,
+                            "leg_members": members,
+                            "leg_mandate": mandate,
+                            # Day-level info
+                            "day_date": day_date,
+                            "day_start_time": day_start_time,
+                            "day_end_time": day_end_time,
+                            "day_rest_minutes": day_rest_minutes,
+                            # Waypoint-level info
+                            "waypoint_id": waypoint_id,
+                            "waypoint_x": waypoint_x,
+                            "waypoint_y": waypoint_y,
+                            "waypoint_time": waypoint_time,
+                            # Observation-level info
+                            "category": category_key,
+                        }
+
+                        # Extract attributes
+                        for attribute in observation.findall("ns2:attributes", ns):
+                            attr_key = attribute.get("attributeKey")
+
+                            # Check for different value types
+                            item_key_elem = attribute.find("ns2:itemKey", ns)
+                            d_value_elem = attribute.find("ns2:dValue", ns)
+                            b_value_elem = attribute.find("ns2:bValue", ns)
+                            s_value_elem = attribute.find("ns2:sValue", ns)
+
+                            if item_key_elem is not None and item_key_elem.text:
+                                properties[attr_key] = item_key_elem.text
+                            elif d_value_elem is not None and d_value_elem.text:
+                                properties[attr_key] = float(d_value_elem.text)
+                            elif b_value_elem is not None and b_value_elem.text:
+                                properties[attr_key] = (
+                                    b_value_elem.text.lower() == "true"
+                                )
+                            elif s_value_elem is not None and s_value_elem.text:
+                                properties[attr_key] = s_value_elem.text
+
+                        # Create GeoJSON Feature
+                        feature = {
+                            "type": "Feature",
+                            "id": obs_id,
+                            "properties": properties,
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [float(waypoint_x), float(waypoint_y)],
+                            }
+                            if waypoint_x and waypoint_y
+                            else None,
+                        }
+
+                        observations.append(feature)
+
+    return {"type": "FeatureCollection", "features": observations}
