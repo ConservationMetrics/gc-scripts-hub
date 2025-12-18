@@ -98,3 +98,37 @@ def test_structured_data_type__pdf_file(tmp_path: Path):
         "<html><body><table><tr><td>Not</td></tr></table></body></html>"
     )
     assert detect_structured_data_type(file_path) == "unsupported"
+
+
+def test_structured_data_type__smart_xml_format(tmp_path: Path):
+    """Test that SMART patrol XML files are correctly detected."""
+    file_path = tmp_path / "patrol.xml"
+    file_path.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<patrol xmlns:ns2="http://www.smartconservationsoftware.org/xml/1.3/patrol" id="p1">'
+        '<ns2:objective><ns2:description>Test</ns2:description></ns2:objective>'
+        '</patrol>'
+    )
+    assert detect_structured_data_type(file_path) == "smart"
+
+
+def test_structured_data_type__smart_xml_with_root_namespace(tmp_path: Path):
+    """Test SMART XML detection when namespace is on root element."""
+    file_path = tmp_path / "patrol2.xml"
+    file_path.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<ns2:patrol xmlns:ns2="http://www.smartconservationsoftware.org/xml/1.3/patrol" id="p1">'
+        '<ns2:legs id="l1"></ns2:legs>'
+        '</ns2:patrol>'
+    )
+    assert detect_structured_data_type(file_path) == "smart"
+
+
+def test_structured_data_type__generic_xml_format(tmp_path: Path):
+    """Test that generic XML files without SMART namespace are detected as generic xml."""
+    file_path = tmp_path / "generic.xml"
+    file_path.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<root><child>value</child></root>'
+    )
+    assert detect_structured_data_type(file_path) == "xml"

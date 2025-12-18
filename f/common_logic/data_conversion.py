@@ -58,12 +58,16 @@ def detect_structured_data_type(file_path: str) -> str:
             ".geojson": "geojson",
             ".gpx": "gpx",
             ".kml": "kml",
+            ".xml": "xml",
         }
         detected_type = extension_map.get(path.suffix.lower(), "unsupported")
         if detected_type != "unsupported":
             # For JSON files, check if they're actually GeoJSON
             if detected_type == "json":
                 return _detect_json_subtype(path)
+            # For XML files, check if they're SMART patrol XML
+            if detected_type == "xml":
+                return _detect_xml_subtype(path)
             logger.info(f"File {path.name} detected as {detected_type} (by extension)")
         return detected_type
 
@@ -90,7 +94,7 @@ def detect_structured_data_type(file_path: str) -> str:
         return "json"
 
     def _detect_xml_subtype(path: Path) -> str:
-        """Distinguish between GPX, KML based on extension."""
+        """Distinguish between GPX, KML, SMART XML based on extension and content."""
         suffix = path.suffix.lower()
         if suffix == ".gpx":
             logger.info(f"File {path.name} detected as gpx")
@@ -98,6 +102,24 @@ def detect_structured_data_type(file_path: str) -> str:
         elif suffix == ".kml":
             logger.info(f"File {path.name} detected as kml")
             return "kml"
+        elif suffix == ".xml":
+            # Check if it's a SMART patrol XML by looking for SMART namespace
+            try:
+                tree = ET.parse(path)
+                root = tree.getroot()
+                # SMART patrol XMLs have a specific namespace
+                if "smartconservationsoftware.org" in (root.tag or ""):
+                    logger.info(f"File {path.name} detected as smart")
+                    return "smart"
+                # Check for SMART namespace in any child elements
+                for elem in root.iter():
+                    if elem.tag and "smartconservationsoftware.org" in str(elem.tag):
+                        logger.info(f"File {path.name} detected as smart")
+                        return "smart"
+            except (ET.ParseError, OSError):
+                pass
+            logger.info(f"File {path.name} detected as xml (generic)")
+            return "xml"
         return "unsupported"
 
     path = Path(file_path)
@@ -135,6 +157,10 @@ def detect_structured_data_type(file_path: str) -> str:
     if mime in ("application/xml", "text/xml"):
         return _detect_xml_subtype(path)
 
+    # For generic XML files detected by MIME but with .xml extension
+    if path.suffix.lower() == ".xml":
+        return _detect_xml_subtype(path)
+
     return "unsupported"
 
 
@@ -165,6 +191,9 @@ def convert_data(file_path: str, file_format: str):
     NOTE: Right now, we are assuming that spatial data (e.g. GPX, KML) will only
     be converted into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
     JSON) will only be converted into CSV, and not GeoJSON.
+    Exception: SMART XML contains spatial data but is converted to CSV format with
+    geometry columns (waypoint_x, waypoint_y, g__type, g__coordinates) for
+    compatibility with StructuredDBWriter.
     In the future, we will want to de-couple the output format from the input format e.g.
     1. Transform spatial CSV (with lat, lon columns) into GeoJSON
     2. Convert GPX to Spatial CSV (with lat, lon columns)
@@ -183,13 +212,13 @@ def convert_data(file_path: str, file_format: str):
         Path to the input file.
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
-        'gpx', 'kml', 'geojson'.
+        'gpx', 'kml', 'geojson', 'smart'.
 
     Returns
     -------
     tuple
         A tuple containing (converted_data, output_format) where:
-        - converted_data: Union[list[list[str]], dict] - Converted data as CSV (list of lists) or GeoJSON (dict)
+        - converted_data: Union[list[list[str]], list[dict], dict] - Converted data as CSV (list of lists or list of dicts) or GeoJSON (dict)
         - output_format: str - The output format ('csv' for tabular data, 'geojson' for spatial data)
     """
     path = Path(file_path)
@@ -208,6 +237,8 @@ def convert_data(file_path: str, file_format: str):
             return gpx_to_geojson(path), "geojson"
         case "kml":
             return kml_to_geojson(path), "geojson"
+        case "smart":
+            return smart_xml_to_geojson(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -621,6 +652,32 @@ def kml_to_geojson(path: Path):
         raise ValueError("No valid features found in input file")
 
     return {"type": "FeatureCollection", "features": features}
+
+
+@handle_file_errors
+def smart_xml_to_geojson(path: Path):
+    """
+    Converts a SMART patrol XML file to GeoJSON format.
+
+    This function parses SMART Conservation Software patrol XML files and extracts
+    observations with full hierarchical context (patrol -> leg -> day -> waypoint -> observation).
+    Each observation includes spatial data (waypoint coordinates) and is returned as a
+    GeoJSON Feature with Point geometry.
+
+    Returns
+    -------
+    dict
+        GeoJSON FeatureCollection containing observation features with properties:
+        - Patrol-level fields (patrol_id, patrol_type, etc.)
+        - Leg-level fields (leg_id, leg_members, etc.)
+        - Day-level fields (day_date, day_start_time, etc.)
+        - Waypoint-level fields (waypoint_id, waypoint_x, waypoint_y, etc.)
+        - Observation-level fields (category, attributes, etc.)
+    """
+    # Import here to avoid circular dependency and keep SMART logic in one place
+    from f.connectors.smart.smart_patrols import parse_smart_patrol_xml
+
+    return parse_smart_patrol_xml(path)
 
 
 def slugify(value: Any, allow_unicode: bool = False) -> str:

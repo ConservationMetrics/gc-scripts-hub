@@ -198,3 +198,8 @@ def osmand_notes_gpx_file():
 @pytest.fixture
 def osmand_poi_gpx_file():
     return Path(__file__).parent / "assets" / "osmand_poi.gpx"
+
+
+@pytest.fixture
+def smart_patrol_sample_xml_file():
+    return Path(__file__).parent / "assets" / "smart_patrol_sample.xml"

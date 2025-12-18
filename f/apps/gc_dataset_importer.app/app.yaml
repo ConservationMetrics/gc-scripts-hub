@@ -589,7 +589,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX'
+            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML'
             fieldType: template
           configuration:
             copyButton:
@@ -644,6 +644,7 @@ value:
                   application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
                 - application/vnd.ms-excel
                 - application/json
+                - application/xml
               connections:
                 - id: result
                   componentId: selectFile
