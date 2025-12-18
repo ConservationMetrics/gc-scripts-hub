@@ -15,6 +15,7 @@ from f.connectors.kobotoolbox.kobotoolbox_responses import (
     transform_kobotoolbox_form_data,
 )
 from f.connectors.odk.odk_responses import transform_odk_form_data
+from f.connectors.smart.smart_patrols import transform_smart_patrol_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -151,6 +152,10 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
             "Kobotoolbox transformation applied",
         ),
         ("csv", "ODK"): (transform_odk_form_data, "ODK transformation applied"),
+        ("geojson", "SMART"): (
+            transform_smart_patrol_data,
+            "SMART transformation applied",
+        ),
     }
 
     transform_key = (output_format, data_source)

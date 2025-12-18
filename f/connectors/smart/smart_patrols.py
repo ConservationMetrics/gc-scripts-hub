@@ -122,6 +122,11 @@ def parse_smart_patrol_xml(xml_path: Path) -> dict:
     """
     Parse SMART patrol XML and extract observations with full context as GeoJSON.
 
+    This function parses SMART Conservation Software patrol XML files using the SMART
+    namespace (http://www.smartconservationsoftware.org/xml/1.3/patrol). It extracts
+    observations with full hierarchical context from patrol → leg → day → waypoint → observation,
+    flattening the data structure while preserving all contextual information.
+
     Parameters
     ----------
     xml_path : Path
@@ -130,7 +135,15 @@ def parse_smart_patrol_xml(xml_path: Path) -> dict:
     Returns
     -------
     dict
-        A GeoJSON FeatureCollection with observation features containing all contextual information.
+        A GeoJSON FeatureCollection with observation features. Each feature contains:
+        - Patrol-level fields: patrol_id, patrol_type, patrol_start_date, patrol_end_date,
+          patrol_is_armed, patrol_description, patrol_team, patrol_comment
+        - Leg-level fields: leg_id, leg_start_date, leg_end_date, leg_transport_type,
+          leg_members (comma-separated), leg_mandate
+        - Day-level fields: day_date, day_start_time, day_end_time, day_rest_minutes
+        - Waypoint-level fields: waypoint_id, waypoint_x, waypoint_y, waypoint_time
+        - Observation-level fields: category, plus any custom attributes from the XML
+        - Geometry: Point with [longitude, latitude] coordinates
     """
     tree = etree.parse(str(xml_path))
     root = tree.getroot()
