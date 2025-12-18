@@ -22,3 +22,22 @@ The XML file is also saved to the project folder for reference and can be used t
 SMART Connect allows SMART users to store and manage data on a web connected database.
 
 **TODO: Add SMART Connect scripts**: see [`gc-programs/smart/smart-connect`](https://github.com/ConservationMetrics/gc-programs/tree/main/smart/smart-connect) for more information on how to set up a SMART Connect server.
+
+
+## 📚 Reference
+
+* SMART Connect API documentation: https://app.assembla.com/spaces/smart-cs/wiki/SMART_Connect_API_Documentation
+
+In the SMART Connect Manual, it is noted:
+
+> Connect API
+> 
+> The SMART Connect API is useful for other application developers who want to interact
+> with SMART Connect directly from their own software. Other systems can be setup to
+> Run queries and reports and process that data automatically into their own analysis
+> etc. The other systems can also be built to send new data observations to be stored in
+> SMART Connect as well.
+> 
+> It’s recommended to discuss any plans of additional software system with the SMART
+> Partnership Technical Council so they can help your collaboration be as smooth and
+> efficient as possible.
