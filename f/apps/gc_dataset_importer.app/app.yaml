@@ -589,7 +589,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML'
+            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML (SMART only)'
             fieldType: template
           configuration:
             copyButton:
