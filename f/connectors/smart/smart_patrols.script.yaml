@@ -1,0 +1,44 @@
+summary: 'SMART: Import Patrol Data'
+description: 
+lock: '!inline f/connectors/smart/smart_patrols.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - smart_patrols_path
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    smart_patrols_path:
+      type: string
+      description: The path (in attachment root) to the SMART patrols XML file to import, e.g. "SMART_000006_001.xml".
+      default: null
+      originalType: string
+      pattern: '^SMART_.+\.xml$'
+    attachment_root:
+      type: string
+      description: >-
+        A path where SMART attachments will be stored. Attachment files will be
+        stored in the following directory schema: 
+        `{attachment_root}/{db_table_name}/attachments/{filename}`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where the form data will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+  required:
+    - smart_patrols_path
+    - db
+    - db_table_name
+    - attachment_root
