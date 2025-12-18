@@ -21,4 +21,4 @@ The XML file is also saved to the project folder for reference and can be used t
 
 SMART Connect allows SMART users to store and manage data on a web connected database.
 
-**TODO: Add SMART Connect scripts**
+**TODO: Add SMART Connect scripts**: see [`gc-programs/smart/smart-connect`](https://github.com/ConservationMetrics/gc-programs/tree/main/smart/smart-connect) for more information on how to set up a SMART Connect server.
