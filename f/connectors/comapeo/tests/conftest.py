@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 import responses
@@ -7,6 +8,14 @@ import testing.postgresql
 
 from f.connectors.comapeo.comapeo_pull import comapeo_server
 from f.connectors.comapeo.tests.assets import server_responses
+
+
+@dataclass
+class CoMapeoServer:
+    """https://hub.windmill.dev/resource_types/194/comapeo_server"""
+
+    comapeo_server: dict
+    comapeo_project_blocklist: Optional[list] = None
 
 
 @pytest.fixture
@@ -18,11 +27,6 @@ def mocked_responses():
 @pytest.fixture
 def comapeoserver_observations(mocked_responses):
     """A mock CoMapeo Server that you can use to provide projects and their observations"""
-
-    @dataclass
-    class CoMapeoServer:
-        comapeo_server: dict
-        comapeo_project_blocklist: list
 
     server_url = "http://comapeo.example.org"
     access_token = "MapYourWorldTogether!"
@@ -89,7 +93,7 @@ def comapeoserver_observations(mocked_responses):
             json=preset_response,
             status=200,
         )
-        
+
         # Mock icon endpoints for all presets with iconRef
         if "iconRef" in preset:
             icon_doc_id = preset["iconRef"]["docId"]
@@ -110,7 +114,7 @@ def comapeoserver_observations(mocked_responses):
         json={"data": None},
         status=200,
     )
-    
+
     # Mock icon endpoint for any other icon (returns 404 for icons not in SAMPLE_PRESETS)
     mocked_responses.get(
         re.compile(
@@ -122,18 +126,14 @@ def comapeoserver_observations(mocked_responses):
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
-        server,
-        comapeo_project_blocklist,
+        comapeo_server=server,
+        comapeo_project_blocklist=comapeo_project_blocklist,
     )
 
 
 @pytest.fixture
 def comapeoserver_alerts(mocked_responses):
     """A mock CoMapeo Server that you can use to get and post alerts"""
-
-    @dataclass
-    class CoMapeoServer:
-        comapeo_server: dict
 
     server_url = "http://comapeo.example.org"
     project_id = "forest_expedition"
@@ -156,7 +156,82 @@ def comapeoserver_alerts(mocked_responses):
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
-        server,
+        comapeo_server=server,
+    )
+
+
+@pytest.fixture
+def comapeoserver_with_failing_attachments(mocked_responses):
+    """A mock CoMapeo Server with observations that have failing attachments"""
+
+    server_url = "http://comapeo.example.org"
+    access_token = "test_token"
+    project_id = "forest_expedition"
+    project_name = "Forest Expedition"
+
+    # Mock projects endpoint
+    mocked_responses.get(
+        f"{server_url}/projects",
+        json={"data": [{"projectId": project_id, "name": project_name}]},
+        status=200,
+    )
+
+    # Mock observations with one that has a failing attachment
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/observation",
+        json={
+            "data": [
+                {
+                    "docId": "failing_obs",
+                    "lat": -33.8688,
+                    "lon": 151.2093,
+                    "tags": {"notes": "This one has a failing attachment"},
+                    "attachments": [
+                        {
+                            "url": f"{server_url}/projects/{project_id}/attachments/failing/photo/fail123"
+                        }
+                    ],
+                    "schemaName": "observation",
+                    "deleted": False,
+                    "createdAt": "2024-10-14T20:18:10.658Z",
+                }
+            ]
+        },
+        status=200,
+    )
+
+    # Mock tracks endpoint (empty)
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/track",
+        json={"data": []},
+        status=200,
+    )
+
+    # Mock presets endpoint (empty)
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/preset",
+        json={"data": []},
+        status=200,
+    )
+
+    # Mock fields endpoint (empty)
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/field",
+        json={"data": []},
+        status=200,
+    )
+
+    # Mock the failing attachment - specific URL must come before any regex patterns
+    mocked_responses.get(
+        f"{server_url}/projects/{project_id}/attachments/failing/photo/fail123",
+        status=404,
+    )
+
+    server: comapeo_server = dict(server_url=server_url, access_token=access_token)
+
+    return CoMapeoServer(
+        comapeo_server=server,
+        comapeo_project_blocklist=[],
     )
 
 
