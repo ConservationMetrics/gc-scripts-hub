@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Optional
 
 import pytest
 import responses
@@ -7,6 +8,14 @@ import testing.postgresql
 
 from f.connectors.comapeo.comapeo_pull import comapeo_server
 from f.connectors.comapeo.tests.assets import server_responses
+
+
+@dataclass
+class CoMapeoServer:
+    """https://hub.windmill.dev/resource_types/194/comapeo_server"""
+
+    comapeo_server: dict
+    comapeo_project_blocklist: Optional[list] = None
 
 
 @pytest.fixture
@@ -18,11 +27,6 @@ def mocked_responses():
 @pytest.fixture
 def comapeoserver_observations(mocked_responses):
     """A mock CoMapeo Server that you can use to provide projects and their observations"""
-
-    @dataclass
-    class CoMapeoServer:
-        comapeo_server: dict
-        comapeo_project_blocklist: list
 
     server_url = "http://comapeo.example.org"
     access_token = "MapYourWorldTogether!"
@@ -122,18 +126,14 @@ def comapeoserver_observations(mocked_responses):
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
-        server,
-        comapeo_project_blocklist,
+        comapeo_server=server,
+        comapeo_project_blocklist=comapeo_project_blocklist,
     )
 
 
 @pytest.fixture
 def comapeoserver_alerts(mocked_responses):
     """A mock CoMapeo Server that you can use to get and post alerts"""
-
-    @dataclass
-    class CoMapeoServer:
-        comapeo_server: dict
 
     server_url = "http://comapeo.example.org"
     project_id = "forest_expedition"
@@ -156,18 +156,13 @@ def comapeoserver_alerts(mocked_responses):
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
-        server,
+        comapeo_server=server,
     )
 
 
 @pytest.fixture
 def comapeoserver_with_failing_attachments(mocked_responses):
     """A mock CoMapeo Server with observations that have failing attachments"""
-
-    @dataclass
-    class CoMapeoServer:
-        comapeo_server: dict
-        comapeo_project_blocklist: list
 
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
@@ -235,8 +230,8 @@ def comapeoserver_with_failing_attachments(mocked_responses):
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 
     return CoMapeoServer(
-        server,
-        [],
+        comapeo_server=server,
+        comapeo_project_blocklist=[],
     )
 
 
