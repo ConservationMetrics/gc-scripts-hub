@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns2:patrol xmlns:ns2="http://www.smartconservationsoftware.org/xml/1.3/patrol" patrolType="GROUND" startDate="2025-12-17" endDate="2026-01-31" isArmed="false" id="SMART_000006-001">
+    <ns2:objective>
+        <ns2:description>Test project</ns2:description>
+    </ns2:objective>
+    <ns2:team languageCode="en" value="Community Team 1"/>
+    <ns2:legs startDate="2025-12-17" endDate="2025-12-17" id="1">
+        <ns2:transportType languageCode="en" value="Vehicle"/>
+        <ns2:members givenName="John" familyName="Peter" employeeId="195000015" isPilot="false" isLeader="false"/>
+        <ns2:members givenName="Tony" familyName="Wambu" employeeId="195000013" isPilot="false" isLeader="true"/>
+        <ns2:members givenName="Tim" familyName="Obriek" employeeId="195000014" isPilot="false" isLeader="false"/>
+        <ns2:members givenName="David" familyName="Aliata" employeeId="195000012" isPilot="false" isLeader="false"/>
+        <ns2:members givenName="Lilian" familyName="Wendy" employeeId="195000016" isPilot="false" isLeader="false"/>
+        <ns2:days date="2025-12-17" startTime="20:48:25" endTime="20:51:55" restMinutes="2.0">
+            <ns2:waypoints id="2" x="-77.19774596" y="38.7606911" time="20:50:41">
+                <ns2:groups>
+                    <ns2:observations categoryKey="humanactivity.timber.firewood.">
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>residentialcommercialdevelopment.commericalindustrialareas.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="treespecies_timber">
+                            <ns2:itemKey>rosewood</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="actiontakenitems">
+                            <ns2:itemKey>confiscated</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="numberofbundles">
+                            <ns2:dValue>64.0</ns2:dValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="ageofsign">
+                            <ns2:itemKey>veryold</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="features.waterhole.">
+                        <ns2:attributes attributeKey="haswater">
+                            <ns2:bValue>true</ns2:bValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="species">
+                            <ns2:itemKey>chordata_rl.mammalia_rl.cetartiodactyla_rl.hippopotamidae_rl.hippopotamus_rl.hippopotamusamphibius_rl10103.</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="position.">
+                        <ns2:attributes attributeKey="positiontype">
+                            <ns2:itemKey>patrolcamp</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="humanactivity.weaponsequipment.firearmsammunition.ammunition.">
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>energyproductionmining.miningquarrying.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="numberofweaponsequipment">
+                            <ns2:dValue>5.0</ns2:dValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="ammunitiontype">
+                            <ns2:itemKey>typeb</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="humanactivity.humansign.">
+                        <ns2:attributes attributeKey="typeofhumansign">
+                            <ns2:itemKey>machetecut</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>agricultureaquaculture.livestockfarmingranching.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="ageofsign">
+                            <ns2:itemKey>veryold</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="features.figtree.">
+                        <ns2:attributes attributeKey="figfruit">
+                            <ns2:itemKey>unripe</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="species">
+                            <ns2:itemKey>chordata_rl.mammalia_rl.carnivora_rl.felidae_rl.panthera_rl.pantherapardus_rl15954.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="treespecies_fruitnut">
+                            <ns2:itemKey>fig</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="animals.bushmeat.">
+                        <ns2:attributes attributeKey="statusofbushmeat">
+                            <ns2:itemKey>smoked</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="weightkg">
+                            <ns2:dValue>50.0</ns2:dValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="actiontakenrcass">
+                            <ns2:itemKey>collected</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>none.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="species">
+                            <ns2:itemKey>chordata_rl.mammalia_rl.primates_rl.cercopithecidae_rl.cercopithecus_rl.cercopithecusnictitans_rl4224.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="typeofbushmeat">
+                            <ns2:itemKey>piece</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="humanactivity.people.">
+                        <ns2:attributes attributeKey="sex">
+                            <ns2:itemKey>unknown</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="phonenumber">
+                            <ns2:sValue>231959932</ns2:sValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="peoplearmed">
+                            <ns2:itemKey>unarmed</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="actiontakenpeople">
+                            <ns2:itemKey>unsuccessfulpursuit</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="numberofpeople">
+                            <ns2:dValue>50.0</ns2:dValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>pollution.industrialmilitaryeffluents.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="nationalidnumber">
+                            <ns2:sValue>H838582</ns2:sValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="nameornames">
+                            <ns2:sValue>James, Fred, ...</ns2:sValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="personage">
+                            <ns2:dValue>90.0</ns2:dValue>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="placeoforigin">
+                            <ns2:itemKey>villageb</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                </ns2:groups>
+            </ns2:waypoints>
+            <ns2:waypoints id="10" x="-77.19774609" y="38.76069271" time="20:51:38">
+                <ns2:groups>
+                    <ns2:observations categoryKey="position.">
+                        <ns2:attributes attributeKey="positiontype">
+                            <ns2:itemKey>start</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="animals.sign.dung.">
+                        <ns2:attributes attributeKey="threat">
+                            <ns2:itemKey>none.</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="ageofsign">
+                            <ns2:itemKey>recent</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="species">
+                            <ns2:itemKey>chordata_rl.mammalia_rl.perissodactyla_rl.rhinocerotidae_rl.diceros_rl.dicerosbicornis_rl6557.</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                    <ns2:observations categoryKey="features.saltlick.">
+                        <ns2:attributes attributeKey="typeofsaltlick">
+                            <ns2:itemKey>waterbased</ns2:itemKey>
+                        </ns2:attributes>
+                        <ns2:attributes attributeKey="species">
+                            <ns2:itemKey>chordata_rl.mammalia_rl.proboscidea_rl.elephantidae_rl.loxodonta_rl.loxodontaafricana_rl12392.</ns2:itemKey>
+                        </ns2:attributes>
+                    </ns2:observations>
+                </ns2:groups>
+            </ns2:waypoints>
+            <ns2:track geom="008000000500000001008000000200000007c0534ca6327979e94043615d5dbea2124279b2e1239b0000c0534ca7deabc76f4043615e53726ddc4279b2e144ce9000c0534ca7deabc76f4043615e53726ddc4279b2e144d02000c0534ca7df375d8f4043615e60f3e0b84279b2e152b91000c0534ca7df375d8f4043615e60f3e0b84279b2e152bb2000c0534ca7da4459a14043615e620b0cf94279b2e156df8000c0534ca7da4459a14043615e620b0cf94279b2e156e10000" distance="0.009733034297823906"/>
+        </ns2:days>
+        <ns2:mandate languageCode="en" value="Research and Monitoring"/>
+    </ns2:legs>
+    <ns2:comment>Test patrol for monitoring project</ns2:comment>
+</ns2:patrol>
