@@ -2,14 +2,14 @@ import csv
 import zipfile
 from pathlib import Path
 
-import psycopg2
+import psycopg
 
 from f.common_logic.db_operations import postgresql
 from f.export.download_all_data.download_all_postgres_data import main
 
 
 def test_download_all_data(pg_database):
-    conn = psycopg2.connect(**pg_database)
+    conn = psycopg.connect(**pg_database)
     cur = conn.cursor()
 
     cur.execute("CREATE TABLE apples (id SERIAL PRIMARY KEY, name TEXT)")

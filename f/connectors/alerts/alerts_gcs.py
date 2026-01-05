@@ -4,7 +4,7 @@
 # google-cloud-storage~=2.13
 # pandas~=2.2
 # pillow~=10.3
-# psycopg2-binary
+# psycopg[binary]
 # requests~=2.32
 
 import base64
@@ -19,7 +19,7 @@ import pandas as pd
 from google.cloud import storage as gcs
 from google.oauth2.service_account import Credentials
 from PIL import Image
-from psycopg2 import sql
+from psycopg import sql
 
 from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql

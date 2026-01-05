@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-import psycopg2
+import psycopg
 import pytest
 
 from f.connectors.comapeo.comapeo_alerts import (
@@ -33,7 +33,7 @@ def fake_alerts_table(pg_database):
         ),
     ]
 
-    conn = psycopg2.connect(**pg_database)
+    conn = psycopg.connect(**pg_database)
     conn.autocommit = True
     cur = conn.cursor()
 
