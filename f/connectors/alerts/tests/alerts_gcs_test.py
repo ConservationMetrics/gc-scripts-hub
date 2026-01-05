@@ -176,7 +176,8 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             # Check that the _id field is a valid UUID
             cursor.execute("SELECT _id FROM fake_alerts")
             _id = cursor.fetchone()[0]
-            assert uuid.UUID(_id)
+            # psycopg3 returns UUID columns as uuid.UUID objects directly
+            assert isinstance(_id, uuid.UUID)
 
             # Check that the _id field is unique
             cursor.execute("SELECT _id FROM fake_alerts")
