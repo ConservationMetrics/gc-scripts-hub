@@ -6,7 +6,7 @@ import json
 import logging
 import time
 
-from psycopg2 import Error, connect, errors, sql
+from psycopg import Error, connect, errors, sql
 
 from f.common_logic.identifier_utils import sanitize_sql_message
 
@@ -18,7 +18,7 @@ postgresql = dict
 
 
 def conninfo(db: postgresql):
-    """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
+    """Convert a `postgresql` Windmill Resources to psycopg3-style connection string"""
     # password is optional
     password_part = f" password={db['password']}" if "password" in db else ""
     conn = "dbname={dbname} user={user} host={host} port={port}".format(**db)
@@ -165,7 +165,7 @@ class StructuredDBWriter:
         """
         Establishes a connection to the PostgreSQL database using the class's configured connection string.
         """
-        return connect(dsn=self.db_connection_string)
+        return connect(self.db_connection_string)
 
     def _inspect_schema(self, table_name):
         """Fetches the column names of the given table."""
@@ -193,8 +193,8 @@ class StructuredDBWriter:
 
     def _create_missing_mappings(self, table_name, missing_columns):
         """Generates and executes SQL statements to add missing mappings to the table."""
-        try:
-            with self._get_conn() as conn, conn.cursor() as cursor:
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
                 for original_column, sql_column in missing_columns.items():
                     try:
                         query = f"""
@@ -202,18 +202,19 @@ class StructuredDBWriter:
                         VALUES ('{original_column}', '{sql_column}');
                         """
                         cursor.execute(query)
+                        conn.commit()
                     except errors.UniqueViolation:
                         logger.info(
                             f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
                         )
+                        conn.rollback()
                         continue
                     except Exception as e:
                         logger.error(
                             f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
                         )
+                        conn.rollback()
                         raise
-        finally:
-            conn.close()
 
     def _get_existing_cols(self, table_name, columns_table_name):
         """Fetches the column names of the given table."""
@@ -239,12 +240,13 @@ class StructuredDBWriter:
     def _create_missing_fields(self, table_name, missing_columns):
         """Generates and executes SQL statements to add missing fields to the table."""
         table_name = sql.Identifier(table_name)
-        try:
-            with self._get_conn() as conn, conn.cursor() as cursor:
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
                 query = sql.SQL(
                     "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
                 ).format(table_name=table_name)
                 cursor.execute(query)
+                conn.commit()
 
                 for sanitized_column in missing_columns:
                     if sanitized_column == "_id":
@@ -257,18 +259,19 @@ class StructuredDBWriter:
                             colname=sql.Identifier(sanitized_column),
                         )
                         cursor.execute(query)
+                        conn.commit()
                     except errors.DuplicateColumn:
                         logger.debug(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
+                        conn.rollback()
                         continue
                     except Exception as e:
                         logger.error(
                             f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
                         )
+                        conn.rollback()
                         raise
-        finally:
-            conn.close()
 
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
@@ -282,7 +285,7 @@ class StructuredDBWriter:
 
         Parameters
         ----------
-        cursor : psycopg2 cursor
+        cursor : psycopg cursor
             The database cursor used to execute SQL queries.
         table_name : str
             The name of the table where data will be inserted.
