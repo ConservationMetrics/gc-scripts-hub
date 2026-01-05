@@ -169,6 +169,8 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
+                  key: uploadSuccess
+                - id: state
                   key: datasetAvailable
         configuration: {}
         customCss:
@@ -375,7 +377,7 @@ value:
           configuration:
             afterIcon:
               type: static
-              value: ''
+              value: search
             beforeIcon:
               type: static
               value: ''
@@ -589,7 +591,9 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML (SMART only)'
+            eval: >-
+              Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
+              (SMART only)
             fieldType: template
           configuration:
             copyButton:
@@ -759,7 +763,7 @@ value:
           configuration:
             afterIcon:
               type: static
-              value: ''
+              value: upload
             beforeIcon:
               type: static
               value: ''
@@ -1677,7 +1681,7 @@ value:
           configuration:
             afterIcon:
               type: static
-              value: ''
+              value: cloud-upload
             beforeIcon:
               type: static
               value: ''
@@ -1917,7 +1921,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'transformAndWrite:rawscript/95352d8a2cc69d87b2de1d0d0df189a2fa1e905cc4c39e32741d8ea753f465c0':
+    'transformAndWrite:rawscript/8095dc5efdd733a649775f144b09f81d34ae5e431d6c57ce26ffca2f8e5529a1':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs:
@@ -1926,7 +1930,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResult:rawscript/f3be8a7b447df0154ed776fe3df0f23ca2461a544b8fb4d9b5cee4181b2f7b39':
+    'uploadFileResult:rawscript/b2dde31cee45ea92a7255487971a63b11a57167a8244084f87f723795493f701':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
