@@ -23,7 +23,6 @@ SMART Connect allows SMART users to store and manage data on a web connected dat
 
 **TODO: Add SMART Connect scripts**: see [`gc-programs/smart/smart-connect`](https://github.com/ConservationMetrics/gc-programs/tree/main/smart/smart-connect) for more information on how to set up a SMART Connect server.
 
-
 ## 📚 Reference
 
 * SMART Connect API documentation: https://app.assembla.com/spaces/smart-cs/wiki/SMART_Connect_API_Documentation

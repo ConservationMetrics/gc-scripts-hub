@@ -969,6 +969,89 @@ def test_osmand_data_consistency_across_formats(
         # Should have OsmAnd extensions (at least visited_date)
         _assert_osmand_property(props, "visited_date")
 
+def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
+    """Test conversion of SMART patrol XML to GeoJSON format."""
+    result, output_format = convert_data(str(smart_patrol_sample_xml_file), "smart")
+    assert output_format == "geojson"
+
+    # Validate GeoJSON structure
+    _validate_geojson_structure(result, 3)
+
+    # All features should be Points
+    for feature in result["features"]:
+        assert feature["type"] == "Feature"
+        assert feature["geometry"]["type"] == "Point"
+        assert isinstance(feature["geometry"]["coordinates"], list)
+        assert len(feature["geometry"]["coordinates"]) == 2
+
+    # Validate patrol-level properties are present
+    first_feature = result["features"][0]
+    props = first_feature["properties"]
+    
+    assert props["patrol_id"] == "patrol-001"
+    assert props["patrol_type"] == "wildlife"
+    assert props["patrol_start_date"] == "2024-01-15"
+    assert props["patrol_end_date"] == "2024-01-16"
+    assert props["patrol_is_armed"] == "false"
+    assert "Alpha Team" in props["patrol_team"]
+    
+    # Validate leg-level properties
+    assert props["leg_id"] == "leg-001"
+    assert "John Doe" in props["leg_members"]
+    assert "Jane Smith" in props["leg_members"]
+    
+    # Validate day-level properties
+    assert props["day_date"] == "2024-01-15"
+    
+    # Validate waypoint-level properties
+    assert props["waypoint_id"] is not None
+    assert props["waypoint_x"] is not None
+    assert props["waypoint_y"] is not None
+    
+    # Validate observation-level properties
+    assert props["category"] in ["wildlife-mammal", "wildlife-bird", "threat-logging"]
+    
+    # Find specific observations and validate attributes
+    jaguar_obs = next(
+        (f for f in result["features"] if f["properties"].get("species") == "jaguar"),
+        None,
+    )
+    assert jaguar_obs is not None
+    assert jaguar_obs["properties"]["count"] == 2.0
+    assert jaguar_obs["properties"]["healthy"] is True
+    assert jaguar_obs["properties"]["category"] == "wildlife-mammal"
+    
+    # Validate coordinates are in reasonable range (Guyana region)
+    coords = jaguar_obs["geometry"]["coordinates"]
+    assert -59.0 < coords[0] < -58.0  # longitude
+    assert 5.0 < coords[1] < 6.0  # latitude
+    
+    # Check for multiple observations at same waypoint
+    wp_002_features = [
+        f for f in result["features"]
+        if f["properties"].get("waypoint_id") == "wp-002"
+    ]
+    assert len(wp_002_features) == 2  # bird and logging observations
+    
+    # Validate eagle observation
+    eagle_obs = next(
+        (f for f in wp_002_features if f["properties"].get("species") == "harpy-eagle"),
+        None,
+    )
+    assert eagle_obs is not None
+    assert eagle_obs["properties"]["count"] == 1.0
+    assert "Nesting in tall tree" in eagle_obs["properties"]["notes"]
+    
+    # Validate logging threat observation
+    logging_obs = next(
+        (f for f in wp_002_features if f["properties"].get("category") == "threat-logging"),
+        None,
+    )
+    assert logging_obs is not None
+    assert logging_obs["properties"]["severity"] == "medium"
+    assert logging_obs["properties"]["trees_cut"] == 5.0
+
+
 def test_slugify_empty_and_unicode():
     assert slugify(None) == "unnamed"
     assert slugify("") == "unnamed"

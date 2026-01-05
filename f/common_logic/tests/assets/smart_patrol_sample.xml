@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<patrol xmlns:ns2="http://www.smartconservationsoftware.org/xml/1.3/patrol" id="patrol-001" patrolType="wildlife" startDate="2024-01-15" endDate="2024-01-16" isArmed="false">
+  <ns2:objective>
+    <ns2:description>Wildlife monitoring patrol in northern sector</ns2:description>
+  </ns2:objective>
+  <ns2:team value="Alpha Team"/>
+  <ns2:comment>Good weather conditions, high visibility</ns2:comment>
+  
+  <ns2:legs id="leg-001" startDate="2024-01-15T08:00:00" endDate="2024-01-15T16:00:00">
+    <ns2:transportType value="foot"/>
+    <ns2:members givenName="John" familyName="Doe"/>
+    <ns2:members givenName="Jane" familyName="Smith"/>
+    <ns2:mandate value="conservation"/>
+    
+    <ns2:days date="2024-01-15" startTime="08:00:00" endTime="16:00:00" restMinutes="30">
+      
+      <ns2:waypoints id="wp-001" x="-58.5" y="5.5" time="09:30:00">
+        <ns2:groups>
+          <ns2:observations categoryKey="wildlife-mammal">
+            <ns2:attributes attributeKey="species">
+              <ns2:itemKey>jaguar</ns2:itemKey>
+            </ns2:attributes>
+            <ns2:attributes attributeKey="count">
+              <ns2:dValue>2</ns2:dValue>
+            </ns2:attributes>
+            <ns2:attributes attributeKey="healthy">
+              <ns2:bValue>true</ns2:bValue>
+            </ns2:attributes>
+          </ns2:observations>
+        </ns2:groups>
+      </ns2:waypoints>
+      
+      <ns2:waypoints id="wp-002" x="-58.6" y="5.6" time="11:45:00">
+        <ns2:groups>
+          <ns2:observations categoryKey="wildlife-bird">
+            <ns2:attributes attributeKey="species">
+              <ns2:itemKey>harpy-eagle</ns2:itemKey>
+            </ns2:attributes>
+            <ns2:attributes attributeKey="count">
+              <ns2:dValue>1</ns2:dValue>
+            </ns2:attributes>
+            <ns2:attributes attributeKey="notes">
+              <ns2:sValue>Nesting in tall tree</ns2:sValue>
+            </ns2:attributes>
+          </ns2:observations>
+          <ns2:observations categoryKey="threat-logging">
+            <ns2:attributes attributeKey="severity">
+              <ns2:itemKey>medium</ns2:itemKey>
+            </ns2:attributes>
+            <ns2:attributes attributeKey="trees_cut">
+              <ns2:dValue>5</ns2:dValue>
+            </ns2:attributes>
+          </ns2:observations>
+        </ns2:groups>
+      </ns2:waypoints>
+      
+    </ns2:days>
+  </ns2:legs>
+</patrol>
+
+
