@@ -1,7 +1,6 @@
-summary: 'Shared logic for Azure operations'
+summary: Shared logic for Azure operations
 description: ''
 lock: '!inline f/common_logic/azure_operations.script.lock'
-has_preprocessor: false
 kind: script
 no_main_func: true
 schema:
