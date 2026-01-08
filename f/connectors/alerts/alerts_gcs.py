@@ -61,6 +61,56 @@ def main(
     )
 
 
+def _choose_latest_alerts_statistics(
+    alerts_statistics_from_metadata, alerts_statistics_from_data
+):
+    """Choose the most recent alerts statistics from metadata or data sources.
+
+    Parameters
+    ----------
+    alerts_statistics_from_metadata : dict or None
+        Statistics from prepare_alerts_metadata with keys: total_alerts, month_year, description_alerts.
+    alerts_statistics_from_data : dict or None
+        Statistics from prepare_alerts_data with keys: total_alerts, month_year, description_alerts.
+
+    Returns
+    -------
+    dict or None
+        The most recent alerts statistics, or None if both are None.
+
+    Notes
+    -----
+    If both statistics have the same month_year, the metadata version is preferred.
+    If one has a later month_year, that version is returned.
+    """
+    if alerts_statistics_from_metadata is None:
+        return alerts_statistics_from_data
+    if alerts_statistics_from_data is None:
+        return alerts_statistics_from_metadata
+
+    # Parse month_year from both (format: "M/YYYY" or "MM/YYYY")
+    def parse_month_year(month_year_str):
+        try:
+            month, year = month_year_str.split("/")
+            return (int(year), int(month))
+        except (ValueError, AttributeError):
+            return (0, 0)
+
+    metadata_date = parse_month_year(alerts_statistics_from_metadata.get("month_year"))
+    data_date = parse_month_year(alerts_statistics_from_data.get("month_year"))
+
+    # If data has a later date, use data statistics
+    if data_date > metadata_date:
+        logger.info(
+            f"Using alerts statistics from data (month_year: {alerts_statistics_from_data['month_year']}) "
+            f"instead of metadata (month_year: {alerts_statistics_from_metadata['month_year']})"
+        )
+        return alerts_statistics_from_data
+
+    # Otherwise (equal or metadata is later), use metadata statistics
+    return alerts_statistics_from_metadata
+
+
 def _main(
     storage_client: gcs.Client,
     alerts_bucket: str,
@@ -113,12 +163,17 @@ def _main(
     else:
         logger.info("No TIFF files to convert to JPG.")
 
-    prepared_alerts_metadata, alerts_statistics = prepare_alerts_metadata(
+    prepared_alerts_metadata, alerts_statistics_from_metadata = prepare_alerts_metadata(
         alerts_metadata, territory_id, alerts_provider, max_months_lookback
     )
 
-    prepared_alerts_data = prepare_alerts_data(
+    prepared_alerts_data, alerts_statistics_from_data = prepare_alerts_data(
         destination_path, geojson_files, alerts_provider
+    )
+
+    # Choose the most recent alerts statistics
+    alerts_statistics = _choose_latest_alerts_statistics(
+        alerts_statistics_from_metadata, alerts_statistics_from_data
     )
 
     logger.info(f"Writing alerts to the database table [{db_table_name}].")
@@ -508,6 +563,74 @@ def prepare_alerts_metadata(
     return prepared_alerts_metadata, alerts_statistics
 
 
+def _generate_alerts_statistics_from_data(prepared_alerts_data):
+    """Generate alerts statistics from prepared alerts data.
+
+    Parameters
+    ----------
+    prepared_alerts_data : list of dict
+        List of prepared alert dictionaries with month_detec, year_detec, and alert_type.
+
+    Returns
+    -------
+    dict or None
+        A dictionary with 'total_alerts', 'month_year', and 'description_alerts',
+        or None if no data available.
+    """
+    if not prepared_alerts_data:
+        return None
+
+    # Find the latest month/year
+    latest_year = None
+    latest_month = None
+
+    for alert in prepared_alerts_data:
+        month_detec = alert.get("month_detec")
+        year_detec = alert.get("year_detec")
+
+        if month_detec is None or year_detec is None:
+            continue
+
+        try:
+            month = int(month_detec)
+            year = int(year_detec)
+
+            if latest_year is None or (year, month) > (latest_year, latest_month):
+                latest_year = year
+                latest_month = month
+        except (ValueError, TypeError):
+            continue
+
+    if latest_year is None:
+        return None
+
+    # Filter alerts for the latest month/year and collect statistics
+    latest_alerts = [
+        alert
+        for alert in prepared_alerts_data
+        if alert.get("month_detec") == str(latest_month)
+        and alert.get("year_detec") == str(latest_year)
+    ]
+
+    # Get unique alert types
+    alert_types = {
+        alert.get("alert_type")
+        for alert in latest_alerts
+        if alert.get("alert_type") is not None
+    }
+
+    # Format description (replace underscores with spaces, join with comma)
+    description_alerts = ", ".join(
+        sorted(str(at).replace("_", " ") for at in alert_types)
+    )
+
+    return {
+        "total_alerts": str(len(latest_alerts)),
+        "month_year": f"{latest_month}/{latest_year}",
+        "description_alerts": description_alerts,
+    }
+
+
 def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
     """
     Prepare alerts data by reading GeoJSON files from a local directory.
@@ -525,8 +648,11 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
         The name of the alerts provider.
     Returns
     -------
-    list of dict
+    prepared_alerts_data : list of dict
         A list of dictionaries containing flattened alert data, ready for DB insertion.
+    alerts_statistics : dict or None
+        A dictionary containing alert statistics: total alerts, month/year,
+        and description of alerts for the latest month. None if no data.
     """
     prepared_alerts_data = []
 
@@ -590,7 +716,11 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
             )
 
     logger.info("Successfully prepared flattened alerts data.")
-    return prepared_alerts_data
+
+    # Generate alerts statistics from the data
+    alerts_statistics = _generate_alerts_statistics_from_data(prepared_alerts_data)
+
+    return prepared_alerts_data, alerts_statistics
 
 
 def create_alerts_table(cursor, table_name):

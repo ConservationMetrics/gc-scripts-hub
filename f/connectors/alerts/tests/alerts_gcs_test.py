@@ -12,6 +12,8 @@ import psycopg2
 import pytest
 
 from f.connectors.alerts.alerts_gcs import (
+    _choose_latest_alerts_statistics,
+    _generate_alerts_statistics_from_data,
     _main,
     prepare_alerts_data,
     prepare_alerts_metadata,
@@ -59,7 +61,7 @@ def test_metadata_id_stability():
 def test_alert_id_generation(tmp_path):
     file_path = Path(assets_directory, "alert_202309900112345671.geojson")
     geojson_files = [str(file_path)]
-    prepared = prepare_alerts_data(tmp_path, geojson_files, "test_provider")
+    prepared, _ = prepare_alerts_data(tmp_path, geojson_files, "test_provider")
 
     assert len(prepared) > 0
     for row in prepared:
@@ -511,13 +513,13 @@ def test_max_months_lookback_alerts_data_filtering(mock_datetime, tmp_path):
 
     # No lookback - process all files
     all_files = [str(old_file), str(recent_file)]
-    prepared_all = prepare_alerts_data(tmp_path, all_files, "test_provider")
+    prepared_all, _ = prepare_alerts_data(tmp_path, all_files, "test_provider")
     assert len(prepared_all) == 2
 
     # With lookback, we'd need to filter files before calling prepare_alerts_data
     # This test verifies that prepare_alerts_data itself processes what it's given
     recent_only = [str(recent_file)]
-    prepared_filtered = prepare_alerts_data(tmp_path, recent_only, "test_provider")
+    prepared_filtered, _ = prepare_alerts_data(tmp_path, recent_only, "test_provider")
     assert len(prepared_filtered) == 1
     assert prepared_filtered[0]["alert_id"] == "test_alert_456"
 
@@ -591,3 +593,176 @@ def test_max_months_lookback_e2e(
 
             cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered__metadata")
             assert cursor.fetchone()[0] == 0
+
+
+def test_generate_alerts_statistics_from_data():
+    """Test that _generate_alerts_statistics_from_data correctly generates statistics."""
+    # Test with valid data
+    prepared_data = [
+        {
+            "alert_id": "alert_1",
+            "month_detec": "9",
+            "year_detec": "2023",
+            "alert_type": "deforestation",
+        },
+        {
+            "alert_id": "alert_2",
+            "month_detec": "9",
+            "year_detec": "2023",
+            "alert_type": "mining",
+        },
+        {
+            "alert_id": "alert_3",
+            "month_detec": "10",
+            "year_detec": "2023",
+            "alert_type": "deforestation",
+        },
+    ]
+    
+    stats = _generate_alerts_statistics_from_data(prepared_data)
+    
+    assert stats is not None
+    assert stats["total_alerts"] == "1"  # Only 1 alert in latest month (10/2023)
+    assert stats["month_year"] == "10/2023"
+    assert stats["description_alerts"] == "deforestation"
+    
+    # Test with no data
+    assert _generate_alerts_statistics_from_data([]) is None
+    
+    # Test with multiple alert types in latest month
+    prepared_data_multi = [
+        {
+            "alert_id": "alert_1",
+            "month_detec": "10",
+            "year_detec": "2023",
+            "alert_type": "deforestation",
+        },
+        {
+            "alert_id": "alert_2",
+            "month_detec": "10",
+            "year_detec": "2023",
+            "alert_type": "illegal_mining",
+        },
+    ]
+    
+    stats_multi = _generate_alerts_statistics_from_data(prepared_data_multi)
+    assert stats_multi["total_alerts"] == "2"
+    assert stats_multi["month_year"] == "10/2023"
+    # Check both types are present (order may vary)
+    assert "deforestation" in stats_multi["description_alerts"]
+    assert "illegal mining" in stats_multi["description_alerts"]
+
+
+def test_choose_latest_alerts_statistics():
+    """Test that _choose_latest_alerts_statistics correctly chooses the winning statistics."""
+    # Both None
+    assert _choose_latest_alerts_statistics(None, None) is None
+    
+    # Only metadata
+    metadata_stats = {
+        "total_alerts": "5",
+        "month_year": "10/2023",
+        "description_alerts": "test",
+    }
+    assert _choose_latest_alerts_statistics(metadata_stats, None) == metadata_stats
+    
+    # Only data
+    data_stats = {
+        "total_alerts": "3",
+        "month_year": "11/2023",
+        "description_alerts": "other",
+    }
+    assert _choose_latest_alerts_statistics(None, data_stats) == data_stats
+    
+    # Data is newer - should choose data
+    metadata_older = {
+        "total_alerts": "5",
+        "month_year": "10/2023",
+        "description_alerts": "test",
+    }
+    data_newer = {
+        "total_alerts": "3",
+        "month_year": "11/2023",
+        "description_alerts": "other",
+    }
+    result = _choose_latest_alerts_statistics(metadata_older, data_newer)
+    assert result == data_newer
+    
+    # Same month/year - should choose metadata
+    metadata_same = {
+        "total_alerts": "5",
+        "month_year": "10/2023",
+        "description_alerts": "test",
+    }
+    data_same = {
+        "total_alerts": "3",
+        "month_year": "10/2023",
+        "description_alerts": "other",
+    }
+    result = _choose_latest_alerts_statistics(metadata_same, data_same)
+    assert result == metadata_same
+    
+    # Metadata is newer - should choose metadata
+    metadata_newer = {
+        "total_alerts": "5",
+        "month_year": "12/2023",
+        "description_alerts": "test",
+    }
+    data_older = {
+        "total_alerts": "3",
+        "month_year": "11/2023",
+        "description_alerts": "other",
+    }
+    result = _choose_latest_alerts_statistics(metadata_newer, data_older)
+    assert result == metadata_newer
+
+
+def test_alerts_statistics_from_both_sources(tmp_path):
+    """Test that prepare_alerts_data returns correct statistics."""
+    # Create a test GeoJSON file
+    test_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {
+                    "id": "test_alert_123",
+                    "territory_id": 100,
+                    "month_detec": "9",
+                    "year_detec": "2023",
+                    "alert_type": "deforestation",
+                },
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [1, 1]},
+                "properties": {
+                    "id": "test_alert_456",
+                    "territory_id": 100,
+                    "month_detec": "9",
+                    "year_detec": "2023",
+                    "alert_type": "illegal_mining",
+                },
+            },
+        ],
+    }
+    
+    test_file = tmp_path / "test_alerts.geojson"
+    with open(test_file, "w") as f:
+        import json
+        json.dump(test_geojson, f)
+    
+    prepared_data, stats = prepare_alerts_data(
+        tmp_path, [str(test_file)], "test_provider"
+    )
+    
+    # Check that data is prepared correctly
+    assert len(prepared_data) == 2
+    
+    # Check that statistics are generated correctly
+    assert stats is not None
+    assert stats["total_alerts"] == "2"
+    assert stats["month_year"] == "9/2023"
+    assert "deforestation" in stats["description_alerts"]
+    assert "illegal mining" in stats["description_alerts"]
