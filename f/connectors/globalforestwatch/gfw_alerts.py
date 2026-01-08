@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # python-dateutil
 # requests~=2.32
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TypedDict
 
 import requests
-from psycopg2 import sql
+from psycopg import sql
 
 from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql

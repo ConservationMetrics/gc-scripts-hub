@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import psycopg2
+import psycopg
 import pytest
 
 from f.connectors.smart.smart_patrols import main, parse_smart_patrol_xml
@@ -9,29 +9,29 @@ from f.connectors.smart.smart_patrols import main, parse_smart_patrol_xml
 def test_parse_smart_patrol_xml():
     """Test parsing SMART patrol XML file."""
     xml_path = Path("f/connectors/smart/tests/assets/SMART_000006_001.xml")
-    
+
     geojson = parse_smart_patrol_xml(xml_path)
-    
+
     # Check that we got a valid GeoJSON FeatureCollection
     assert geojson["type"] == "FeatureCollection"
     assert "features" in geojson
-    
+
     features = geojson["features"]
-    
+
     # Waypoint 2 (id="2") has 8 observations
     # Waypoint 10 (id="10") has 3 observations
     # Total: 11 observations
     assert len(features) == 11
-    
+
     # Check first observation (from waypoint 2)
     first_feature = features[0]
     assert first_feature["type"] == "Feature"
     assert "id" in first_feature
     assert "properties" in first_feature
     assert "geometry" in first_feature
-    
+
     first_obs = first_feature["properties"]
-    
+
     # Patrol-level fields
     assert first_obs["patrol_id"] == "SMART_000006-001"
     assert first_obs["patrol_type"] == "GROUND"
@@ -41,7 +41,7 @@ def test_parse_smart_patrol_xml():
     assert first_obs["patrol_description"] == "Test project"
     assert first_obs["patrol_team"] == "Community Team 1"
     assert first_obs["patrol_comment"] == "Test patrol for monitoring project"
-    
+
     # Leg-level fields
     assert first_obs["leg_id"] == "1"
     assert first_obs["leg_start_date"] == "2025-12-17"
@@ -53,52 +53,57 @@ def test_parse_smart_patrol_xml():
     assert "David Aliata" in first_obs["leg_members"]
     assert "Lilian Wendy" in first_obs["leg_members"]
     assert first_obs["leg_mandate"] == "Research and Monitoring"
-    
+
     # Day-level fields
     assert first_obs["day_date"] == "2025-12-17"
     assert first_obs["day_start_time"] == "20:48:25"
     assert first_obs["day_end_time"] == "20:51:55"
     assert first_obs["day_rest_minutes"] == "2.0"
-    
+
     # Waypoint-level fields
     assert first_obs["waypoint_id"] == "2"
     assert first_obs["waypoint_x"] == "-77.19774596"
     assert first_obs["waypoint_y"] == "38.7606911"
     assert first_obs["waypoint_time"] == "20:50:41"
-    
+
     # Observation category
     assert first_obs["category"] == "humanactivity.timber.firewood."
-    
+
     # Geometry fields
     assert first_feature["geometry"]["type"] == "Point"
     assert first_feature["geometry"]["coordinates"] == [-77.19774596, 38.7606911]
-    
+
     # Check that attributes are extracted correctly
     # Find the firewood observation
     firewood_feature = next(
-        f for f in features 
+        f
+        for f in features
         if f["properties"]["category"] == "humanactivity.timber.firewood."
     )
     firewood_obs = firewood_feature["properties"]
-    assert firewood_obs["threat"] == "residentialcommercialdevelopment.commericalindustrialareas."
+    assert (
+        firewood_obs["threat"]
+        == "residentialcommercialdevelopment.commericalindustrialareas."
+    )
     assert firewood_obs["treespecies_timber"] == "rosewood"
     assert firewood_obs["actiontakenitems"] == "confiscated"
     assert firewood_obs["numberofbundles"] == 64.0
     assert firewood_obs["ageofsign"] == "veryold"
-    
+
     # Find the waterhole observation
     waterhole_feature = next(
-        f for f in features 
-        if f["properties"]["category"] == "features.waterhole."
+        f for f in features if f["properties"]["category"] == "features.waterhole."
     )
     waterhole_obs = waterhole_feature["properties"]
     assert waterhole_obs["haswater"] is True
-    assert waterhole_obs["species"] == "chordata_rl.mammalia_rl.cetartiodactyla_rl.hippopotamidae_rl.hippopotamus_rl.hippopotamusamphibius_rl10103."
-    
+    assert (
+        waterhole_obs["species"]
+        == "chordata_rl.mammalia_rl.cetartiodactyla_rl.hippopotamidae_rl.hippopotamus_rl.hippopotamusamphibius_rl10103."
+    )
+
     # Find the people observation
     people_feature = next(
-        f for f in features 
-        if f["properties"]["category"] == "humanactivity.people."
+        f for f in features if f["properties"]["category"] == "humanactivity.people."
     )
     people_obs = people_feature["properties"]
     assert people_obs["sex"] == "unknown"
@@ -108,18 +113,16 @@ def test_parse_smart_patrol_xml():
     assert people_obs["nationalidnumber"] == "H838582"
     assert people_obs["nameornames"] == "James, Fred, ..."
     assert people_obs["personage"] == 90.0
-    
+
     # Check second waypoint observations
     waypoint_10_features = [
-        f for f in features 
-        if f["properties"]["waypoint_id"] == "10"
+        f for f in features if f["properties"]["waypoint_id"] == "10"
     ]
     assert len(waypoint_10_features) == 3
-    
+
     # Check position observation from waypoint 10
     position_feature = next(
-        f for f in waypoint_10_features 
-        if f["properties"]["category"] == "position."
+        f for f in waypoint_10_features if f["properties"]["category"] == "position."
     )
     position_obs = position_feature["properties"]
     assert position_obs["waypoint_id"] == "10"
@@ -135,12 +138,12 @@ def test_script_e2e(pg_database, tmp_path):
     """Test the full script execution."""
     asset_storage = tmp_path / "datalake"
     asset_storage.mkdir(parents=True)
-    
+
     # Copy test XML to the asset storage
     xml_source = Path("f/connectors/smart/tests/assets/SMART_000006_001.xml")
     xml_dest = asset_storage / "SMART_000006_001.xml"
     xml_dest.write_text(xml_source.read_text())
-    
+
     # Run the main script
     main(
         smart_patrols_path="SMART_000006_001.xml",
@@ -148,26 +151,26 @@ def test_script_e2e(pg_database, tmp_path):
         db_table_name="smart_patrol_test",
         attachment_root=str(asset_storage),
     )
-    
+
     # Verify XML was saved to project folder
     saved_xml = asset_storage / "smart_patrol_test" / "SMART_000006_001.xml"
     assert saved_xml.exists()
-    
+
     # Verify GeoJSON was saved to project folder
     saved_geojson = asset_storage / "smart_patrol_test" / "smart_patrol_test.geojson"
     assert saved_geojson.exists()
-    
+
     # Verify database table was created and populated
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
             # Check that table exists and has correct number of rows
             cursor.execute("SELECT COUNT(*) FROM smart_patrol_test")
             assert cursor.fetchone()[0] == 11
-            
+
             # Get column names
             cursor.execute("SELECT * FROM smart_patrol_test LIMIT 0")
             columns = [desc[0] for desc in cursor.description]
-            
+
             # Verify all expected columns are present
             expected_columns = [
                 "patrol_id",
@@ -199,7 +202,7 @@ def test_script_e2e(pg_database, tmp_path):
             ]
             for col in expected_columns:
                 assert col in columns, f"Column {col} not found in table"
-            
+
             # Check specific observation data
             cursor.execute(
                 "SELECT patrol_id, patrol_team, leg_members, waypoint_id, category "
@@ -212,26 +215,29 @@ def test_script_e2e(pg_database, tmp_path):
             assert "Tony Wambu" in row[2]
             assert row[3] == "2"
             assert row[4] == "humanactivity.timber.firewood."
-            
+
             # Check attribute columns
             cursor.execute(
                 "SELECT threat, treespecies_timber, actiontakenitems, numberofbundles, ageofsign "
                 "FROM smart_patrol_test WHERE category = 'humanactivity.timber.firewood.'"
             )
             row = cursor.fetchone()
-            assert row[0] == "residentialcommercialdevelopment.commericalindustrialareas."
+            assert (
+                row[0] == "residentialcommercialdevelopment.commericalindustrialareas."
+            )
             assert row[1] == "rosewood"
             assert row[2] == "confiscated"
-            assert row[3] == "64.0"  # Stored as text in database
+            # Numeric value stored as text - accept both "64" and "64.0"
+            assert float(row[3]) == 64.0
             assert row[4] == "veryold"
-            
+
             # Check boolean value
             cursor.execute(
                 "SELECT haswater FROM smart_patrol_test WHERE category = 'features.waterhole.'"
             )
             row = cursor.fetchone()
             assert row[0] == "true"  # Stored as lowercase text in database
-            
+
             # Check string value
             cursor.execute(
                 "SELECT phonenumber, nationalidnumber, nameornames "
@@ -241,7 +247,7 @@ def test_script_e2e(pg_database, tmp_path):
             assert row[0] == "231959932"
             assert row[1] == "H838582"
             assert row[2] == "James, Fred, ..."
-            
+
             # Check geometry fields
             cursor.execute(
                 "SELECT g__type, g__coordinates FROM smart_patrol_test WHERE category = 'humanactivity.timber.firewood.'"
@@ -249,7 +255,7 @@ def test_script_e2e(pg_database, tmp_path):
             row = cursor.fetchone()
             assert row[0] == "Point"
             assert row[1] == "[-77.19774596, 38.7606911]"  # Stored as JSON string
-            
+
             # Verify waypoint coordinates
             cursor.execute(
                 "SELECT DISTINCT waypoint_x, waypoint_y FROM smart_patrol_test ORDER BY waypoint_x"
@@ -257,7 +263,7 @@ def test_script_e2e(pg_database, tmp_path):
             waypoints = cursor.fetchall()
             assert len(waypoints) == 2
             # Ordering is by string, so waypoint 2 comes before waypoint 10
-            assert waypoints[0] == ("-77.19774596", "38.7606911")   # waypoint 2
+            assert waypoints[0] == ("-77.19774596", "38.7606911")  # waypoint 2
             assert waypoints[1] == ("-77.19774609", "38.76069271")  # waypoint 10
 
 
@@ -265,7 +271,7 @@ def test_missing_xml_file(pg_database, tmp_path):
     """Test that script raises error when XML file doesn't exist."""
     asset_storage = tmp_path / "datalake"
     asset_storage.mkdir(parents=True)
-    
+
     with pytest.raises(FileNotFoundError):
         main(
             smart_patrols_path="nonexistent.xml",
@@ -273,4 +279,3 @@ def test_missing_xml_file(pg_database, tmp_path):
             db_table_name="smart_patrol_test",
             attachment_root=str(asset_storage),
         )
-

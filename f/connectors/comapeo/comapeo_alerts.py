@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # requests~=2.32
 
 import json
@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from typing import TypedDict
 
-import psycopg2
+import psycopg
 import requests
 
 from f.common_logic.db_operations import conninfo, postgresql
@@ -76,7 +76,7 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     """
     logger.info("Fetching alerts from database...")
 
-    conn = psycopg2.connect(dsn=db_connection_string)
+    conn = psycopg.connect(db_connection_string)
     cur = conn.cursor()
     cur.execute(f"SELECT * FROM {db_table_name}")
     alerts = [

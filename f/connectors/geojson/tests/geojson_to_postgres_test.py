@@ -2,7 +2,7 @@ import json
 import tempfile
 from pathlib import Path
 
-import psycopg2
+import psycopg
 
 from f.connectors.geojson.geojson_to_postgres import main, transform_geojson_data
 
@@ -12,7 +12,7 @@ geojson_fixture_path = "f/connectors/geojson/tests/assets/"
 def test_script_e2e(pg_database):
     main(pg_database, "my_geojson_data", "data.geojson", geojson_fixture_path, False)
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_geojson_data")
             assert cursor.fetchone()[0] == 3

@@ -4,7 +4,7 @@
 # openpyxl~=3.1
 # pandas~=2.2
 # pyproj~=3.7
-# psycopg2-binary
+# psycopg[binary]
 # requests~=2.32
 
 from __future__ import annotations
