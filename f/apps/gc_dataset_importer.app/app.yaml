@@ -169,7 +169,9 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: validSqlname
+                  key: validSqlName
+                - id: state
+                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -360,18 +362,18 @@ value:
                     - dataset_name
             transformer:
               content: |-
-                state.tableExists = result.tableExists !== true;
+                state.tableExists = result.tableExists;
                 state.datasetName = result.datasetName;
                 state.validSqlName = result.validSqlName;
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: datasetAvailable
+                  key: tableExists
                 - id: state
                   key: datasetName
                 - id: state
-                  key: validSqlname
+                  key: validSqlName
           configuration:
             afterIcon:
               type: static
@@ -479,9 +481,9 @@ value:
                 path: f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResult
                 refreshOn:
                   - id: state
-                    key: datasetAvailable
+                    key: tableExists
                   - id: state
-                    key: validSqlname
+                    key: validSqlName
                 suggestedRefreshOn: []
           configuration:
             copyButton:
@@ -695,8 +697,18 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
+                - id: state
+                  key: outputFormat
+                - id: state
+                  key: uploadErrorMessage
+                - id: state
+                  key: uploadSuccess
+                - id: state
+                  key: fileNameOriginal
                 - id: selectFile
                   key: result
+                - id: state
+                  key: fileNameParsed
           configuration:
             afterIcon:
               type: static
@@ -710,16 +722,6 @@ value:
             confirmationModal:
               type: oneOf
               configuration:
-                confirmationModal:
-                  description:
-                    type: static
-                    value: Are you sure?
-                  confirmationText:
-                    type: static
-                    value: Confirm
-                  title:
-                    type: static
-                    value: Title
                 none: {}
               selected: none
             disabled:
@@ -738,77 +740,35 @@ value:
             onError:
               type: oneOf
               configuration:
-                close:
-                  id:
-                    type: static
-                    value: ''
-                errorOverlay: {}
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
-                open:
-                  id:
-                    type: static
-                    value: ''
                 sendErrorToast:
                   appendError:
                     type: static
                     value: true
                   message:
                     type: static
-                    value: An error occurred. Please try again.
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
+                    value: An error occurred
               selected: sendErrorToast
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
             onSuccess:
               type: oneOf
               configuration:
-                clearFiles:
-                  id:
-                    type: static
-                    value: ''
-                close:
-                  id:
-                    type: static
-                    value: ''
-                closeModal:
-                  modalId:
-                    type: static
-                    value: ''
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
-                none: {}
-                open:
-                  id:
-                    type: static
-                    value: ''
-                openModal:
-                  modalId:
-                    type: static
-                    value: ''
                 sendToast:
                   message:
                     type: static
-                    value: File successfully uploaded!
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
+                    value: ''
               selected: sendToast
+            runInBackground:
+              type: static
+              value: false
             size:
               type: static
               value: xs
+            tooltip:
+              type: static
             triggerOnAppLoad:
               type: static
               value: false
@@ -867,7 +827,9 @@ value:
                     key: uploadErrorMessage
                   - id: state
                     key: uploadButtonEnabled
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: tableExists
           configuration:
             copyButton:
               type: static
@@ -1628,16 +1590,6 @@ value:
             confirmationModal:
               type: oneOf
               configuration:
-                confirmationModal:
-                  description:
-                    type: static
-                    value: Are you sure?
-                  confirmationText:
-                    type: static
-                    value: Confirm
-                  title:
-                    type: static
-                    value: Title
                 none: {}
               selected: none
             disabled:
@@ -1656,77 +1608,26 @@ value:
             onError:
               type: oneOf
               configuration:
-                close:
-                  id:
-                    type: static
-                    value: ''
                 errorOverlay: {}
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
-                open:
-                  id:
-                    type: static
-                    value: ''
-                sendErrorToast:
-                  appendError:
-                    type: static
-                    value: true
-                  message:
-                    type: static
-                    value: An error occured
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
               selected: errorOverlay
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
             onSuccess:
               type: oneOf
               configuration:
-                clearFiles:
-                  id:
-                    type: static
-                    value: ''
-                close:
-                  id:
-                    type: static
-                    value: ''
-                closeModal:
-                  modalId:
-                    type: static
-                    value: ''
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
                 none: {}
-                open:
-                  id:
-                    type: static
-                    value: ''
-                openModal:
-                  modalId:
-                    type: static
-                    value: ''
-                sendToast:
-                  message:
-                    type: static
-                    value: ''
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
               selected: none
+            runInBackground:
+              type: static
+              value: false
             size:
               type: static
               value: xs
+            tooltip:
+              type: static
             triggerOnAppLoad:
               type: static
               value: false
@@ -1781,7 +1682,9 @@ value:
                     key: finalizeSuccess
                   - id: state
                     key: dataSource
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: finalizeErrorMessage
           configuration:
             copyButton:
               type: static
@@ -1834,7 +1737,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'datasetNameResult:rawscript/9eedd77a2d92c5a0ff54e8d54975b62c257488513b308afeecab72661f837f42':
+    'datasetNameResult:rawscript/ca5f4871265314f132ca9bfba59e6dd5ab6a6af38063c2de72a08decaf0911d3':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1846,7 +1749,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'formStepper:rawscript/f065369b77057bb88d1c7113763f6c1a0951f4731d833e5be198c5e3da16382b':
+    'formStepper:rawscript/605961b3d1d5b8eb1a2e82e84b2b95275d114743d26d9788381bee5b8c2a120a':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1863,11 +1766,11 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/f5c54755b0a5a426bb22b0b67a3830affbae86ba989b394e6e3e01138ce2ecd1':
+    'uploadFile:rawscript/657163f0d56bc6eecc99e63ab344e74fa7c3c4fee9311220dfdf094a52d2ce5a':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResult:rawscript/b2dde31cee45ea92a7255487971a63b11a57167a8244084f87f723795493f701':
+    'uploadFileResult:rawscript/a601abdd97ec822a84c408165aa27d9820f27572518ddeedb4cee6b863870329':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
