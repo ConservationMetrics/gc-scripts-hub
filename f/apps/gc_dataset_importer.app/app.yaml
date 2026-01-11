@@ -360,9 +360,9 @@ value:
                     - dataset_name
             transformer:
               content: |-
-                state.datasetAvailable = result.tableExists !== true;
+                state.tableExists = result.tableExists !== true;
                 state.datasetName = result.datasetName;
-                state.validSqlname = result.validSqlName;
+                state.validSqlName = result.validSqlName;
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
