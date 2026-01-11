@@ -169,9 +169,7 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: uploadSuccess
-                - id: state
-                  key: datasetAvailable
+                  key: validSqlname
         configuration: {}
         customCss:
           container:
@@ -387,16 +385,6 @@ value:
             confirmationModal:
               type: oneOf
               configuration:
-                confirmationModal:
-                  description:
-                    type: static
-                    value: Are you sure?
-                  confirmationText:
-                    type: static
-                    value: Confirm
-                  title:
-                    type: static
-                    value: Title
                 none: {}
               selected: none
             disabled:
@@ -415,77 +403,26 @@ value:
             onError:
               type: oneOf
               configuration:
-                close:
-                  id:
-                    type: static
-                    value: ''
                 errorOverlay: {}
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
-                open:
-                  id:
-                    type: static
-                    value: ''
-                sendErrorToast:
-                  appendError:
-                    type: static
-                    value: true
-                  message:
-                    type: static
-                    value: An error occured
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
               selected: errorOverlay
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
             onSuccess:
               type: oneOf
               configuration:
-                clearFiles:
-                  id:
-                    type: static
-                    value: ''
-                close:
-                  id:
-                    type: static
-                    value: ''
-                closeModal:
-                  modalId:
-                    type: static
-                    value: ''
-                gotoUrl:
-                  newTab:
-                    type: static
-                    value: true
-                  url:
-                    type: static
-                    value: ''
                 none: {}
-                open:
-                  id:
-                    type: static
-                    value: ''
-                openModal:
-                  modalId:
-                    type: static
-                    value: ''
-                sendToast:
-                  message:
-                    type: static
-                    value: ''
-                setTab:
-                  setTab:
-                    type: static
-                    value: []
               selected: none
+            runInBackground:
+              type: static
+              value: false
             size:
               type: static
               value: xs
+            tooltip:
+              type: static
             triggerOnAppLoad:
               type: static
               value: false
@@ -1897,7 +1834,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'datasetNameResult:rawscript/a2ffe61faabfbb37e7b096e148027e3bd474dfe1d4593f50de2b244c072f53f9':
+    'datasetNameResult:rawscript/9eedd77a2d92c5a0ff54e8d54975b62c257488513b308afeecab72661f837f42':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
@@ -1909,7 +1846,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'formStepper:rawscript/e7b0e49657b06a7708790b18798cf973862248f7f05c01d38fc6c61c3ee8f348':
+    'formStepper:rawscript/f065369b77057bb88d1c7113763f6c1a0951f4731d833e5be198c5e3da16382b':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
