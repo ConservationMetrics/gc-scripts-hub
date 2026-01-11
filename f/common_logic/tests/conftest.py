@@ -2,6 +2,34 @@ import json
 from pathlib import Path
 
 import pytest
+import testing.postgresql
+
+from f.common_logic.db_operations import conninfo
+
+
+@pytest.fixture
+def mock_db_connection():
+    """A dsn that may be used to connect to a live (local for test) postgresql server"""
+    db = testing.postgresql.Postgresql(port=7654)
+    dsn = db.dsn()
+    dsn["dbname"] = dsn.pop("database")
+    yield conninfo(dsn)
+    db.stop()
+
+
+@pytest.fixture
+def mock_db_dict():
+    """A dict representation of db connection for functions that expect postgresql type"""
+    db = testing.postgresql.Postgresql(port=7655)
+    dsn = db.dsn()
+    db_dict = {
+        "host": dsn["host"],
+        "port": dsn["port"],
+        "user": dsn["user"],
+        "dbname": dsn["database"],
+    }
+    yield db_dict
+    db.stop()
 
 
 @pytest.fixture

@@ -97,6 +97,130 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     return columns, rows
 
 
+def summarize_new_rows_updates_and_columns(
+    db: postgresql, table_name: str, new_data: list[dict], primary_key: str = "_id"
+):
+    """
+    Compare uploaded dataset against existing table to determine impact.
+
+    Parameters
+    ----------
+    db : postgresql
+        Database connection dictionary.
+    table_name : str
+        Name of the existing table to compare against.
+    new_data : list[dict]
+        List of dictionaries representing the new data rows to be imported.
+    primary_key : str, optional
+        Column name to use as primary key for identifying updates (default: "_id").
+
+    Returns
+    -------
+    tuple[int, int, int]
+        A tuple containing:
+        - new_rows : Number of rows that would be inserted (new primary keys)
+        - updates : Number of existing rows that would be updated (changed values)
+        - new_columns : Number of new columns that would be added to the table
+    """
+    if not new_data:
+        return 0, 0, 0
+
+    conn = connect(conninfo(db))
+    cursor = conn.cursor()
+
+    try:
+        # Get existing columns in the table
+        cursor.execute(
+            """
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = %s AND table_schema = 'public'
+            """,
+            (table_name,),
+        )
+        existing_columns = {row[0] for row in cursor.fetchall()}
+
+        # Get all column names from new data
+        new_data_columns = set()
+        for row in new_data:
+            new_data_columns.update(row.keys())
+
+        # Calculate new columns
+        new_columns = len(new_data_columns - existing_columns)
+
+        # Get existing primary keys and their data
+        if primary_key in existing_columns:
+            # Fetch only the columns that exist in both datasets for comparison
+            common_columns = existing_columns & new_data_columns
+            if not common_columns:
+                # No common columns - all rows are new
+                return len(new_data), 0, new_columns
+
+            # Build query to fetch existing data
+            column_list = sql.SQL(", ").join(map(sql.Identifier, common_columns))
+            query = sql.SQL("SELECT {columns} FROM {table}").format(
+                columns=column_list, table=sql.Identifier(table_name)
+            )
+            cursor.execute(query)
+
+            # Create lookup of existing rows by primary key
+            existing_rows = {}
+            for row in cursor.fetchall():
+                row_dict = dict(zip(common_columns, row))
+                if primary_key in row_dict:
+                    # Normalize values for comparison (handle None, convert to strings)
+                    normalized = {
+                        k: (str(v) if v is not None else None)
+                        for k, v in row_dict.items()
+                    }
+                    existing_rows[str(row_dict[primary_key])] = normalized
+
+            # Compare new data against existing
+            new_rows_count = 0
+            updates_count = 0
+
+            for new_row in new_data:
+                pk_value = str(new_row.get(primary_key))
+
+                if pk_value not in existing_rows:
+                    # This is a new row
+                    new_rows_count += 1
+                else:
+                    # Check if any values differ in common columns
+                    existing_row = existing_rows[pk_value]
+                    has_changes = False
+
+                    for col in common_columns:
+                        new_val = new_row.get(col)
+                        existing_val = existing_row.get(col)
+
+                        # Normalize for comparison
+                        new_val_norm = str(new_val) if new_val is not None else None
+                        existing_val_norm = (
+                            str(existing_val) if existing_val is not None else None
+                        )
+
+                        if new_val_norm != existing_val_norm:
+                            has_changes = True
+                            break
+
+                    if has_changes:
+                        updates_count += 1
+
+            return new_rows_count, updates_count, new_columns
+
+        else:
+            # Primary key doesn't exist in table - all rows are new
+            return len(new_data), 0, new_columns
+
+    except Exception as e:
+        logger.error(f"Error summarizing data changes: {e}")
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+
 class StructuredDBWriter:
     """
      StructuredDBWriter writes structured or semi-structured data (e.g., form submissions, GeoJSON features)
