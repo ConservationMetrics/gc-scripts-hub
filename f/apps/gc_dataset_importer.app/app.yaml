@@ -172,8 +172,6 @@ value:
                   key: validSqlName
                 - id: state
                   key: uploadSuccess
-                - id: state
-                  key: finalizeSuccess
         configuration: {}
         customCss:
           container:
@@ -1515,9 +1513,9 @@ value:
                 type: evalv2
                 value: null
                 connections:
-                  - id: validSqlname
+                  - id: validSqlName
                     componentId: state
-                expr: state.validSqlname
+                expr: state.validSqlName
                 fieldType: object
             fieldType: any
             recomputeOnInputChanged: false
@@ -1581,7 +1579,11 @@ value:
                 state.finalizeErrorMessage = result[1];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
-              suggestedRefreshOn: []
+              suggestedRefreshOn:
+                - id: state
+                  key: finalizeSuccess
+                - id: state
+                  key: finalizeErrorMessage
           configuration:
             afterIcon:
               type: static
@@ -1771,7 +1773,7 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/657163f0d56bc6eecc99e63ab344e74fa7c3c4fee9311220dfdf094a52d2ce5a':
+    'uploadFile:rawscript/834cac02f780dd385837966ce4e95c601a2bb74bc1d48e413b5d0aeac0bf0c34':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}

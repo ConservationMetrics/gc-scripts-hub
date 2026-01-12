@@ -64,7 +64,8 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
     try:
         logger.info(f"Starting file upload and conversion for dataset: {dataset_name}")
 
-        temp_dir = Path(f"/persistent-storage/tmp/{dataset_name}")
+        # Use table_name (valid SQL name) for temp directory to match what Step 4 expects
+        temp_dir = Path(f"/persistent-storage/tmp/{table_name}")
         temp_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Created dataset temp directory: {temp_dir}")
 
