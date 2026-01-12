@@ -138,7 +138,7 @@ value:
     - '12':
         fixed: true
         fullHeight: false
-        h: 12
+        h: 13
         w: 8
         x: 2
         'y': 5
@@ -168,6 +168,8 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
+                - id: state
+                  key: uploadSuccess
                 - id: state
                   key: validSqlName
         configuration: {}
@@ -644,14 +646,6 @@ value:
             type: runnable
             autoRefresh: false
             fields:
-              uploaded_file:
-                type: evalv2
-                value: null
-                connections:
-                  - id: result
-                    componentId: selectFile
-                expr: selectFile.result
-                fieldType: object
               dataset_name:
                 type: evalv2
                 value: null
@@ -660,6 +654,11 @@ value:
                     componentId: state
                 expr: state.datasetName
                 fieldType: string
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
               table_exists:
                 type: evalv2
                 value: null
@@ -676,11 +675,14 @@ value:
                     componentId: state
                 expr: state.validSqlName
                 fieldType: string
-              db:
-                type: static
-                value: '$res:f/connectors/postgresql'
+              uploaded_file:
+                type: evalv2
+                value: null
+                connections:
+                  - id: result
+                    componentId: selectFile
+                expr: selectFile.result
                 fieldType: object
-                format: resource-postgresql
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
@@ -695,19 +697,7 @@ value:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
-                    uploaded_file:
-                      type: object
-                      description: ''
-                      default: null
                     dataset_name:
-                      type: string
-                      description: ''
-                      default: null
-                    table_exists:
-                      type: boolean
-                      description: ''
-                      default: null
-                    table_name:
                       type: string
                       description: ''
                       default: null
@@ -716,6 +706,18 @@ value:
                       description: ''
                       default: null
                       format: resource-postgresql
+                    table_exists:
+                      type: boolean
+                      description: ''
+                      default: null
+                    table_name:
+                      type: string
+                      description: ''
+                      default: null
+                    uploaded_file:
+                      type: object
+                      description: ''
+                      default: null
                   required:
                     - uploaded_file
                     - dataset_name
@@ -919,6 +921,7 @@ value:
           configuration:
             defaultValue:
               type: static
+              value: false
             disabled:
               type: static
               value: false
@@ -1307,7 +1310,7 @@ value:
           verticalAlignment: top
       - '12':
           fixed: true
-          fullHeight: false
+          fullHeight: true
           h: 1
           w: 3
           x: 1
@@ -1420,51 +1423,36 @@ value:
           horizontalAlignment: left
           verticalAlignment: top
       - '12':
-          fixed: false
-          fullHeight: false
+          fixed: true
+          fullHeight: true
           h: 1
-          w: 12
-          x: 0
+          w: 3
+          x: 1
           'y': 4
         '3':
-          fixed: false
+          fixed: true
           fullHeight: false
           h: 1
           w: 1
-          x: 2
-          'y': 2
-        id: saveLabel
+          x: 1
+          'y': 3
+        id: a
         data:
-          id: saveLabel
+          id: a
           type: textcomponent
           actions: []
           componentInput:
-            type: runnable
-            autoRefresh: true
+            type: templatev2
             connections: []
-            eval: ✍️ Ready to write this dataset to your warehouse?
-            fields: {}
+            eval: 'Changes:'
             fieldType: template
-            hideRefreshButton: true
-            recomputeOnInputChanged: true
-            runnable:
-              type: runnableByName
-              name: 4 Eval of saveLabel
-              inlineScript:
-                content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
-                language: frontend
-                path: f/apps/gc_dataset_importer/4_Eval_of_saveLabel
-                refreshOn:
-                  - id: state
-                    key: finalizeSuccess
-                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
               value: false
             disableNoText:
               type: static
-              value: true
+              value: false
             style:
               type: static
               value: Body
@@ -1476,19 +1464,86 @@ value:
               class: ''
               style: ''
             text:
-              class: |-
-                italic 
-                text-sm
+              class: font-bold
               style: ''
-          horizontalAlignment: center
-          verticalAlignment: center
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 7
+          x: 4
+          'y': 4
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 3
+        id: b
+        data:
+          id: b
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: result
+                componentId: dataSources
+            eval: 'Hello ${ctx.username}'
+            expr: dataSources.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: inline
+              name: 4 Evaluate number of changes
+              inlineScript:
+                content: '!inline 4_evaluate_number_of_changes.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Evaluate_number_of_changes
+                suggestedRefreshOn:
+                  - id: state
+                    key: newRows
+                  - id: state
+                    key: newColumns
+                  - id: state
+                    key: dataSource
+                  - id: state
+                    key: updatedRows
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
       - '12':
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 5
-          'y': 5
+          'y': 6
         '3':
           fixed: false
           fullHeight: false
@@ -1695,7 +1750,7 @@ value:
           h: 2
           w: 12
           x: 0
-          'y': 6
+          'y': 7
         '3':
           fixed: false
           fullHeight: false
@@ -1730,9 +1785,7 @@ value:
                     key: finalizeSuccess
                   - id: state
                     key: dataSource
-                suggestedRefreshOn:
-                  - id: state
-                    key: finalizeErrorMessage
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1755,6 +1808,69 @@ value:
               style: ''
           horizontalAlignment: center
           verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 2
+        id: saveLabel
+        data:
+          id: saveLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ✍️ Ready to write this dataset to your warehouse?
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              type: runnableByName
+              name: 4 Eval of saveLabel
+              inlineScript:
+                content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/4_Eval_of_saveLabel
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: |-
+                italic 
+                text-sm
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
   theme:
     type: inlined
     css: ''
@@ -1764,6 +1880,10 @@ policy:
   execution_mode: publisher
   s3_inputs: []
   triggerables_v2:
+    'b:rawscript/49e444594b84c8a839281e5febc10a9a0618a076e80d504be635da579fe2e001':
+      allow_user_resources: []
+      one_of_inputs: {}
+      static_inputs: {}
     'bg_0:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
       allow_user_resources: []
       one_of_inputs: {}
@@ -1814,11 +1934,12 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/1cf4616a7e1692396047c98a022a8f13f3bcc28aa86c79a738254d60ba504f83':
+    'uploadFile:rawscript/a44baca6744fd75a637c33fc43b1a982bcd82eac8e91ac8dd294fd5cfaf4874e':
       allow_user_resources: []
       one_of_inputs: {}
-      static_inputs: {}
-    'uploadFileResult:rawscript/3d2c93c8badf1270eb5939e32e3e1d3616bd838a4460c33307ccfce17074dd34':
+      static_inputs:
+        db: '$res:f/connectors/postgresql'
+    'uploadFileResult:rawscript/b8e2f9a461e36866deb638e9e96fc73e1c9dc477a74fba55a3a05d9ba5237d4f':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
