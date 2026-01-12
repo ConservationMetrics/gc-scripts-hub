@@ -172,6 +172,8 @@ value:
                   key: validSqlName
                 - id: state
                   key: uploadSuccess
+                - id: state
+                  key: finalizeSuccess
         configuration: {}
         customCss:
           container:
@@ -688,27 +690,30 @@ value:
                     - uploaded_file
                     - dataset_name
             transformer:
-              content: |
+              content: |-
                 state.uploadSuccess = result[0];
                 state.uploadErrorMessage = result[1];
                 state.fileNameOriginal = selectFile.result[0].name;
                 state.fileNameParsed = result[2];
                 state.outputFormat = result[3];
+                state.newRows = result[4];
+                state.updatedRows = result[5];
+                state.newColumns = result[6];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: outputFormat
-                - id: state
-                  key: uploadErrorMessage
-                - id: state
                   key: uploadSuccess
                 - id: state
-                  key: fileNameOriginal
-                - id: selectFile
-                  key: result
+                  key: outputFormat
                 - id: state
                   key: fileNameParsed
+                - id: state
+                  key: fileNameOriginal
+                - id: state
+                  key: uploadErrorMessage
+                - id: selectFile
+                  key: result
           configuration:
             afterIcon:
               type: static
