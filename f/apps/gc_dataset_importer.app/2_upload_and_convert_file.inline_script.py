@@ -89,8 +89,8 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
 
             file_to_save = [{"name": output_filename, "data": csv_data}]
 
-            # Convert CSV to list of dicts for comparison
-            if table_exists and converted_data:
+            # Convert CSV to list of dicts for analysis (comparison or counting)
+            if converted_data:
                 reader = csv.DictReader(StringIO(csv_data))
                 rows = list(reader)
                 # Add _id if not present (use existing _id or auto-increment)
@@ -108,20 +108,17 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
                 {"name": output_filename, "data": json.dumps(converted_data)}
             ]
 
-            # Extract features as list of dicts for comparison
-            if table_exists:
-                if isinstance(converted_data, dict) and "features" in converted_data:
-                    # GeoJSON FeatureCollection - extract properties from features
-                    # Add _id if not present (use existing _id or auto-increment)
-                    data_for_comparison = []
-                    for idx, feature in enumerate(
-                        converted_data.get("features", []), 1
-                    ):
-                        properties = feature.get("properties", {}).copy()
-                        if "_id" not in properties or not properties["_id"]:
-                            # No _id in properties, use auto-incrementing
-                            properties = {"_id": str(idx), **properties}
-                        data_for_comparison.append(properties)
+            # Extract features as list of dicts for analysis (comparison or counting)
+            if isinstance(converted_data, dict) and "features" in converted_data:
+                # GeoJSON FeatureCollection - extract properties from features
+                # Add _id if not present (use existing _id or auto-increment)
+                data_for_comparison = []
+                for idx, feature in enumerate(converted_data.get("features", []), 1):
+                    properties = feature.get("properties", {}).copy()
+                    if "_id" not in properties or not properties["_id"]:
+                        # No _id in properties, use auto-incrementing
+                        properties = {"_id": str(idx), **properties}
+                    data_for_comparison.append(properties)
 
         saved_output = save_uploaded_file_to_temp(
             file_to_save, is_base64=False, tmp_dir=str(temp_dir)
@@ -129,33 +126,33 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
         output_path = saved_output["file_paths"][0]
         logger.info(f"Saved parsed file to: {output_path}")
 
-        # If table exists, analyze what would change
-        if table_exists and data_for_comparison:
-            logger.info(
-                f"Table exists - analyzing changes for {len(data_for_comparison)} rows"
-            )
-            # Log first row to see what columns we have and _id strategy
-            if data_for_comparison:
-                first_row = data_for_comparison[0]
-                logger.info(f"Sample row columns: {list(first_row.keys())}")
-
-                # Determine if using custom IDs or auto-generated
-                if "_id" in first_row and first_row["_id"] not in ["1"]:
-                    logger.info(
-                        f"Using existing _id values from data (e.g., {first_row['_id']})"
-                    )
-                else:
-                    logger.info(
-                        "Using auto-incrementing row IDs. "
-                        "Rows are matched by position (1st row → _id:1, 2nd row → _id:2, etc.)"
-                    )
-
-            new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-                db, table_name=table_name, new_data=data_for_comparison
-            )
-            logger.info(
-                f"Impact analysis: {new_rows} new rows, {updates} updates, {new_columns} new columns"
-            )
+        # Analyze data: compare if table exists, count if new dataset
+        if data_for_comparison:
+            if table_exists:
+                logger.info(
+                    f"Analyzing changes for {len(data_for_comparison)} rows against existing table"
+                )
+                new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+                    db, table_name=table_name, new_data=data_for_comparison
+                )
+                logger.info(
+                    f"Impact analysis complete: {new_rows} new rows, {updates} updates, {new_columns} new columns"
+                )
+            else:
+                # New dataset - count rows and columns
+                logger.info("Counting rows and columns for new dataset")
+                new_rows = len(data_for_comparison)
+                updates = 0
+                # Count unique columns across all rows
+                all_columns = set()
+                for row in data_for_comparison:
+                    all_columns.update(row.keys())
+                new_columns = len(all_columns)
+                logger.info(
+                    f"New dataset will have {new_rows} rows and {new_columns} columns"
+                )
+        else:
+            logger.warning("⚠️  No data to analyze!")
 
         return (
             True,

@@ -8,7 +8,10 @@ import time
 
 from psycopg2 import Error, connect, errors, sql
 
-from f.common_logic.identifier_utils import sanitize_sql_message
+from f.common_logic.identifier_utils import (
+    normalize_identifier,
+    sanitize_sql_message,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -139,19 +142,62 @@ def summarize_new_rows_updates_and_columns(
             (table_name,),
         )
         existing_columns = {row[0] for row in cursor.fetchall()}
+        logger.info(f"Existing table has {len(existing_columns)} columns")
 
         # Get all column names from new data
-        new_data_columns = set()
+        # IMPORTANT: Preserve the order of columns as they appear in the first row
+        # because sanitize_sql_message assigns collision suffixes based on iteration order
+        new_data_columns_raw = []
+        seen = set()
         for row in new_data:
-            new_data_columns.update(row.keys())
+            for col in row.keys():
+                if col not in seen:
+                    new_data_columns_raw.append(col)
+                    seen.add(col)
+        logger.info(f"New data has {len(new_data_columns_raw)} columns (raw)")
 
-        # Calculate new columns
-        new_columns = len(new_data_columns - existing_columns)
+        # Normalize new data column names using sanitize_sql_message to match
+        # how StructuredDBWriter actually creates columns (with collision handling)
+        # Use the same default str_replace as StructuredDBWriter: [("/", "__")]
+        # Create a dummy row with all columns to get the normalized column names
+        # Use the first actual row to preserve the original key order
+        dummy_row = new_data[0].copy() if new_data else {}
+        # Add any missing columns from other rows (preserve order)
+        for col in new_data_columns_raw:
+            if col not in dummy_row:
+                dummy_row[col] = None
+
+        sanitized, column_mapping = sanitize_sql_message(
+            dummy_row,
+            column_renames={},  # Start with empty mappings
+            reverse_properties_separated_by=None,
+            str_replace=[("/", "__")],  # Match StructuredDBWriter's default
+            maxlen=63,
+        )
+
+        # Extract just the normalized column names (values from column_mapping)
+        new_data_columns_normalized = set(column_mapping.values())
+
+        logger.info(
+            f"New data has {len(new_data_columns_normalized)} columns (normalized)"
+        )
+
+        # Calculate new columns using normalized names
+        new_columns_set = new_data_columns_normalized - existing_columns
+        new_columns = len(new_columns_set)
+
+        if new_columns > 0:
+            logger.info(f"Detected {new_columns} new columns")
+        else:
+            logger.info("No new columns detected")
 
         # Get existing primary keys and their data
-        if primary_key in existing_columns:
+        # Normalize primary key name to match database
+        normalized_primary_key = normalize_identifier(primary_key)
+
+        if normalized_primary_key in existing_columns:
             # Fetch only the columns that exist in both datasets for comparison
-            common_columns = existing_columns & new_data_columns
+            common_columns = existing_columns & new_data_columns_normalized
             if not common_columns:
                 # No common columns - all rows are new
                 return len(new_data), 0, new_columns
@@ -163,23 +209,32 @@ def summarize_new_rows_updates_and_columns(
             )
             cursor.execute(query)
 
+            # Use the column_mapping we created earlier (from sanitize_sql_message)
+            # This already has the correct raw -> normalized mappings with collision handling
+            raw_to_normalized = column_mapping
+
+            # Create reverse mapping (normalized to raw) for looking up values in new_data
+            normalized_to_raw = {v: k for k, v in raw_to_normalized.items()}
+
             # Create lookup of existing rows by primary key
             existing_rows = {}
             for row in cursor.fetchall():
                 row_dict = dict(zip(common_columns, row))
-                if primary_key in row_dict:
-                    # Normalize values for comparison (handle None, convert to strings)
+                if normalized_primary_key in row_dict:
+                    # Normalize values for comparison (handle None and empty strings, convert to strings)
+                    # Treat empty strings as None to match StructuredDBWriter behavior
                     normalized = {
-                        k: (str(v) if v is not None else None)
+                        k: (str(v) if (v is not None and v != "") else None)
                         for k, v in row_dict.items()
                     }
-                    existing_rows[str(row_dict[primary_key])] = normalized
+                    existing_rows[str(row_dict[normalized_primary_key])] = normalized
 
             # Compare new data against existing
             new_rows_count = 0
             updates_count = 0
 
             for new_row in new_data:
+                # Get primary key value using raw column name
                 pk_value = str(new_row.get(primary_key))
 
                 if pk_value not in existing_rows:
@@ -190,14 +245,23 @@ def summarize_new_rows_updates_and_columns(
                     existing_row = existing_rows[pk_value]
                     has_changes = False
 
-                    for col in common_columns:
-                        new_val = new_row.get(col)
-                        existing_val = existing_row.get(col)
+                    for normalized_col in common_columns:
+                        # Map normalized column back to raw column name to get value from new_data
+                        raw_col = normalized_to_raw.get(normalized_col, normalized_col)
+                        new_val = new_row.get(raw_col)
+                        existing_val = existing_row.get(normalized_col)
 
-                        # Normalize for comparison
-                        new_val_norm = str(new_val) if new_val is not None else None
+                        # Normalize for comparison: treat empty strings as None (NULL)
+                        # This matches StructuredDBWriter._safe_insert behavior
+                        new_val_norm = (
+                            str(new_val)
+                            if (new_val is not None and new_val != "")
+                            else None
+                        )
                         existing_val_norm = (
-                            str(existing_val) if existing_val is not None else None
+                            str(existing_val)
+                            if (existing_val is not None and existing_val != "")
+                            else None
                         )
 
                         if new_val_norm != existing_val_norm:

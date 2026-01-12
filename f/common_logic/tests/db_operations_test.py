@@ -427,3 +427,324 @@ def test_summarize_custom_primary_key(mock_db_dict):
     assert new_rows == 1  # charlie@example.com
     assert updates == 1  # alice@example.com has changed name
     assert new_columns == 0
+
+
+def test_summarize_kobotoolbox_style_ids(mock_db_dict):
+    """Test scenario matching the user's KoboToolbox CSV with large numeric IDs"""
+    writer = StructuredDBWriter(conninfo(mock_db_dict), "kobotoolbox_submissions")
+
+    # Simulate initial upload with 3 KoboToolbox submissions
+    existing_data = [
+        {
+            "_id": "254135872",
+            "community": "Arlington",
+            "state": "Flourishing",
+            "practices": "Daily",
+        },
+        {
+            "_id": "254136591",
+            "community": "Springfield",
+            "state": "Declining",
+            "practices": "Daily",
+        },
+        {
+            "_id": "254136930",
+            "community": "Burke",
+            "state": "Stable",
+            "practices": "Monthly",
+        },
+    ]
+    writer.handle_output(existing_data)
+
+    # Simulate re-upload with same 3 rows + 2 new rows (SAME columns)
+    new_upload_data = [
+        {
+            "_id": "254135872",
+            "community": "Arlington",
+            "state": "Flourishing",
+            "practices": "Daily",
+        },
+        {
+            "_id": "254136591",
+            "community": "Springfield",
+            "state": "Declining",
+            "practices": "Daily",
+        },
+        {
+            "_id": "254136930",
+            "community": "Burke",
+            "state": "Stable",
+            "practices": "Monthly",
+        },
+        {
+            "_id": "254136939",
+            "community": "Frederick",
+            "state": "Stable",
+            "practices": "Monthly",
+        },  # NEW
+        {
+            "_id": "254136999",
+            "community": "Occoquan",
+            "state": "Stable",
+            "practices": "Monthly",
+        },  # NEW
+    ]
+
+    new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+        mock_db_dict, "kobotoolbox_submissions", new_upload_data
+    )
+
+    assert new_rows == 2  # Frederick and Occoquan
+    assert updates == 0  # No existing rows changed
+    assert new_columns == 0  # Same columns - this is the key assertion!
+
+
+def test_summarize_with_new_columns_added(mock_db_dict):
+    """Test detecting new columns when schema evolves"""
+    writer = StructuredDBWriter(conninfo(mock_db_dict), "evolving_dataset")
+
+    # Initial upload with basic columns
+    existing_data = [
+        {"_id": "1", "name": "Alice", "age": "30"},
+        {"_id": "2", "name": "Bob", "age": "25"},
+    ]
+    writer.handle_output(existing_data)
+
+    # Re-upload with additional columns
+    new_upload_data = [
+        {"_id": "1", "name": "Alice", "age": "30", "city": "NYC", "country": "USA"},
+        {"_id": "2", "name": "Bob", "age": "25", "city": "LA", "country": "USA"},
+        {
+            "_id": "3",
+            "name": "Charlie",
+            "age": "35",
+            "city": "Chicago",
+            "country": "USA",
+        },
+    ]
+
+    new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+        mock_db_dict, "evolving_dataset", new_upload_data
+    )
+
+    assert new_rows == 1  # Charlie
+    assert updates == 0  # Alice and Bob have same values in existing columns
+    assert new_columns == 2  # city and country are new
+
+
+def test_summarize_reupload_same_csv_all_columns(mock_db_dict):
+    """
+    Test re-uploading the EXACT same CSV structure - should detect 0 new columns.
+    This simulates the user's scenario where they upload the same CSV twice.
+    """
+    writer = StructuredDBWriter(conninfo(mock_db_dict), "kobo_full_schema")
+
+    # Simulate full KoboToolbox CSV with ALL columns from first upload
+    # (mimicking all 46+ columns from the actual CSV)
+    full_columns_row1 = {
+        "_id": "254135872",
+        "start": "2023-07-19 14:30:12",
+        "end": "2023-07-19 14:33:05",
+        "today": "2023-07-18",
+        "community_question": "Arlington",
+        "ecosystem_state": "Flourishing",
+        "plants_animals": "bamboo, wild boar",
+        "harvesting_frequency": "Daily",
+        "threat_deforestation": "",
+        "threat_mining": "",
+        "threat_logging": "",
+        "threat_pollution": "",
+        # Add ~40 more columns to simulate real KoboToolbox CSV
+        "col1": "val1",
+        "col2": "val2",
+        "col3": "val3",
+        "col4": "val4",
+        "col5": "val5",
+        "col6": "val6",
+        "col7": "val7",
+        "col8": "val8",
+        "col9": "val9",
+        "col10": "val10",
+        "col11": "val11",
+        "col12": "val12",
+        "col13": "val13",
+        "col14": "val14",
+        "col15": "val15",
+        "col16": "val16",
+        "col17": "val17",
+        "col18": "val18",
+        "col19": "val19",
+        "col20": "val20",
+        "col21": "val21",
+        "col22": "val22",
+        "col23": "val23",
+        "col24": "val24",
+        "col25": "val25",
+        "col26": "val26",
+        "col27": "val27",
+        "col28": "val28",
+        "col29": "val29",
+        "col30": "val30",
+        "col31": "val31",
+        "col32": "val32",
+        "col33": "val33",
+        "col34": "val34",
+        "col35": "val35",
+        "col36": "val36",
+    }
+
+    full_columns_row2 = {
+        **full_columns_row1,
+        "_id": "254136591",
+        "community_question": "Springfield",
+    }
+    full_columns_row3 = {
+        **full_columns_row1,
+        "_id": "254136930",
+        "community_question": "Burke",
+    }
+
+    # Initial upload with 3 rows - ALL columns present
+    initial_data = [full_columns_row1, full_columns_row2, full_columns_row3]
+    writer.handle_output(initial_data)
+
+    # Re-upload with 5 rows - SAME columns, 2 new rows
+    full_columns_row4 = {
+        **full_columns_row1,
+        "_id": "254136939",
+        "community_question": "Frederick",
+    }
+    full_columns_row5 = {
+        **full_columns_row1,
+        "_id": "254136999",
+        "community_question": "Occoquan",
+    }
+
+    reupload_data = [
+        full_columns_row1,
+        full_columns_row2,
+        full_columns_row3,
+        full_columns_row4,
+        full_columns_row5,
+    ]
+
+    new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+        mock_db_dict, "kobo_full_schema", reupload_data
+    )
+
+    assert new_rows == 2  # Frederick and Occoquan
+    assert updates == 0  # First 3 rows unchanged
+    assert new_columns == 0  # NO new columns - this is what the user expects!
+
+
+def test_summarize_new_dataset_without_existing_table(mock_db_dict):
+    """Test that we can count rows and columns even when table doesn't exist"""
+    # Don't create any table - simulate uploading to a new dataset
+
+    # Simulate new data being uploaded
+    new_data = [
+        {"_id": "1", "name": "Alice", "age": "30", "city": "NYC"},
+        {"_id": "2", "name": "Bob", "age": "25", "city": "LA"},
+        {"_id": "3", "name": "Charlie", "age": "35"},  # Missing city column
+    ]
+
+    # This should handle the case where table doesn't exist gracefully
+    # by returning 0,0,0 (since table doesn't exist, no comparison is possible)
+    new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+        mock_db_dict, "nonexistent_table", new_data
+    )
+
+    # When table doesn't exist, the function currently returns based on
+    # whether the primary key exists in the table columns
+    # Since table doesn't exist, it should handle this gracefully
+    assert new_rows == 3  # All rows are new since table doesn't exist
+    assert updates == 0
+    assert new_columns >= 3  # At least _id, name, age (city might not be in all rows)
+
+
+def test_summarize_actual_kobotoolbox_csv_reupload(mock_db_dict):
+    """
+    Test using the ACTUAL column names from the user's KoboToolbox CSV.
+    This will verify that sanitize_sql_message produces the same column names
+    that StructuredDBWriter creates in the database.
+    """
+    writer = StructuredDBWriter(conninfo(mock_db_dict), "kobotoolbox_test")
+
+    # Use ACTUAL column names from the user's CSV (first 3 rows)
+    initial_row1 = {
+        "_id": "254135872",
+        "start": "2023-07-19 14:30:12.239000-04:00",
+        "end": "2023-07-19 14:33:05.995000-04:00",
+        "today": "2023-07-18",
+        "What community are you from?": "Arlington",
+        "Enter the community name:": "",
+        "How do you describe the current state of the local ecosystem?": "Flourishing",
+        "Which traditional plants and animals are important to your community?": "bamboo, wild boar",
+        "How frequently do you engage in traditional harvesting practices?": "Daily",
+        "What are the primary threats to the biodiversity in your area?": "Mining",
+        "What are the primary threats to the biodiversity in your area?/Deforestation": "",
+        "What are the primary threats to the biodiversity in your area?/Mining": "",
+        "What are the primary threats to the biodiversity in your area?/Logging": "",
+        "What are the primary threats to the biodiversity in your area?/Pollution": "",
+        "What are the primary threats to the biodiversity in your area?/Climate Change": "",
+        "What are the primary threats to the biodiversity in your area?/Overharvesting": "",
+        "What are the primary threats to the biodiversity in your area?/Land encroachment": "",
+        "What are the primary threats to the biodiversity in your area?/Other": "",
+        "Please specify the other threat:": "",
+        "Are there any changes in the timing or behavior of migratory species you have observed?": "Yes",
+        "How would you rate the availability of traditional resources over the past decade?": "Stable",
+        "Have you noticed any changes in the abundance or health of key indicator species?": "No",
+        "How is traditional ecological knowledge (TEK) passed on within your community?": "Oral storytelling",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Oral storytelling": "",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Apprenticeships": "",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Elders' guidance": "",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Rituals and ceremonies": "",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Schools/educational institutions": "",
+        "How is traditional ecological knowledge (TEK) passed on within your community?/Other": "",
+        "_uuid": "92eb7237-89d6-4a15-aa71-09ec99279bbb",
+        "_submission_time": "2023-07-19 18:33:06",
+        "_status": "submitted_via_web",
+    }
+
+    initial_row2 = {
+        **initial_row1,
+        "_id": "254136591",
+        "What community are you from?": "Springfield",
+    }
+    initial_row3 = {
+        **initial_row1,
+        "_id": "254136930",
+        "What community are you from?": "Burke",
+    }
+
+    # Initial upload with 3 rows
+    initial_data = [initial_row1, initial_row2, initial_row3]
+    writer.handle_output(initial_data)
+
+    # Re-upload with same 3 rows + 2 new rows (EXACT same columns)
+    reupload_row4 = {
+        **initial_row1,
+        "_id": "254136939",
+        "What community are you from?": "Frederick",
+    }
+    reupload_row5 = {
+        **initial_row1,
+        "_id": "254136999",
+        "What community are you from?": "Occoquan",
+    }
+
+    reupload_data = [
+        initial_row1,
+        initial_row2,
+        initial_row3,
+        reupload_row4,
+        reupload_row5,
+    ]
+
+    new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
+        mock_db_dict, "kobotoolbox_test", reupload_data
+    )
+
+    assert new_rows == 2  # Frederick and Occoquan
+    assert updates == 0  # First 3 rows unchanged
+    assert new_columns == 0  # NO new columns - CRITICAL TEST!

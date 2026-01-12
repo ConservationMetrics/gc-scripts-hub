@@ -644,14 +644,6 @@ value:
             type: runnable
             autoRefresh: false
             fields:
-              dataset_name:
-                type: evalv2
-                value: null
-                connections:
-                  - id: validSqlname
-                    componentId: state
-                expr: state.validSqlname
-                fieldType: object
               uploaded_file:
                 type: evalv2
                 value: null
@@ -660,6 +652,35 @@ value:
                     componentId: selectFile
                 expr: selectFile.result
                 fieldType: object
+              dataset_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: datasetName
+                    componentId: state
+                expr: state.datasetName
+                fieldType: string
+              table_exists:
+                type: evalv2
+                value: null
+                connections:
+                  - id: tableExists
+                    componentId: state
+                expr: state.tableExists
+                fieldType: boolean
+              table_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: validSqlName
+                    componentId: state
+                expr: state.validSqlName
+                fieldType: string
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
@@ -674,17 +695,33 @@ value:
                   $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
-                    dataset_name:
-                      type: object
-                      description: ''
-                      default: null
                     uploaded_file:
                       type: object
                       description: ''
                       default: null
+                    dataset_name:
+                      type: string
+                      description: ''
+                      default: null
+                    table_exists:
+                      type: boolean
+                      description: ''
+                      default: null
+                    table_name:
+                      type: string
+                      description: ''
+                      default: null
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
                   required:
                     - uploaded_file
                     - dataset_name
+                    - table_exists
+                    - table_name
+                    - db
             transformer:
               content: |-
                 state.uploadSuccess = result[0];

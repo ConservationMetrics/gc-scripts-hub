@@ -135,11 +135,13 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
     Returns
     -------
     tuple
-        A tuple containing (transformed_data, transformation_applied):
+        A tuple containing (transformed_data, transformation_applied, data_source_added):
         - transformed_data : list or dict
             Data after transformation (same type as input).
         - transformation_applied : bool
             Whether any transformation was applied.
+        - data_source_added : bool
+            Whether a data_source column/property was added.
     """
     transformations = {
         # TODO: add CoMapeo transformation back in when we have fixtures
@@ -163,17 +165,18 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
         transform_func, log_msg = transformations[transform_key]
         transformed_data = transform_func(data, dataset_name)
         logger.info(log_msg)
-        return transformed_data, True
+        # Specific transformations add data_source column
+        return transformed_data, True, True
     elif data_source:  # Apply generic data_source transformation if data_source is set
         if output_format == "geojson":
             transformed_data = _add_data_source_to_geojson(data, data_source)
         else:  # csv
             transformed_data = _add_data_source_to_csv(data, data_source)
         logger.info(f"Generic data_source transformation applied for: {data_source}")
-        return transformed_data, True
+        return transformed_data, True, True
     else:
         logger.info("No transformation applied for this data source")
-        return data, False
+        return data, False, False
 
 
 def main(
@@ -184,6 +187,7 @@ def main(
     data_source,
     dataset_name,
     valid_sql_name,
+    new_columns,
 ):
     """
     Apply transformations and store data in database and data lake.
@@ -215,7 +219,8 @@ def main(
         Human-readable name of the dataset.
     valid_sql_name : str
         SQL-safe name used for database tables and directories.
-
+    new_columns : int
+        Number of new columns that will be added.
     Returns
     -------
     tuple[bool, str | None]
@@ -241,9 +246,14 @@ def main(
             data = read_csv_to_list(uploaded_path)
 
         # Apply transformation based on data source
-        data, transformed = _apply_transformation(
+        data, transformed, data_source_added = _apply_transformation(
             data, data_source, dataset_name, output_format
         )
+
+        # Increment new_columns if data_source column was added
+        if data_source_added:
+            new_columns += 1
+            logger.info("Incremented new_columns count for data_source column")
 
         # Handle transformed vs original file
         if transformed:
@@ -297,12 +307,12 @@ def main(
             logger.warning(f"Original file not found: {original_path}")
 
         # Return success
-        return True, None
+        return True, None, new_columns
 
     except Exception as e:
         error_msg = f"Error during dataset import process: {e}"
         logger.error(error_msg)
-        return False, error_msg
+        return False, error_msg, new_columns
 
     finally:
         # Clean up dataset-specific temp directory
