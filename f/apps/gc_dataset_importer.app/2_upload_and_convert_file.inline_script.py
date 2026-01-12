@@ -59,6 +59,7 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
     new_rows = None
     updates = None
     new_columns = None
+    data_for_comparison = []
 
     try:
         logger.info(f"Starting file upload and conversion for dataset: {dataset_name}")
@@ -104,8 +105,6 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
                         feature.get("properties", {})
                         for feature in converted_data.get("features", [])
                     ]
-                else:
-                    data_for_comparison = []
 
         saved_output = save_uploaded_file_to_temp(
             file_to_save, is_base64=False, tmp_dir=str(temp_dir)
