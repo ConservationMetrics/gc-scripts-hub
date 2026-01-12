@@ -92,7 +92,17 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             # Convert CSV to list of dicts for comparison
             if table_exists and converted_data:
                 reader = csv.DictReader(StringIO(csv_data))
-                data_for_comparison = list(reader)
+                rows = list(reader)
+                # Add _id if not present (use existing _id or auto-increment)
+                data_for_comparison = []
+                for idx, row in enumerate(rows, 1):
+                    if "_id" not in row or not row["_id"]:
+                        # No _id in CSV, use auto-incrementing
+                        row_with_id = {"_id": str(idx), **row}
+                    else:
+                        # CSV already has _id, use it
+                        row_with_id = row
+                    data_for_comparison.append(row_with_id)
         else:  # geojson
             file_to_save = [
                 {"name": output_filename, "data": json.dumps(converted_data)}
@@ -102,10 +112,16 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             if table_exists:
                 if isinstance(converted_data, dict) and "features" in converted_data:
                     # GeoJSON FeatureCollection - extract properties from features
-                    data_for_comparison = [
-                        feature.get("properties", {})
-                        for feature in converted_data.get("features", [])
-                    ]
+                    # Add _id if not present (use existing _id or auto-increment)
+                    data_for_comparison = []
+                    for idx, feature in enumerate(
+                        converted_data.get("features", []), 1
+                    ):
+                        properties = feature.get("properties", {}).copy()
+                        if "_id" not in properties or not properties["_id"]:
+                            # No _id in properties, use auto-incrementing
+                            properties = {"_id": str(idx), **properties}
+                        data_for_comparison.append(properties)
 
         saved_output = save_uploaded_file_to_temp(
             file_to_save, is_base64=False, tmp_dir=str(temp_dir)
@@ -118,6 +134,22 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             logger.info(
                 f"Table exists - analyzing changes for {len(data_for_comparison)} rows"
             )
+            # Log first row to see what columns we have and _id strategy
+            if data_for_comparison:
+                first_row = data_for_comparison[0]
+                logger.info(f"Sample row columns: {list(first_row.keys())}")
+
+                # Determine if using custom IDs or auto-generated
+                if "_id" in first_row and first_row["_id"] not in ["1"]:
+                    logger.info(
+                        f"Using existing _id values from data (e.g., {first_row['_id']})"
+                    )
+                else:
+                    logger.info(
+                        "Using auto-incrementing row IDs. "
+                        "Rows are matched by position (1st row → _id:1, 2nd row → _id:2, etc.)"
+                    )
+
             new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
                 db, table_name=table_name, new_data=data_for_comparison
             )

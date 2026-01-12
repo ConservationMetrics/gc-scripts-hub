@@ -170,8 +170,6 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: validSqlName
-                - id: state
-                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -833,6 +831,12 @@ value:
                 suggestedRefreshOn:
                   - id: state
                     key: tableExists
+                  - id: state
+                    key: updatedRows
+                  - id: state
+                    key: newColumns
+                  - id: state
+                    key: newRows
           configuration:
             copyButton:
               type: static
@@ -1773,11 +1777,11 @@ policy:
       one_of_inputs: {}
       static_inputs:
         db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/834cac02f780dd385837966ce4e95c601a2bb74bc1d48e413b5d0aeac0bf0c34':
+    'uploadFile:rawscript/1cf4616a7e1692396047c98a022a8f13f3bcc28aa86c79a738254d60ba504f83':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'uploadFileResult:rawscript/a601abdd97ec822a84c408165aa27d9820f27572518ddeedb4cee6b863870329':
+    'uploadFileResult:rawscript/3d2c93c8badf1270eb5939e32e3e1d3616bd838a4460c33307ccfce17074dd34':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
