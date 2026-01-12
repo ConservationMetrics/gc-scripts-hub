@@ -169,9 +169,9 @@ value:
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: uploadSuccess
-                - id: state
                   key: validSqlName
+                - id: state
+                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -1506,15 +1506,16 @@ value:
                 content: '!inline 4_evaluate_number_of_changes.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/4_Evaluate_number_of_changes
-                suggestedRefreshOn:
+                refreshOn:
                   - id: state
                     key: newRows
+                  - id: state
+                    key: updatedRows
                   - id: state
                     key: newColumns
                   - id: state
                     key: dataSource
-                  - id: state
-                    key: updatedRows
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
