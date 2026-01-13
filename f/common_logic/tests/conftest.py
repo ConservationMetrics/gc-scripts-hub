@@ -125,9 +125,12 @@ def geojson_with_invalid_geometry_file(tmp_path):
                 "properties": {},
             },
             {
-                "type": "Feature", 
-                "geometry": {"type": "LineString", "coordinates": {"invalid": "structure"}},
-                "properties": {"name": "invalid_line"}
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": {"invalid": "structure"},
+                },
+                "properties": {"name": "invalid_line"},
             },
         ],
     }
@@ -148,15 +151,18 @@ def geojson_with_null_geometry_file(tmp_path):
                 "properties": {"name": "valid_point"},
             },
             {
-                "type": "Feature", 
+                "type": "Feature",
                 "id": "null_geometry_1",
-                "geometry": None, 
-                "properties": {"name": "null_geometry_feature"}
+                "geometry": None,
+                "properties": {"name": "null_geometry_feature"},
             },
             {
                 "type": "Feature",
                 "id": "valid_line_1",
-                "geometry": {"type": "LineString", "coordinates": [[1.0, 2.0], [3.0, 4.0]]},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[1.0, 2.0], [3.0, 4.0]],
+                },
                 "properties": {"name": "valid_line"},
             },
         ],

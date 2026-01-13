@@ -41,7 +41,6 @@ value:
       text:
         class: ''
         style: ''
-  darkMode: true
   fullscreen: false
   grid:
     - '12':
