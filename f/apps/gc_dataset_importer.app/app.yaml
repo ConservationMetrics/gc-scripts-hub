@@ -41,6 +41,7 @@ value:
       text:
         class: ''
         style: ''
+  darkMode: true
   fullscreen: false
   grid:
     - '12':
@@ -1700,9 +1701,15 @@ value:
               type: evalv2
               value: false
               connections:
+                - id: newColumns
+                  componentId: state
+                - id: newRows
+                  componentId: state
                 - id: finalizeSuccess
                   componentId: state
-              expr: state.finalizeSuccess
+              expr: >-
+                state.finalizeSuccess || !(state.newRows > 0 && state.newColumns
+                > 0)
             fillContainer:
               type: static
               value: false
@@ -1786,6 +1793,10 @@ value:
                     key: finalizeSuccess
                   - id: state
                     key: dataSource
+                  - id: state
+                    key: newRows
+                  - id: state
+                    key: updatedRows
                 suggestedRefreshOn: []
           configuration:
             copyButton:
@@ -1926,7 +1937,7 @@ policy:
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
-    'saveResult:rawscript/08b9c653850e31a730c8cfa71d6fdc1c7049706954f31fda9b83e3e8dab3d265':
+    'saveResult:rawscript/e6f29736569ce3e7e8d48900457f7ae702bee218e5cefa75917073e25d5da1b7':
       allow_user_resources: []
       one_of_inputs: {}
       static_inputs: {}
