@@ -1,7 +1,7 @@
 const { currentStepIndex, lastAction } = formStepper;
 
 // Step 1: Dataset name must be valid
-if (currentStepIndex === 0 && !state.datasetAvailable) {
+if (currentStepIndex === 0 && !state.validSqlName) {
   throw new Error("Please enter a valid dataset name to proceed.");
 }
 
