@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 postgresql = dict
 
 
+def _normalize_value_for_comparison(value):
+    """
+    Normalize a value for comparison between new data and existing database rows.
+    
+    Treats empty strings as None (NULL) to match how StructuredDBWriter stores values.
+    Converts all non-None, non-empty values to strings for consistent comparison.
+    
+    Parameters
+    ----------
+    value : any
+        The value to normalize.
+    
+    Returns
+    -------
+    str or None
+        The normalized value as a string, or None if the value is None or empty string.
+    """
+    if value is None or value == "":
+        return None
+    return str(value)
+
+
 def conninfo(db: postgresql):
     """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
     # password is optional
@@ -101,10 +123,22 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
 
 
 def summarize_new_rows_updates_and_columns(
-    db: postgresql, table_name: str, new_data: list[dict], primary_key: str = "_id"
+    db: postgresql,
+    table_name: str,
+    new_data: list[dict],
+    primary_key: str = "_id",
+    str_replace: list[tuple[str, str]] = None,
+    reverse_properties_separated_by: str = None,
 ):
     """
     Compare uploaded dataset against existing table to determine impact.
+    
+    IMPORTANT: This function must stay in sync with StructuredDBWriter behavior.
+    When calling this function, pass the same str_replace and reverse_properties_separated_by
+    parameters that you intend to use when creating the StructuredDBWriter instance.
+    
+    Value comparison uses _normalize_value_for_comparison() to match how StructuredDBWriter
+    stores values (empty strings treated as NULL).
 
     Parameters
     ----------
@@ -116,6 +150,12 @@ def summarize_new_rows_updates_and_columns(
         List of dictionaries representing the new data rows to be imported.
     primary_key : str, optional
         Column name to use as primary key for identifying updates (default: "_id").
+    str_replace : list of tuple, optional
+        List of (old, new) strings to apply during column name sanitization.
+        Must match the StructuredDBWriter settings. Defaults to [("/", "__")].
+    reverse_properties_separated_by : str or None, optional
+        If provided, splits keys on this character, reverses segments, and rejoins.
+        Must match the StructuredDBWriter settings. Defaults to None.
 
     Returns
     -------
@@ -125,6 +165,9 @@ def summarize_new_rows_updates_and_columns(
         - updates : Number of existing rows that would be updated (changed values)
         - new_columns : Number of new columns that would be added to the table
     """
+    # Apply same defaults as StructuredDBWriter to ensure consistency
+    if str_replace is None:
+        str_replace = [("/", "__")]
     if not new_data:
         return 0, 0, 0
 
@@ -158,7 +201,6 @@ def summarize_new_rows_updates_and_columns(
 
         # Normalize new data column names using sanitize_sql_message to match
         # how StructuredDBWriter actually creates columns (with collision handling)
-        # Use the same default str_replace as StructuredDBWriter: [("/", "__")]
         # Create a dummy row with all columns to get the normalized column names
         # Use the first actual row to preserve the original key order
         dummy_row = new_data[0].copy() if new_data else {}
@@ -170,8 +212,8 @@ def summarize_new_rows_updates_and_columns(
         sanitized, column_mapping = sanitize_sql_message(
             dummy_row,
             column_renames={},  # Start with empty mappings
-            reverse_properties_separated_by=None,
-            str_replace=[("/", "__")],  # Match StructuredDBWriter's default
+            reverse_properties_separated_by=reverse_properties_separated_by,
+            str_replace=str_replace,
             maxlen=63,
         )
 
@@ -221,10 +263,9 @@ def summarize_new_rows_updates_and_columns(
             for row in cursor.fetchall():
                 row_dict = dict(zip(common_columns, row))
                 if normalized_primary_key in row_dict:
-                    # Normalize values for comparison (handle None and empty strings, convert to strings)
-                    # Treat empty strings as None to match StructuredDBWriter behavior
+                    # Normalize values for comparison using shared logic
                     normalized = {
-                        k: (str(v) if (v is not None and v != "") else None)
+                        k: _normalize_value_for_comparison(v)
                         for k, v in row_dict.items()
                     }
                     existing_rows[str(row_dict[normalized_primary_key])] = normalized
@@ -251,18 +292,9 @@ def summarize_new_rows_updates_and_columns(
                         new_val = new_row.get(raw_col)
                         existing_val = existing_row.get(normalized_col)
 
-                        # Normalize for comparison: treat empty strings as None (NULL)
-                        # This matches StructuredDBWriter._safe_insert behavior
-                        new_val_norm = (
-                            str(new_val)
-                            if (new_val is not None and new_val != "")
-                            else None
-                        )
-                        existing_val_norm = (
-                            str(existing_val)
-                            if (existing_val is not None and existing_val != "")
-                            else None
-                        )
+                        # Normalize for comparison using shared logic
+                        new_val_norm = _normalize_value_for_comparison(new_val)
+                        existing_val_norm = _normalize_value_for_comparison(existing_val)
 
                         if new_val_norm != existing_val_norm:
                             has_changes = True
