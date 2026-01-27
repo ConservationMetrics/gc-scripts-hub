@@ -1,8 +1,8 @@
-switch (state.datasetAvailable) {
-  case true:
-    return `✅ Dataset name is available! The database table name will be "${state.validSqlname}".`;
+switch (state.tableExists) {
   case false:
-    return "⚠️ Dataset name is already in usage.";
+    return `✅ New dataset! The database table "${state.validSqlName}" will be created.`;
+  case true:
+    return `⚠️ Dataset "${state.validSqlName}" already exists. New data will be appended to the existing table.`;
   default:
     return "";
 }
