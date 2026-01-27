@@ -2,6 +2,34 @@ import json
 from pathlib import Path
 
 import pytest
+import testing.postgresql
+
+from f.common_logic.db_operations import conninfo
+
+
+@pytest.fixture
+def mock_db_connection():
+    """A dsn that may be used to connect to a live (local for test) postgresql server"""
+    db = testing.postgresql.Postgresql(port=7654)
+    dsn = db.dsn()
+    dsn["dbname"] = dsn.pop("database")
+    yield conninfo(dsn)
+    db.stop()
+
+
+@pytest.fixture
+def mock_db_dict():
+    """A dict representation of db connection for functions that expect postgresql type"""
+    db = testing.postgresql.Postgresql(port=7655)
+    dsn = db.dsn()
+    db_dict = {
+        "host": dsn["host"],
+        "port": dsn["port"],
+        "user": dsn["user"],
+        "dbname": dsn["database"],
+    }
+    yield db_dict
+    db.stop()
 
 
 @pytest.fixture
@@ -97,9 +125,12 @@ def geojson_with_invalid_geometry_file(tmp_path):
                 "properties": {},
             },
             {
-                "type": "Feature", 
-                "geometry": {"type": "LineString", "coordinates": {"invalid": "structure"}},
-                "properties": {"name": "invalid_line"}
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": {"invalid": "structure"},
+                },
+                "properties": {"name": "invalid_line"},
             },
         ],
     }
@@ -120,15 +151,18 @@ def geojson_with_null_geometry_file(tmp_path):
                 "properties": {"name": "valid_point"},
             },
             {
-                "type": "Feature", 
+                "type": "Feature",
                 "id": "null_geometry_1",
-                "geometry": None, 
-                "properties": {"name": "null_geometry_feature"}
+                "geometry": None,
+                "properties": {"name": "null_geometry_feature"},
             },
             {
                 "type": "Feature",
                 "id": "valid_line_1",
-                "geometry": {"type": "LineString", "coordinates": [[1.0, 2.0], [3.0, 4.0]]},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[1.0, 2.0], [3.0, 4.0]],
+                },
                 "properties": {"name": "valid_line"},
             },
         ],
