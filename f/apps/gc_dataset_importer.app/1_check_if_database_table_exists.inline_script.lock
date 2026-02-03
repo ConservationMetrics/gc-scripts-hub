@@ -1,2 +1,2 @@
-# py313
-psycopg2-binary==2.9.10
+# py: 3.13
+psycopg2-binary==2.9.11
