@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # requests~=2.32
 
 import json

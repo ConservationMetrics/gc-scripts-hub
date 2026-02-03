@@ -1,6 +1,6 @@
 import json
 
-import psycopg2
+import psycopg
 import requests
 
 from f.connectors.comapeo.comapeo_pull import (
@@ -857,7 +857,7 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
         asset_storage / "comapeo" / "forest_expedition" / "icons" / "water_source.png"
     ).exists()
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(**pg_database) as conn:
         # Observations from forest_expedition are written to a SQL Table in expected format
         with conn.cursor() as cursor:
             cursor.execute(

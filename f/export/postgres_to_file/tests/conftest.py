@@ -1,7 +1,7 @@
 import pytest
 import testing.postgresql
 
-import psycopg2
+import psycopg
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def pg_database():
 @pytest.fixture
 def database_mock_data(pg_database):
     """Fixture to insert mock data into the test database"""
-    conn = psycopg2.connect(**pg_database)
+    conn = psycopg.connect(**pg_database)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE comapeo_data (

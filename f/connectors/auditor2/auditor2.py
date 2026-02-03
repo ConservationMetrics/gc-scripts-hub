@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # azure-storage-blob
 
 import csv

@@ -1,6 +1,6 @@
 # requirements:
 # lxml
-# psycopg2-binary
+# psycopg[binary]
 
 import csv
 import json
