@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from psycopg2 import connect, sql
+from psycopg import connect, sql
 
 from f.common_logic.db_operations import conninfo, postgresql
 
@@ -17,9 +17,9 @@ def main(
     """
     Export a PostgreSQL table to a CSV file using the COPY command.
 
-    This function uses psycopg2's `copy_expert` method to execute a SQL COPY command
-    that exports the specified table to a CSV file. For more details on `copy_expert`,
-    see the documentation: https://www.psycopg.org/docs/cursor.html#cursor.copy_expert
+    This function uses psycopg's `copy` method to execute a SQL COPY command
+    that exports the specified table to a CSV file. For more details on `copy`,
+    see the documentation: https://www.psycopg.org/psycopg3/docs/basic/copy.html
 
     Parameters
     ----------
@@ -45,7 +45,9 @@ def main(
             copy_sql = sql.SQL(
                 "COPY {} TO STDOUT WITH CSV HEADER QUOTE '\"' DELIMITER ',' NULL ''"
             ).format(sql.Identifier(db_table_name))
-            cur.copy_expert(copy_sql, f)
+            with cur.copy(copy_sql) as copy:
+                for data in copy:
+                    f.write(bytes(data).decode("utf-8"))
             logger.info(f"Exported {db_table_name} to {out_path}")
     except Exception as e:
         logger.error(f"Failed to export {db_table_name} to CSV: {e}")
