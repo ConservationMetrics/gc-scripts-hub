@@ -36,6 +36,7 @@ The envisioned usage of Local Contexts labels in Guardian Connector is as follow
   - You probably want to select "Collection" as the project type, and set visibility to "Private" to keep the labels private to your community.
 7. Apply the TK and BC labels to the project.
 8. Get the **project ID**, and an **API key** for your community account.
+9. In Windmill, create a Local Contexts Project resource with the project ID, API key, and server URL.
 
 ## Endpoints
 
