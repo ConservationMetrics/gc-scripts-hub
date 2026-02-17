@@ -836,7 +836,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     )
 
     # Verify initial data for FIRST alert in DB
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
@@ -919,7 +919,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     )
 
     # Verify FIRST DB record was updated
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(**pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
