@@ -1,0 +1,57 @@
+summary: 'Guardian Connector: Generate Metrics'
+description: >-
+  This script generates metrics for Guardian Connector services based on provided parameters. 
+  All parameters are optional - the script will only collect metrics for services where required parameters are provided.
+  Services: CoMapeo, warehouse, Explorer, Superset, files, and Windmill (automatically detected when running in Windmill).
+  Note: The CoMapeo data size measurement looks at the `{attachment_root}/comapeo` directory on the datalake, 
+  not the CoMapeo server's Docker volume (as Windmill doesn't have mounted access to Docker volumes). 
+  This serves as a proxy metric based on the pulled data stored locally.
+lock: '!inline f/metrics/guardianconnector/guardianconnector_metrics.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - comapeo
+    - db
+    - attachment_root
+    - guardianconnector_db
+    - superset_db
+  properties:
+    comapeo:
+      type: object
+      description: >-
+        Optional. A server URL and access token pair to connect to a CoMapeo archive server.
+        If not provided, CoMapeo metrics will be skipped.
+      default: null
+      format: resource-comapeo_server
+    db:
+      type: object
+      description: >-
+        Optional. Database connection for all PostgreSQL metrics. This connection will be used for warehouse, 
+        Explorer, and Superset metrics by switching the database name.
+        If not provided, all database metrics will be skipped.
+      default: null
+      format: resource-postgresql
+    attachment_root:
+      type: string
+      description: >-
+        A path where CoMapeo attachments are stored. This script will calculate 
+        the size of the `{attachment_root}/comapeo` directory and count all files in the datalake.
+      default: /persistent-storage/datalake
+      originalType: string
+    guardianconnector_db:
+      type: string
+      description: >-
+        Database name for Explorer metrics. Uses 'db' connection parameters with this database name.
+      default: guardianconnector
+      originalType: string
+    superset_db:
+      type: string
+      description: >-
+        Database name for Superset metrics. Uses 'db' connection parameters with this database name.
+      default: superset_metastore
+      originalType: string
+  required: []
+
