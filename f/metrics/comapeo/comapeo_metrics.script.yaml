@@ -1,0 +1,18 @@
+summary: 'CoMapeo: Generate Metrics'
+description: This script generates metrics from the CoMapeo data.
+lock: '!inline f/metrics/comapeo/comapeo_metrics.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - comapeo
+  properties:
+    comapeo:
+      type: object
+      description: A server URL and access token pair to connect to a CoMapeo archive server.
+      default: null
+      format: resource-comapeo_server
+  required:
+    - comapeo
