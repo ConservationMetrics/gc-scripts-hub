@@ -19,6 +19,10 @@ class comapeo_server(TypedDict):
     access_token: str
 
 
+class auth0(TypedDict):
+    token: str
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -136,7 +140,7 @@ def get_warehouse_metrics(db: postgresql) -> dict:
                     WHERE table_schema = 'public'
                     AND table_type = 'BASE TABLE'
                 """)
-                tables = cursor.fetchone()[0]
+                table_count = cursor.fetchone()[0]
 
                 # Get total records by summing COUNT(*) from each table
                 cursor.execute("""
@@ -145,10 +149,10 @@ def get_warehouse_metrics(db: postgresql) -> dict:
                     WHERE table_schema = 'public'
                     AND table_type = 'BASE TABLE'
                 """)
-                tables = cursor.fetchall()
+                table_names = cursor.fetchall()
 
                 records = 0
-                for (table_name,) in tables:
+                for (table_name,) in table_names:
                     try:
                         cursor.execute(f'SELECT COUNT(*) FROM "{table_name}"')
                         count = cursor.fetchone()[0]
@@ -158,10 +162,10 @@ def get_warehouse_metrics(db: postgresql) -> dict:
                             f"Could not count records in table {table_name}: {e}"
                         )
 
-        logger.info(f"Warehouse: {tables} tables, {records:,} total records")
+        logger.info(f"Warehouse: {table_count} tables, {records:,} total records")
 
         return {
-            "tables": tables,
+            "tables": table_count,
             "records": records,
         }
     except Exception as e:
@@ -292,6 +296,53 @@ def get_files_metrics(datalake_path: str) -> dict:
         return {}
 
 
+def get_auth0_metrics(auth0_resource: auth0, auth0_domain: str) -> dict:
+    """Get metrics from Auth0 using the Management API.
+
+    Parameters
+    ----------
+    auth0_resource : auth0
+        An OAuth resource containing the tokenized access to Auth0 Management API.
+    auth0_domain : str
+        The Auth0 domain (e.g., "your-tenant.us.auth0.com").
+
+    Returns
+    -------
+    dict
+        A dictionary containing metrics: users (total number of users).
+    """
+    logger.info("Fetching Auth0 metrics...")
+
+    try:
+        # Auth0 Management API endpoint for users
+        url = f"https://{auth0_domain}/api/v2/users"
+
+        headers = {
+            "Authorization": f"Bearer {auth0_resource['token']}",
+        }
+
+        # Get users with pagination support
+        # The search_engine=v3 parameter is required for accurate totals
+        params = {
+            "search_engine": "v3",
+            "per_page": 1,  # We only need the total count
+            "include_totals": "true",
+        }
+
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        total_users = data.get("total", 0)
+
+        logger.info(f"Auth0: {total_users} users")
+
+        return {"users": total_users}
+    except Exception as e:
+        logger.error(f"Failed to fetch Auth0 metrics: {e}")
+        return {}
+
+
 def get_windmill_metrics() -> dict:
     """Get metrics from Windmill using environment variables.
 
@@ -348,14 +399,14 @@ def main(
     attachment_root: str = "/persistent-storage/datalake",
     guardianconnector_db: str = "guardianconnector",
     superset_db: str = "superset_metastore",
+    auth0_resource: Optional[auth0] = None,
+    auth0_domain: Optional[str] = None,
 ):
     """Generate Guardian Connector metrics based on provided parameters.
 
     All parameters are optional. The script will only collect metrics for services where the required parameters are provided.
 
     Windmill metrics are automatically collected when running inside a Windmill worker (using WM_* environment variables).
-
-    TODO: Add Auth0 metrics to count number of users (requires Auth0 API access).
 
     Parameters
     ----------
@@ -374,6 +425,12 @@ def main(
     superset_db : str, optional
         Database name for Superset metrics. Uses 'db' connection parameters with this database name.
         Defaults to "superset_metastore".
+    auth0_resource : auth0, optional
+        OAuth resource with tokenized access to Auth0 Management API.
+        If not provided, Auth0 metrics will be skipped.
+    auth0_domain : str, optional
+        The Auth0 domain (e.g., "your-tenant.us.auth0.com").
+        Required if auth0_resource is provided.
 
     Returns
     -------
@@ -382,10 +439,11 @@ def main(
         Only includes metrics for services where required parameters were provided.
         Example: {
             "comapeo": {"project_count": 3, "data_size_mb": 100.5},
-            "warehouse": {"total_tables": 50, "total_records": 1000000},
+            "warehouse": {"tables": 50, "records": 1000000},
             "explorer": {"dataset_views": 11},
             "superset": {"dashboards": 5, "charts": 25},
             "files": {"file_count": 5000, "data_size_mb": 10000},
+            "auth0": {"users": 150},
             "windmill": {"number_of_schedules": 15}
         }
     """
@@ -419,6 +477,12 @@ def main(
     files_metrics = get_files_metrics(attachment_root)
     if files_metrics:
         metrics["files"] = files_metrics
+
+    # Get Auth0 metrics (requires both auth0_resource and auth0_domain)
+    if auth0_resource and auth0_domain:
+        auth0_metrics = get_auth0_metrics(auth0_resource, auth0_domain)
+        if auth0_metrics:
+            metrics["auth0"] = auth0_metrics
 
     # Get Windmill metrics (automatically uses WM_* environment variables)
     windmill_metrics = get_windmill_metrics()

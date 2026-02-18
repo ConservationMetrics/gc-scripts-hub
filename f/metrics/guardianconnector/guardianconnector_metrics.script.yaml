@@ -2,7 +2,7 @@ summary: 'Guardian Connector: Generate Metrics'
 description: >-
   This script generates metrics for Guardian Connector services based on provided parameters. 
   All parameters are optional - the script will only collect metrics for services where required parameters are provided.
-  Services: CoMapeo, warehouse, Explorer, Superset, files, and Windmill (automatically detected when running in Windmill).
+  Services: CoMapeo, warehouse, Explorer, Superset, files, Auth0, and Windmill (automatically detected when running in Windmill).
   Note: The CoMapeo data size measurement looks at the `{attachment_root}/comapeo` directory on the datalake, 
   not the CoMapeo server's Docker volume (as Windmill doesn't have mounted access to Docker volumes). 
   This serves as a proxy metric based on the pulled data stored locally.
@@ -18,6 +18,8 @@ schema:
     - attachment_root
     - guardianconnector_db
     - superset_db
+    - auth0_resource
+    - auth0_domain
   properties:
     comapeo:
       type: object
@@ -52,6 +54,20 @@ schema:
       description: >-
         Database name for Superset metrics. Uses 'db' connection parameters with this database name.
       default: superset_metastore
+      originalType: string
+    auth0_resource:
+      type: object
+      description: >-
+        Optional. OAuth resource with tokenized access to Auth0 Management API.
+        If not provided, Auth0 metrics will be skipped.
+      default: null
+      format: resource-auth0
+    auth0_domain:
+      type: string
+      description: >-
+        Optional. The Auth0 domain (e.g., "your-tenant.us.auth0.com").
+        Required if auth0_resource is provided.
+      default: null
       originalType: string
   required: []
 

@@ -29,7 +29,10 @@ This script generates comprehensive metrics for Guardian Connector services base
 - `file_count`: Total number of files in the datalake
 - `data_size_mb`: Total size of all files in the datalake (in MB)
 
-### 6. Windmill
+### 6. Auth0
+- `users`: Total number of users in Auth0
+
+### 7. Windmill
 - `number_of_schedules`: Number of scheduled jobs in Windmill
 
 ## Output Format
@@ -56,6 +59,9 @@ The script returns a nested JSON structure with metrics organized by service:
   "files": {
     "file_count": 5000,
     "data_size_mb": 10000.50
+  },
+  "auth0": {
+    "users": 150
   },
   "windmill": {
     "number_of_schedules": 15
@@ -84,6 +90,13 @@ All parameters are optional. The script will only collect metrics for services w
 - **attachment_root** (string, optional): Path to the datalake root directory (default: `/persistent-storage/datalake`)
   - Used for CoMapeo data size and files metrics
   - Always attempts to collect metrics using the default path
+
+### Auth0 Metrics
+- **auth0_resource** (oauth resource, optional): OAuth resource with tokenized access to Auth0 Management API
+  - If not provided: Auth0 metrics will be skipped
+- **auth0_domain** (string, optional): The Auth0 domain (e.g., `your-tenant.us.auth0.com`)
+  - If not provided: Auth0 metrics will be skipped
+  - Both `auth0_resource` and `auth0_domain` must be provided to collect Auth0 metrics
 
 ### Windmill Metrics
 Windmill metrics are **automatically collected** when the script runs inside a Windmill worker. No parameters needed!
@@ -126,9 +139,11 @@ result = main(db={"host": "localhost", ...})
 # Provide all optional parameters
 result = main(
     comapeo={"server_url": "...", "access_token": "..."},
-    db={"host": "localhost", ...}
+    db={"host": "localhost", ...},
+    auth0_resource={"token": "..."},
+    auth0_domain="your-tenant.us.auth0.com"
 )
-# Returns: {"comapeo": {...}, "warehouse": {...}, "explorer": {...}, "superset": {...}, "files": {...}, "windmill": {...}}
+# Returns: {"comapeo": {...}, "warehouse": {...}, "explorer": {...}, "superset": {...}, "files": {...}, "auth0": {...}, "windmill": {...}}
 ```
 
 ## Windmill Self-Monitoring
@@ -147,10 +162,20 @@ GET {WM_BASE_URL}/api/w/{WM_WORKSPACE}/schedules/list
 
 This allows the script to report on itself and the Windmill instance it's running in, without requiring any manual configuration!
 
-## TODO
+## Auth0 Integration
 
-- [ ] **Auth0 Integration**: Add metrics to count the number of users via Auth0 API
-  - Will require Auth0 API credentials and proper scoping
-  - Should return `users: { total_count: N }`
+The Auth0 metrics feature uses the Auth0 Management API to count users. The API endpoint used is:
+
+```
+GET https://{auth0_domain}/api/v2/users?search_engine=v3&per_page=1&include_totals=true
+```
+
+To use this feature:
+1. Create an Auth0 Machine-to-Machine application with access to the Management API
+2. Grant the `read:users` scope to the application
+3. Set up a Windmill OAuth resource of type `auth0` with the tokenized access
+4. Provide the Auth0 domain parameter (e.g., `your-tenant.us.auth0.com`)
+
+The script retrieves only the total count (not the actual user data) for efficiency.
 
 ## Error Handling

@@ -7,6 +7,7 @@ import testing.postgresql
 
 from f.common_logic.db_operations import conninfo
 from f.metrics.guardianconnector.guardianconnector_metrics import (
+    get_auth0_metrics,
     get_comapeo_metrics,
     get_directory_size,
     get_explorer_metrics,
@@ -229,12 +230,12 @@ def test_get_warehouse_metrics(pg_database):
 
     metrics = get_warehouse_metrics(pg_database)
 
-    assert "total_tables" in metrics
-    assert "total_records" in metrics
+    assert "tables" in metrics
+    assert "records" in metrics
     # Should have 5 tables (test_table_1, test_table_2, view_config, dashboards, slices)
-    assert metrics["total_tables"] == 5
+    assert metrics["tables"] == 5
     # Should have 17 total records (2 + 3 + 3 + 2 + 4 + 3)
-    assert metrics["total_records"] >= 14
+    assert metrics["records"] >= 14
 
 
 def test_get_explorer_metrics(pg_database):
@@ -289,8 +290,8 @@ def test_guardianconnector_full_metrics(comapeo_server_fixture, pg_database, tmp
     assert result["comapeo"]["data_size_mb"] >= 1.0
 
     # Check warehouse metrics
-    assert result["warehouse"]["total_tables"] == 5
-    assert result["warehouse"]["total_records"] >= 14
+    assert result["warehouse"]["tables"] == 5
+    assert result["warehouse"]["records"] >= 14
 
     # Check explorer metrics
     assert result["explorer"]["dataset_views"] == 3
@@ -414,6 +415,46 @@ def test_windmill_metrics_automatic(comapeo_server_fixture, pg_database, tmp_pat
             # Other metrics should also be present
             assert "comapeo" in result
             assert "files" in result
+
+
+def test_get_auth0_metrics():
+    """Test Auth0 metrics collection."""
+    auth0_resource = {"token": "test_auth0_token"}
+    auth0_domain = "your-tenant.us.auth0.com"
+
+    with responses.RequestsMock() as rsps:
+        rsps.add(
+            responses.GET,
+            f"https://{auth0_domain}/api/v2/users",
+            json={
+                "users": [{"user_id": "auth0|123"}],  # Actual users list
+                "total": 150,  # Total count
+            },
+            status=200,
+        )
+
+        metrics = get_auth0_metrics(auth0_resource, auth0_domain)
+
+        assert "users" in metrics
+        assert metrics["users"] == 150
+
+
+def test_auth0_metrics_optional(comapeo_server_fixture, tmp_path):
+    """Test that Auth0 metrics are optional."""
+    # Create test datalake
+    datalake_root = tmp_path / "datalake"
+    comapeo_dir = datalake_root / "comapeo"
+    comapeo_dir.mkdir(parents=True)
+    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
+
+    # Run without Auth0 parameters
+    result = main(comapeo_server_fixture, None, str(datalake_root))
+
+    # Auth0 metrics should not be present
+    assert "auth0" not in result
+    # But other metrics should be present
+    assert "comapeo" in result
+    assert "files" in result
 
 
 def test_no_parameters_provided(tmp_path):
