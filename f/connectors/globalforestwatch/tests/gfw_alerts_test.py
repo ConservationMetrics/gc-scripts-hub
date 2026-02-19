@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest.mock import patch
 
-import psycopg2
+import psycopg
 
 from f.connectors.globalforestwatch.gfw_alerts import (
     main,
@@ -34,7 +34,7 @@ def test_script_e2e(
     # GeoJSON file is saved to disk
     assert (asset_storage / "gfw_alerts" / "gfw_alerts.geojson").exists()
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         # Survey responses from gfw_alerts are written to a SQL Table in expected format
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM gfw_alerts")
@@ -50,7 +50,7 @@ def test_script_e2e(
             assert cursor.fetchone()[0] == "medium"
 
     # Test metadata tables are created and populated
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Check gfw_alerts metadata table (should have ~685 records: Dec 1, 2023 - Oct 15, 2025)
             cursor.execute("SELECT COUNT(*) FROM gfw_alerts__metadata")
@@ -118,7 +118,7 @@ def test_metadata_daily_tracking(
         asset_storage,
     )
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Check that we have metadata records for all days (Dec 1, 2024 - May 15, 2025 = ~165 days)
             # 5 months back from May 15 = Dec 15, start from Dec 1
@@ -242,7 +242,7 @@ def test_max_months_lookback_e2e(
         asset_storage,
     )
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Should have ~107 days (July 1 - Oct 15, 2025)
             # Note: cutoff starts from first day of month

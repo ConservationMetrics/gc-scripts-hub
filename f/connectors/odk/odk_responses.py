@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # requests
 # pyodk~=1.2.1
 

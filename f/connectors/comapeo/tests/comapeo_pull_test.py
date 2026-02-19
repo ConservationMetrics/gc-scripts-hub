@@ -1,6 +1,6 @@
 import json
 
-import psycopg2
+import psycopg
 import requests
 
 from f.connectors.comapeo.comapeo_pull import (
@@ -270,7 +270,7 @@ def test_download_preset_icons(mocked_responses, tmp_path):
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    icon_dir = tmp_path / "icons"
+    project_dir = tmp_path
 
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
@@ -290,7 +290,7 @@ def test_download_preset_icons(mocked_responses, tmp_path):
                 content_type="image/png",
             )
 
-    stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
+    stats, icon_filenames = download_preset_icons(presets[:2], project_dir, session)
 
     assert stats["skipped_icons"] == 0
     assert stats["icon_failed"] == 0
@@ -302,12 +302,13 @@ def test_download_preset_icons(mocked_responses, tmp_path):
     assert icon_filenames[camp_preset_id] == "camp.png"
     assert icon_filenames[water_preset_id] == "water_source.png"
 
-    # Verify icons were downloaded
+    # Verify icons were downloaded to icons subdirectory
+    icon_dir = project_dir / "icons"
     assert (icon_dir / "camp.png").exists()
     assert (icon_dir / "water_source.png").exists()
 
     # Test skipping existing icons
-    stats2, icon_filenames2 = download_preset_icons(presets[:2], icon_dir, session)
+    stats2, icon_filenames2 = download_preset_icons(presets[:2], project_dir, session)
     assert stats2["skipped_icons"] == 2
     assert stats2["icon_failed"] == 0
     # Should still return icon filenames even when skipped
@@ -320,7 +321,7 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    icon_dir = tmp_path / "icons"
+    project_dir = tmp_path
 
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
@@ -335,7 +336,7 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
         if icon_url:
             mocked_responses.get(icon_url, status=404)
 
-    stats, icon_filenames = download_preset_icons(presets[:2], icon_dir, session)
+    stats, icon_filenames = download_preset_icons(presets[:2], project_dir, session)
 
     assert stats["icon_failed"] == 2
     assert stats["skipped_icons"] == 0
@@ -356,8 +357,7 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    project_name = "Forest Expedition"
-    attachment_root = str(tmp_path)
+    project_dir = tmp_path
 
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
@@ -412,7 +412,7 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
     )
 
     observations, stats, failed_observations_info = download_project_observations(
-        server_url, session, project_id, project_name, attachment_root
+        server_url, session, project_id, project_dir
     )
 
     assert len(observations) == 2
@@ -452,14 +452,13 @@ def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
     server_url = "http://comapeo.example.org"
     access_token = "test_token"
     project_id = "forest_expedition"
-    project_name = "Forest Expedition"
-    attachment_root = str(tmp_path)
+    project_dir = tmp_path
 
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Create attachment directory and pre-existing attachment file
-    attachment_dir = tmp_path / "comapeo" / "forest_expedition" / "attachments"
+    attachment_dir = tmp_path / "attachments"
     attachment_dir.mkdir(parents=True)
     (attachment_dir / "attachment1.jpg").write_bytes(b"existing attachment")
 
@@ -481,7 +480,7 @@ def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
     )
 
     observations, stats, failed_observations_info = download_project_observations(
-        server_url, session, project_id, project_name, attachment_root
+        server_url, session, project_id, project_dir
     )
 
     assert len(observations) == 1
@@ -522,30 +521,6 @@ def test_fetch_preset(mocked_responses, tmp_path):
     assert "campsite" in result["terms"]
     assert skipped == 0
     assert failed is False
-
-    # Test preset fetch with icon downloading
-    icon_dir = tmp_path / "icons"
-    existing_icon_stems = set()
-    icon_doc_id = preset_response["data"]["iconRef"]["docId"]
-    icon_body = b"fake icon data" * 10
-    mocked_responses.get(
-        f"{server_url}/projects/{project_id}/icon/{icon_doc_id}",
-        body=icon_body,
-        content_type="image/png",
-        headers={"Content-Length": str(len(icon_body))},
-    )
-
-    preset_data, skipped, failed = fetch_preset(
-        server_url, session, project_id, preset_doc_id, icon_dir, existing_icon_stems
-    )
-
-    assert preset_data is not None
-    assert skipped == 0
-    assert failed is False
-    # Verify icon was downloaded
-    icon_path = icon_dir / "camp.png"
-    assert icon_path.exists()
-    assert icon_path.read_bytes() == icon_body
 
     # Test preset not found (returns None)
     unknown_preset_id = "unknown_preset_id"
@@ -857,7 +832,7 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
         asset_storage / "comapeo" / "forest_expedition" / "icons" / "water_source.png"
     ).exists()
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         # Observations from forest_expedition are written to a SQL Table in expected format
         with conn.cursor() as cursor:
             cursor.execute(

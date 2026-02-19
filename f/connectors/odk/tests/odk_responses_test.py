@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-import psycopg2
+import psycopg
 
 from f.connectors.odk.odk_responses import main, transform_odk_form_data
 
@@ -22,7 +22,7 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
     assert (asset_storage / table_name / "attachments" / "1739327186781.m4a").exists()
 
     # Survey responses are written to a SQL Table
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM odk_responses")
             assert cursor.fetchone()[0] == 3

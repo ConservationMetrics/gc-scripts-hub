@@ -1,4 +1,4 @@
-import psycopg2
+import psycopg
 
 from f.connectors.csv.csv_to_postgres import main
 
@@ -8,7 +8,7 @@ csv_fixture_path = "f/connectors/csv/tests/assets/"
 def test_script_e2e(pg_database):
     main(pg_database, "my_csv_data", "data.csv", csv_fixture_path, False)
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_csv_data")
             assert cursor.fetchone()[0] == 3
@@ -66,7 +66,7 @@ def test_script_with_custom_id_column(pg_database):
         "plot_id",
     )
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_csv_data_custom_id")
             assert cursor.fetchone()[0] == 2

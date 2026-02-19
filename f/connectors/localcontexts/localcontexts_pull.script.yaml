@@ -1,0 +1,35 @@
+summary: 'Local Contexts: Fetch Labels'
+description: Fetch labels from the Local Contexts API
+lock: '!inline f/connectors/localcontexts/localcontexts_pull.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - local_contexts
+    - db
+    - db_table_prefix
+    - attachment_root
+  properties:
+    local_contexts:
+      type: resource
+      description: >-
+        A server URL, API key, and project ID for accessing the Local Contexts API.
+      default: null
+      format: resource-localcontexts
+    db:
+      type: object
+      description: The database connection parameters for storing tabular data.
+      default: null
+      format: resource-postgresql
+    attachment_root:
+      type: string
+      description: A path where the label assets will be stored.
+      default: /persistent-storage/datalake
+      originalType: string
+
+  required:
+    - db
+    - attachment_root
+    - local_contexts

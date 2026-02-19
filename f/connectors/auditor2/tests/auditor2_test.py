@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
-import psycopg2
+import psycopg
 import pytest
 
 from f.connectors.auditor2.auditor2 import main, read_auditor2_csvs
@@ -140,7 +140,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
             attachment_root=asset_storage,
         )
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Basic row count checks for the imported tables
             cursor.execute(f"SELECT COUNT(*) FROM auditor2_{project_name}_deployments")
