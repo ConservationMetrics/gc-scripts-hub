@@ -1,8 +1,11 @@
 from unittest.mock import patch
 
+import psycopg
 import responses
 
+from f.common_logic.db_operations import conninfo
 from f.metrics.guardianconnector.guardianconnector_metrics import (
+    _flatten_metrics,
     get_auth0_metrics,
     get_comapeo_metrics,
     get_directory_size,
@@ -406,3 +409,121 @@ def test_no_parameters_provided(tmp_path):
 
     # Result should not be empty
     assert len(result) == 1
+
+
+def test_flatten_metrics():
+    """Test that metrics are correctly flattened with double underscore separator."""
+    metrics = {
+        "comapeo": {"project_count": 3, "data_size_mb": 100.5},
+        "warehouse": {"tables": 50, "records": 1000000},
+        "files": {"file_count": 5000, "data_size_mb": 10000.0},
+    }
+    date_str = "2026-02-18"
+
+    flattened = _flatten_metrics(metrics, date_str)
+
+    # Check _id and date
+    assert flattened["_id"] == "20260218"
+    assert flattened["date"] == "2026-02-18"
+
+    # Check flattened metrics
+    assert flattened["comapeo__project_count"] == 3
+    assert flattened["comapeo__data_size_mb"] == 100.5
+    assert flattened["warehouse__tables"] == 50
+    assert flattened["warehouse__records"] == 1000000
+    assert flattened["files__file_count"] == 5000
+    assert flattened["files__data_size_mb"] == 10000.0
+
+
+def test_metrics_written_to_database(comapeo_server_fixture, pg_database, tmp_path):
+    """Test that metrics are written to the database table."""
+    # Create test datalake
+    datalake_root = tmp_path / "datalake"
+    comapeo_dir = datalake_root / "comapeo"
+    comapeo_dir.mkdir(parents=True)
+    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
+
+    # Run main with database parameter
+    result = main(
+        comapeo_server_fixture,
+        pg_database,
+        str(datalake_root),
+        guardianconnector_db="test",
+        superset_db="test",
+    )
+
+    # Verify metrics were returned
+    assert "comapeo" in result
+    assert "warehouse" in result
+    assert "files" in result
+
+    # Verify metrics were written to database
+    conn_str = conninfo({**pg_database, "dbname": "test"})
+    with psycopg.connect(conn_str, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            # Check that metrics table exists
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                    AND table_name = 'metrics'
+                )
+            """)
+            assert cursor.fetchone()[0] is True
+
+            # Check that a row was inserted
+            cursor.execute("SELECT COUNT(*) FROM metrics")
+            assert cursor.fetchone()[0] == 1
+
+            # Check the row content
+            cursor.execute(
+                "SELECT _id, date, comapeo__project_count, warehouse__tables, files__file_count FROM metrics"
+            )
+            row = cursor.fetchone()
+            assert row is not None
+            _id, date, comapeo_projects, warehouse_tables, files_count = row
+
+            # Verify _id format (YYYYMMDD)
+            assert len(_id) == 8
+            assert _id.isdigit()
+
+            # Verify date
+            assert date is not None
+
+            # Verify metrics values
+            assert comapeo_projects == 3
+            assert warehouse_tables == 5
+            assert files_count >= 1
+
+
+def test_metrics_update_on_same_day(comapeo_server_fixture, pg_database, tmp_path):
+    """Test that running the script twice on the same day updates the existing row."""
+    # Create test datalake
+    datalake_root = tmp_path / "datalake"
+    comapeo_dir = datalake_root / "comapeo"
+    comapeo_dir.mkdir(parents=True)
+    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
+
+    # Run main twice
+    main(
+        comapeo_server_fixture,
+        pg_database,
+        str(datalake_root),
+        guardianconnector_db="test",
+        superset_db="test",
+    )
+    main(
+        comapeo_server_fixture,
+        pg_database,
+        str(datalake_root),
+        guardianconnector_db="test",
+        superset_db="test",
+    )
+
+    # Verify only one row exists
+    conn_str = conninfo({**pg_database, "dbname": "test"})
+    with psycopg.connect(conn_str, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM metrics")
+            assert cursor.fetchone()[0] == 1

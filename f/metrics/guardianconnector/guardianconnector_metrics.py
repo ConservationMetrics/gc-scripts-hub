@@ -5,13 +5,15 @@
 import logging
 import os
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, TypedDict
 
 import psycopg
 import requests
+from psycopg import sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 
 
 class comapeo_server(TypedDict):
@@ -27,37 +29,75 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_directory_size(directory_path: str) -> Optional[int]:
-    """Get the size of a directory in bytes.
+def main(
+    comapeo: Optional[comapeo_server] = None,
+    db: Optional[postgresql] = None,
+    attachment_root: str = "/persistent-storage/datalake",
+    guardianconnector_db: str = "guardianconnector",
+    superset_db: str = "superset_metastore",
+    auth0_resource: Optional[auth0] = None,
+    auth0_domain: Optional[str] = None,
+):
+    metrics = {}
 
-    Parameters
-    ----------
-    directory_path : str
-        Path to the directory.
+    # Get CoMapeo metrics (requires comapeo parameter)
+    if comapeo:
+        comapeo_metrics = get_comapeo_metrics(comapeo, attachment_root)
+        if comapeo_metrics:
+            metrics["comapeo"] = comapeo_metrics
 
-    Returns
-    -------
-    Optional[int]
-        Size in bytes, or None if the path doesn't exist or access fails.
-    """
-    path = Path(directory_path)
+    # Get warehouse metrics (requires db parameter)
+    if db:
+        warehouse_metrics = get_warehouse_metrics(db)
+        if warehouse_metrics:
+            metrics["warehouse"] = warehouse_metrics
 
-    if not path.exists():
-        logger.warning(f"Directory path does not exist: {directory_path}")
-        return None
+        # Get explorer metrics (requires db parameter)
+        guardianconnector_db_conn = {**db, "dbname": guardianconnector_db}
+        explorer_metrics = get_explorer_metrics(guardianconnector_db_conn)
+        if explorer_metrics:
+            metrics["explorer"] = explorer_metrics
 
-    try:
-        result = subprocess.run(
-            ["du", "-sb", str(path)],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        size_bytes = int(result.stdout.split()[0])
-        return size_bytes
-    except (subprocess.CalledProcessError, ValueError, IndexError, Exception) as e:
-        logger.error(f"Failed to get directory size: {e}")
-        return None
+        # Get Superset metrics (requires db parameter)
+        superset_db_conn = {**db, "dbname": superset_db}
+        superset_metrics = get_superset_metrics(superset_db_conn)
+        if superset_metrics:
+            metrics["superset"] = superset_metrics
+
+    # Get datalake metrics (only requires attachment_root which has a default)
+    datalake_metrics = get_datalake_metrics(attachment_root)
+    if datalake_metrics:
+        metrics["datalake"] = datalake_metrics
+
+    # Get Auth0 metrics (requires both auth0_resource and auth0_domain)
+    if auth0_resource and auth0_domain:
+        auth0_metrics = get_auth0_metrics(auth0_resource, auth0_domain)
+        if auth0_metrics:
+            metrics["auth0"] = auth0_metrics
+
+    # Get Windmill metrics (automatically uses WM_* environment variables)
+    windmill_metrics = get_windmill_metrics()
+    if windmill_metrics:
+        metrics["windmill"] = windmill_metrics
+
+    # Write metrics to database if db parameter provided
+    if db and metrics:
+        try:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+            flattened_metrics = _flatten_metrics(metrics, date_str)
+
+            guardianconnector_db_conn = {**db, "dbname": guardianconnector_db}
+            metrics_writer = StructuredDBWriter(
+                conninfo(guardianconnector_db_conn),
+                "metrics",
+                predefined_schema=_create_metrics_table,
+            )
+            metrics_writer.handle_output([flattened_metrics])
+            logger.info(f"Successfully wrote metrics to database for {date_str}")
+        except Exception as e:
+            logger.error(f"Failed to write metrics to database: {e}")
+
+    return metrics
 
 
 def get_comapeo_metrics(
@@ -251,8 +291,8 @@ def get_superset_metrics(db: postgresql) -> dict:
         return {}
 
 
-def get_files_metrics(datalake_path: str) -> dict:
-    """Get metrics for files in the datalake.
+def get_datalake_metrics(datalake_path: str) -> dict:
+    """Get metrics for the datalake.
 
     Parameters
     ----------
@@ -264,7 +304,7 @@ def get_files_metrics(datalake_path: str) -> dict:
     dict
         A dictionary containing metrics: file_count, data_size_mb.
     """
-    logger.info("Fetching files metrics...")
+    logger.info("Fetching datalake metrics...")
 
     try:
         path = Path(datalake_path)
@@ -292,7 +332,7 @@ def get_files_metrics(datalake_path: str) -> dict:
             "data_size_mb": data_size_mb,
         }
     except Exception as e:
-        logger.error(f"Failed to fetch files metrics: {e}")
+        logger.error(f"Failed to fetch datalake metrics: {e}")
         return {}
 
 
@@ -360,7 +400,6 @@ def get_windmill_metrics() -> dict:
     """
     logger.info("Fetching Windmill metrics using environment variables...")
 
-    # Check if we're running in a Windmill worker
     base_url = os.environ.get("WM_BASE_URL")
     token = os.environ.get("WM_TOKEN")
     workspace = os.environ.get("WM_WORKSPACE")
@@ -393,100 +432,99 @@ def get_windmill_metrics() -> dict:
         return {}
 
 
-def main(
-    comapeo: Optional[comapeo_server] = None,
-    db: Optional[postgresql] = None,
-    attachment_root: str = "/persistent-storage/datalake",
-    guardianconnector_db: str = "guardianconnector",
-    superset_db: str = "superset_metastore",
-    auth0_resource: Optional[auth0] = None,
-    auth0_domain: Optional[str] = None,
-):
-    """Generate Guardian Connector metrics based on provided parameters.
-
-    All parameters are optional. The script will only collect metrics for services where the required parameters are provided.
-
-    Windmill metrics are automatically collected when running inside a Windmill worker (using WM_* environment variables).
+def get_directory_size(directory_path: str) -> Optional[int]:
+    """Get the size of a directory in bytes.
 
     Parameters
     ----------
-    comapeo : comapeo_server, optional
-        Dictionary containing 'server_url' and 'access_token' for the CoMapeo server.
-        If not provided, CoMapeo metrics will be skipped.
-    db : postgresql, optional
-        Database connection parameters (will be used for all database connections with different database names).
-        If not provided, all database metrics (warehouse, Explorer, Superset) will be skipped.
-    attachment_root : str, optional
-        Path to the datalake root directory where data is stored.
-        Defaults to "/persistent-storage/datalake".
-    guardianconnector_db : str, optional
-        Database name for Explorer metrics. Uses 'db' connection parameters with this database name.
-        Defaults to "guardianconnector".
-    superset_db : str, optional
-        Database name for Superset metrics. Uses 'db' connection parameters with this database name.
-        Defaults to "superset_metastore".
-    auth0_resource : auth0, optional
-        OAuth resource with tokenized access to Auth0 Management API.
-        If not provided, Auth0 metrics will be skipped.
-    auth0_domain : str, optional
-        The Auth0 domain (e.g., "your-tenant.us.auth0.com").
-        Required if auth0_resource is provided.
+    directory_path : str
+        Path to the directory.
+
+    Returns
+    -------
+    Optional[int]
+        Size in bytes, or None if the path doesn't exist or access fails.
+    """
+    path = Path(directory_path)
+
+    if not path.exists():
+        logger.warning(f"Directory path does not exist: {directory_path}")
+        return None
+
+    try:
+        result = subprocess.run(
+            ["du", "-sb", str(path)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        size_bytes = int(result.stdout.split()[0])
+        return size_bytes
+    except (subprocess.CalledProcessError, ValueError, IndexError, Exception) as e:
+        logger.error(f"Failed to get directory size: {e}")
+        return None
+
+
+def _flatten_metrics(metrics: dict, date_str: str) -> dict:
+    """Flatten nested metrics dictionary with double underscore separator.
+
+    Parameters
+    ----------
+    metrics : dict
+        Nested dictionary of metrics by service.
+    date_str : str
+        Date string in YYYY-MM-DD format.
 
     Returns
     -------
     dict
-        A dictionary with service metrics nested under service names.
-        Only includes metrics for services where required parameters were provided.
-        Example: {
-            "comapeo": {"project_count": 3, "data_size_mb": 100.5},
-            "warehouse": {"tables": 50, "records": 1000000},
-            "explorer": {"dataset_views": 11},
-            "superset": {"dashboards": 5, "charts": 25},
-            "files": {"file_count": 5000, "data_size_mb": 10000},
-            "auth0": {"users": 150},
-            "windmill": {"number_of_schedules": 15}
-        }
+        Flattened dictionary with keys like 'files__file_count', '_id', and 'date'.
     """
-    metrics = {}
+    flattened = {
+        "_id": date_str.replace("-", ""),  # YYYYMMDD format
+        "date": date_str,
+    }
 
-    # Get CoMapeo metrics (requires comapeo parameter)
-    if comapeo:
-        comapeo_metrics = get_comapeo_metrics(comapeo, attachment_root)
-        if comapeo_metrics:
-            metrics["comapeo"] = comapeo_metrics
+    for service, service_metrics in metrics.items():
+        for metric_name, metric_value in service_metrics.items():
+            flattened[f"{service}__{metric_name}"] = metric_value
 
-    # Get warehouse metrics (requires db parameter)
-    if db:
-        warehouse_metrics = get_warehouse_metrics(db)
-        if warehouse_metrics:
-            metrics["warehouse"] = warehouse_metrics
+    return flattened
 
-        # Get explorer metrics (requires db parameter)
-        guardianconnector_db_conn = {**db, "dbname": guardianconnector_db}
-        explorer_metrics = get_explorer_metrics(guardianconnector_db_conn)
-        if explorer_metrics:
-            metrics["explorer"] = explorer_metrics
 
-        # Get Superset metrics (requires db parameter)
-        superset_db_conn = {**db, "dbname": superset_db}
-        superset_metrics = get_superset_metrics(superset_db_conn)
-        if superset_metrics:
-            metrics["superset"] = superset_metrics
+def _create_metrics_table(cursor, table_name: str):
+    """Create the metrics table if it doesn't exist.
 
-    # Get files metrics (only requires attachment_root which has a default)
-    files_metrics = get_files_metrics(attachment_root)
-    if files_metrics:
-        metrics["files"] = files_metrics
-
-    # Get Auth0 metrics (requires both auth0_resource and auth0_domain)
-    if auth0_resource and auth0_domain:
-        auth0_metrics = get_auth0_metrics(auth0_resource, auth0_domain)
-        if auth0_metrics:
-            metrics["auth0"] = auth0_metrics
-
-    # Get Windmill metrics (automatically uses WM_* environment variables)
-    windmill_metrics = get_windmill_metrics()
-    if windmill_metrics:
-        metrics["windmill"] = windmill_metrics
-
-    return metrics
+    Parameters
+    ----------
+    cursor : psycopg.Cursor
+        Database cursor.
+    table_name : str
+        Name of the table to create.
+    """
+    cursor.execute(
+        sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {table} (
+            _id text PRIMARY KEY,
+            date date NOT NULL,
+            -- CoMapeo metrics
+            comapeo__project_count integer,
+            comapeo__data_size_mb numeric,
+            -- Warehouse metrics
+            warehouse__tables integer,
+            warehouse__records integer,
+            -- Explorer metrics
+            explorer__dataset_views integer,
+            -- Superset metrics
+            superset__dashboards integer,
+            superset__charts integer,
+            -- Datalake metrics
+            datalake__file_count integer,
+            datalake__data_size_mb numeric,
+            -- Auth0 metrics
+            auth0__users integer,
+            -- Windmill metrics
+            windmill__number_of_schedules integer
+        );
+    """).format(table=sql.Identifier(table_name))
+    )
