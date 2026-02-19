@@ -23,15 +23,15 @@ postgresql = dict
 def _normalize_value_for_comparison(value):
     """
     Normalize a value for comparison between new data and existing database rows.
-    
+
     Treats empty strings as None (NULL) to match how StructuredDBWriter stores values.
     Converts all non-None, non-empty values to strings for consistent comparison.
-    
+
     Parameters
     ----------
     value : any
         The value to normalize.
-    
+
     Returns
     -------
     str or None
@@ -132,11 +132,11 @@ def summarize_new_rows_updates_and_columns(
 ):
     """
     Compare uploaded dataset against existing table to determine impact.
-    
+
     IMPORTANT: This function must stay in sync with StructuredDBWriter behavior.
     When calling this function, pass the same str_replace and reverse_properties_separated_by
     parameters that you intend to use when creating the StructuredDBWriter instance.
-    
+
     Value comparison uses _normalize_value_for_comparison() to match how StructuredDBWriter
     stores values (empty strings treated as NULL).
 
@@ -171,150 +171,147 @@ def summarize_new_rows_updates_and_columns(
     if not new_data:
         return 0, 0, 0
 
-    conn = connect(conninfo(db))
-    cursor = conn.cursor()
-
-    try:
-        # Get existing columns in the table
-        cursor.execute(
-            """
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = %s AND table_schema = 'public'
-            """,
-            (table_name,),
-        )
-        existing_columns = {row[0] for row in cursor.fetchall()}
-        logger.info(f"Existing table has {len(existing_columns)} columns")
-
-        # Get all column names from new data
-        # IMPORTANT: Preserve the order of columns as they appear in the first row
-        # because sanitize_sql_message assigns collision suffixes based on iteration order
-        new_data_columns_raw = []
-        seen = set()
-        for row in new_data:
-            for col in row.keys():
-                if col not in seen:
-                    new_data_columns_raw.append(col)
-                    seen.add(col)
-        logger.info(f"New data has {len(new_data_columns_raw)} columns (raw)")
-
-        # Normalize new data column names using sanitize_sql_message to match
-        # how StructuredDBWriter actually creates columns (with collision handling)
-        # Create a dummy row with all columns to get the normalized column names
-        # Use the first actual row to preserve the original key order
-        dummy_row = new_data[0].copy() if new_data else {}
-        # Add any missing columns from other rows (preserve order)
-        for col in new_data_columns_raw:
-            if col not in dummy_row:
-                dummy_row[col] = None
-
-        sanitized, column_mapping = sanitize_sql_message(
-            dummy_row,
-            column_renames={},  # Start with empty mappings
-            reverse_properties_separated_by=reverse_properties_separated_by,
-            str_replace=str_replace,
-            maxlen=63,
-        )
-
-        # Extract just the normalized column names (values from column_mapping)
-        new_data_columns_normalized = set(column_mapping.values())
-
-        logger.info(
-            f"New data has {len(new_data_columns_normalized)} columns (normalized)"
-        )
-
-        # Calculate new columns using normalized names
-        new_columns_set = new_data_columns_normalized - existing_columns
-        new_columns = len(new_columns_set)
-
-        if new_columns > 0:
-            logger.info(f"Detected {new_columns} new columns")
-        else:
-            logger.info("No new columns detected")
-
-        # Get existing primary keys and their data
-        # Normalize primary key name to match database
-        normalized_primary_key = normalize_identifier(primary_key)
-
-        if normalized_primary_key in existing_columns:
-            # Fetch only the columns that exist in both datasets for comparison
-            common_columns = existing_columns & new_data_columns_normalized
-            if not common_columns:
-                # No common columns - all rows are new
-                return len(new_data), 0, new_columns
-
-            # Build query to fetch existing data
-            column_list = sql.SQL(", ").join(map(sql.Identifier, common_columns))
-            query = sql.SQL("SELECT {columns} FROM {table}").format(
-                columns=column_list, table=sql.Identifier(table_name)
+    with connect(autocommit=True, dsn=conninfo(db)) as conn:
+        with conn.cursor() as cursor:
+            # Get existing columns in the table
+            cursor.execute(
+                """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s AND table_schema = 'public'
+                """,
+                (table_name,),
             )
-            cursor.execute(query)
+            existing_columns = {row[0] for row in cursor.fetchall()}
+            logger.info(f"Existing table has {len(existing_columns)} columns")
 
-            # Use the column_mapping we created earlier (from sanitize_sql_message)
-            # This already has the correct raw -> normalized mappings with collision handling
-            raw_to_normalized = column_mapping
+            # Get all column names from new data
+            # IMPORTANT: Preserve the order of columns as they appear in the first row
+            # because sanitize_sql_message assigns collision suffixes based on iteration order
+            new_data_columns_raw = []
+            seen = set()
+            for row in new_data:
+                for col in row.keys():
+                    if col not in seen:
+                        new_data_columns_raw.append(col)
+                        seen.add(col)
+            logger.info(f"New data has {len(new_data_columns_raw)} columns (raw)")
 
-            # Create reverse mapping (normalized to raw) for looking up values in new_data
-            normalized_to_raw = {v: k for k, v in raw_to_normalized.items()}
+            # Normalize new data column names using sanitize_sql_message to match
+            # how StructuredDBWriter actually creates columns (with collision handling)
+            # Create a dummy row with all columns to get the normalized column names
+            # Use the first actual row to preserve the original key order
+            dummy_row = new_data[0].copy() if new_data else {}
+            # Add any missing columns from other rows (preserve order)
+            for col in new_data_columns_raw:
+                if col not in dummy_row:
+                    dummy_row[col] = None
 
-            # Create lookup of existing rows by primary key
-            existing_rows = {}
-            for row in cursor.fetchall():
-                row_dict = dict(zip(common_columns, row))
-                if normalized_primary_key in row_dict:
-                    # Normalize values for comparison using shared logic
-                    normalized = {
-                        k: _normalize_value_for_comparison(v)
-                        for k, v in row_dict.items()
-                    }
-                    existing_rows[str(row_dict[normalized_primary_key])] = normalized
+            sanitized, column_mapping = sanitize_sql_message(
+                dummy_row,
+                column_renames={},  # Start with empty mappings
+                reverse_properties_separated_by=reverse_properties_separated_by,
+                str_replace=str_replace,
+                maxlen=63,
+            )
 
-            # Compare new data against existing
-            new_rows_count = 0
-            updates_count = 0
+            # Extract just the normalized column names (values from column_mapping)
+            new_data_columns_normalized = set(column_mapping.values())
 
-            for new_row in new_data:
-                # Get primary key value using raw column name
-                pk_value = str(new_row.get(primary_key))
+            logger.info(
+                f"New data has {len(new_data_columns_normalized)} columns (normalized)"
+            )
 
-                if pk_value not in existing_rows:
-                    # This is a new row
-                    new_rows_count += 1
-                else:
-                    # Check if any values differ in common columns
-                    existing_row = existing_rows[pk_value]
-                    has_changes = False
+            # Calculate new columns using normalized names
+            new_columns_set = new_data_columns_normalized - existing_columns
+            new_columns = len(new_columns_set)
 
-                    for normalized_col in common_columns:
-                        # Map normalized column back to raw column name to get value from new_data
-                        raw_col = normalized_to_raw.get(normalized_col, normalized_col)
-                        new_val = new_row.get(raw_col)
-                        existing_val = existing_row.get(normalized_col)
+            if new_columns > 0:
+                logger.info(f"Detected {new_columns} new columns")
+            else:
+                logger.info("No new columns detected")
 
-                        # Normalize for comparison using shared logic
-                        new_val_norm = _normalize_value_for_comparison(new_val)
-                        existing_val_norm = _normalize_value_for_comparison(existing_val)
+            # Get existing primary keys and their data
+            # Normalize primary key name to match database
+            normalized_primary_key = normalize_identifier(primary_key)
 
-                        if new_val_norm != existing_val_norm:
-                            has_changes = True
-                            break
+            if normalized_primary_key in existing_columns:
+                # Fetch only the columns that exist in both datasets for comparison
+                common_columns = existing_columns & new_data_columns_normalized
+                if not common_columns:
+                    # No common columns - all rows are new
+                    return len(new_data), 0, new_columns
 
-                    if has_changes:
-                        updates_count += 1
+                # Build query to fetch existing data
+                column_list = sql.SQL(", ").join(map(sql.Identifier, common_columns))
+                query = sql.SQL("SELECT {columns} FROM {table}").format(
+                    columns=column_list, table=sql.Identifier(table_name)
+                )
+                cursor.execute(query)
 
-            return new_rows_count, updates_count, new_columns
+                # Use the column_mapping we created earlier (from sanitize_sql_message)
+                # This already has the correct raw -> normalized mappings with collision handling
+                raw_to_normalized = column_mapping
 
-        else:
-            # Primary key doesn't exist in table - all rows are new
-            return len(new_data), 0, new_columns
+                # Create reverse mapping (normalized to raw) for looking up values in new_data
+                normalized_to_raw = {v: k for k, v in raw_to_normalized.items()}
 
-    except Exception as e:
-        logger.error(f"Error summarizing data changes: {e}")
-        raise
-    finally:
-        cursor.close()
-        conn.close()
+                # Create lookup of existing rows by primary key
+                existing_rows = {}
+                for row in cursor.fetchall():
+                    row_dict = dict(zip(common_columns, row))
+                    if normalized_primary_key in row_dict:
+                        # Normalize values for comparison using shared logic
+                        normalized = {
+                            k: _normalize_value_for_comparison(v)
+                            for k, v in row_dict.items()
+                        }
+                        existing_rows[str(row_dict[normalized_primary_key])] = (
+                            normalized
+                        )
+
+                # Compare new data against existing
+                new_rows_count = 0
+                updates_count = 0
+
+                for new_row in new_data:
+                    # Get primary key value using raw column name
+                    pk_value = str(new_row.get(primary_key))
+
+                    if pk_value not in existing_rows:
+                        # This is a new row
+                        new_rows_count += 1
+                    else:
+                        # Check if any values differ in common columns
+                        existing_row = existing_rows[pk_value]
+                        has_changes = False
+
+                        for normalized_col in common_columns:
+                            # Map normalized column back to raw column name to get value from new_data
+                            raw_col = normalized_to_raw.get(
+                                normalized_col, normalized_col
+                            )
+                            new_val = new_row.get(raw_col)
+                            existing_val = existing_row.get(normalized_col)
+
+                            # Normalize for comparison using shared logic
+                            new_val_norm = _normalize_value_for_comparison(new_val)
+                            existing_val_norm = _normalize_value_for_comparison(
+                                existing_val
+                            )
+
+                            if new_val_norm != existing_val_norm:
+                                has_changes = True
+                                break
+
+                        if has_changes:
+                            updates_count += 1
+
+                return new_rows_count, updates_count, new_columns
+
+            else:
+                # Primary key doesn't exist in table - all rows are new
+                return len(new_data), 0, new_columns
 
 
 class StructuredDBWriter:
