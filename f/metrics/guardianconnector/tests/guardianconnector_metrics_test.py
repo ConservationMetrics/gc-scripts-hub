@@ -30,7 +30,7 @@ def test_get_directory_size(tmp_path):
     size = get_directory_size(str(test_dir))
 
     assert size is not None
-    assert size > 3000  # At least the size of our files
+    assert size >= 3000  # At least the size of our files
 
 
 def test_get_directory_size_nonexistent():
