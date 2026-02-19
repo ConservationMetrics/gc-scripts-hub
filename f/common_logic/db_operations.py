@@ -450,8 +450,5 @@ class StructuredDBWriter:
             logger.info(f"Total rows inserted: {inserted_count}")
             logger.info(f"Total rows updated: {updated_count}")
 
-            # cursor.close()
-            # conn.close()
-
         # Return True if there were new inserts
         return inserted_count > 0
