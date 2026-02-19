@@ -2,9 +2,13 @@
 
 This script generates metrics for Guardian Connector services based on provided parameters, and optionally writes them to the `metrics` table in the `guardianconnector` database, with the date recorded as the table's `date` column and its unique identifier (YYYYMMDD format) as the table's `_id` column.
 
-**All parameters are optional**: the script will only collect metrics for services where the required parameters are provided. This allows flexible monitoring of only the services you need.
+## Notes
 
-**This script will create the `guardianconnector` database if it doesn't exist.** This is done in case the database is not already created by another resource on the stack, like GuardianConnector Explorer.
+- All parameters are optional: the script will only collect metrics for services where the required parameters are provided. This allows flexible monitoring of only the services you need.
+
+- This script will create the `guardianconnector` database if it doesn't exist. This is done in case the database is not already created by another resource on the stack, like GuardianConnector Explorer.
+
+- The intended usage of this script is to be scheduled to run once a month, so it can be used to monitor and collect metrics data about usage over time.
 
 ## Metrics Collected
 
