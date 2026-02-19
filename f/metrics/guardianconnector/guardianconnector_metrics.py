@@ -1,6 +1,6 @@
 # requirements:
 # requests~=2.32
-# psycopg
+# psycopg[binary]
 
 import logging
 import os
