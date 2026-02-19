@@ -609,8 +609,10 @@ def _create_metrics_table(cursor, table_name: str):
             datalake__data_size_mb numeric,
             -- Auth0 metrics
             auth0__users integer,
+            auth0__users_signed_in_past_30_days integer,
+            auth0__logins integer,
             -- Windmill metrics
-            windmill__number_of_schedules integer
+            windmill__schedules integer
         );
     """).format(table=sql.Identifier(table_name))
     )
