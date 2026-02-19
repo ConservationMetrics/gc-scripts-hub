@@ -25,7 +25,7 @@ def test_script_e2e_points(pg_database, tmp_path, file_format):
         asset_storage,
     )
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # There are two rows
             cursor.execute("SELECT COUNT(*) FROM my_locusmap_points")
@@ -87,7 +87,7 @@ def test_script_e2e_points_archive(
         asset_storage,
     )
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_locusmap_points")
             assert cursor.fetchone()[0] == 2

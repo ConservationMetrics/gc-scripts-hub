@@ -63,7 +63,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
             attachment_root=asset_storage,
         )
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_timelapse_project_data")
             assert cursor.fetchone()[0] == 4

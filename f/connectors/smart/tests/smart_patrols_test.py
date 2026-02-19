@@ -161,7 +161,7 @@ def test_script_e2e(pg_database, tmp_path):
     assert saved_geojson.exists()
 
     # Verify database table was created and populated
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Check that table exists and has correct number of rows
             cursor.execute("SELECT COUNT(*) FROM smart_patrol_test")

@@ -38,7 +38,7 @@ def main(
 
     try:
         with (
-            connect(conn_str) as conn,
+            connect(conn_str, autocommit=True) as conn,
             conn.cursor() as cur,
             out_path.open("w", encoding="utf-8") as f,
         ):

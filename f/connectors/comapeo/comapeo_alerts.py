@@ -76,14 +76,12 @@ def get_alerts_from_db(db_connection_string, db_table_name: str):
     """
     logger.info("Fetching alerts from database...")
 
-    conn = psycopg.connect(db_connection_string)
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {db_table_name}")
-    alerts = [
-        dict(zip([col.name for col in cur.description], row)) for row in cur.fetchall()
-    ]
-    cur.close()
-    conn.close()
+    with psycopg.connect(db_connection_string, autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT * FROM {db_table_name}")
+            alerts = [
+                dict(zip([col.name for col in cur.description], row)) for row in cur.fetchall()
+            ]
 
     logger.info(f"{len(alerts)} alerts found in database.")
 

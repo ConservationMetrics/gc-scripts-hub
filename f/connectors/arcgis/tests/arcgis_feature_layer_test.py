@@ -21,7 +21,7 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
         asset_storage / "my_arcgis_data" / "attachments" / "springfield_photo.png"
     ).exists()
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         # Survey responses from arcgis_feature_layer are written to a SQL Table in expected format
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_arcgis_data")

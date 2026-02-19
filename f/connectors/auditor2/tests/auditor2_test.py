@@ -140,7 +140,7 @@ def test_script_e2e(pg_database, tmp_path, auditor2_zip_with_media):
             attachment_root=asset_storage,
         )
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Basic row count checks for the imported tables
             cursor.execute(f"SELECT COUNT(*) FROM auditor2_{project_name}_deployments")

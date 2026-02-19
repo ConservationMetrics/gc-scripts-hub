@@ -33,7 +33,7 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     )
 
     # Survey responses are written to a SQL Table
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             assert cursor.fetchone()[0] == 3
@@ -58,7 +58,7 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
             assert cursor.fetchone()[0] == 1
 
     # Form labels are written to a SQL Table
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # (4 survey + 4 choices) × 3 languages = 24 rows
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
@@ -146,7 +146,7 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
         asset_storage,
     )
 
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Confirm that for the labels table, there is only a labels column, no language suffix
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
@@ -190,7 +190,7 @@ def test_pagination(koboserver_with_pagination, pg_database, tmp_path):
     )
 
     # Verify all submissions were fetched and stored
-    with psycopg.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
             # All 3 submissions from fixture should be present
