@@ -9,40 +9,35 @@ from f.export.download_all_data.download_all_postgres_data import main
 
 
 def test_download_all_data(pg_database):
-    conn = psycopg.connect(**pg_database)
-    cur = conn.cursor()
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE apples (id SERIAL PRIMARY KEY, name TEXT)")
+            cur.execute("INSERT INTO apples (name) VALUES ('fuji'), ('gala'), ('granny smith')")
 
-    cur.execute("CREATE TABLE apples (id SERIAL PRIMARY KEY, name TEXT)")
-    cur.execute("INSERT INTO apples (name) VALUES ('fuji'), ('gala'), ('granny smith')")
+            cur.execute("CREATE TABLE bananas (id SERIAL PRIMARY KEY, ripeness TEXT)")
+            cur.execute(
+                "INSERT INTO bananas (ripeness) VALUES ('green'), ('yellow'), ('brown'), ('overripe')"
+            )
 
-    cur.execute("CREATE TABLE bananas (id SERIAL PRIMARY KEY, ripeness TEXT)")
-    cur.execute(
-        "INSERT INTO bananas (ripeness) VALUES ('green'), ('yellow'), ('brown'), ('overripe')"
-    )
+            cur.execute("""
+                CREATE TABLE oranges (
+                    id SERIAL PRIMARY KEY,
+                    color TEXT,
+                    variety TEXT,
+                    weight DECIMAL,
+                    ripe BOOLEAN,
+                    harvested_at TIMESTAMP
+                )
+            """)
 
-    cur.execute("""
-        CREATE TABLE oranges (
-            id SERIAL PRIMARY KEY,
-            color TEXT,
-            variety TEXT,
-            weight DECIMAL,
-            ripe BOOLEAN,
-            harvested_at TIMESTAMP
-        )
-    """)
-
-    cur.execute("""
-        INSERT INTO oranges (color, variety, weight, ripe, harvested_at)
-        VALUES 
-            ('orange', 'valencia', 0.28, TRUE, '2024-11-01 08:30:00'),
-            ('green', 'navel', 0.35, FALSE, NULL),
-            ('orange', 'blood', 0.30, TRUE, '2024-10-15 14:00:00'),
-            ('yellow', 'cara cara', 0.32, TRUE, '2024-09-10 07:45:00')
-    """)
-
-    conn.commit()
-    cur.close()
-    conn.close()
+            cur.execute("""
+                INSERT INTO oranges (color, variety, weight, ripe, harvested_at)
+                VALUES 
+                    ('orange', 'valencia', 0.28, TRUE, '2024-11-01 08:30:00'),
+                    ('green', 'navel', 0.35, FALSE, NULL),
+                    ('orange', 'blood', 0.30, TRUE, '2024-10-15 14:00:00'),
+                    ('yellow', 'cara cara', 0.32, TRUE, '2024-09-10 07:45:00')
+            """)
 
     db = postgresql(pg_database)
     output_path = Path("/tmp/test-csv-exports")

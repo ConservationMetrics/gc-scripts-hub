@@ -29,34 +29,31 @@ def check_if_table_exists(
     db_connection_string: str, table_name: str, schema: str = "public"
 ):
     """Check if a table exists in the database, returns a boolean. Default schema is public."""
-    conn = connect(db_connection_string)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = %s AND table_name = %s
-        )
-        """,
-        (schema, table_name),
-    )
-    return cursor.fetchone()[0]
+    with connect(db_connection_string, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = %s AND table_name = %s
+                )
+                """,
+                (schema, table_name),
+            )
+            return cursor.fetchone()[0]
 
 
 def fetch_tables_from_postgres(db_connection_string: str):
     """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
     try:
-        conn = connect(db_connection_string)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = 'public'
-        """)
-        tables = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return tables
+        with connect(db_connection_string, autocommit=True) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT table_name FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                """)
+                return [row[0] for row in cursor.fetchall()]
     except Exception as e:
         logger.error(f"Error fetching tables: {e}")
         return []
@@ -77,21 +74,18 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     """
 
     try:
-        conn = connect(db_connection_string)
-        cursor = conn.cursor()
-        cursor.execute(
-            sql.SQL("SELECT * FROM {table_name}").format(
-                table_name=sql.Identifier(table_name)
-            )
-        )
-        columns = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
+        with connect(db_connection_string, autocommit=True) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    sql.SQL("SELECT * FROM {table_name}").format(
+                        table_name=sql.Identifier(table_name)
+                    )
+                )
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
     except Error as e:
         logger.error(f"Error fetching data from {table_name}: {e}")
         raise
-    finally:
-        cursor.close()
-        conn.close()
 
     logger.info(f"Data fetched from {table_name}")
     return columns, rows
@@ -165,37 +159,30 @@ class StructuredDBWriter:
         """
         Establishes a connection to the PostgreSQL database using the class's configured connection string.
         """
-        return connect(self.db_connection_string)
+        return connect(self.db_connection_string, autocommit=True)
 
     def _inspect_schema(self, table_name):
         """Fetches the column names of the given table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-            (table_name,),
-        )
-        columns = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return columns
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                    (table_name,),
+                )
+                return [row[0] for row in cursor.fetchall()]
 
     def _get_existing_mappings(self, table_name):
         """Fetches the current column names of the given form table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
-
-        columns_dict = {row[0]: row[1] for row in cursor.fetchall()}
-        cursor.close()
-        conn.close()
-        return columns_dict
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
+                return {row[0]: row[1] for row in cursor.fetchall()}
 
     def _create_missing_mappings(self, table_name, missing_columns):
         """Generates and executes SQL statements to add missing mappings to the table.
-        
+
         Each column mapping is created in its own transaction;
-        if this fails for some column (e.g. already exist or other error), that will not affect the other columns' mappings.
+        if this fails for some column (e.g. already exists or other error), that will not affect the other columns' mappings.
         """
         with self._get_conn() as conn:
             with conn.cursor() as cursor:
@@ -206,44 +193,36 @@ class StructuredDBWriter:
                         VALUES ('{original_column}', '{sql_column}');
                         """
                         cursor.execute(query)
-                        conn.commit()
                     except errors.UniqueViolation:
                         logger.info(
                             f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
                         )
-                        conn.rollback()
                         continue
                     except Exception as e:
                         logger.error(
                             f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
                         )
-                        conn.rollback()
                         raise
 
     def _get_existing_cols(self, table_name, columns_table_name):
         """Fetches the column names of the given table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-
-        query = sql.SQL("""
-        CREATE TABLE IF NOT EXISTS {columns_table_name} (
-        original_column VARCHAR(128) NULL,
-        sql_column VARCHAR(64) NOT NULL);
-        """).format(columns_table_name=sql.Identifier(columns_table_name))
-        cursor.execute(query)
-        conn.commit()
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-            (table_name,),
-        )
-        columns = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return columns
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {columns_table_name} (
+                original_column VARCHAR(128) NULL,
+                sql_column VARCHAR(64) NOT NULL);
+                """).format(columns_table_name=sql.Identifier(columns_table_name))
+                cursor.execute(query)
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                    (table_name,),
+                )
+                return [row[0] for row in cursor.fetchall()]
 
     def _create_missing_fields(self, table_name, missing_columns):
         """Generates and executes SQL statements to add missing fields to the table.
-        
+
         Each column is created in its own transaction;
         if this fails for some column (e.g. already exists or other error), that will not affect the other columns being created.
         """
@@ -254,7 +233,6 @@ class StructuredDBWriter:
                     "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
                 ).format(table_name=table_name)
                 cursor.execute(query)
-                conn.commit()
 
                 for sanitized_column in missing_columns:
                     if sanitized_column == "_id":
@@ -267,18 +245,15 @@ class StructuredDBWriter:
                             colname=sql.Identifier(sanitized_column),
                         )
                         cursor.execute(query)
-                        conn.commit()
                     except errors.DuplicateColumn:
                         logger.debug(
                             f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
                         )
-                        conn.rollback()
                         continue
                     except Exception as e:
                         logger.error(
                             f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
                         )
-                        conn.rollback()
                         raise
 
     @staticmethod
@@ -419,7 +394,6 @@ class StructuredDBWriter:
             # Use predefined schema if provided, else mutate schema dynamically
             if self.predefined_schema:
                 self.predefined_schema(cursor, table_name)
-                conn.commit()
             elif missing_field_keys:
                 logger.info(
                     f"New incoming field keys missing from db: {len(missing_field_keys)}"
@@ -447,13 +421,6 @@ class StructuredDBWriter:
 
                 except Exception as e:
                     logger.error(f"Error inserting data: {e}, {type(e).__name__}")
-                    conn.rollback()
-
-                try:
-                    conn.commit()
-                except Exception as e:
-                    logger.error(f"Error committing transaction: {e}")
-                    conn.rollback()
 
             logger.info(f"Total rows inserted: {inserted_count}")
             logger.info(f"Total rows updated: {updated_count}")
