@@ -33,40 +33,35 @@ def fake_alerts_table(pg_database):
         ),
     ]
 
-    conn = psycopg.connect(autocommit=True, **pg_database)
-    cur = conn.cursor()
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE fake_alerts (
+                    alert_id TEXT PRIMARY KEY,
+                    alert_type TEXT,
+                    g__type TEXT,
+                    g__coordinates TEXT,
+                    date_start_t0 TEXT,
+                    date_end_t0 TEXT
+                )
+            """)
 
-    try:
-        cur.execute("""
-            CREATE TABLE fake_alerts (
-                alert_id TEXT PRIMARY KEY,
-                alert_type TEXT,
-                g__type TEXT,
-                g__coordinates TEXT,
-                date_start_t0 TEXT,
-                date_end_t0 TEXT
+            values = [
+                (
+                    a.alert_id,
+                    a.alert_type,
+                    a.g__type,
+                    a.g__coordinates,
+                    a.date_start_t0,
+                    a.date_end_t0,
+                )
+                for a in alerts
+            ]
+            cur.executemany(
+                "INSERT INTO fake_alerts VALUES (%s, %s, %s, %s, %s, %s)", values
             )
-        """)
 
-        values = [
-            (
-                a.alert_id,
-                a.alert_type,
-                a.g__type,
-                a.g__coordinates,
-                a.date_start_t0,
-                a.date_end_t0,
-            )
-            for a in alerts
-        ]
-        cur.executemany(
-            "INSERT INTO fake_alerts VALUES (%s, %s, %s, %s, %s, %s)", values
-        )
-
-        yield alerts
-    finally:
-        cur.close()
-        conn.close()
+    yield alerts
 
 
 def test_script_e2e(comapeoserver_alerts, pg_database, fake_alerts_table):
