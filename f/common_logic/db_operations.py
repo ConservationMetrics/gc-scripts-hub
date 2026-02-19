@@ -238,7 +238,11 @@ class StructuredDBWriter:
         return columns
 
     def _create_missing_fields(self, table_name, missing_columns):
-        """Generates and executes SQL statements to add missing fields to the table."""
+        """Generates and executes SQL statements to add missing fields to the table.
+        
+        Each column is created in its own transaction;
+        if this fails for some column (e.g. already exists or other error), that will not affect the other columns being created.
+        """
         table_name = sql.Identifier(table_name)
         with self._get_conn() as conn:
             with conn.cursor() as cursor:
