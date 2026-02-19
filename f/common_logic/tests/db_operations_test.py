@@ -324,7 +324,17 @@ def test_summarize_empty_new_data(mock_db_dict):
 
 
 def test_summarize_partial_columns_in_new_data(mock_db_dict):
-    """Test when new data has fewer columns than existing table"""
+    """Test when new data has fewer columns than existing table
+
+    This happens frequently in practice: someone uploads a shapefile, then later
+    decides to delete a column that has all null values (e.g., a field that had
+    values but those features were deleted). They should still be able to append
+    new rows to the dataset without existing rows counting as "updates" just
+    because we're not providing values for columns that no longer exist in the
+    source data.
+
+    We only compare columns that exist in both the new data and the existing table.
+    """
     writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
 
     # Create existing data with more columns
@@ -334,7 +344,7 @@ def test_summarize_partial_columns_in_new_data(mock_db_dict):
     ]
     writer.handle_output(existing_data)
 
-    # New data with fewer columns
+    # New data with fewer columns (age and city removed from source)
     new_data = [
         {"_id": "1", "name": "Alice"},  # Missing age and city
         {"_id": "3", "name": "Charlie"},  # New row with partial data
@@ -346,6 +356,7 @@ def test_summarize_partial_columns_in_new_data(mock_db_dict):
 
     assert new_rows == 1  # ID 3
     # ID 1 should not be counted as update since we only compare common columns
+    # (the missing columns age/city are ignored in the comparison)
     assert updates == 0
     assert new_columns == 0
 
