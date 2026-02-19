@@ -1,11 +1,7 @@
 from unittest.mock import patch
 
-import psycopg2
-import pytest
 import responses
-import testing.postgresql
 
-from f.common_logic.db_operations import conninfo
 from f.metrics.guardianconnector.guardianconnector_metrics import (
     get_auth0_metrics,
     get_comapeo_metrics,
@@ -152,77 +148,6 @@ def test_get_directory_size_subprocess_error(mock_run, tmp_path):
     size = get_directory_size(str(test_dir))
 
     assert size is None
-
-
-@pytest.fixture
-def pg_database():
-    """Create a temporary PostgreSQL database for testing."""
-    db = testing.postgresql.Postgresql(port=7654)
-    dsn = db.dsn()
-    dsn["dbname"] = dsn.pop("database")
-
-    # Create test tables and data
-    conn_str = conninfo(dsn)
-    with psycopg2.connect(conn_str) as conn:
-        with conn.cursor() as cursor:
-            # Create some test tables
-            cursor.execute(
-                "CREATE TABLE test_table_1 (id SERIAL PRIMARY KEY, data TEXT)"
-            )
-            cursor.execute(
-                "CREATE TABLE test_table_2 (id SERIAL PRIMARY KEY, data TEXT)"
-            )
-            cursor.execute(
-                "INSERT INTO test_table_1 (data) VALUES ('test1'), ('test2')"
-            )
-            cursor.execute(
-                "INSERT INTO test_table_2 (data) VALUES ('test3'), ('test4'), ('test5')"
-            )
-
-            # Create view_config table for explorer metrics
-            cursor.execute("""
-                CREATE TABLE view_config (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT,
-                    config JSONB
-                )
-            """)
-            cursor.execute("""
-                INSERT INTO view_config (name, config) VALUES
-                ('view1', '{}'),
-                ('view2', '{}'),
-                ('view3', '{}')
-            """)
-
-            # Create Superset tables for testing
-            cursor.execute("""
-                CREATE TABLE dashboards (
-                    id SERIAL PRIMARY KEY,
-                    dashboard_title TEXT
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE slices (
-                    id SERIAL PRIMARY KEY,
-                    slice_name TEXT
-                )
-            """)
-            cursor.execute("""
-                INSERT INTO dashboards (dashboard_title) VALUES
-                ('Dashboard 1'),
-                ('Dashboard 2')
-            """)
-            cursor.execute("""
-                INSERT INTO slices (slice_name) VALUES
-                ('Chart 1'),
-                ('Chart 2'),
-                ('Chart 3'),
-                ('Chart 4')
-            """)
-        conn.commit()
-
-    yield dsn
-    db.stop()
 
 
 def test_get_warehouse_metrics(pg_database):

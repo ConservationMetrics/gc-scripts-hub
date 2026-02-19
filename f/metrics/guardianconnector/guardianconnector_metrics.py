@@ -1,6 +1,6 @@
 # requirements:
 # requests~=2.32
-# psycopg2-binary
+# psycopg
 
 import logging
 import os
@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, TypedDict
 
-import psycopg2
+import psycopg
 import requests
 
 from f.common_logic.db_operations import conninfo, postgresql
@@ -131,7 +131,7 @@ def get_warehouse_metrics(db: postgresql) -> dict:
 
     try:
         conn_str = conninfo(db)
-        with psycopg2.connect(conn_str) as conn:
+        with psycopg.connect(conn_str, autocommit=True) as conn:
             with conn.cursor() as cursor:
                 # Count total tables in public schema
                 cursor.execute("""
@@ -190,7 +190,7 @@ def get_explorer_metrics(db: postgresql) -> dict:
 
     try:
         conn_str = conninfo(db)
-        with psycopg2.connect(conn_str) as conn:
+        with psycopg.connect(conn_str, autocommit=True) as conn:
             with conn.cursor() as cursor:
                 # Count records in view_config table
                 cursor.execute("""
@@ -224,7 +224,7 @@ def get_superset_metrics(db: postgresql) -> dict:
 
     try:
         conn_str = conninfo(db)
-        with psycopg2.connect(conn_str) as conn:
+        with psycopg.connect(conn_str, autocommit=True) as conn:
             with conn.cursor() as cursor:
                 # Count dashboards
                 cursor.execute("""
