@@ -21,8 +21,10 @@ class comapeo_server(TypedDict):
     access_token: str
 
 
-class auth0(TypedDict):
-    token: str
+class auth0_m2m(TypedDict):
+    client_id: str
+    client_secret: str
+    domain: str
 
 
 logging.basicConfig(level=logging.INFO)
@@ -34,8 +36,7 @@ def main(
     db: Optional[postgresql] = None,
     attachment_root: Optional[str] = None,
     superset_db: str = "superset_metastore",
-    auth0_resource: Optional[auth0] = None,
-    auth0_domain: Optional[str] = None,
+    auth0_m2m: Optional[auth0_m2m] = None,
 ):
     metrics = {}
     guardianconnector_db = (
@@ -72,9 +73,9 @@ def main(
         if datalake_metrics:
             metrics["datalake"] = datalake_metrics
 
-    # Get Auth0 metrics (requires both auth0_resource and auth0_domain)
-    if auth0_resource and auth0_domain:
-        auth0_metrics = get_auth0_metrics(auth0_resource, auth0_domain)
+    # Get Auth0 metrics (requires auth0_m2m parameter)
+    if auth0_m2m:
+        auth0_metrics = get_auth0_metrics(auth0_m2m)
         if auth0_metrics:
             metrics["auth0"] = auth0_metrics
 
@@ -344,15 +345,14 @@ def get_datalake_metrics(datalake_path: str) -> dict:
         return {}
 
 
-def get_auth0_metrics(auth0_resource: auth0, auth0_domain: str) -> dict:
+def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
     """Get metrics from Auth0 using the Management API.
 
     Parameters
     ----------
-    auth0_resource : auth0
-        An OAuth resource containing the tokenized access to Auth0 Management API.
-    auth0_domain : str
-        The Auth0 domain (e.g., "your-tenant.us.auth0.com").
+    auth0_m2m : auth0_m2m
+        Dictionary containing 'client_id', 'client_secret', and 'domain'
+        for Auth0 M2M application.
 
     Returns
     -------
@@ -361,15 +361,36 @@ def get_auth0_metrics(auth0_resource: auth0, auth0_domain: str) -> dict:
     """
     logger.info("Fetching Auth0 metrics...")
 
+    auth0_domain = auth0_m2m["domain"]
+
     try:
-        # Auth0 Management API endpoint for users
+        # Step 1: Get Management API access token using client credentials flow
+        token_url = f"https://{auth0_domain}/oauth/token"
+        token_payload = {
+            "client_id": auth0_m2m["client_id"],
+            "client_secret": auth0_m2m["client_secret"],
+            "audience": f"https://{auth0_domain}/api/v2/",
+            "grant_type": "client_credentials",
+        }
+
+        token_response = requests.post(token_url, json=token_payload)
+        token_response.raise_for_status()
+        token_data = token_response.json()
+        access_token = token_data.get("access_token")
+
+        if not access_token:
+            logger.error("Failed to obtain access token from Auth0")
+            return {}
+
+        # Step 2: Query Management API for user count
         url = f"https://{auth0_domain}/api/v2/users"
 
         headers = {
-            "Authorization": f"Bearer {auth0_resource['token']}",
+            "Authorization": f"Bearer {access_token}",
         }
 
         # Get users with pagination support
+        # Note: include_totals must be lowercase "true" string, not Python boolean
         params = {
             "per_page": 1,  # We only need the total count
             "include_totals": "true",
@@ -384,6 +405,11 @@ def get_auth0_metrics(auth0_resource: auth0, auth0_domain: str) -> dict:
         logger.info(f"Auth0: {total_users} users")
 
         return {"users": total_users}
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Failed to fetch Auth0 metrics: {e}")
+        if hasattr(e.response, "text"):
+            logger.error(f"Auth0 API response: {e.response.text}")
+        return {}
     except Exception as e:
         logger.error(f"Failed to fetch Auth0 metrics: {e}")
         return {}

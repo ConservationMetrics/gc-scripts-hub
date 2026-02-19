@@ -177,13 +177,29 @@ def test_get_windmill_metrics():
 
 def test_get_auth0_metrics():
     """Test Auth0 metrics collection."""
-    auth0_resource = {"token": "test_auth0_token"}
-    auth0_domain = "your-tenant.us.auth0.com"
+    auth0_m2m = {
+        "client_id": "test_client_id",
+        "client_secret": "test_client_secret",
+        "domain": "your-tenant.us.auth0.com",
+    }
 
     with responses.RequestsMock() as rsps:
+        # Mock the token endpoint (client credentials flow)
+        rsps.add(
+            responses.POST,
+            f"https://{auth0_m2m['domain']}/oauth/token",
+            json={
+                "access_token": "test_access_token",
+                "token_type": "Bearer",
+                "expires_in": 86400,
+            },
+            status=200,
+        )
+
+        # Mock the users endpoint
         rsps.add(
             responses.GET,
-            f"https://{auth0_domain}/api/v2/users",
+            f"https://{auth0_m2m['domain']}/api/v2/users",
             json={
                 "users": [{"user_id": "auth0|123"}],  # Actual users list
                 "total": 150,  # Total count
@@ -191,7 +207,7 @@ def test_get_auth0_metrics():
             status=200,
         )
 
-        metrics = get_auth0_metrics(auth0_resource, auth0_domain)
+        metrics = get_auth0_metrics(auth0_m2m)
 
         assert "users" in metrics
         assert metrics["users"] == 150

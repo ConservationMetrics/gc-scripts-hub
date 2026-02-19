@@ -37,16 +37,21 @@ This script generates metrics for Guardian Connector services based on provided 
 
 ## Auth0 Integration
 
-The Auth0 metrics feature uses the Auth0 Management API to count users. The API endpoint used is:
-
-```
-GET https://{auth0_domain}/api/v2/users?search_engine=v3&per_page=1&include_totals=true
-```
+The Auth0 metrics feature uses the Auth0 Management API to count users. 
 
 To use this feature:
-1. Create an Auth0 Machine-to-Machine application with access to the Management API
-2. Grant the `read:users` scope to the application
-3. Set up a Windmill OAuth resource of type `auth0` with the tokenized access
-4. Provide the Auth0 domain parameter (e.g., `your-tenant.us.auth0.com`)
+1. Create an Auth0 Machine-to-Machine (M2M) application in your Auth0 dashboard
+2. Authorize it for the Auth0 Management API
+3. Grant the `read:users` scope to the application
+4. Create a Windmill resource of type `auth0_m2m` with:
+   - `client_id`: Your M2M application's client ID
+   - `client_secret`: Your M2M application's client secret
+   - `domain`: Your Auth0 domain (e.g., `your-tenant.us.auth0.com`)
+
+The script uses the OAuth 2.0 client credentials flow to obtain an access token, then queries the Management API endpoint:
+
+```
+GET https://{domain}/api/v2/users?per_page=1&include_totals=true
+```
 
 The script retrieves only the total count (not the actual user data) for efficiency.
