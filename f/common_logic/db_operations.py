@@ -192,7 +192,11 @@ class StructuredDBWriter:
         return columns_dict
 
     def _create_missing_mappings(self, table_name, missing_columns):
-        """Generates and executes SQL statements to add missing mappings to the table."""
+        """Generates and executes SQL statements to add missing mappings to the table.
+        
+        Each column mapping is created in its own transaction;
+        if this fails for some column (e.g. already exist or other error), that will not affect the other columns' mappings.
+        """
         with self._get_conn() as conn:
             with conn.cursor() as cursor:
                 for original_column, sql_column in missing_columns.items():
