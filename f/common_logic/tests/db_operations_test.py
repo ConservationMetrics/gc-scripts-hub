@@ -49,7 +49,8 @@ def test_mapping_table_creation(mock_db_connection):
 
     # Check the mapping table contains expected mappings
     mapping_table = f"{writer.table_name}__columns"
-    mappings = writer._get_existing_mappings(mapping_table)
+    with writer._get_conn() as pgconn:
+        mappings = writer._get_existing_mappings(pgconn, mapping_table)
     assert "complex.field" in mappings
     assert mappings["complex.field"] == "complexfield"
 
@@ -64,16 +65,17 @@ def test_no_mapping_table_creation(mock_db_connection):
     writer.handle_output(submissions)
 
     # Check the mapping table does not exist
-    with writer._get_conn() as conn, conn.cursor() as cursor:
-        cursor.execute(
-            "SELECT * FROM information_schema.tables WHERE table_name = %s",
-            (f"{writer.table_name}__columns",),
-        )
-        assert cursor.fetchone() is None
+    with writer._get_conn() as pgconn:
+        with pgconn.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM information_schema.tables WHERE table_name = %s",
+                (f"{writer.table_name}__columns",),
+            )
+            assert cursor.fetchone() is None
 
-    # Check that the fields were sanitized
-    columns = writer._inspect_schema(writer.table_name)
-    assert "complexfield" in columns
+        # Check that the fields were sanitized
+        columns = writer._inspect_schema(pgconn, writer.table_name)
+        assert "complexfield" in columns
 
 
 def test_reverse_properties_handling(mock_db_connection):
@@ -90,9 +92,10 @@ def test_reverse_properties_handling(mock_db_connection):
     writer.handle_output(submissions)
 
     # Check the table columns reflect reversed and transformed paths
-    columns = writer._inspect_schema("nested_data")
-    assert "field__subgroup__group1" in columns
-    assert "field__group2" in columns
+    with writer._get_conn() as pgconn:
+        columns = writer._inspect_schema(pgconn, "nested_data")
+        assert "field__subgroup__group1" in columns
+        assert "field__group2" in columns
 
 
 def test_long_table_name_truncation(mock_db_connection):
@@ -115,8 +118,9 @@ def test_long_table_name_truncation(mock_db_connection):
     writer.handle_output(submissions)
 
     # Verify both tables exist and are accessible
-    assert writer._inspect_schema(writer.table_name)
-    assert writer._inspect_schema(mapping_table)
+    with writer._get_conn() as pgconn:
+        assert len(writer._inspect_schema(pgconn, writer.table_name)) > 1
+        assert len(writer._inspect_schema(pgconn, mapping_table)) > 1
 
 
 def test_truncated_table_name_retains_suffix(mock_db_connection):
@@ -138,7 +142,8 @@ def test_truncated_table_name_retains_suffix(mock_db_connection):
     # Actual table should be creatable and inspectable
     submissions = [{"_id": "1", "field": "value"}]
     writer.handle_output(submissions)
-    assert writer._inspect_schema(writer.table_name)
+    with writer._get_conn() as pgconn:
+        assert writer._inspect_schema(pgconn, writer.table_name)
 
 
 def test_table_name_normalization_to_lowercase(mock_db_connection):
