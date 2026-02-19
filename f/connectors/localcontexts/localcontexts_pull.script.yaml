@@ -7,17 +7,17 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - local_contexts_project
+    - local_contexts
     - db
     - db_table_prefix
     - attachment_root
   properties:
-    local_contexts_project:
+    local_contexts:
       type: resource
       description: >-
         A server URL, API key, and project ID for accessing the Local Contexts API.
       default: null
-      format: resource-localontexts_project
+      format: resource-localcontexts
     db:
       type: object
       description: The database connection parameters for storing tabular data.
@@ -32,4 +32,4 @@ schema:
   required:
     - db
     - attachment_root
-    - local_contexts_project
+    - local_contexts
