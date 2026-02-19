@@ -114,3 +114,62 @@ def comapeo_server_fixture(mocked_responses):
         "server_url": server_url,
         "access_token": access_token,
     }
+
+
+@pytest.fixture
+def auth0_server_fixture(mocked_responses):
+    """A mock Auth0 server for testing Auth0 metrics."""
+
+    domain = "your-tenant.us.auth0.com"
+
+    # Mock Auth0 token endpoint (client credentials flow)
+    mocked_responses.add(
+        responses.POST,
+        f"https://{domain}/oauth/token",
+        json={
+            "access_token": "test_access_token",
+            "token_type": "Bearer",
+            "expires_in": 86400,
+        },
+        status=200,
+    )
+
+    # Mock call 1: GET total users (per_page=1, include_totals=true)
+    mocked_responses.add(
+        responses.GET,
+        f"https://{domain}/api/v2/users",
+        json={
+            "users": [{"user_id": "auth0|123"}],
+            "total": 52,
+        },
+        status=200,
+    )
+
+    # Mock call 2: GET active users (search_engine=v3, with q parameter)
+    mocked_responses.add(
+        responses.GET,
+        f"https://{domain}/api/v2/users",
+        json={
+            "users": [],
+            "total": 25,
+        },
+        status=200,
+    )
+
+    # Mock call 3: GET logins count - first page (per_page=100, page=0, fields=logins_count)
+    mocked_responses.add(
+        responses.GET,
+        f"https://{domain}/api/v2/users",
+        json=[
+            {"user_id": "auth0|1", "logins_count": 275},
+            {"user_id": "auth0|2", "logins_count": 95},
+            {"user_id": "auth0|3", "logins_count": 42},
+        ],
+        status=200,
+    )
+
+    return {
+        "client_id": "test_client_id",
+        "client_secret": "test_client_secret",
+        "domain": domain,
+    }
