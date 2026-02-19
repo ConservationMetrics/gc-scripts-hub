@@ -4,6 +4,8 @@ This script generates metrics for Guardian Connector services based on provided 
 
 **All parameters are optional**: the script will only collect metrics for services where the required parameters are provided. This allows flexible monitoring of only the services you need.
 
+**This script will create the `guardianconnector` database if it doesn't exist.** This is done in case the database is not already created by another resource on the stack, like GuardianConnector Explorer.
+
 ## Metrics Collected
 
 ### 1. CoMapeo

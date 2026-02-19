@@ -13,7 +13,12 @@ import psycopg
 import requests
 from psycopg import sql
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    StructuredDBWriter,
+    conninfo,
+    create_database_if_not_exists,
+    postgresql,
+)
 
 
 class comapeo_server(TypedDict):
@@ -87,6 +92,9 @@ def main(
     # Write metrics to database if db parameter provided
     if db and metrics:
         try:
+            # Ensure guardianconnector database exists
+            create_database_if_not_exists(db, guardianconnector_db)
+
             date_str = datetime.now().strftime("%Y-%m-%d")
             flattened_metrics = _flatten_metrics(metrics, date_str)
 

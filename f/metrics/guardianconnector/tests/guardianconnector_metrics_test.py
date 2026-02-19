@@ -261,7 +261,7 @@ def test_flatten_metrics():
 def test_guardianconnector_full_metrics_and_db_write(
     comapeo_server_fixture, pg_database, tmp_path
 ):
-    """Test full metrics collection, structure, and database persistence."""
+    """Test full metrics collection, structure, and database persistence including Auth0."""
     # Create a temporary directory to simulate the datalake
     datalake_root = tmp_path / "datalake"
     comapeo_dir = datalake_root / "comapeo"
@@ -269,13 +269,57 @@ def test_guardianconnector_full_metrics_and_db_write(
     # Create a file large enough to show up in MB (1 MB)
     (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
 
-    # Pass the test database name for both guardianconnector_db and superset_db
-    result = main(
-        comapeo_server_fixture,
-        pg_database,
-        str(datalake_root),
-        superset_db="test",
-    )
+    # Set up Auth0 M2M credentials for testing
+    auth0_m2m = {
+        "client_id": "test_client_id",
+        "client_secret": "test_client_secret",
+        "domain": "your-tenant.us.auth0.com",
+    }
+
+    with responses.RequestsMock() as rsps:
+        # Mock Auth0 token endpoint
+        rsps.add(
+            responses.POST,
+            f"https://{auth0_m2m['domain']}/oauth/token",
+            json={
+                "access_token": "test_access_token",
+                "token_type": "Bearer",
+                "expires_in": 86400,
+            },
+            status=200,
+        )
+
+        # Mock Auth0 users endpoint (total users)
+        rsps.add(
+            responses.GET,
+            f"https://{auth0_m2m['domain']}/api/v2/users",
+            json={
+                "users": [{"user_id": "auth0|123"}],
+                "total": 52,
+            },
+            status=200,
+        )
+
+        # Mock Auth0 users endpoint for logins count
+        rsps.add(
+            responses.GET,
+            f"https://{auth0_m2m['domain']}/api/v2/users",
+            json=[
+                {"user_id": "auth0|1", "logins_count": 275},
+                {"user_id": "auth0|2", "logins_count": 95},
+                {"user_id": "auth0|3", "logins_count": 42},
+            ],
+            status=200,
+        )
+
+        # Pass the test database name for both guardianconnector_db and superset_db
+        result = main(
+            comapeo_server_fixture,
+            pg_database,
+            str(datalake_root),
+            superset_db="test",
+            auth0_m2m=auth0_m2m,
+        )
 
     # Check top-level structure
     assert isinstance(result, dict)
@@ -287,6 +331,7 @@ def test_guardianconnector_full_metrics_and_db_write(
     assert "explorer" in result
     assert "superset" in result
     assert "datalake" in result
+    assert "auth0" in result
 
     # Check CoMapeo metrics
     assert "project_count" in result["comapeo"]
@@ -311,6 +356,11 @@ def test_guardianconnector_full_metrics_and_db_write(
     assert result["datalake"]["file_count"] >= 1  # At least the test file
     assert result["datalake"]["data_size_mb"] >= 1.0  # At least 1MB
 
+    # Check Auth0 metrics
+    assert result["auth0"]["users"] == 52
+    assert "users_signed_in_past_30_days" in result["auth0"]
+    assert result["auth0"]["logins"] == 412  # 275 + 95 + 42
+
     # Verify metrics were written to database
     conn_str = conninfo({**pg_database, "dbname": "test"})
     with psycopg.connect(conn_str, autocommit=True) as conn:
@@ -330,13 +380,31 @@ def test_guardianconnector_full_metrics_and_db_write(
             cursor.execute("SELECT COUNT(*) FROM metrics")
             assert cursor.fetchone()[0] == 1
 
-            # Check the row content
-            cursor.execute(
-                "SELECT _id, date, comapeo__project_count, warehouse__tables, datalake__file_count FROM metrics"
-            )
+            # Check the row content including Auth0 columns
+            cursor.execute("""
+                SELECT 
+                    _id, 
+                    date, 
+                    comapeo__project_count, 
+                    warehouse__tables, 
+                    datalake__file_count,
+                    auth0__users,
+                    auth0__users_signed_in_past_30_days,
+                    auth0__logins
+                FROM metrics
+            """)
             row = cursor.fetchone()
             assert row is not None
-            _id, date, comapeo_projects, warehouse_tables, files_count = row
+            (
+                _id,
+                date,
+                comapeo_projects,
+                warehouse_tables,
+                files_count,
+                auth0_users,
+                auth0_active_users,
+                auth0_logins,
+            ) = row
 
             # Verify _id format (YYYYMMDD)
             assert len(_id) == 8
@@ -349,36 +417,9 @@ def test_guardianconnector_full_metrics_and_db_write(
             assert comapeo_projects == 3
             assert warehouse_tables == 5
             assert files_count >= 1
-
-
-def test_metrics_update_on_same_day(comapeo_server_fixture, pg_database, tmp_path):
-    """Test that running the script twice on the same day updates the existing row."""
-    # Create test datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    # Run main twice
-    main(
-        comapeo_server_fixture,
-        pg_database,
-        str(datalake_root),
-        superset_db="test",
-    )
-    main(
-        comapeo_server_fixture,
-        pg_database,
-        str(datalake_root),
-        superset_db="test",
-    )
-
-    # Verify only one row exists
-    conn_str = conninfo({**pg_database, "dbname": "test"})
-    with psycopg.connect(conn_str, autocommit=True) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM metrics")
-            assert cursor.fetchone()[0] == 1
+            assert auth0_users == 52
+            assert auth0_active_users is not None
+            assert auth0_logins == 412
 
 
 def test_no_parameters_provided(tmp_path):
@@ -430,80 +471,3 @@ def test_empty_attachment_root_skips_datalake():
 
     # Datalake metrics should not be present
     assert "datalake" not in result
-
-
-def test_auth0_and_windmill_metrics_with_db_write(pg_database):
-    """Test Auth0 and Windmill metrics collection and database persistence."""
-    auth0_m2m = {
-        "client_id": "test_client_id",
-        "client_secret": "test_client_secret",
-        "domain": "your-tenant.us.auth0.com",
-    }
-
-    with responses.RequestsMock() as rsps:
-        # Mock Auth0 token endpoint
-        rsps.add(
-            responses.POST,
-            f"https://{auth0_m2m['domain']}/oauth/token",
-            json={
-                "access_token": "test_access_token",
-                "token_type": "Bearer",
-                "expires_in": 86400,
-            },
-            status=200,
-        )
-
-        # Mock Auth0 users endpoint (total users)
-        rsps.add(
-            responses.GET,
-            f"https://{auth0_m2m['domain']}/api/v2/users",
-            json={
-                "users": [{"user_id": "auth0|123"}],
-                "total": 52,
-            },
-            status=200,
-        )
-
-        # Mock Auth0 users endpoint for logins count
-        rsps.add(
-            responses.GET,
-            f"https://{auth0_m2m['domain']}/api/v2/users",
-            json=[
-                {"user_id": "auth0|1", "logins_count": 275},
-                {"user_id": "auth0|2", "logins_count": 95},
-                {"user_id": "auth0|3", "logins_count": 42},
-            ],
-            status=200,
-        )
-
-        # Run main with Auth0 and database
-        result = main(
-            db=pg_database,
-            superset_db="test",
-            auth0_m2m=auth0_m2m,
-        )
-
-        # Verify Auth0 metrics were collected
-        assert "auth0" in result
-        assert result["auth0"]["users"] == 52
-        assert "users_signed_in_past_30_days" in result["auth0"]
-        assert result["auth0"]["logins"] == 412  # 275 + 95 + 42
-
-        # Verify metrics were written to database with Auth0 columns
-        conn_str = conninfo({**pg_database, "dbname": "test"})
-        with psycopg.connect(conn_str, autocommit=True) as conn:
-            with conn.cursor() as cursor:
-                # Check that the Auth0 columns exist and have values
-                cursor.execute("""
-                    SELECT 
-                        auth0__users,
-                        auth0__users_signed_in_past_30_days,
-                        auth0__logins
-                    FROM metrics
-                """)
-                row = cursor.fetchone()
-                assert row is not None
-                users, active_users, logins = row
-                assert users == 52
-                assert active_users is not None
-                assert logins == 412

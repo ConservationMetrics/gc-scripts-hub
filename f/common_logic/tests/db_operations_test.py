@@ -1,7 +1,10 @@
+import psycopg
+
 from f.common_logic.db_operations import (
     StructuredDBWriter,
     check_if_table_exists,
     conninfo,
+    create_database_if_not_exists,
     fetch_tables_from_postgres,
     summarize_new_rows_updates_and_columns,
 )
@@ -34,6 +37,44 @@ def test_check_if_table_exists(mock_db_connection):
 
     assert check_if_table_exists(mock_db_connection, "existing_table")
     assert not check_if_table_exists(mock_db_connection, "nonexistent_table")
+
+
+def test_create_database_if_not_exists(mock_db_dict):
+    """Test creating a new database."""
+
+    test_db_name = "test_new_database"
+
+    # Clean up if it exists from previous test
+    postgres_conn = {**mock_db_dict, "dbname": "postgres"}
+    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"DROP DATABASE IF EXISTS {test_db_name}")
+
+    # Test creating the database
+    created = create_database_if_not_exists(mock_db_dict, test_db_name)
+    assert created is True
+
+    # Verify database exists
+    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_database WHERE datname = %s
+                )
+                """,
+                (test_db_name,),
+            )
+            assert cursor.fetchone()[0] is True
+
+    # Test that calling it again returns False (already exists)
+    created_again = create_database_if_not_exists(mock_db_dict, test_db_name)
+    assert created_again is False
+
+    # Clean up
+    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"DROP DATABASE {test_db_name}")
 
 
 def test_mapping_table_creation(mock_db_connection):
