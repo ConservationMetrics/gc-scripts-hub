@@ -2,6 +2,9 @@
 This module provides functions and classes for interacting with PostgreSQL databases.
 """
 
+# requirements:
+# psycopg[binary]
+
 import json
 import logging
 import time
