@@ -116,6 +116,10 @@ To maintain consistency across the repository, please follow these conventions w
 * Always place the `main` function first in each script file, above helper functions.
 * Use consistent import ordering and structure.
 
+#### Database Connections
+* Always use context managers (`with psycopg.connect(autocommit=True, ...)`) for PostgreSQL connections; in psycopg 3, connections are automatically closed when exiting the context manager.
+* We also use `autocommit=True` setting to simplify database operations and transaction management.
+
 #### Documentation
 * Always add docstrings to functions and modules:
   * Use NumPy format for Python docstrings
@@ -125,7 +129,6 @@ To maintain consistency across the repository, please follow these conventions w
   * Where to find required parameters (access tokens, hash IDs, API endpoints, etc.); screenshots can be helpful and are welcome
   * Any special setup or configuration requirements
   * Examples of usage where appropriate
-
 
 #### Filing Issues and Pull Requests
 * For issues about specific scripts, flows, or apps, prefix your issue title with `[«name»]` in order to enhance searchability. You are also encouraged to add a tag for the specific folder where the code is located, like `connectors` or `common_logic`.
