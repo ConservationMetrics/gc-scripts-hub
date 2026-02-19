@@ -171,7 +171,8 @@ def summarize_new_rows_updates_and_columns(
     if not new_data:
         return 0, 0, 0
 
-    with connect(autocommit=True, dsn=conninfo(db)) as conn:
+    # TODO: add auto-commit=True when we migrate to psycopg 3
+    with connect(dsn=conninfo(db)) as conn:
         with conn.cursor() as cursor:
             # Get existing columns in the table
             cursor.execute(
