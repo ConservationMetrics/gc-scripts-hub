@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # lxml
 
 import hashlib

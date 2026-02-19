@@ -1,5 +1,5 @@
 # requirements:
-# psycopg2-binary
+# psycopg[binary]
 # requests~=2.32
 
 import json
@@ -62,6 +62,7 @@ def main(
             session,
             comapeo_projects,
             attachment_root,
+            db_table_prefix,
         )
     )
 
@@ -223,6 +224,9 @@ def download_file(url, session, save_path, existing_file_stems):
         elif "/audio/" in url_lower:
             return ".m4a"
         elif "/icon/" in url_lower:
+            # Check if URL ends with .svg, otherwise default to .png
+            if url_lower.endswith(".svg") or ".svg" in url_lower:
+                return ".svg"
             return ".png"
         return None
 
@@ -231,7 +235,13 @@ def download_file(url, session, save_path, existing_file_stems):
         response.raise_for_status()
 
         content_type = response.headers.get("Content-Type", "")
-        extension = mimetypes.guess_extension(content_type) if content_type else None
+        # Handle SVG specifically since mimetypes may not recognize it correctly
+        if "svg" in content_type.lower():
+            extension = ".svg"
+        else:
+            extension = (
+                mimetypes.guess_extension(content_type) if content_type else None
+            )
 
         # If Content-Type didn't provide an extension, infer from URL path
         if not extension:
@@ -291,9 +301,7 @@ def _fetch_comapeo_data(server_url, session, project_id, endpoint, data_type):
     return data
 
 
-def download_project_observations(
-    server_url, session, project_id, project_name, attachment_root
-):
+def download_project_observations(server_url, session, project_id, project_dir):
     """Download observations and their attachments for a specific project from the CoMapeo API.
 
     Parameters
@@ -304,10 +312,8 @@ def download_project_observations(
         A requests session with authentication headers configured.
     project_id : str
         The unique identifier of the project.
-    project_name : str
-        The name of the project.
-    attachment_root : str
-        The root directory where attachments will be saved.
+    project_dir : Path
+        The directory where the project data will be saved.
 
     Returns
     -------
@@ -322,10 +328,7 @@ def download_project_observations(
     )
 
     # Download attachments for all observations
-    sanitized_project_name = normalize_identifier(project_name)
-    attachment_dir = (
-        Path(attachment_root) / "comapeo" / sanitized_project_name / "attachments"
-    )
+    attachment_dir = project_dir / "attachments"
     existing_file_stems = build_existing_file_set(attachment_dir)
 
     stats = Counter()
@@ -396,8 +399,6 @@ def fetch_preset(
     session,
     project_id,
     preset_doc_id,
-    icon_dir=None,
-    existing_icon_stems=None,
 ):
     """Fetch a preset from the CoMapeo API and optionally download its icon.
 
@@ -411,10 +412,6 @@ def fetch_preset(
         The unique identifier of the project.
     preset_doc_id : str
         The document ID of the preset to fetch.
-    icon_dir : Path, optional
-        Directory where icons should be saved. If provided, icons will be downloaded.
-    existing_icon_stems : set, optional
-        Set of existing icon file names (without extensions) to check against before downloading.
 
     Returns
     -------
@@ -431,26 +428,6 @@ def fetch_preset(
         response.raise_for_status()
         preset_data = response.json().get("data")
 
-        # Download icon if preset data exists and icon_dir is provided
-        if preset_data and icon_dir and existing_icon_stems is not None:
-            icon_ref = preset_data.get("iconRef")
-            if icon_ref and "url" in icon_ref:
-                preset_name = preset_data.get("name", "")
-                if preset_name:
-                    sanitized_name = normalize_identifier(preset_name)
-                    icon_save_path = icon_dir / sanitized_name
-                    file_name, skipped, failed = download_file(
-                        icon_ref["url"],
-                        session,
-                        str(icon_save_path),
-                        existing_icon_stems,
-                    )
-                    if failed:
-                        logger.error(
-                            f"Icon download failed for URL: {icon_ref['url']}. Preset: {preset_name}."
-                        )
-                        return preset_data, 0, True
-                    return preset_data, skipped, False
         return preset_data, 0, False
     except (
         requests.exceptions.RequestException,
@@ -528,15 +505,15 @@ def fetch_all_fields(server_url, session, project_id):
         return []
 
 
-def download_preset_icons(presets, icon_dir, session):
+def download_preset_icons(presets, project_dir, session):
     """Download all icons from a list of presets.
 
     Parameters
     ----------
     presets : list
         A list of preset data dictionaries.
-    icon_dir : Path
-        Directory where icons should be saved.
+    project_dir : Path
+        The directory where the project data will be saved.
     session : requests.Session
         A requests session with authentication headers configured.
 
@@ -547,8 +524,19 @@ def download_preset_icons(presets, icon_dir, session):
         - stats (Counter): Statistics with 'skipped_icons' and 'icon_failed' counts.
         - icon_filenames (dict): Mapping of preset docId to actual downloaded filename (e.g., "camp.png").
     """
+    # Count presets with icons
+    presets_with_icons = [
+        p
+        for p in presets
+        if p.get("iconRef") and p.get("iconRef", {}).get("url") and p.get("name")
+    ]
+
+    if presets_with_icons:
+        logger.info(f"Downloading {len(presets_with_icons)} preset icon(s)...")
+
     stats = Counter()
     icon_filenames = {}
+    icon_dir = project_dir / "icons"
     existing_icon_stems = build_existing_file_set(icon_dir)
 
     for preset in presets:
@@ -575,6 +563,14 @@ def download_preset_icons(presets, icon_dir, session):
             icon_filenames[preset_doc_id] = file_name
             # Add to existing set for subsequent downloads in the same batch
             existing_icon_stems.add(sanitized_name)
+
+    if presets_with_icons:
+        downloaded_count = len(icon_filenames) - stats["icon_failed"]
+        logger.info(
+            f"Downloaded {downloaded_count} icon(s), "
+            f"skipped {stats['skipped_icons']} (already on disk), "
+            f"failed {stats['icon_failed']}."
+        )
 
     return stats, icon_filenames
 
@@ -934,6 +930,7 @@ def download_and_transform_comapeo_data(
     session,
     comapeo_projects,
     attachment_root,
+    db_table_prefix,
 ):
     """
     Downloads and transforms CoMapeo project observations and tracks from the API, converting them into GeoJSON FeatureCollection format and downloading any associated attachments.
@@ -948,6 +945,8 @@ def download_and_transform_comapeo_data(
         A list of dictionaries, each containing 'project_id' and 'project_name' for the projects to be processed.
     attachment_root : str
         The root directory where attachments will be saved.
+    db_table_prefix : str
+        The prefix for the database table names.
 
     Returns
     -------
@@ -976,8 +975,7 @@ def download_and_transform_comapeo_data(
         sanitized_project_name = normalize_identifier(project_name)
 
         # Set up project directories
-        project_dir = Path(attachment_root) / "comapeo" / sanitized_project_name
-        icon_dir = project_dir / "icons"
+        project_dir = Path(attachment_root) / db_table_prefix / sanitized_project_name
 
         # Fetch all presets for this project
         presets = fetch_all_presets(server_url, session, project_id)
@@ -1004,16 +1002,16 @@ def download_and_transform_comapeo_data(
             )
 
         # Download all preset icons
-        icon_stats, icon_filenames = download_preset_icons(presets, icon_dir, session)
+        icon_stats, icon_filenames = download_preset_icons(
+            presets, project_dir, session
+        )
 
         # Build preset mapping for use in transformations (with actual icon filenames)
         preset_mapping = build_preset_mapping(presets, icon_filenames)
 
         # Download all observations and attachments for this project
         observations, attachment_stats, failed_observations_info = (
-            download_project_observations(
-                server_url, session, project_id, project_name, attachment_root
-            )
+            download_project_observations(server_url, session, project_id, project_dir)
         )
 
         # Transform observations to GeoJSON features

@@ -1,4 +1,3 @@
-psycopg[binary]
 pytest
+responses
 testing.postgresql
-fiona
