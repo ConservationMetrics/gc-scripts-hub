@@ -171,8 +171,8 @@ def test_get_windmill_metrics():
 
             metrics = get_windmill_metrics()
 
-            assert "number_of_schedules" in metrics
-            assert metrics["number_of_schedules"] == 3
+            assert "schedules" in metrics
+            assert metrics["schedules"] == 3
 
 
 def test_get_auth0_metrics():
@@ -196,14 +196,26 @@ def test_get_auth0_metrics():
             status=200,
         )
 
-        # Mock the users endpoint
+        # Mock the users endpoint (total users)
         rsps.add(
             responses.GET,
             f"https://{auth0_m2m['domain']}/api/v2/users",
             json={
-                "users": [{"user_id": "auth0|123"}],  # Actual users list
-                "total": 150,  # Total count
+                "users": [{"user_id": "auth0|123"}],
+                "total": 150,
             },
+            status=200,
+        )
+
+        # Mock the users endpoint for logins count pagination
+        rsps.add(
+            responses.GET,
+            f"https://{auth0_m2m['domain']}/api/v2/users",
+            json=[
+                {"user_id": "auth0|1", "logins_count": 275},
+                {"user_id": "auth0|2", "logins_count": 95},
+                {"user_id": "auth0|3", "logins_count": 42},
+            ],
             status=200,
         )
 
@@ -211,6 +223,9 @@ def test_get_auth0_metrics():
 
         assert "users" in metrics
         assert metrics["users"] == 150
+        assert "users_signed_in_past_30_days" in metrics
+        assert "logins" in metrics
+        assert metrics["logins"] == 412  # 275 + 95 + 42
 
 
 def test_flatten_metrics():

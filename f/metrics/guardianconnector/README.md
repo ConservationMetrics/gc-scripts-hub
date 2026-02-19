@@ -31,27 +31,26 @@ This script generates metrics for Guardian Connector services based on provided 
 
 ### 6. Auth0
 - `users`: Total number of users in Auth0
+- `users_signed_in_past_30_days`: Number of users who signed in during the past 30 days
+- `logins`: Total number of logins across all users (lifetime)
 
 ### 7. Windmill
-- `number_of_schedules`: Number of scheduled jobs in Windmill
+- `schedules`: Number of scheduled jobs in Windmill
 
 ## Auth0 Integration
 
-The Auth0 metrics feature uses the Auth0 Management API to count users. 
+The Auth0 metrics feature uses the Auth0 Management API to collect user and session statistics. 
 
 To use this feature:
 1. Create an Auth0 Machine-to-Machine (M2M) application in your Auth0 dashboard
 2. Authorize it for the Auth0 Management API
-3. Grant the `read:users` scope to the application
+3. Grant the `read:users` and `read:stats` scopes to the application
 4. Create a Windmill resource of type `auth0_m2m` with:
    - `client_id`: Your M2M application's client ID
    - `client_secret`: Your M2M application's client secret
    - `domain`: Your Auth0 domain (e.g., `your-tenant.us.auth0.com`)
 
-The script uses the OAuth 2.0 client credentials flow to obtain an access token, then queries the Management API endpoint:
-
-```
-GET https://{domain}/api/v2/users?per_page=1&include_totals=true
-```
-
-The script retrieves only the total count (not the actual user data) for efficiency.
+The script uses the OAuth 2.0 client credentials flow to obtain an access token, then queries:
+- `/api/v2/users` - Total user count
+- `/api/v2/users?q=last_login:[...]` - Active users in past 30 days
+- `/api/v2/users?fields=logins_count` - Paginated query to sum all users' login counts

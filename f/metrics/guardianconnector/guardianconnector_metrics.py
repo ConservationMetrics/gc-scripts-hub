@@ -357,7 +357,7 @@ def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
     Returns
     -------
     dict
-        A dictionary containing metrics: users (total number of users).
+        A dictionary containing metrics: users, users_signed_in_past_30_days, logins.
     """
     logger.info("Fetching Auth0 metrics...")
 
@@ -382,29 +382,83 @@ def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
             logger.error("Failed to obtain access token from Auth0")
             return {}
 
-        # Step 2: Query Management API for user count
-        url = f"https://{auth0_domain}/api/v2/users"
-
+        # Step 2: Query Management API for metrics
         headers = {
             "Authorization": f"Bearer {access_token}",
         }
 
-        # Get users with pagination support
-        # Note: include_totals must be lowercase "true" string, not Python boolean
-        params = {
-            "per_page": 1,  # We only need the total count
+        metrics = {}
+
+        # Get total users
+        users_url = f"https://{auth0_domain}/api/v2/users"
+        users_params = {
+            "per_page": 1,
             "include_totals": "true",
         }
+        users_response = requests.get(users_url, headers=headers, params=users_params)
+        users_response.raise_for_status()
+        total_users = users_response.json().get("total", 0)
+        metrics["users"] = total_users
 
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
+        # Get users signed in past 30 days
+        from datetime import datetime, timedelta, timezone
 
-        data = response.json()
-        total_users = data.get("total", 0)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        last_login_query = (
+            f"last_login:[{thirty_days_ago.strftime('%Y-%m-%dT%H:%M:%S.000Z')} TO *]"
+        )
 
-        logger.info(f"Auth0: {total_users} users")
+        active_users_params = {
+            "q": last_login_query,
+            "search_engine": "v3",
+            "per_page": 1,
+            "include_totals": "true",
+        }
+        active_users_response = requests.get(
+            users_url, headers=headers, params=active_users_params
+        )
+        active_users_response.raise_for_status()
+        users_signed_in_past_30_days = active_users_response.json().get("total", 0)
+        metrics["users_signed_in_past_30_days"] = users_signed_in_past_30_days
 
-        return {"users": total_users}
+        # Get total logins across all users by paginating through users
+        total_logins = 0
+        page = 0
+        per_page = 100  # Max allowed by Auth0
+
+        while True:
+            logins_params = {
+                "per_page": per_page,
+                "page": page,
+                "fields": "logins_count",
+                "include_fields": "true",
+            }
+            logins_response = requests.get(
+                users_url, headers=headers, params=logins_params
+            )
+            logins_response.raise_for_status()
+            users_data = logins_response.json()
+
+            if not users_data:
+                break
+
+            # Sum up logins_count for this page
+            page_logins = sum(user.get("logins_count", 0) for user in users_data)
+            total_logins += page_logins
+
+            # If we got fewer users than requested, we've reached the end
+            if len(users_data) < per_page:
+                break
+
+            page += 1
+
+        metrics["logins"] = total_logins
+
+        logger.info(
+            f"Auth0: {total_users} users, {users_signed_in_past_30_days} active in past 30 days, {total_logins} total logins"
+        )
+
+        return metrics
     except requests.exceptions.HTTPError as e:
         logger.error(f"Failed to fetch Auth0 metrics: {e}")
         if hasattr(e.response, "text"):
@@ -427,7 +481,7 @@ def get_windmill_metrics() -> dict:
     Returns
     -------
     dict
-        A dictionary containing metrics: number_of_schedules.
+        A dictionary containing metrics: schedules.
         Returns empty dict if not running in Windmill or if there's an error.
     """
     logger.info("Fetching Windmill metrics using environment variables...")
@@ -458,7 +512,7 @@ def get_windmill_metrics() -> dict:
 
         logger.info(f"Windmill: {number_of_schedules} schedules")
 
-        return {"number_of_schedules": number_of_schedules}
+        return {"schedules": number_of_schedules}
     except Exception as e:
         logger.error(f"Failed to fetch Windmill metrics: {e}")
         return {}
