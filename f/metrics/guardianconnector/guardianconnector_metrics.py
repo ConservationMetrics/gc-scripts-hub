@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def main(
     comapeo: Optional[comapeo_server] = None,
     db: Optional[postgresql] = None,
-    attachment_root: str = "/persistent-storage/datalake",
+    attachment_root: Optional[str] = None,
     superset_db: str = "superset_metastore",
     auth0_resource: Optional[auth0] = None,
     auth0_domain: Optional[str] = None,
@@ -66,10 +66,11 @@ def main(
         if superset_metrics:
             metrics["superset"] = superset_metrics
 
-    # Get datalake metrics (only requires attachment_root which has a default)
-    datalake_metrics = get_datalake_metrics(attachment_root)
-    if datalake_metrics:
-        metrics["datalake"] = datalake_metrics
+    # Get datalake metrics (only if attachment_root is provided and not blank)
+    if attachment_root:
+        datalake_metrics = get_datalake_metrics(attachment_root)
+        if datalake_metrics:
+            metrics["datalake"] = datalake_metrics
 
     # Get Auth0 metrics (requires both auth0_resource and auth0_domain)
     if auth0_resource and auth0_domain:
@@ -104,7 +105,7 @@ def main(
 
 def get_comapeo_metrics(
     comapeo: comapeo_server,
-    attachment_root: str = "/persistent-storage/datalake",
+    attachment_root: Optional[str] = None,
 ) -> dict:
     """Get metrics for CoMapeo server.
 
@@ -114,7 +115,7 @@ def get_comapeo_metrics(
         Dictionary containing 'server_url' and 'access_token' for the CoMapeo server.
     attachment_root : str, optional
         Path to the datalake root directory where CoMapeo data is stored.
-        Defaults to "/persistent-storage/datalake".
+        If not provided, data size calculation will be skipped.
 
     Returns
     -------
@@ -138,20 +139,25 @@ def get_comapeo_metrics(
 
     logger.info(f"Total number of projects on CoMapeo server: {project_count}")
 
-    # Get size of comapeo data directory
-    comapeo_data_path = Path(attachment_root) / "comapeo"
-    data_size_bytes = get_directory_size(str(comapeo_data_path))
-
     metrics = {"project_count": project_count}
 
-    if data_size_bytes is not None:
-        data_size_mb = round(data_size_bytes / (1024**2), 2)
-        metrics["data_size_mb"] = data_size_mb
-        logger.info(
-            f"CoMapeo data directory size (on datalake/comapeo dir, not the CoMapeo volume): {data_size_mb} MB"
-        )
+    # Get size of comapeo data directory if attachment_root is provided
+    if attachment_root:
+        comapeo_data_path = Path(attachment_root) / "comapeo"
+        data_size_bytes = get_directory_size(str(comapeo_data_path))
+
+        if data_size_bytes is not None:
+            data_size_mb = round(data_size_bytes / (1024**2), 2)
+            metrics["data_size_mb"] = data_size_mb
+            logger.info(
+                f"CoMapeo data directory size (on datalake/comapeo dir, not the CoMapeo volume): {data_size_mb} MB"
+            )
+        else:
+            logger.warning("Could not determine data directory size")
     else:
-        logger.warning("Could not determine data directory size")
+        logger.info(
+            "Skipping CoMapeo data size calculation (no attachment_root provided)"
+        )
 
     return metrics
 
@@ -364,9 +370,7 @@ def get_auth0_metrics(auth0_resource: auth0, auth0_domain: str) -> dict:
         }
 
         # Get users with pagination support
-        # The search_engine=v3 parameter is required for accurate totals
         params = {
-            "search_engine": "v3",
             "per_page": 1,  # We only need the total count
             "include_totals": "true",
         }

@@ -80,7 +80,6 @@ def test_comapeo_data_size_nonexistent_path(comapeo_server_fixture, pg_database)
         comapeo_server_fixture,
         pg_database,
         "/nonexistent/path",
-        guardianconnector_db="test",
         superset_db="test",
     )
 
@@ -238,7 +237,6 @@ def test_guardianconnector_full_metrics_and_db_write(
         comapeo_server_fixture,
         pg_database,
         str(datalake_root),
-        guardianconnector_db="test",
         superset_db="test",
     )
 
@@ -329,14 +327,12 @@ def test_metrics_update_on_same_day(comapeo_server_fixture, pg_database, tmp_pat
         comapeo_server_fixture,
         pg_database,
         str(datalake_root),
-        guardianconnector_db="test",
         superset_db="test",
     )
     main(
         comapeo_server_fixture,
         pg_database,
         str(datalake_root),
-        guardianconnector_db="test",
         superset_db="test",
     )
 
@@ -372,3 +368,28 @@ def test_no_parameters_provided(tmp_path):
 
     # Result should not be empty
     assert len(result) == 1
+
+
+def test_no_attachment_root_skips_datalake():
+    """Test that datalake metrics are skipped when attachment_root is None."""
+    # Run with no attachment_root - datalake should be skipped
+    result = main(attachment_root=None)
+
+    # Datalake metrics should not be present
+    assert "datalake" not in result
+
+    # If no other parameters are provided, result should be empty
+    # (windmill metrics might be present if WM env vars exist)
+    assert "comapeo" not in result
+    assert "warehouse" not in result
+    assert "explorer" not in result
+    assert "superset" not in result
+
+
+def test_empty_attachment_root_skips_datalake():
+    """Test that datalake metrics are skipped when attachment_root is empty string."""
+    # Run with empty string attachment_root - datalake should be skipped
+    result = main(attachment_root="")
+
+    # Datalake metrics should not be present
+    assert "datalake" not in result

@@ -35,9 +35,10 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where datalake files are stored. This script will calculate 
+        Optional. A path where datalake files are stored. This script will calculate 
         the size of the directory and count all files, and do the same for the `comapeo` directory specifically for CoMapeo metrics.
-      default: /persistent-storage/datalake
+        If not provided, datalake metrics will be skipped.
+      default: null
       originalType: string
     superset_db:
       type: string
