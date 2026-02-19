@@ -33,12 +33,14 @@ def main(
     comapeo: Optional[comapeo_server] = None,
     db: Optional[postgresql] = None,
     attachment_root: str = "/persistent-storage/datalake",
-    guardianconnector_db: str = "guardianconnector",
     superset_db: str = "superset_metastore",
     auth0_resource: Optional[auth0] = None,
     auth0_domain: Optional[str] = None,
 ):
     metrics = {}
+    guardianconnector_db = (
+        "guardianconnector"  # This is always the database name for Explorer and metrics
+    )
 
     # Get CoMapeo metrics (requires comapeo parameter)
     if comapeo:

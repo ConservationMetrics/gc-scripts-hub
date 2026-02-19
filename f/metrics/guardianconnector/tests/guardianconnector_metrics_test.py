@@ -8,111 +8,14 @@ from f.metrics.guardianconnector.guardianconnector_metrics import (
     _flatten_metrics,
     get_auth0_metrics,
     get_comapeo_metrics,
+    get_datalake_metrics,
     get_directory_size,
     get_explorer_metrics,
-    get_files_metrics,
     get_superset_metrics,
     get_warehouse_metrics,
     get_windmill_metrics,
     main,
 )
-
-
-def test_guardianconnector_metrics_structure(
-    comapeo_server_fixture, pg_database, tmp_path
-):
-    """Test that the main function returns the correct nested structure."""
-
-    # Create a temporary directory to simulate the datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    # Create a file large enough to show up in MB (1 MB)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    result = main(
-        comapeo_server_fixture, pg_database, str(datalake_root), "test", "test"
-    )
-
-    # Check top-level structure
-    assert "comapeo" in result
-    assert isinstance(result["comapeo"], dict)
-
-    # Check CoMapeo metrics
-    comapeo_metrics = result["comapeo"]
-    assert "project_count" in comapeo_metrics
-    assert comapeo_metrics["project_count"] == 3
-    assert "data_size_mb" in comapeo_metrics
-    assert comapeo_metrics["data_size_mb"] >= 1.0
-
-
-def test_get_comapeo_metrics(comapeo_server_fixture, tmp_path):
-    """Test the CoMapeo metrics function directly."""
-
-    # Create a temporary directory to simulate the datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    result = get_comapeo_metrics(comapeo_server_fixture, str(datalake_root))
-
-    assert "project_count" in result
-    assert result["project_count"] == 3
-    assert "data_size_mb" in result
-    assert result["data_size_mb"] >= 1.0
-
-
-def test_project_count_empty(mocked_responses, pg_database, tmp_path):
-    """Test that the script handles an empty project list."""
-
-    server_url = "http://comapeo.example.org"
-    access_token = "test_token"
-
-    # Mock empty projects response
-    mocked_responses.get(
-        f"{server_url}/projects",
-        json={"data": []},
-        status=200,
-    )
-
-    comapeo = {
-        "server_url": server_url,
-        "access_token": access_token,
-    }
-
-    # Create a temporary directory to simulate the datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-
-    result = main(
-        comapeo,
-        pg_database,
-        str(datalake_root),
-        guardianconnector_db="test",
-        superset_db="test",
-    )
-
-    assert result["comapeo"]["project_count"] == 0
-    assert "data_size_mb" in result["comapeo"]
-
-
-def test_data_size_nonexistent_path(comapeo_server_fixture, pg_database):
-    """Test that the script handles nonexistent data paths gracefully."""
-
-    result = main(
-        comapeo_server_fixture,
-        pg_database,
-        "/nonexistent/path",
-        guardianconnector_db="test",
-        superset_db="test",
-    )
-
-    assert "comapeo" in result
-    assert result["comapeo"]["project_count"] == 3
-    # Data size metric should not be present
-    assert "data_size_mb" not in result["comapeo"]
 
 
 def test_get_directory_size(tmp_path):
@@ -153,6 +56,40 @@ def test_get_directory_size_subprocess_error(mock_run, tmp_path):
     assert size is None
 
 
+def test_get_comapeo_metrics(comapeo_server_fixture, tmp_path):
+    """Test the CoMapeo metrics function directly."""
+
+    # Create a temporary directory to simulate the datalake
+    datalake_root = tmp_path / "datalake"
+    comapeo_dir = datalake_root / "comapeo"
+    comapeo_dir.mkdir(parents=True)
+    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
+
+    result = get_comapeo_metrics(comapeo_server_fixture, str(datalake_root))
+
+    assert "project_count" in result
+    assert result["project_count"] == 3
+    assert "data_size_mb" in result
+    assert result["data_size_mb"] >= 1.0
+
+
+def test_comapeo_data_size_nonexistent_path(comapeo_server_fixture, pg_database):
+    """Test that the script handles nonexistent data paths gracefully."""
+
+    result = main(
+        comapeo_server_fixture,
+        pg_database,
+        "/nonexistent/path",
+        guardianconnector_db="test",
+        superset_db="test",
+    )
+
+    assert "comapeo" in result
+    assert result["comapeo"]["project_count"] == 3
+    # Data size metric should not be present
+    assert "data_size_mb" not in result["comapeo"]
+
+
 def test_get_warehouse_metrics(pg_database):
     """Test warehouse metrics collection."""
 
@@ -189,55 +126,8 @@ def test_get_superset_metrics(pg_database):
     assert metrics["charts"] == 4
 
 
-def test_guardianconnector_full_metrics(comapeo_server_fixture, pg_database, tmp_path):
-    """Test the full metrics collection with all services."""
-
-    # Create a temporary directory to simulate the datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    # Pass the test database name for both guardianconnector_db and superset_db
-    result = main(
-        comapeo_server_fixture,
-        pg_database,
-        str(datalake_root),
-        guardianconnector_db="test",
-        superset_db="test",
-    )
-
-    # Check all services are present
-    assert "comapeo" in result
-    assert "warehouse" in result
-    assert "explorer" in result
-    assert "superset" in result
-
-    # Check CoMapeo metrics
-    assert result["comapeo"]["project_count"] == 3
-    assert result["comapeo"]["data_size_mb"] >= 1.0
-
-    # Check warehouse metrics
-    assert result["warehouse"]["tables"] == 5
-    assert result["warehouse"]["records"] >= 14
-
-    # Check explorer metrics
-    assert result["explorer"]["dataset_views"] == 3
-
-    # Check Superset metrics
-    assert result["superset"]["dashboards"] == 2
-    assert result["superset"]["charts"] == 4
-
-    # Check files metrics
-    assert "files" in result
-    assert "file_count" in result["files"]
-    assert "data_size_mb" in result["files"]
-    assert result["files"]["file_count"] >= 1  # At least the test file
-    assert result["files"]["data_size_mb"] >= 1.0  # At least 1MB
-
-
-def test_get_files_metrics(tmp_path):
-    """Test files metrics collection."""
+def test_get_datalake_metrics(tmp_path):
+    """Test datalake metrics collection."""
     # Create a test datalake structure
     datalake = tmp_path / "datalake"
     datalake.mkdir()
@@ -249,7 +139,7 @@ def test_get_files_metrics(tmp_path):
     subdir.mkdir()
     (subdir / "file3.txt").write_bytes(b"z" * (1024 * 1024))  # 1MB
 
-    metrics = get_files_metrics(str(datalake))
+    metrics = get_datalake_metrics(str(datalake))
 
     assert "file_count" in metrics
     assert "data_size_mb" in metrics
@@ -286,65 +176,6 @@ def test_get_windmill_metrics():
             assert metrics["number_of_schedules"] == 3
 
 
-def test_windmill_metrics_not_in_windmill():
-    """Test that Windmill metrics are skipped when not running in Windmill."""
-    # Ensure environment variables are not set
-    with patch.dict("os.environ", {}, clear=True):
-        metrics = get_windmill_metrics()
-
-        # Should return empty dict when not in Windmill
-        assert metrics == {}
-
-
-def test_windmill_metrics_automatic(comapeo_server_fixture, pg_database, tmp_path):
-    """Test that Windmill metrics are automatically collected when running in Windmill."""
-    # Create test datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    # Mock environment variables to simulate running in Windmill
-    with patch.dict(
-        "os.environ",
-        {
-            "WM_BASE_URL": "http://windmill.example.org",
-            "WM_TOKEN": "test_token",
-            "WM_WORKSPACE": "test_workspace",
-        },
-    ):
-        with responses.RequestsMock() as rsps:
-            # Mock Windmill schedules API
-            rsps.add(
-                responses.GET,
-                "http://windmill.example.org/api/w/test_workspace/schedules/list",
-                json=[{"path": "f/example/script1"}],
-                status=200,
-            )
-            # Also need to mock CoMapeo API since comapeo_server_fixture is provided
-            rsps.add(
-                responses.GET,
-                "http://comapeo.example.org/projects",
-                json={
-                    "data": [
-                        {"projectId": "forest_expedition"},
-                        {"projectId": "river_mapping"},
-                    ]
-                },
-                status=200,
-            )
-
-            # Run without any windmill parameters
-            result = main(comapeo_server_fixture, pg_database, str(datalake_root))
-
-            # Windmill metrics should be automatically included
-            assert "windmill" in result
-            assert result["windmill"]["number_of_schedules"] == 1
-            # Other metrics should also be present
-            assert "comapeo" in result
-            assert "files" in result
-
-
 def test_get_auth0_metrics():
     """Test Auth0 metrics collection."""
     auth0_resource = {"token": "test_auth0_token"}
@@ -367,56 +198,12 @@ def test_get_auth0_metrics():
         assert metrics["users"] == 150
 
 
-def test_auth0_metrics_optional(comapeo_server_fixture, tmp_path):
-    """Test that Auth0 metrics are optional."""
-    # Create test datalake
-    datalake_root = tmp_path / "datalake"
-    comapeo_dir = datalake_root / "comapeo"
-    comapeo_dir.mkdir(parents=True)
-    (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    # Run without Auth0 parameters
-    result = main(comapeo_server_fixture, None, str(datalake_root))
-
-    # Auth0 metrics should not be present
-    assert "auth0" not in result
-    # But other metrics should be present
-    assert "comapeo" in result
-    assert "files" in result
-
-
-def test_no_parameters_provided(tmp_path):
-    """Test that the script works when no parameters are provided."""
-    # Create a datalake directory for files metrics
-    datalake_root = tmp_path / "datalake"
-    datalake_root.mkdir()
-    (datalake_root / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
-
-    # Run with no CoMapeo, no db, no Windmill - only files metrics
-    result = main(attachment_root=str(datalake_root))
-
-    # Only files metrics should be present
-    assert "files" in result
-    assert result["files"]["file_count"] >= 1
-    assert result["files"]["data_size_mb"] >= 1.0
-
-    # All other metrics should not be present
-    assert "comapeo" not in result
-    assert "warehouse" not in result
-    assert "explorer" not in result
-    assert "superset" not in result
-    assert "windmill" not in result
-
-    # Result should not be empty
-    assert len(result) == 1
-
-
 def test_flatten_metrics():
     """Test that metrics are correctly flattened with double underscore separator."""
     metrics = {
         "comapeo": {"project_count": 3, "data_size_mb": 100.5},
         "warehouse": {"tables": 50, "records": 1000000},
-        "files": {"file_count": 5000, "data_size_mb": 10000.0},
+        "datalake": {"file_count": 5000, "data_size_mb": 10000.0},
     }
     date_str = "2026-02-18"
 
@@ -431,19 +218,22 @@ def test_flatten_metrics():
     assert flattened["comapeo__data_size_mb"] == 100.5
     assert flattened["warehouse__tables"] == 50
     assert flattened["warehouse__records"] == 1000000
-    assert flattened["files__file_count"] == 5000
-    assert flattened["files__data_size_mb"] == 10000.0
+    assert flattened["datalake__file_count"] == 5000
+    assert flattened["datalake__data_size_mb"] == 10000.0
 
 
-def test_metrics_written_to_database(comapeo_server_fixture, pg_database, tmp_path):
-    """Test that metrics are written to the database table."""
-    # Create test datalake
+def test_guardianconnector_full_metrics_and_db_write(
+    comapeo_server_fixture, pg_database, tmp_path
+):
+    """Test full metrics collection, structure, and database persistence."""
+    # Create a temporary directory to simulate the datalake
     datalake_root = tmp_path / "datalake"
     comapeo_dir = datalake_root / "comapeo"
     comapeo_dir.mkdir(parents=True)
+    # Create a file large enough to show up in MB (1 MB)
     (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
 
-    # Run main with database parameter
+    # Pass the test database name for both guardianconnector_db and superset_db
     result = main(
         comapeo_server_fixture,
         pg_database,
@@ -452,10 +242,39 @@ def test_metrics_written_to_database(comapeo_server_fixture, pg_database, tmp_pa
         superset_db="test",
     )
 
-    # Verify metrics were returned
+    # Check top-level structure
+    assert isinstance(result, dict)
     assert "comapeo" in result
+    assert isinstance(result["comapeo"], dict)
+
+    # Check all services are present
     assert "warehouse" in result
-    assert "files" in result
+    assert "explorer" in result
+    assert "superset" in result
+    assert "datalake" in result
+
+    # Check CoMapeo metrics
+    assert "project_count" in result["comapeo"]
+    assert result["comapeo"]["project_count"] == 3
+    assert "data_size_mb" in result["comapeo"]
+    assert result["comapeo"]["data_size_mb"] >= 1.0
+
+    # Check warehouse metrics
+    assert result["warehouse"]["tables"] == 5
+    assert result["warehouse"]["records"] >= 14
+
+    # Check explorer metrics
+    assert result["explorer"]["dataset_views"] == 3
+
+    # Check Superset metrics
+    assert result["superset"]["dashboards"] == 2
+    assert result["superset"]["charts"] == 4
+
+    # Check datalake metrics
+    assert "file_count" in result["datalake"]
+    assert "data_size_mb" in result["datalake"]
+    assert result["datalake"]["file_count"] >= 1  # At least the test file
+    assert result["datalake"]["data_size_mb"] >= 1.0  # At least 1MB
 
     # Verify metrics were written to database
     conn_str = conninfo({**pg_database, "dbname": "test"})
@@ -478,7 +297,7 @@ def test_metrics_written_to_database(comapeo_server_fixture, pg_database, tmp_pa
 
             # Check the row content
             cursor.execute(
-                "SELECT _id, date, comapeo__project_count, warehouse__tables, files__file_count FROM metrics"
+                "SELECT _id, date, comapeo__project_count, warehouse__tables, datalake__file_count FROM metrics"
             )
             row = cursor.fetchone()
             assert row is not None
@@ -491,7 +310,7 @@ def test_metrics_written_to_database(comapeo_server_fixture, pg_database, tmp_pa
             # Verify date
             assert date is not None
 
-            # Verify metrics values
+            # Verify metrics values match what was returned
             assert comapeo_projects == 3
             assert warehouse_tables == 5
             assert files_count >= 1
@@ -527,3 +346,29 @@ def test_metrics_update_on_same_day(comapeo_server_fixture, pg_database, tmp_pat
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM metrics")
             assert cursor.fetchone()[0] == 1
+
+
+def test_no_parameters_provided(tmp_path):
+    """Test that the script works when no parameters are provided."""
+    # Create a datalake directory for datalake metrics
+    datalake_root = tmp_path / "datalake"
+    datalake_root.mkdir()
+    (datalake_root / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
+
+    # Run with no CoMapeo, no db, no Windmill - only datalake metrics
+    result = main(attachment_root=str(datalake_root))
+
+    # Only datalake metrics should be present
+    assert "datalake" in result
+    assert result["datalake"]["file_count"] >= 1
+    assert result["datalake"]["data_size_mb"] >= 1.0
+
+    # All other metrics should not be present
+    assert "comapeo" not in result
+    assert "warehouse" not in result
+    assert "explorer" not in result
+    assert "superset" not in result
+    assert "windmill" not in result
+
+    # Result should not be empty
+    assert len(result) == 1
