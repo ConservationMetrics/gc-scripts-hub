@@ -33,8 +33,7 @@ def fake_alerts_table(pg_database):
         ),
     ]
 
-    conn = psycopg.connect(**pg_database)
-    conn.autocommit = True
+    conn = psycopg.connect(autocommit=True, **pg_database)
     cur = conn.cursor()
 
     try:
