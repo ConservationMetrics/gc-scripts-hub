@@ -480,7 +480,7 @@ def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
 def get_windmill_metrics() -> dict:
     """Get metrics from Windmill using environment variables.
 
-    When running inside a Windmill worker, the following environment variables
+    Inside a Windmill worker, the following environment variables
     are automatically available:
     - WM_TOKEN: Authentication token
     - WM_BASE_URL: Base URL of the Windmill instance
@@ -497,12 +497,6 @@ def get_windmill_metrics() -> dict:
     base_url = os.environ.get("WM_BASE_URL")
     token = os.environ.get("WM_TOKEN")
     workspace = os.environ.get("WM_WORKSPACE")
-
-    if not all([base_url, token, workspace]):
-        logger.info(
-            "Not running in Windmill worker (missing WM_* env vars), skipping Windmill metrics"
-        )
-        return {}
 
     try:
         # Get list of schedules from Windmill API
