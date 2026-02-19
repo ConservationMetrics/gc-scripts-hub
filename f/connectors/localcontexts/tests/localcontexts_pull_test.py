@@ -1,4 +1,4 @@
-import psycopg2
+import psycopg
 
 from f.connectors.localcontexts.localcontexts_pull import (
     main,
@@ -115,7 +115,7 @@ def test_script_e2e(localcontexts_server, pg_database, tmp_path):
     assert (labels_dir / "FAKE_AUDIO_ID.mp3").exists()
 
     # Check database table was created and populated
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Check labels table
             cursor.execute(
@@ -212,7 +212,7 @@ def test_project_with_no_labels(mocked_responses, pg_database, tmp_path):
     assert project_json_path.exists()
 
     # No database tables should be created
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """

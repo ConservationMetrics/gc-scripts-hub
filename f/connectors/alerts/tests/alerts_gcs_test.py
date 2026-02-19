@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import google.api_core.exceptions
 import pandas as pd
-import psycopg2
+import psycopg
 import pytest
 
 from f.connectors.alerts.alerts_gcs import (
@@ -171,7 +171,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     )
 
     # Alerts are written to a SQL Table
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM fake_alerts")
             assert cursor.fetchone()[0] == 1  # Length of assets/alerts.geojson
@@ -179,7 +179,8 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
             # Check that the _id field is a valid UUID
             cursor.execute("SELECT _id FROM fake_alerts")
             _id = cursor.fetchone()[0]
-            assert uuid.UUID(_id)
+            # psycopg3 returns UUID columns as uuid.UUID objects directly
+            assert isinstance(_id, uuid.UUID)
 
             # Check that the _id field is unique
             cursor.execute("SELECT _id FROM fake_alerts")
@@ -442,7 +443,7 @@ def test_metadata_only_scenario(
     )
 
     # Check that metadata was written to the database
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             # Check that metadata table was created and has data
             cursor.execute("SELECT COUNT(*) FROM fake_alerts_metadata_only__metadata")
@@ -587,7 +588,7 @@ def test_max_months_lookback_e2e(
     assert result is None
 
     # Verify both tables are empty
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM fake_alerts_filtered")
             assert cursor.fetchone()[0] == 0
@@ -835,7 +836,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     )
 
     # Verify initial data for FIRST alert in DB
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
@@ -918,7 +919,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     )
 
     # Verify FIRST DB record was updated
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
