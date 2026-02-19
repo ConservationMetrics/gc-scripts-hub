@@ -6,9 +6,12 @@ import json
 import logging
 import time
 
-from psycopg2 import Error, connect, errors, sql
+from psycopg import Error, connect, errors, sql
 
-from f.common_logic.identifier_utils import sanitize_sql_message
+from f.common_logic.identifier_utils import (
+    normalize_identifier,
+    sanitize_sql_message,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,8 +20,30 @@ logger = logging.getLogger(__name__)
 postgresql = dict
 
 
+def _normalize_value_for_comparison(value):
+    """
+    Normalize a value for comparison between new data and existing database rows.
+
+    Treats empty strings as None (NULL) to match how StructuredDBWriter stores values.
+    Converts all non-None, non-empty values to strings for consistent comparison.
+
+    Parameters
+    ----------
+    value : any
+        The value to normalize.
+
+    Returns
+    -------
+    str or None
+        The normalized value as a string, or None if the value is None or empty string.
+    """
+    if value is None or value == "":
+        return None
+    return str(value)
+
+
 def conninfo(db: postgresql):
-    """Convert a `postgresql` Windmill Resources to psycopg-style connection string"""
+    """Convert a `postgresql` Windmill Resources to psycopg3-style connection string"""
     # password is optional
     password_part = f" password={db['password']}" if "password" in db else ""
     conn = "dbname={dbname} user={user} host={host} port={port}".format(**db)
@@ -29,34 +54,31 @@ def check_if_table_exists(
     db_connection_string: str, table_name: str, schema: str = "public"
 ):
     """Check if a table exists in the database, returns a boolean. Default schema is public."""
-    conn = connect(db_connection_string)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = %s AND table_name = %s
-        )
-        """,
-        (schema, table_name),
-    )
-    return cursor.fetchone()[0]
+    with connect(db_connection_string, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = %s AND table_name = %s
+                )
+                """,
+                (schema, table_name),
+            )
+            return cursor.fetchone()[0]
 
 
 def fetch_tables_from_postgres(db_connection_string: str):
     """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
     try:
-        conn = connect(db_connection_string)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = 'public'
-        """)
-        tables = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return tables
+        with connect(db_connection_string, autocommit=True) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT table_name FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                """)
+                return [row[0] for row in cursor.fetchall()]
     except Exception as e:
         logger.error(f"Error fetching tables: {e}")
         return []
@@ -77,24 +99,213 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     """
 
     try:
-        conn = connect(db_connection_string)
-        cursor = conn.cursor()
-        cursor.execute(
-            sql.SQL("SELECT * FROM {table_name}").format(
-                table_name=sql.Identifier(table_name)
-            )
-        )
-        columns = [desc[0] for desc in cursor.description]
-        rows = cursor.fetchall()
+        with connect(db_connection_string, autocommit=True) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    sql.SQL("SELECT * FROM {table_name}").format(
+                        table_name=sql.Identifier(table_name)
+                    )
+                )
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
     except Error as e:
         logger.error(f"Error fetching data from {table_name}: {e}")
         raise
-    finally:
-        cursor.close()
-        conn.close()
 
     logger.info(f"Data fetched from {table_name}")
     return columns, rows
+
+
+def summarize_new_rows_updates_and_columns(
+    db: postgresql,
+    table_name: str,
+    new_data: list[dict],
+    primary_key: str = "_id",
+    str_replace: list[tuple[str, str]] = None,
+    reverse_properties_separated_by: str = None,
+):
+    """
+    Compare uploaded dataset against existing table to determine impact.
+
+    IMPORTANT: This function must stay in sync with StructuredDBWriter behavior.
+    When calling this function, pass the same str_replace and reverse_properties_separated_by
+    parameters that you intend to use when creating the StructuredDBWriter instance.
+
+    Value comparison uses _normalize_value_for_comparison() to match how StructuredDBWriter
+    stores values (empty strings treated as NULL).
+
+    Parameters
+    ----------
+    db : postgresql
+        Database connection dictionary.
+    table_name : str
+        Name of the existing table to compare against.
+    new_data : list[dict]
+        List of dictionaries representing the new data rows to be imported.
+    primary_key : str, optional
+        Column name to use as primary key for identifying updates (default: "_id").
+    str_replace : list of tuple, optional
+        List of (old, new) strings to apply during column name sanitization.
+        Must match the StructuredDBWriter settings. Defaults to [("/", "__")].
+    reverse_properties_separated_by : str or None, optional
+        If provided, splits keys on this character, reverses segments, and rejoins.
+        Must match the StructuredDBWriter settings. Defaults to None.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        A tuple containing:
+        - new_rows : Number of rows that would be inserted (new primary keys)
+        - updates : Number of existing rows that would be updated (changed values)
+        - new_columns : Number of new columns that would be added to the table
+    """
+    # Apply same defaults as StructuredDBWriter to ensure consistency
+    if str_replace is None:
+        str_replace = [("/", "__")]
+    if not new_data:
+        return 0, 0, 0
+
+    with connect(conninfo(db), autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            # Get existing columns in the table
+            cursor.execute(
+                """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s AND table_schema = 'public'
+                """,
+                (table_name,),
+            )
+            existing_columns = {row[0] for row in cursor.fetchall()}
+            logger.info(f"Existing table has {len(existing_columns)} columns")
+
+            # Get all column names from new data
+            # IMPORTANT: Preserve the order of columns as they appear in the first row
+            # because sanitize_sql_message assigns collision suffixes based on iteration order
+            new_data_columns_raw = []
+            seen = set()
+            for row in new_data:
+                for col in row.keys():
+                    if col not in seen:
+                        new_data_columns_raw.append(col)
+                        seen.add(col)
+            logger.info(f"New data has {len(new_data_columns_raw)} columns (raw)")
+
+            # Normalize new data column names using sanitize_sql_message to match
+            # how StructuredDBWriter actually creates columns (with collision handling)
+            # Create a dummy row with all columns to get the normalized column names
+            # Use the first actual row to preserve the original key order
+            dummy_row = new_data[0].copy() if new_data else {}
+            # Add any missing columns from other rows (preserve order)
+            for col in new_data_columns_raw:
+                if col not in dummy_row:
+                    dummy_row[col] = None
+
+            sanitized, column_mapping = sanitize_sql_message(
+                dummy_row,
+                column_renames={},  # Start with empty mappings
+                reverse_properties_separated_by=reverse_properties_separated_by,
+                str_replace=str_replace,
+                maxlen=63,
+            )
+
+            # Extract just the normalized column names (values from column_mapping)
+            new_data_columns_normalized = set(column_mapping.values())
+
+            logger.info(
+                f"New data has {len(new_data_columns_normalized)} columns (normalized)"
+            )
+
+            # Calculate new columns using normalized names
+            new_columns_set = new_data_columns_normalized - existing_columns
+            new_columns = len(new_columns_set)
+
+            if new_columns > 0:
+                logger.info(f"Detected {new_columns} new columns")
+            else:
+                logger.info("No new columns detected")
+
+            # Get existing primary keys and their data
+            # Normalize primary key name to match database
+            normalized_primary_key = normalize_identifier(primary_key)
+
+            if normalized_primary_key in existing_columns:
+                # Fetch only the columns that exist in both datasets for comparison
+                common_columns = existing_columns & new_data_columns_normalized
+                if not common_columns:
+                    # No common columns - all rows are new
+                    return len(new_data), 0, new_columns
+
+                # Build query to fetch existing data
+                column_list = sql.SQL(", ").join(map(sql.Identifier, common_columns))
+                query = sql.SQL("SELECT {columns} FROM {table}").format(
+                    columns=column_list, table=sql.Identifier(table_name)
+                )
+                cursor.execute(query)
+
+                # Use the column_mapping we created earlier (from sanitize_sql_message)
+                # This already has the correct raw -> normalized mappings with collision handling
+                raw_to_normalized = column_mapping
+
+                # Create reverse mapping (normalized to raw) for looking up values in new_data
+                normalized_to_raw = {v: k for k, v in raw_to_normalized.items()}
+
+                # Create lookup of existing rows by primary key
+                existing_rows = {}
+                for row in cursor.fetchall():
+                    row_dict = dict(zip(common_columns, row))
+                    if normalized_primary_key in row_dict:
+                        # Normalize values for comparison using shared logic
+                        normalized = {
+                            k: _normalize_value_for_comparison(v)
+                            for k, v in row_dict.items()
+                        }
+                        existing_rows[str(row_dict[normalized_primary_key])] = (
+                            normalized
+                        )
+
+                # Compare new data against existing
+                new_rows_count = 0
+                updates_count = 0
+
+                for new_row in new_data:
+                    # Get primary key value using raw column name
+                    pk_value = str(new_row.get(primary_key))
+
+                    if pk_value not in existing_rows:
+                        # This is a new row
+                        new_rows_count += 1
+                    else:
+                        # Check if any values differ in common columns
+                        existing_row = existing_rows[pk_value]
+                        has_changes = False
+
+                        for normalized_col in common_columns:
+                            # Map normalized column back to raw column name to get value from new_data
+                            raw_col = normalized_to_raw.get(
+                                normalized_col, normalized_col
+                            )
+                            new_val = new_row.get(raw_col)
+                            existing_val = existing_row.get(normalized_col)
+
+                            # Normalize for comparison using shared logic
+                            new_val_norm = _normalize_value_for_comparison(new_val)
+                            existing_val_norm = _normalize_value_for_comparison(
+                                existing_val
+                            )
+
+                            if new_val_norm != existing_val_norm:
+                                has_changes = True
+                                break
+
+                        if has_changes:
+                            updates_count += 1
+
+                return new_rows_count, updates_count, new_columns
+
+            else:
+                # Primary key doesn't exist in table - all rows are new
+                return len(new_data), 0, new_columns
 
 
 class StructuredDBWriter:
@@ -165,36 +376,33 @@ class StructuredDBWriter:
         """
         Establishes a connection to the PostgreSQL database using the class's configured connection string.
         """
-        return connect(dsn=self.db_connection_string)
+        return connect(self.db_connection_string, autocommit=True)
 
     def _inspect_schema(self, table_name):
         """Fetches the column names of the given table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-            (table_name,),
-        )
-        columns = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return columns
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                    (table_name,),
+                )
+                return [row[0] for row in cursor.fetchall()]
 
     def _get_existing_mappings(self, table_name):
         """Fetches the current column names of the given form table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
-
-        columns_dict = {row[0]: row[1] for row in cursor.fetchall()}
-        cursor.close()
-        conn.close()
-        return columns_dict
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
+                return {row[0]: row[1] for row in cursor.fetchall()}
 
     def _create_missing_mappings(self, table_name, missing_columns):
-        """Generates and executes SQL statements to add missing mappings to the table."""
-        try:
-            with self._get_conn() as conn, conn.cursor() as cursor:
+        """Generates and executes SQL statements to add missing mappings to the table.
+
+        Each column mapping is created in its own transaction;
+        if this fails for some column (e.g. already exists or other error), that will not affect the other columns' mappings.
+        """
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
                 for original_column, sql_column in missing_columns.items():
                     try:
                         query = f"""
@@ -212,35 +420,32 @@ class StructuredDBWriter:
                             f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
                         )
                         raise
-        finally:
-            conn.close()
 
     def _get_existing_cols(self, table_name, columns_table_name):
         """Fetches the column names of the given table."""
-        conn = self._get_conn()
-        cursor = conn.cursor()
-
-        query = sql.SQL("""
-        CREATE TABLE IF NOT EXISTS {columns_table_name} (
-        original_column VARCHAR(128) NULL,
-        sql_column VARCHAR(64) NOT NULL);
-        """).format(columns_table_name=sql.Identifier(columns_table_name))
-        cursor.execute(query)
-        conn.commit()
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-            (table_name,),
-        )
-        columns = [row[0] for row in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return columns
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
+                query = sql.SQL("""
+                CREATE TABLE IF NOT EXISTS {columns_table_name} (
+                original_column VARCHAR(128) NULL,
+                sql_column VARCHAR(64) NOT NULL);
+                """).format(columns_table_name=sql.Identifier(columns_table_name))
+                cursor.execute(query)
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                    (table_name,),
+                )
+                return [row[0] for row in cursor.fetchall()]
 
     def _create_missing_fields(self, table_name, missing_columns):
-        """Generates and executes SQL statements to add missing fields to the table."""
+        """Generates and executes SQL statements to add missing fields to the table.
+
+        Each column is created in its own transaction;
+        if this fails for some column (e.g. already exists or other error), that will not affect the other columns being created.
+        """
         table_name = sql.Identifier(table_name)
-        try:
-            with self._get_conn() as conn, conn.cursor() as cursor:
+        with self._get_conn() as conn:
+            with conn.cursor() as cursor:
                 query = sql.SQL(
                     "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
                 ).format(table_name=table_name)
@@ -267,8 +472,6 @@ class StructuredDBWriter:
                             f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
                         )
                         raise
-        finally:
-            conn.close()
 
     @staticmethod
     def _safe_insert(cursor, table_name, columns, values):
@@ -282,7 +485,7 @@ class StructuredDBWriter:
 
         Parameters
         ----------
-        cursor : psycopg2 cursor
+        cursor : psycopg cursor
             The database cursor used to execute SQL queries.
         table_name : str
             The name of the table where data will be inserted.
@@ -408,7 +611,6 @@ class StructuredDBWriter:
             # Use predefined schema if provided, else mutate schema dynamically
             if self.predefined_schema:
                 self.predefined_schema(cursor, table_name)
-                conn.commit()
             elif missing_field_keys:
                 logger.info(
                     f"New incoming field keys missing from db: {len(missing_field_keys)}"
@@ -436,19 +638,9 @@ class StructuredDBWriter:
 
                 except Exception as e:
                     logger.error(f"Error inserting data: {e}, {type(e).__name__}")
-                    conn.rollback()
-
-                try:
-                    conn.commit()
-                except Exception as e:
-                    logger.error(f"Error committing transaction: {e}")
-                    conn.rollback()
 
             logger.info(f"Total rows inserted: {inserted_count}")
             logger.info(f"Total rows updated: {updated_count}")
-
-            # cursor.close()
-            # conn.close()
 
         # Return True if there were new inserts
         return inserted_count > 0

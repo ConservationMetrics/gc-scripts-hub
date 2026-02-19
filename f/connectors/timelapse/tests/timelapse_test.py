@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
-import psycopg2
+import psycopg
 import pytest
 
 from f.connectors.timelapse.timelapse import _transform_df, main
@@ -63,7 +63,7 @@ def test_script_e2e(pg_database, tmp_path, timelapse_zip):
             attachment_root=asset_storage,
         )
 
-    with psycopg2.connect(**pg_database) as conn:
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM my_timelapse_project_data")
             assert cursor.fetchone()[0] == 4
