@@ -60,8 +60,3 @@ The script uses the OAuth 2.0 client credentials flow to obtain an access token,
 - `/api/v2/users` - Total user count
 - `/api/v2/users?q=last_login:[...]` - Active users in past 30 days
 - `/api/v2/users?fields=logins_count` - Paginated query to sum all users' login counts
-
-## TODO
-
-- [ ] Document need for a M2M application in Auth0 in `gc-deploy`
-- [ ] Roll out to all instances (schedule to run once a month)
