@@ -225,8 +225,8 @@ def summarize_new_rows_updates_and_columns(
             # Get existing columns in the table
             cursor.execute(
                 """
-                SELECT column_name 
-                FROM information_schema.columns 
+                SELECT column_name
+                FROM information_schema.columns
                 WHERE table_name = %s AND table_schema = 'public'
                 """,
                 (table_name,),
@@ -433,103 +433,99 @@ class StructuredDBWriter:
         """
         return connect(self.db_connection_string, autocommit=True)
 
-    def _inspect_schema(self, table_name):
+    def _inspect_schema(self, pgconn, table_name):
         """Fetches the column names of the given table."""
-        with self._get_conn() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-                    (table_name,),
-                )
-                return [row[0] for row in cursor.fetchall()]
+        with pgconn.cursor() as cursor:
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                (table_name,),
+            )
+            return [row[0] for row in cursor.fetchall()]
 
-    def _get_existing_mappings(self, table_name):
+    def _get_existing_mappings(self, pgconn, table_name):
         """Fetches the current column names of the given form table."""
-        with self._get_conn() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
-                return {row[0]: row[1] for row in cursor.fetchall()}
+        with pgconn.cursor() as cursor:
+            cursor.execute(f"SELECT original_column, sql_column FROM {table_name};")
+            return {row[0]: row[1] for row in cursor.fetchall()}
 
-    def _create_missing_mappings(self, table_name, missing_columns):
+    def _create_missing_mappings(self, pgconn, table_name, missing_columns):
         """Generates and executes SQL statements to add missing mappings to the table.
 
         Each column mapping is created in its own transaction;
         if this fails for some column (e.g. already exists or other error), that will not affect the other columns' mappings.
         """
-        with self._get_conn() as conn:
-            with conn.cursor() as cursor:
-                for original_column, sql_column in missing_columns.items():
-                    try:
-                        query = f"""
-                        INSERT INTO {table_name} (original_column, sql_column)
-                        VALUES ('{original_column}', '{sql_column}');
-                        """
-                        cursor.execute(query)
-                    except errors.UniqueViolation:
-                        logger.info(
-                            f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
-                        )
-                        continue
-                    except Exception as e:
-                        logger.error(
-                            f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
-                        )
-                        raise
+        with pgconn.cursor() as cursor:
+            for original_column, sql_column in missing_columns.items():
+                try:
+                    query = f"""
+                    INSERT INTO {table_name} (original_column, sql_column)
+                    VALUES ('{original_column}', '{sql_column}');
+                    """
+                    cursor.execute(query)
+                except errors.UniqueViolation:
+                    logger.info(
+                        f"Skipping insert of mappings into {table_name} due to UniqueViolation, this mapping column has been accounted for already in the past: {sql_column}"
+                    )
+                    continue
+                except Exception as e:
+                    logger.error(
+                        f"An error occurred while creating missing columns {original_column},{sql_column} for {table_name}: {e}"
+                    )
+                    raise
 
-    def _get_existing_cols(self, table_name, columns_table_name):
+    def _get_existing_cols(self, pgconn, table_name, columns_table_name):
         """Fetches the column names of the given table."""
-        with self._get_conn() as conn:
-            with conn.cursor() as cursor:
-                query = sql.SQL("""
-                CREATE TABLE IF NOT EXISTS {columns_table_name} (
-                original_column VARCHAR(128) NULL,
-                sql_column VARCHAR(64) NOT NULL);
-                """).format(columns_table_name=sql.Identifier(columns_table_name))
-                cursor.execute(query)
-                cursor.execute(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
-                    (table_name,),
-                )
-                return [row[0] for row in cursor.fetchall()]
+        with pgconn.cursor() as cursor:
+            query = sql.SQL("""
+            CREATE TABLE IF NOT EXISTS {columns_table_name} (
+            original_column VARCHAR(128) NULL,
+            sql_column VARCHAR(64) NOT NULL);
+            """).format(columns_table_name=sql.Identifier(columns_table_name))
+            cursor.execute(query)
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                (table_name,),
+            )
+            return [row[0] for row in cursor.fetchall()]
 
-    def _create_missing_fields(self, table_name, missing_columns):
+    def _create_missing_fields(self, pgconn, table_name, missing_columns):
         """Generates and executes SQL statements to add missing fields to the table.
 
         Each column is created in its own transaction;
         if this fails for some column (e.g. already exists or other error), that will not affect the other columns being created.
         """
         table_name = sql.Identifier(table_name)
-        with self._get_conn() as conn:
-            with conn.cursor() as cursor:
-                query = sql.SQL(
-                    "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
-                ).format(table_name=table_name)
-                cursor.execute(query)
 
-                for sanitized_column in missing_columns:
-                    if sanitized_column == "_id":
-                        continue
-                    try:
-                        query = sql.SQL(
-                            "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
-                        ).format(
-                            table_name=table_name,
-                            colname=sql.Identifier(sanitized_column),
-                        )
-                        cursor.execute(query)
-                    except errors.DuplicateColumn:
-                        logger.debug(
-                            f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
-                        )
-                        continue
-                    except Exception as e:
-                        logger.error(
-                            f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
-                        )
-                        raise
+        with pgconn.cursor() as cursor:
+            query = sql.SQL(
+                "CREATE TABLE IF NOT EXISTS {table_name} (_id TEXT PRIMARY KEY);"
+            ).format(table_name=table_name)
+            cursor.execute(query)
+
+            for sanitized_column in missing_columns:
+                if sanitized_column == "_id":
+                    continue
+                try:
+                    query = sql.SQL(
+                        "ALTER TABLE {table_name} ADD COLUMN {colname} TEXT;"
+                    ).format(
+                        table_name=table_name,
+                        colname=sql.Identifier(sanitized_column),
+                    )
+                    cursor.execute(query)
+                except errors.DuplicateColumn:
+                    logger.debug(
+                        f"Skipping insert due to DuplicateColumn, this form column has been accounted for already in the past: {sanitized_column}"
+                    )
+                    continue
+                except Exception as e:
+                    logger.error(
+                        f"An error occurred while creating missing column: {sanitized_column} for {table_name}: {e}"
+                    )
+                    raise
 
     @staticmethod
-    def _safe_insert(cursor, table_name, columns, values):
+    def _safe_insert(pgconn, table_name, columns, values):
         """
         Executes a safe INSERT operation into a PostgreSQL table, ensuring data integrity and preventing SQL injection.
         This method also handles conflicts by updating existing records if necessary.
@@ -540,8 +536,8 @@ class StructuredDBWriter:
 
         Parameters
         ----------
-        cursor : psycopg cursor
-            The database cursor used to execute SQL queries.
+        pgconn : psycopg Connection
+            An open database connection
         table_name : str
             The name of the table where data will be inserted.
         columns : list of str
@@ -566,8 +562,10 @@ class StructuredDBWriter:
             fields=sql.SQL(", ").join(map(sql.Identifier, columns)),
             table=sql.Identifier(table_name),
         )
-        cursor.execute(select_query, (values[columns.index("_id")],))
-        existing_row = cursor.fetchone()
+
+        with pgconn.cursor() as cursor:
+            cursor.execute(select_query, (values[columns.index("_id")],))
+            existing_row = cursor.fetchone()
 
         if existing_row and list(existing_row) == values:
             # No changes, skip the update
@@ -593,8 +591,9 @@ class StructuredDBWriter:
             ),
         )
 
-        cursor.execute(query, values)
-        result = cursor.fetchone()
+        with pgconn.cursor() as cursor:
+            cursor.execute(query, values)
+            result = cursor.fetchone()
         if result and result[0]:
             inserted_count += 1
         else:
@@ -605,72 +604,82 @@ class StructuredDBWriter:
     def handle_output(self, submissions):
         table_name = self.table_name
 
-        if self.use_mapping_table:
-            columns_table_name = f"{table_name[:54]}__columns"
-            existing_fields = self._get_existing_cols(table_name, columns_table_name)
-            existing_mappings = self._get_existing_mappings(columns_table_name)
-        else:
-            existing_fields = self._inspect_schema(table_name)
-            existing_mappings = {}
+        with self._get_conn() as pgconn:
+            if self.use_mapping_table:
+                columns_table_name = f"{table_name[:54]}__columns"
+                existing_fields = self._get_existing_cols(
+                    pgconn, table_name, columns_table_name
+                )
+                existing_mappings = self._get_existing_mappings(
+                    pgconn, columns_table_name
+                )
+            else:
+                existing_fields = self._inspect_schema(pgconn, table_name)
+                existing_mappings = {}
 
-        rows = []
-        original_to_sql = {}
+            rows = []
+            original_to_sql = {}
 
-        for submission in submissions:
-            sanitized, updated = sanitize_sql_message(
-                submission,
-                existing_mappings,
-                reverse_properties_separated_by=self.reverse_separator,
-                str_replace=self.str_replace,
-            )
-            rows.append((sanitized, existing_mappings))
-            original_to_sql.update(updated)
+            # Rename submissions' keys for compatability as (non-duplicate) SQL columns
+            for submission in submissions:
+                sanitized, updated = sanitize_sql_message(
+                    submission,
+                    existing_mappings,
+                    reverse_properties_separated_by=self.reverse_separator,
+                    str_replace=self.str_replace,
+                )
+                rows.append((sanitized, existing_mappings))
+                original_to_sql.update(updated)
 
-        missing_map_keys = set()
-        missing_field_keys = set()
+            missing_map_keys = set()
+            missing_field_keys = set()
 
-        for sanitized, mappings in rows:
-            # Identify keys in the sanitized data that are not currently supported by existing mappings
-            colnames = mappings.values() if self.use_mapping_table else sanitized.keys()
-            missing_map_keys.update(set(sanitized.keys()) - set(mappings.values()))
-            # Identify keys in existing mappings that do not exist in the database table
-            # NOTE: This can occur when the database is newly created based on legacy mappings
-            missing_field_keys.update(set(colnames) - set(existing_fields))
-            # Identify keys in the sanitized data that do not exist in the database table
-            missing_field_keys.update(set(sanitized.keys()) - set(existing_fields))
+            for sanitized, mappings in rows:
+                # Identify keys in the sanitized data that are not currently supported by existing mappings
+                colnames = (
+                    mappings.values() if self.use_mapping_table else sanitized.keys()
+                )
+                missing_map_keys.update(set(sanitized.keys()) - set(mappings.values()))
+                # Identify keys in existing mappings that do not exist in the database table
+                # NOTE: This can occur when the database is newly created based on legacy mappings
+                missing_field_keys.update(set(colnames) - set(existing_fields))
+                # Identify keys in the sanitized data that do not exist in the database table
+                missing_field_keys.update(set(sanitized.keys()) - set(existing_fields))
 
-        if self.use_mapping_table and missing_map_keys:
-            missing_mappings = {}
-            for m in missing_map_keys:
-                # TODO: Write a test for this when it's empty
-                original = [key for key, val in original_to_sql.items() if val == m]
-                if original:
-                    original = original[0]
-                else:
-                    # Skip this SQL column as it has no corresponding original key to map from
-                    continue
-                sql = m
-                missing_mappings[str(original)] = sql
+            if self.use_mapping_table and missing_map_keys:
+                missing_mappings = {}
+                for m in missing_map_keys:
+                    # TODO: Write a test for this when it's empty
+                    original = [key for key, val in original_to_sql.items() if val == m]
+                    if original:
+                        original = original[0]
+                    else:
+                        # Skip this SQL column as it has no corresponding original key to map from
+                        continue
+                    sql = m
+                    missing_mappings[str(original)] = sql
 
-            logger.info(
-                f"New incoming map keys missing from db: {len(missing_mappings)}"
-            )
+                logger.info(
+                    f"New incoming map keys missing from db: {len(missing_mappings)}"
+                )
 
-            self._create_missing_mappings(columns_table_name, missing_mappings)
-            time.sleep(10)
+                self._create_missing_mappings(
+                    pgconn, columns_table_name, missing_mappings
+                )
+                time.sleep(10)
 
-        inserted_count = 0
-        updated_count = 0
+            inserted_count = 0
+            updated_count = 0
 
-        with self._get_conn() as conn, conn.cursor() as cursor:
             # Use predefined schema if provided, else mutate schema dynamically
             if self.predefined_schema:
-                self.predefined_schema(cursor, table_name)
+                with pgconn.cursor() as cursor:
+                    self.predefined_schema(cursor, table_name)
             elif missing_field_keys:
                 logger.info(
                     f"New incoming field keys missing from db: {len(missing_field_keys)}"
                 )
-                self._create_missing_fields(table_name, missing_field_keys)
+                self._create_missing_fields(pgconn, table_name, missing_field_keys)
 
             logger.info(f"Attempting to write {len(rows)} submissions to the DB.")
 
@@ -686,7 +695,7 @@ class StructuredDBWriter:
                             vals[i] = json.dumps(value)
 
                     result_inserted_count, result_updated_count = self._safe_insert(
-                        cursor, table_name, cols, vals
+                        pgconn, table_name, cols, vals
                     )
                     inserted_count += result_inserted_count
                     updated_count += result_updated_count
