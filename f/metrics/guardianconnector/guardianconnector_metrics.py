@@ -26,7 +26,8 @@ class comapeo_server(TypedDict):
     access_token: str
 
 
-class auth0_m2m(TypedDict):
+# https://hub.windmill.dev/resource_types/337/oauth_application
+class oauth_application(TypedDict):
     client_id: str
     client_secret: str
     domain: str
@@ -41,7 +42,7 @@ def main(
     db: Optional[postgresql] = None,
     attachment_root: Optional[str] = None,
     superset_db: str = "superset_metastore",
-    auth0_m2m: Optional[auth0_m2m] = None,
+    oauth_application: Optional[oauth_application] = None,
 ):
     metrics = {}
     guardianconnector_db = (
@@ -78,9 +79,9 @@ def main(
         if datalake_metrics:
             metrics["datalake"] = datalake_metrics
 
-    # Get Auth0 metrics (requires auth0_m2m parameter)
-    if auth0_m2m:
-        auth0_metrics = get_auth0_metrics(auth0_m2m)
+    # Get Auth0 metrics (requires oauth_application parameter)
+    if oauth_application:
+        auth0_metrics = get_auth0_metrics(oauth_application)
         if auth0_metrics:
             metrics["auth0"] = auth0_metrics
 
@@ -353,12 +354,12 @@ def get_datalake_metrics(datalake_path: str) -> dict:
         return {}
 
 
-def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
+def get_auth0_metrics(oauth_application: oauth_application) -> dict:
     """Get metrics from Auth0 using the Management API.
 
     Parameters
     ----------
-    auth0_m2m : auth0_m2m
+    oauth_application : oauth_application
         Dictionary containing 'client_id', 'client_secret', and 'domain'
         for Auth0 M2M application.
 
@@ -369,14 +370,14 @@ def get_auth0_metrics(auth0_m2m: auth0_m2m) -> dict:
     """
     logger.info("Fetching Auth0 metrics...")
 
-    auth0_domain = auth0_m2m["domain"]
+    auth0_domain = oauth_application["domain"]
 
     try:
         # Step 1: Get Management API access token using client credentials flow
         token_url = f"https://{auth0_domain}/oauth/token"
         token_payload = {
-            "client_id": auth0_m2m["client_id"],
-            "client_secret": auth0_m2m["client_secret"],
+            "client_id": oauth_application["client_id"],
+            "client_secret": oauth_application["client_secret"],
             "audience": f"https://{auth0_domain}/api/v2/",
             "grant_type": "client_credentials",
         }

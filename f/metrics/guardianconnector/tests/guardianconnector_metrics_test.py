@@ -259,7 +259,7 @@ def test_guardianconnector_full_metrics_and_db_write(
         pg_database,
         str(datalake_root),
         superset_db="test",
-        auth0_m2m=auth0_server_fixture,
+        oauth_application=auth0_server_fixture,
     )
 
     # Check top-level structure

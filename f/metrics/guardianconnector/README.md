@@ -51,7 +51,7 @@ To use this feature:
 1. Create an Auth0 Machine-to-Machine (M2M) application in your Auth0 dashboard
 2. Authorize it for the Auth0 Management API
 3. Grant the `read:users` and `read:stats` scopes to the application
-4. Create a Windmill resource of type `auth0_m2m` with:
+4. Create a Windmill resource of type `oauth_application` with:
    - `client_id`: Your M2M application's client ID
    - `client_secret`: Your M2M application's client secret
    - `domain`: Your Auth0 domain (e.g., `your-tenant.us.auth0.com`)
@@ -64,5 +64,4 @@ The script uses the OAuth 2.0 client credentials flow to obtain an access token,
 ## TODO
 
 - [ ] Document need for a M2M application in Auth0 in `gc-deploy`
-- [ ] Submit `auth0_m2m` resource to Windmill Hub (else, need to create it as a Resource Type in every instance)
 - [ ] Roll out to all instances (schedule to run once a month)

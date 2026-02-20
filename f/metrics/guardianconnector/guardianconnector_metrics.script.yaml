@@ -14,7 +14,7 @@ schema:
     - db
     - attachment_root
     - superset_db
-    - auth0_m2m
+    - oauth_application
   properties:
     comapeo:
       type: object
@@ -45,14 +45,12 @@ schema:
         Database name for Superset metrics. Uses 'db' connection parameters with this database name.
       default: superset_metastore
       originalType: string
-    auth0_m2m:
+    oauth_application:
       type: object
       description: >-
-        Optional. Auth0 Machine-to-Machine (M2M) application credentials.
-        Must contain 'client_id', 'client_secret', and 'domain' for an M2M app 
-        authorized for the Auth0 Management API with 'read:users' scope.
-        If not provided, Auth0 metrics will be skipped.
+        Optional. OAuth application credentials.
+        If not provided, OAuth metrics will be skipped.
       default: null
-      format: resource-auth0_m2m
+      format: resource-oauth_application
   required: []
 
