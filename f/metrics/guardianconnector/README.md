@@ -36,6 +36,8 @@ This script generates metrics for Guardian Connector services based on provided 
 > This is not the case for other connectors, such as KoboToolbox, where table names and schemas are more variable and not as standardized across deployments.
 > 
 > We also gather metrics on `mapeo` specifically because both legacy Mapeo and CoMapeo datasets may coexist in the same data warehouse. Using the `mapeo` namespace allows us to aggregate metrics across both variants where applicable.
+>
+> There is a small risk of false positives if these namespaces are used for unrelated datasets (e.g., `survey_alerts_case_management` or `kobotoolbox_competicion_yo_mapeo_el_mundo`). But until we have more robust metadata and dataset classification practices, this heuristic approach is the most practical option, and the likelihood of such false positives at this time is considered low.
 
 ### 3. Explorer
 
