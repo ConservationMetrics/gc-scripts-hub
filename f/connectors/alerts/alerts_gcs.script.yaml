@@ -53,6 +53,14 @@ schema:
         https://cloud.google.com/docs/authentication/provide-credentials-adc#on-prem
       default: null
       format: resource-gcp_service_account
+    max_months_lookback:
+      type: integer
+      description: >-
+        Maximum number of months to look back when processing alerts. Only
+        alerts from the last N months will be downloaded and processed. This
+        helps bound memory usage when dealing with large historical datasets. If
+        null or not specified, all historical data will be processed.
+      default: null
     territory_id:
       type: integer
       description: >-
@@ -60,14 +68,6 @@ schema:
         will be retrieved. This ID is used to filter and process relevant
         alerts.
       default: null
-    max_months_lookback:
-      type: integer
-      description: >-
-        Maximum number of months to look back when processing alerts. Only alerts
-        from the last N months will be downloaded and processed. This helps bound
-        memory usage when dealing with large historical datasets. If null or not
-        specified, all historical data will be processed.
-      default: 1
   required:
     - gcp_service_acct
     - alerts_bucket

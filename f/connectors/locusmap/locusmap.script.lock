@@ -1,3 +1,5 @@
-gpxpy==1.6.2
-lxml==5.3.0
-psycopg[binary]==3.2.3
+# py: 3.11
+lxml==6.0.2
+psycopg==3.3.3
+psycopg-binary==3.3.3
+typing-extensions==4.15.0

@@ -15,29 +15,13 @@ schema:
     - db_table_name
     - attachment_root
   properties:
-    type_of_alert:
+    attachment_root:
       type: string
       description: >-
-        The type of alert to fetch from the Global Forest Watch API. This can
-        be one of the following:  `gfw_integrated_alerts` (recommended), 
-        `nasa_viirs_fire_alerts`, `gfw_radd_alerts`, `umd_glad_landsat_alerts`, 
-        or `umd_glad_sentinel2_alerts.
-      default: "gfw_integrated_alerts"
-      enum:
-        - gfw_integrated_alerts
-        - gfw_radd_alerts
-        - nasa_viirs_fire_alerts
-        - umd_glad_landsat_alerts
-        - umd_glad_sentinel2_alerts
-      originalType: string  
-    gfw:
-      type: object
-      description: >-
-        The API key for accessing the Global Forest Watch API. Please note that 
-        this year expires after 1 year. For now, you can obtain a new API key from 
-        the Global Forest Watch API.
-      default: null
-      format: resource-gfw
+        A path where a GeoJSON file will be stored. This is used for storing the
+        alerts in a GeoJSON format.
+      default: /persistent-storage/datalake
+      originalType: string
     bounding_box:
       type: string
       description: >-
@@ -46,13 +30,7 @@ schema:
         for example: 
         `[[[-55.2308,5.6945],[-55.2158,5.6945],[-55.2158,5.7055],[-55.2308,5.7055],[-55.2308,5.6945]]]`
       default: null
-    max_months_lookback:
-      type: integer
-      description: >-
-        Number of months to look back when fetching alerts. For example, if set to 6,
-        the script will fetch alerts from the last 6 months. This determines both the
-        API query date range and the metadata records created.
-      default: 6
+      originalType: string
     db:
       type: object
       description: The database connection parameters for storing tabular data.
@@ -61,20 +39,43 @@ schema:
     db_table_name:
       type: string
       description: The name of the database table where alerts will be stored.
-      default: "gfw_alerts"
+      default: null
       originalType: string
-    attachment_root:
+    gfw:
+      type: object
+      description: >-
+        The API key for accessing the Global Forest Watch API. Please note that 
+        this year expires after 1 year. For now, you can obtain a new API key
+        from  the Global Forest Watch API.
+      default: null
+      format: resource-gfw
+    max_months_lookback:
+      type: integer
+      description: >-
+        Number of months to look back when fetching alerts. For example, if set
+        to 6, the script will fetch alerts from the last 6 months. This
+        determines both the API query date range and the metadata records
+        created.
+      default: null
+    type_of_alert:
       type: string
-      description: A path where a GeoJSON file will be stored. This is used for
-        storing the alerts in a GeoJSON format.
-      default: /persistent-storage/datalake
+      description: >-
+        The type of alert to fetch from the Global Forest Watch API. This can be
+        one of the following:  `gfw_integrated_alerts` (recommended), 
+        `nasa_viirs_fire_alerts`, `gfw_radd_alerts`, `umd_glad_landsat_alerts`, 
+        or `umd_glad_sentinel2_alerts.
+      default: null
+      enum:
+        - gfw_integrated_alerts
+        - gfw_radd_alerts
+        - nasa_viirs_fire_alerts
+        - umd_glad_landsat_alerts
+        - umd_glad_sentinel2_alerts
       originalType: string
-
   required:
-    - type_of_alert
     - gfw
     - bounding_box
+    - type_of_alert
     - max_months_lookback
     - db
     - db_table_name
-    - attachment_root

@@ -1,3 +1,11 @@
+# requirements:
+# lxml
+# filetype
+# fiona
+# openpyxl
+# xlrd
+# pandas
+
 import csv
 import json
 import logging

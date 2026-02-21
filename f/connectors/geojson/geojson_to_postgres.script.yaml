@@ -15,9 +15,8 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: >-
-        A path where to find the GeoJSON file.
-      default: /persistent-storage/datalake
+      description: A path where to find the GeoJSON file.
+      default: /persistent-storage/datalake/
       originalType: string
     db:
       type: object
@@ -36,10 +35,10 @@ schema:
       default: false
     geojson_path:
       type: string
-      description: The path to the GeoJSON file to upload, including the filename.
+      description: 'The path to the GeoJSON file to upload, including the filename.'
       default: null
       originalType: string
   required:
-    - geojson_path
     - db
     - db_table_name
+    - geojson_path

@@ -26,11 +26,10 @@ schema:
     storage_path:
       type: string
       description: >-
-        The path to the directory where the CSV file will be stored. The
-        file will be named after the database table name.
+        The path to the directory where the CSV file will be stored. The file
+        will be named after the database table name.
       default: /persistent-storage/datalake/exports
       originalType: string
   required:
     - db
     - db_table_name
-    - storage_path

@@ -34,4 +34,3 @@ schema:
   required:
     - db
     - db_table_name
-    - storage_path

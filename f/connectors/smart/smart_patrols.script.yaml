@@ -43,4 +43,3 @@ schema:
     - smart_patrols_path
     - db
     - db_table_name
-    - attachment_root

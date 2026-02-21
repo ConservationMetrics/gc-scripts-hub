@@ -67,7 +67,6 @@ def odkserver(mocked_responses):
         ),
         body=open("f/connectors/odk/tests/assets/1739327186781.m4a", "rb").read(),
         content_type="audio/m4a",
-        headers={"Content-Length": "3632"},
     )
 
     return OdkServer(

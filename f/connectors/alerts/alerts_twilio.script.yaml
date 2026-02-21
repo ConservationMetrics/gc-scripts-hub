@@ -19,6 +19,12 @@ schema:
         description of alerts.
       default: null
       properties: {}
+    db_table_name:
+      type: string
+      description: The name of the database table where alerts are stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,53}$'
     instance_slug:
       type: string
       description: >-
@@ -27,13 +33,6 @@ schema:
         messages to be sent.
       default: null
       originalType: string
-    db_table_name:
-      type: string
-      description: >-
-        The name of the database table where alerts are stored.
-      default: null
-      originalType: string
-      pattern: '^.{1,53}$'
     twilio_message_template:
       type: object
       description: >-
