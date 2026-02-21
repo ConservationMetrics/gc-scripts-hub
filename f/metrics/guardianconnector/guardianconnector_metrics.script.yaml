@@ -1,0 +1,60 @@
+summary: 'Guardian Connector: Generate Metrics'
+description: >-
+  This script generates metrics for Guardian Connector services based on
+  provided parameters.  All parameters are optional - the script will only
+  collect metrics for services where required parameters are provided (except
+  Windmill, as Windmill has access to its own API to collect metrics). Services:
+  CoMapeo, warehouse, Explorer, Superset, datalake, Auth0, and Windmill.
+lock: '!inline f/metrics/guardianconnector/guardianconnector_metrics.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - comapeo
+    - db
+    - attachment_root
+    - superset_db
+    - oauth_application
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where datalake files are stored. This script will calculate  the
+        size of the directory and count all files, and do the same for the
+        `comapeo` directory specifically for CoMapeo metrics. If not provided,
+        datalake metrics will be skipped.
+      default: null
+      originalType: string
+    comapeo:
+      type: object
+      description: >-
+        A server URL and access token pair to connect to a CoMapeo archive
+        server. If not provided, CoMapeo metrics will be skipped.
+      default: null
+      format: resource-comapeo_server
+    db:
+      type: object
+      description: >-
+        Database connection for all PostgreSQL metrics. This connection will be
+        used for Warehouse,  Explorer, and Superset metrics, and writing to a
+        `metrics` table in the `guardianconnector` database. If not provided,
+        all database operations will be skipped.
+      default: null
+      format: resource-postgresql
+    oauth_application:
+      type: object
+      description: >-
+        OAuth application credentials.  If not provided, Auth0 metrics will be
+        skipped.
+      default: null
+      format: resource-oauth_application
+    superset_db:
+      type: string
+      description: >-
+        Database name for Superset metrics. Uses 'db' connection parameters with
+        this database name.
+      default: superset_metastore
+      originalType: string
+  required: []
