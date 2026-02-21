@@ -1,5 +1,7 @@
 summary: 'Timelapse: Import Annotated Camera Trap Data'
-description: Import annotated camera trap data from a Timelapse ZIP file stored in Azure Blob Storage.
+description: >-
+  Import annotated camera trap data from a Timelapse ZIP file stored in Azure
+  Blob Storage.
 lock: '!inline f/connectors/timelapse/timelapse.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -13,33 +15,6 @@ schema:
     - db_table_prefix
     - attachment_root
   properties:
-    azure_blob:
-      type: object
-      description: >-
-        Windmill Azure Blob Storage resource containing account information
-        and credentials for accessing the storage account where the Timelapse
-        ZIP file is stored.
-      format: resource-azure_blob
-    blob_name:
-      type: string
-      description: >-
-        Name of the blob (ZIP file) to download from Azure Blob Storage. This is
-        the filename as it appears in the container, e.g. "project_station1.zip".
-        This ZIP file should contain a root folder with the TimeLapseData.ddb file and
-        subdirectories with images and videos.
-      originalType: string
-      pattern: '^.+\.zip$'
-    db:
-      type: object
-      description: A database connection for storing tabular data.
-      default: null
-      format: resource-postgresql
-    db_table_prefix:
-      type: string
-      description: >-
-        This is a prefix added to the database table names created by this script.
-      default: timelapse
-      originalType: string
     attachment_root:
       type: string
       description: >-
@@ -48,9 +23,38 @@ schema:
         `{attachment_root}/timelapse/{project_name}/...`
       default: /persistent-storage/datalake
       originalType: string
+    azure_blob:
+      type: object
+      description: >-
+        Windmill Azure Blob Storage resource containing account information and
+        credentials for accessing the storage account where the Timelapse ZIP
+        file is stored.
+      default: null
+      format: resource-azure_blob
+    blob_name:
+      type: string
+      description: >-
+        Name of the blob (ZIP file) to download from Azure Blob Storage. This is
+        the filename as it appears in the container, e.g.
+        "project_station1.zip". This ZIP file should contain a root folder with
+        the TimeLapseData.ddb file and subdirectories with images and videos.
+      default: null
+      originalType: string
+      pattern: ^.+\.zip$
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_prefix:
+      type: string
+      description: >-
+        This is a prefix added to the database table names created by this
+        script.
+      default: null
+      originalType: string
   required:
     - azure_blob
     - blob_name
-    - attachment_root
     - db
     - db_table_prefix

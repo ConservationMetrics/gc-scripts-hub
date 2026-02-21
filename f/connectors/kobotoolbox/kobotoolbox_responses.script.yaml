@@ -1,5 +1,7 @@
 summary: 'KoboToolbox: Fetch Survey Responses'
-description: Uses KoboToolbox REST API to download form submissions, attachments, and metadata
+description: >-
+  Uses KoboToolbox REST API to download form submissions, attachments, and
+  metadata
 lock: '!inline f/connectors/kobotoolbox/kobotoolbox_responses.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -16,8 +18,8 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where KoboToolbox attachments will be stored. Attachment
-        files will be stored in the following directory schema: 
+        A path where KoboToolbox attachments will be stored. Attachment files
+        will be stored in the following directory schema: 
         `{attachment_root}/{db_table_name}/attachments/{filename}`
       default: /persistent-storage/datalake
       originalType: string

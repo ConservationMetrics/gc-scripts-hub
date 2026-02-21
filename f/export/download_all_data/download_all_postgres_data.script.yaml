@@ -15,17 +15,16 @@ schema:
     db:
       type: object
       description: >-
-        A database connection for a PostgreSQL database where
-        the data will be exported from.
+        A database connection for a PostgreSQL database where the data will be
+        exported from.
       default: null
       format: resource-postgresql
     storage_path:
       type: string
       description: >-
-        The path to the directory where the `all_database_content.zip` 
-        file will be stored.
+        The path to the directory where the `all_database_content.zip`  file
+        will be stored.
       default: /persistent-storage/datalake/exports/
       originalType: string
   required:
     - db
-    - storage_path

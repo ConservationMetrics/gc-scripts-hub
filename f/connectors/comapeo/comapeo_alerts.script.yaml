@@ -1,5 +1,7 @@
 summary: 'CoMapeo: Post Alerts'
-description: This script fetches alerts data from a database and posts it to a CoMapeo server.
+description: >-
+  This script fetches alerts data from a database and posts it to a CoMapeo
+  server.
 lock: '!inline f/connectors/comapeo/comapeo_alerts.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -14,7 +16,9 @@ schema:
   properties:
     comapeo:
       type: object
-      description: A server URL and access token pair to connect to a CoMapeo archive server.
+      description: >-
+        A server URL and access token pair to connect to a CoMapeo archive
+        server.
       default: null
       format: resource-comapeo_server
     comapeo_project:
@@ -30,11 +34,10 @@ schema:
     db_table_name:
       type: string
       description: The name of the database table where alerts data is stored.
-      default: "alerts"
+      default: alerts
       originalType: string
       pattern: '^.{1,54}$'
   required:
     - db
-    - db_table_name
     - comapeo
     - comapeo_project

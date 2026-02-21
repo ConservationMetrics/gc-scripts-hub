@@ -1,5 +1,7 @@
 summary: 'Locus Map: Import Data'
-description: This script imports data from a Locus Map export file into a database table, and stores any attachments in a specified directory.
+description: >-
+  This script imports data from a Locus Map export file into a database table,
+  and stores any attachments in a specified directory.
 lock: '!inline f/connectors/locusmap/locusmap.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -16,10 +18,10 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where Locus Map attachments will be stored. Attachment
-        files will be stored in the following directory schema: 
+        A path where Locus Map attachments will be stored. Attachment files will
+        be stored in the following directory schema: 
         `{attachment_root}/{db_table_name}/attachments/{filename}`
-      default: /persistent-storage/datalake
+      default: /persistent-storage/datalake/
       originalType: string
     db:
       type: object
@@ -32,16 +34,13 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    delete_locusmap_export_file:
-      type: boolean
-      description: >-
-        Whether to delete the Locus Map export file after processing.
-      default: false
     locusmap_export_path:
       type: string
       description: >-
         The path to the file exported from Locus Map, including the filename.
-        This could be a GPX/KML/CSV file, or a ZIP file also containing attachments.
+        This could be a GPX/KML/CSV file, or a ZIP file also containing
+        attachments.
+      default: null
       originalType: string
   required:
     - db

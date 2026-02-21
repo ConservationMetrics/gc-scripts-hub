@@ -1,5 +1,7 @@
 summary: 'ArcGIS: Download Feature Layer'
-description: This script fetches the contents of an ArcGIS feature layer and stores it in a PostgreSQL database.
+description: >-
+  This script fetches the contents of an ArcGIS feature layer and stores it in a
+  PostgreSQL database.
 lock: '!inline f/connectors/arcgis/arcgis_feature_layer.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -22,9 +24,9 @@ schema:
     attachment_root:
       type: string
       description: >-
-        A path where ArcGIS attachments (e.g., from Survey123) will be stored. Attachment 
-        files like photo and audio will be stored in the following directory schema: 
-        `{attachment_root}/{db_table_name}/attachments/...`
+        A path where ArcGIS attachments (e.g., from Survey123) will be stored.
+        Attachment  files like photo and audio will be stored in the following
+        directory schema:  `{attachment_root}/{db_table_name}/attachments/...`
       default: /persistent-storage/datalake
       originalType: string
     db:

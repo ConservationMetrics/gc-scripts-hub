@@ -1,1 +1,4 @@
-psycopg-binary==3.2.3
+# py: 3.11
+psycopg==3.3.3
+psycopg-binary==3.3.3
+typing-extensions==4.15.0

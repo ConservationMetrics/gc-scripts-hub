@@ -1,15 +1,14 @@
 summary: 'Export: Generate commands for downloading all files from Azure Blob Storage'
 description: >-
-  This script generates a SAS URL for an Azure Blob Storage container or subfolder
-  and provides multiple `azcopy` command options for different destinations:
-  local disk, AWS S3, Google Cloud Storage, or another Azure Storage account.
-  Ideal for creating fast and reliable file transfer options without requiring
-  zipping large directories or putting load on your GC deployment.
-
+  This script generates a SAS URL for an Azure Blob Storage container or
+  subfolder and provides multiple `azcopy` command options for different
+  destinations: local disk, AWS S3, Google Cloud Storage, or another Azure
+  Storage account. Ideal for creating fast and reliable file transfer options
+  without requiring zipping large directories or putting load on your GC
+  deployment.
 lock: '!inline f/export/download_all_data/download_all_files_azure.script.lock'
 concurrency_time_window_s: 0
 kind: script
-
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
@@ -21,19 +20,20 @@ schema:
     azure_blob:
       type: object
       description: >-
-        Windmill Azure Blob Storage resource containing account information
-        and credentials for accessing the storage account.
+        Windmill Azure Blob Storage resource containing account information and
+        credentials for accessing the storage account.
+      default: null
       format: resource-azure_blob
+    expiry_minutes:
+      type: integer
+      description: How many minutes the generated SAS URL will remain valid.
+      default: 120
     folder_path:
       type: string
       description: >-
-        Optional subfolder path within the container to restrict access.
-        Leave blank to expose the entire container.
-      default: ""
-    expiry_minutes:
-      type: integer
-      description: >-
-        How many minutes the generated SAS URL will remain valid.
-      default: 120
+        Optional subfolder path within the container to restrict access. Leave
+        blank to expose the entire container.
+      default: ''
+      originalType: string
   required:
     - azure_blob
