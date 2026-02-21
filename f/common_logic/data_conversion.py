@@ -3,6 +3,7 @@
 # filetype
 # fiona
 # openpyxl
+# xlrd
 # pandas
 
 import csv
