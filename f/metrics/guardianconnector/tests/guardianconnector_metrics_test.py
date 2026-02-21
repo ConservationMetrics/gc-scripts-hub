@@ -94,12 +94,16 @@ def test_get_warehouse_metrics(pg_database):
 
     metrics = get_warehouse_metrics(pg_database)
 
-    assert "tables" in metrics
-    assert "records" in metrics
+    assert "tables_total" in metrics
+    assert "tables_mapeo" in metrics
+    assert "tables_alerts" in metrics
+    assert "records_total" in metrics
+    assert "records_mapeo" in metrics
+    assert "records_alerts" in metrics
     # Should have 5 tables (test_table_1, test_table_2, view_config, dashboards, slices)
-    assert metrics["tables"] == 5
+    assert metrics["tables_total"] == 5
     # Should have 17 total records (2 + 3 + 3 + 2 + 4 + 3)
-    assert metrics["records"] >= 14
+    assert metrics["records_total"] >= 14
 
 
 def test_get_explorer_metrics(pg_database):
@@ -191,7 +195,14 @@ def test_flatten_metrics():
     """Test that metrics are correctly flattened with double underscore separator."""
     metrics = {
         "comapeo": {"project_count": 3, "data_size_mb": 100.5},
-        "warehouse": {"tables": 50, "records": 1000000},
+        "warehouse": {
+            "tables_total": 50,
+            "tables_mapeo": 10,
+            "tables_alerts": 5,
+            "records_total": 1000000,
+            "records_mapeo": 50000,
+            "records_alerts": 25000,
+        },
         "datalake": {"file_count": 5000, "data_size_mb": 10000.0},
         "auth0": {"users": 52, "users_signed_in_past_30_days": 25, "logins": 1543},
         "windmill": {"schedules": 15},
@@ -207,8 +218,12 @@ def test_flatten_metrics():
     # Check flattened metrics
     assert flattened["comapeo__project_count"] == 3
     assert flattened["comapeo__data_size_mb"] == 100.5
-    assert flattened["warehouse__tables"] == 50
-    assert flattened["warehouse__records"] == 1000000
+    assert flattened["warehouse__tables_total"] == 50
+    assert flattened["warehouse__tables_mapeo"] == 10
+    assert flattened["warehouse__tables_alerts"] == 5
+    assert flattened["warehouse__records_total"] == 1000000
+    assert flattened["warehouse__records_mapeo"] == 50000
+    assert flattened["warehouse__records_alerts"] == 25000
     assert flattened["datalake__file_count"] == 5000
     assert flattened["datalake__data_size_mb"] == 10000.0
     assert flattened["auth0__users"] == 52
@@ -281,8 +296,8 @@ def test_guardianconnector_full_metrics_and_db_write(
     assert result["comapeo"]["data_size_mb"] >= 1.0
 
     # Check warehouse metrics
-    assert result["warehouse"]["tables"] == 5
-    assert result["warehouse"]["records"] >= 14
+    assert result["warehouse"]["tables_total"] == 5
+    assert result["warehouse"]["records_total"] >= 14
 
     # Check explorer metrics
     assert result["explorer"]["dataset_views"] == 3
@@ -327,7 +342,7 @@ def test_guardianconnector_full_metrics_and_db_write(
                     _id, 
                     date, 
                     comapeo__project_count, 
-                    warehouse__tables, 
+                    warehouse__tables_total, 
                     datalake__file_count,
                     auth0__users,
                     auth0__users_signed_in_past_30_days,
@@ -340,7 +355,7 @@ def test_guardianconnector_full_metrics_and_db_write(
                 _id,
                 date,
                 comapeo_projects,
-                warehouse_tables,
+                warehouse_tables_total,
                 files_count,
                 auth0_users,
                 auth0_active_users,
@@ -356,7 +371,7 @@ def test_guardianconnector_full_metrics_and_db_write(
 
             # Verify metrics values match what was returned
             assert comapeo_projects == 3
-            assert warehouse_tables == 5
+            assert warehouse_tables_total == 5
             assert files_count >= 1
             assert auth0_users == 52
             assert auth0_active_users == 25

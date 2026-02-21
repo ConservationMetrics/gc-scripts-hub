@@ -41,7 +41,7 @@ def main(
     comapeo: Optional[comapeo_server] = None,
     db: Optional[postgresql] = None,
     attachment_root: Optional[str] = None,
-    superset_db: str = "superset_metastore",
+    superset_db: Optional[str] = "superset_metastore",
     oauth_application: Optional[oauth_application] = None,
 ):
     metrics = {}
@@ -183,7 +183,8 @@ def get_warehouse_metrics(db: postgresql) -> dict:
     Returns
     -------
     dict
-        A dictionary containing metrics: total_tables, total_records.
+        A dictionary containing metrics: tables_total, tables_mapeo, tables_alerts,
+        records_total, records_mapeo, records_alerts.
     """
     logger.info("Fetching warehouse metrics...")
 
@@ -191,16 +192,7 @@ def get_warehouse_metrics(db: postgresql) -> dict:
         conn_str = conninfo(db)
         with psycopg.connect(conn_str, autocommit=True) as conn:
             with conn.cursor() as cursor:
-                # Count total tables in public schema
-                cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM information_schema.tables
-                    WHERE table_schema = 'public'
-                    AND table_type = 'BASE TABLE'
-                """)
-                table_count = cursor.fetchone()[0]
-
-                # Get total records by summing COUNT(*) from each table
+                # Get all table names
                 cursor.execute("""
                     SELECT table_name
                     FROM information_schema.tables
@@ -209,22 +201,51 @@ def get_warehouse_metrics(db: postgresql) -> dict:
                 """)
                 table_names = cursor.fetchall()
 
-                records = 0
+                tables_total = 0
+                tables_mapeo = 0
+                tables_alerts = 0
+                records_total = 0
+                records_mapeo = 0
+                records_alerts = 0
+
                 for (table_name,) in table_names:
                     try:
                         cursor.execute(f'SELECT COUNT(*) FROM "{table_name}"')
                         count = cursor.fetchone()[0]
-                        records += count
+
+                        tables_total += 1
+                        records_total += count
+
+                        # Count mapeo tables and records
+                        if "mapeo" in table_name.lower():
+                            tables_mapeo += 1
+                            records_mapeo += count
+
+                        # Count alerts tables and records (but exclude if metadata is also in the name)
+                        if (
+                            "alerts" in table_name.lower()
+                            and "metadata" not in table_name.lower()
+                        ):
+                            tables_alerts += 1
+                            records_alerts += count
+
                     except Exception as e:
                         logger.warning(
                             f"Could not count records in table {table_name}: {e}"
                         )
 
-        logger.info(f"Warehouse: {table_count} tables, {records:,} total records")
+        logger.info(
+            f"Warehouse: {tables_total} tables ({tables_mapeo} mapeo, {tables_alerts} alerts), "
+            f"{records_total:,} total records ({records_mapeo:,} mapeo, {records_alerts:,} alerts)"
+        )
 
         return {
-            "tables": table_count,
-            "records": records,
+            "tables_total": tables_total,
+            "tables_mapeo": tables_mapeo,
+            "tables_alerts": tables_alerts,
+            "records_total": records_total,
+            "records_mapeo": records_mapeo,
+            "records_alerts": records_alerts,
         }
     except Exception as e:
         logger.error(f"Failed to fetch warehouse metrics: {e}")
@@ -600,8 +621,12 @@ def _create_metrics_table(cursor, table_name: str):
             comapeo__project_count integer,
             comapeo__data_size_mb numeric,
             -- Warehouse metrics
-            warehouse__tables integer,
-            warehouse__records integer,
+            warehouse__tables_total integer,
+            warehouse__tables_mapeo integer,
+            warehouse__tables_alerts integer,
+            warehouse__records_total integer,
+            warehouse__records_mapeo integer,
+            warehouse__records_alerts integer,
             -- Explorer metrics
             explorer__dataset_views integer,
             -- Superset metrics

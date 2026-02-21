@@ -21,26 +21,44 @@ This script generates metrics for Guardian Connector services based on provided 
 > The data size measurement looks at the `{attachment_root}/comapeo` directory on the datalake, **not the CoMapeo server's Docker volume**, as Windmill doesn't have mounted access to Docker volumes. This serves as a proxy metric based on the pulled data stored locally, and therefore assumes that a [`comapeo_pull`](../../connectors/comapeo/README.md) script has been run to pull the CoMapeo project data to the datalake.
 
 ### 2. Warehouse
-- `total_tables`: Total number of tables in the data warehouse (public schema)
-- `total_records`: Total number of records across all warehouse tables
+
+- `tables_total`: Total number of tables in the data warehouse (public schema)
+- `tables_mapeo`: Total number of tables with "mapeo" in the name
+- `tables_alerts`: Total number of tables with "alerts" in the name (excluding tables that also contain "metadata")
+- `records_total`: Total number of records across all warehouse tables
+- `records_mapeo`: Total number of records in tables with "mapeo" in the name
+- `records_alerts`: Total number of records in tables with "alerts" in the name (excluding tables that also contain "metadata")
+
+> [!INFO]
+>
+> We gather metrics on `mapeo` and `alerts` data because these datasets are part of core, commonly used workflows in Guardian Connector. The [CoMapeo](../../connectors/comapeo/README.md) and the [Alerts](../../connectors/alerts/README.md) ingestion scripts create tables with these names by default (although the table names can be overridden via configuration).
+>
+> This is not the case for other connectors, such as KoboToolbox, where table names and schemas are more variable and not as standardized across deployments.
+> 
+> We also gather metrics on `mapeo` specifically because both legacy Mapeo and CoMapeo datasets may coexist in the same data warehouse. Using the `mapeo` namespace allows us to aggregate metrics across both variants where applicable.
 
 ### 3. Explorer
+
 - `dataset_views`: Number of dataset views configured
 
 ### 4. Superset
+
 - `dashboards`: Number of dashboards in Superset
 - `charts`: Number of charts (slices) in Superset
 
 ### 5. Files
+
 - `file_count`: Total number of files in the datalake
 - `data_size_mb`: Total size of all files in the datalake (in MB)
 
 ### 6. Auth0
+
 - `users`: Total number of users in Auth0
 - `users_signed_in_past_30_days`: Number of users who signed in during the past 30 days
 - `logins`: Total number of logins across all users (lifetime)
 
 ### 7. Windmill
+
 - `schedules`: Number of scheduled jobs in Windmill
 
 ## Auth0 Integration

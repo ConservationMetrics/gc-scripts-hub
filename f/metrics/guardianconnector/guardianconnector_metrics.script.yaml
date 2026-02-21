@@ -2,7 +2,7 @@ summary: 'Guardian Connector: Generate Metrics'
 description: >-
   This script generates metrics for Guardian Connector services based on provided parameters. 
   All parameters are optional - the script will only collect metrics for services where required parameters are provided (except Windmill, as Windmill has access to its own API to collect metrics).
-  Services: CoMapeo, warehouse, Explorer, Superset, files, Auth0, and Windmill.
+  Services: CoMapeo, warehouse, Explorer, Superset, datalake, Auth0, and Windmill.
 lock: '!inline f/metrics/guardianconnector/guardianconnector_metrics.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -19,14 +19,14 @@ schema:
     comapeo:
       type: object
       description: >-
-        Optional. A server URL and access token pair to connect to a CoMapeo archive server.
+        A server URL and access token pair to connect to a CoMapeo archive server.
         If not provided, CoMapeo metrics will be skipped.
       default: null
       format: resource-comapeo_server
     db:
       type: object
       description: >-
-        Optional. Database connection for all PostgreSQL metrics. This connection will be used for Warehouse, 
+        Database connection for all PostgreSQL metrics. This connection will be used for Warehouse, 
         Explorer, and Superset metrics, and writing to a `metrics` table in the `guardianconnector` database.
         If not provided, all database operations will be skipped.
       default: null
@@ -34,7 +34,7 @@ schema:
     attachment_root:
       type: string
       description: >-
-        Optional. A path where datalake files are stored. This script will calculate 
+        A path where datalake files are stored. This script will calculate 
         the size of the directory and count all files, and do the same for the `comapeo` directory specifically for CoMapeo metrics.
         If not provided, datalake metrics will be skipped.
       default: /persistent-storage/datalake
@@ -48,8 +48,8 @@ schema:
     oauth_application:
       type: object
       description: >-
-        Optional. OAuth application credentials.
-        If not provided, OAuth metrics will be skipped.
+        OAuth application credentials. 
+        If not provided, Auth0 metrics will be skipped.
       default: null
       format: resource-oauth_application
   required: []
