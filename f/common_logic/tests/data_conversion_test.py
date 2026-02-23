@@ -1,6 +1,6 @@
 import pytest
 
-from f.common_logic.data_conversion import convert_data, slugify
+from f.common_logic.data_conversion import convert_data
 
 
 def _validate_geojson_structure(result, expected_feature_count):
@@ -1050,11 +1050,3 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     assert logging_obs is not None
     assert logging_obs["properties"]["severity"] == "medium"
     assert logging_obs["properties"]["trees_cut"] == 5.0
-
-
-def test_slugify_empty_and_unicode():
-    assert slugify(None) == "unnamed"
-    assert slugify("") == "unnamed"
-    assert slugify("Hello World!") == "hello-world"
-    assert slugify("Café", allow_unicode=False) == "cafe"
-

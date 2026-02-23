@@ -16,9 +16,13 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: >-
-        A path where to find the CSV file.
-      default: /persistent-storage/datalake
+      description: A path where to find the CSV file.
+      default: /persistent-storage/datalake/
+      originalType: string
+    csv_path:
+      type: string
+      description: 'The path to the CSV file to upload, including the filename.'
+      default: null
       originalType: string
     db:
       type: object
@@ -31,6 +35,10 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
+    delete_csv_file:
+      type: boolean
+      description: Whether to delete the CSV file after processing.
+      default: false
     id_column:
       type: string
       description: >-
@@ -38,16 +46,7 @@ schema:
         auto-generates _id with row numbers.
       default: null
       originalType: string
-    delete_csv_file:
-      type: boolean
-      description: Whether to delete the CSV file after processing.
-      default: false
-    csv_path:
-      type: string
-      description: The path to the CSV file to upload, including the filename.
-      default: null
-      originalType: string
   required:
-    - csv_path
     - db
     - db_table_name
+    - csv_path

@@ -1,5 +1,8 @@
 summary: 'ArcGIS: Download Feature Layers Anonymously'
-description: 'This script fetches the contents of a list of ArcGIS feature layers, and stores them to the specified directory. Unlike `arcgis_feature_layer`, usage of this script **does not** require you to have an ArcGIS account.'
+description: >-
+  This script fetches the contents of a list of ArcGIS feature layers, and
+  stores them to the specified directory. Unlike `arcgis_feature_layer`, usage
+  of this script **does not** require you to have an ArcGIS account.
 lock: >-
   !inline
   f/connectors/arcgis/arcgis_download_feature_layer_anonymously.script.lock
@@ -17,26 +20,34 @@ schema:
     - folder_name
     - attachment_root
   properties:
-    subdomain:
+    attachment_root:
       type: string
       description: >-
-        The ArcGIS subdomain (e.g., 'services1' or 'services'). This forms part 
-        of the ArcGIS REST API URL: `https://{subdomain}.arcgis.com/...`
-      default: null
+        A path where ArcGIS data and attachments will be stored. Downloaded 
+        files will be stored in the following directory schema: 
+        `{attachment_root}/{folder_name}/...`
+      default: /persistent-storage/datalake
       originalType: string
-    service_id:
-      type: string
+    download_attachments:
+      type: boolean
       description: >-
-        The service identifier in the ArcGIS URL path (e.g., 'kR0hsNZYfkbTfrRz'). 
-        This typically appears after the subdomain in the feature service URL.
-      default: null
-      originalType: string
+        Whether to download attachments (e.g., photos, audio files) associated 
+        with features. Attachments are commonly present in Survey123 data.
+      default: false
     feature_id:
       type: string
       description: >-
         The name of the feature service (e.g., 'AlertData_2024'). This is the 
         human-readable identifier for the ArcGIS FeatureServer.
       default: null
+      originalType: string
+    folder_name:
+      type: string
+      description: >-
+        The folder name within the attachment root where data and attachments 
+        will be stored. The full path will be
+        `{attachment_root}/{folder_name}/`.
+      default: arcgis
       originalType: string
     layer_index_list:
       type: array
@@ -55,26 +66,20 @@ schema:
         'geojson' (default) for spatial data or 'csv' for tabular data.
       default: geojson
       originalType: string
-    download_attachments:
-      type: boolean
-      description: >-
-        Whether to download attachments (e.g., photos, audio files) associated 
-        with features. Attachments are commonly present in Survey123 data.
-      default: false
-    folder_name:
+    service_id:
       type: string
       description: >-
-        The folder name within the attachment root where data and attachments 
-        will be stored. The full path will be `{attachment_root}/{folder_name}/`.
-      default: 'arcgis'
+        The service identifier in the ArcGIS URL path (e.g.,
+        'kR0hsNZYfkbTfrRz').  This typically appears after the subdomain in the
+        feature service URL.
+      default: null
       originalType: string
-    attachment_root:
+    subdomain:
       type: string
       description: >-
-        A path where ArcGIS data and attachments will be stored. Downloaded 
-        files will be stored in the following directory schema: 
-        `{attachment_root}/{folder_name}/...`
-      default: /persistent-storage/datalake
+        The ArcGIS subdomain (e.g., 'services1' or 'services'). This forms part 
+        of the ArcGIS REST API URL: `https://{subdomain}.arcgis.com/...`
+      default: null
       originalType: string
   required:
     - subdomain

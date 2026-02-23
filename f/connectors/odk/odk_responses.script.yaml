@@ -35,8 +35,8 @@ schema:
     form_id:
       type: string
       description: >-
-        The unique identifier of the form to fetch submissions from. This is the name 
-        of the form as can be found in the ODK Central web interface.
+        The unique identifier of the form to fetch submissions from. This is the
+        name  of the form as can be found in the ODK Central web interface.
       default: null
       originalType: string
     odk:
