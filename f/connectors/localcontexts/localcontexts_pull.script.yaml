@@ -12,24 +12,23 @@ schema:
     - db_table_prefix
     - attachment_root
   properties:
-    local_contexts:
-      type: resource
-      description: >-
-        A server URL, API key, and project ID for accessing the Local Contexts API.
-      default: null
-      format: resource-localcontexts
-    db:
-      type: object
-      description: The database connection parameters for storing tabular data.
-      default: null
-      format: resource-postgresql
     attachment_root:
       type: string
       description: A path where the label assets will be stored.
       default: /persistent-storage/datalake
       originalType: string
-
+    db:
+      type: object
+      description: The database connection parameters for storing tabular data.
+      default: null
+      format: resource-postgresql
+    local_contexts:
+      type: object
+      description: >-
+        A server URL, API key, and project ID for accessing the Local Contexts
+        API.
+      default: null
+      format: resource-local_contexts
   required:
-    - db
-    - attachment_root
     - local_contexts
+    - db

@@ -1,5 +1,7 @@
 summary: 'Auditor 2: Import Annotated Acoustic Data'
-description: Import annotated acoustic data from an Auditor 2 ZIP file stored in Azure Blob Storage.
+description: >-
+  Import annotated acoustic data from an Auditor 2 ZIP file stored in Azure Blob
+  Storage.
 lock: '!inline f/connectors/auditor2/auditor2.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -13,22 +15,33 @@ schema:
     - project_name
     - attachment_root
   properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where Auditor 2 original CSVs and media will be stored, in  the
+        following directory schema: 
+        `{attachment_root}/auditor2/{project_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
     azure_blob:
       type: object
       description: >-
-        Windmill Azure Blob Storage resource containing account information
-        and credentials for accessing the storage account where the Auditor 2
-        ZIP file is stored.
+        Windmill Azure Blob Storage resource containing account information and
+        credentials for accessing the storage account where the Auditor 2 ZIP
+        file is stored.
+      default: null
       format: resource-azure_blob
     blob_name:
       type: string
       description: >-
         Name of the blob (ZIP file) to download from Azure Blob Storage. This is
-        the filename as it appears in the container, e.g. "lake_accotink_2023.zip".
-        This ZIP file should contain five Auditor 2 export CSVs, and a directory
-        containing spectrogram images and audio files.
+        the filename as it appears in the container, e.g.
+        "lake_accotink_2023.zip". This ZIP file should contain five Auditor 2
+        export CSVs, and a directory containing spectrogram images and audio
+        files.
+      default: null
       originalType: string
-      pattern: '^.+\.zip$'
+      pattern: ^.+\.zip$
     db:
       type: object
       description: A database connection for storing tabular data.
@@ -37,24 +50,16 @@ schema:
     project_name:
       type: string
       description: >-
-        The name of the project to which the data will be imported. This will
-        be used to create a subdirectory under the `attachment_root` for the
-        Auditor 2 ZIP file, and to name the project in the database in the following way:
-        `auditor2_{project_name}_deployments` (and same for the other tables).
-      default: timelapse
+        The name of the project to which the data will be imported. This will be
+        used to create a subdirectory under the `attachment_root` for the
+        Auditor 2 ZIP file, and to name the project in the database in the
+        following way: `auditor2_{project_name}_deployments` (and same for the
+        other tables).
+      default: null
       originalType: string
       pattern: '^[a-zA-Z0-9_-]+$'
-    attachment_root:
-      type: string
-      description: >-
-        A path where Auditor 2 original CSVs and media will be stored, in 
-        the following directory schema: 
-        `{attachment_root}/auditor2/{project_name}/...`
-      default: /persistent-storage/datalake
-      originalType: string
   required:
     - azure_blob
     - blob_name
-    - attachment_root
     - db
     - project_name

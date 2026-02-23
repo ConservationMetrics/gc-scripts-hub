@@ -1,5 +1,7 @@
 summary: 'CoMapeo: Fetch Observations, Tracks, and Categories'
-description: This script fetches observations, tracks, and categories from the REST API of a CoMapeo archive server.
+description: >-
+  This script fetches observations, tracks, and categories from the REST API of
+  a CoMapeo archive server.
 lock: '!inline f/connectors/comapeo/comapeo_pull.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -23,15 +25,18 @@ schema:
       originalType: string
     comapeo:
       type: object
-      description: A server URL and access token pair to connect to a CoMapeo archive server.
+      description: >-
+        A server URL and access token pair to connect to a CoMapeo archive
+        server.
       default: null
       format: resource-comapeo_server
     comapeo_project_blocklist:
       type: array
       description: An optional blocklist of project IDs to exclude from fetching.
-      default: []
+      default: null
       items:
         type: string
+        enum: null
       originalType: array
     db:
       type: object
@@ -41,17 +46,18 @@ schema:
     db_table_prefix:
       type: string
       description: >-
-        This is a prefix added to the database table names created by this script.
-        For each project, the observations and tracks data are stored in separate 
-        tables with this prefix and `_observations` and `_tracks` suffixes. 
-        For instance, if `db_table_prefix` is "comapeo" and the project `name` is
-        "My Mapeo Project", the script will create Postgres tables named 
-        `comapeo_my_mapeo_project_observations` and `comapeo_my_mapeo_project_tracks`. 
-        If no prefix is provided, the table names will simply be the project `name` 
-        with the suffixes, such as `my_mapeo_project_observations` and 
-        `my_mapeo_project_tracks`.
+        This is a prefix added to the database table names created by this
+        script. For each project, the observations and tracks data are stored in
+        separate  tables with this prefix and `_observations` and `_tracks`
+        suffixes.  For instance, if `db_table_prefix` is "comapeo" and the
+        project `name` is "My Mapeo Project", the script will create Postgres
+        tables named  `comapeo_my_mapeo_project_observations` and
+        `comapeo_my_mapeo_project_tracks`.  If no prefix is provided, the table
+        names will simply be the project `name`  with the suffixes, such as
+        `my_mapeo_project_observations` and  `my_mapeo_project_tracks`.
       default: comapeo
       originalType: string
   required:
-    - db
     - comapeo
+    - comapeo_project_blocklist
+    - db
