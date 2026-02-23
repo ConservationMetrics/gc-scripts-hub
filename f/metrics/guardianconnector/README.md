@@ -8,7 +8,7 @@ This script generates metrics for Guardian Connector services based on provided 
 
 - This script will create the `guardianconnector` database if it doesn't exist. This is done in case the database is not already created by another resource on the stack, like GuardianConnector Explorer.
 
-- The intended usage of this script is to be scheduled to run once a month, so it can be used to accumulate metrics data about usage over time.
+- The intended usage of this script is to be scheduled to run once a month, so it can be used to accumulate metrics data about usage over time. We recommend using a cron job like `0 0 3 1 * *` (1st day of the month at 3:00 AM).
 
 ## Metrics Collected
 
