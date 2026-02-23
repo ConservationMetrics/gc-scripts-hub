@@ -3,6 +3,7 @@ from f.common_logic.identifier_utils import (
     normalize_and_snakecase_keys,
     normalize_identifier,
     sanitize_sql_message,
+    slugify,
 )
 
 
@@ -310,3 +311,10 @@ def test_normalize_identifier_edge_cases():
     # Maxlen with ensure_leading_alpha
     assert normalize_identifier("123", maxlen=2, ensure_leading_alpha=True) == "_1"
     assert normalize_identifier("123", maxlen=1, ensure_leading_alpha=True) == "_"
+
+
+def test_slugify_empty_and_unicode():
+    assert slugify(None) == "unnamed"
+    assert slugify("") == "unnamed"
+    assert slugify("Hello World!") == "hello-world"
+    assert slugify("Café", allow_unicode=False) == "cafe"
