@@ -72,6 +72,58 @@ def check_if_table_exists(
             return cursor.fetchone()[0]
 
 
+def create_database_if_not_exists(db: postgresql, dbname: str):
+    """
+    Create a PostgreSQL database if it doesn't already exist.
+
+    Connects to the 'postgres' database to check and create the target database.
+
+    Parameters
+    ----------
+    db : postgresql
+        Database connection parameters (must include host, port, user, password).
+    dbname : str
+        Name of the database to create if it doesn't exist.
+
+    Returns
+    -------
+    bool
+        True if database was created, False if it already existed.
+    """
+    # Connect to 'postgres' database to check/create the target database
+    postgres_conn = {**db, "dbname": "postgres"}
+    conn_str = conninfo(postgres_conn)
+
+    with connect(conn_str, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            # Check if database exists
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM pg_database 
+                    WHERE datname = %s
+                )
+                """,
+                (dbname,),
+            )
+            exists = cursor.fetchone()[0]
+
+            if not exists:
+                # Create database - must use sql.Identifier for database name
+                logger.info(f"Creating database: {dbname}")
+                cursor.execute(
+                    sql.SQL("CREATE DATABASE {dbname}").format(
+                        dbname=sql.Identifier(dbname)
+                    )
+                )
+                logger.info(f"Successfully created database: {dbname}")
+                return True
+            else:
+                logger.debug(f"Database already exists: {dbname}")
+                return False
+
+
 def fetch_tables_from_postgres(db_connection_string: str):
     """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
     try:
