@@ -101,6 +101,7 @@ To maintain consistency across the repository, please follow these conventions w
 #### Language and Dependencies
 * While Windmill supports multiple languages (Python, TypeScript, Go, etc.), for ETL-related workflows, use Python to maintain consistency across the repository.
 * Use Python 3.11 when setting dependencies in `«name».script.lock` and `requirements-test.txt` files, as it is the latest stable version we use for our Windmill instances and in CircleCI.
+* Generate lockfiles by either running a script in Windmill runtime (Windmill will create the lockfile for you) or by running the `wmill script generate-metadata` command. If you are having issues with transitive dependencies not included in the lockfile, add them to the top-of-script `# requirements` block.
 
 #### Script Metadata
 * Add a clear summary for each script in the `«name».script.yaml` file.
