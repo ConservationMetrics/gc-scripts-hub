@@ -229,3 +229,32 @@ def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
 
         new_dict[final_key] = value
     return new_dict
+
+
+def slugify(value, allow_unicode: bool = False) -> str:
+    """A safe slugify utility.
+
+    - Converts to str, normalizes unicode, optionally keeps unicode.
+    - Returns an ASCII-ish slug of the input suitable for file names.
+    - Returns 'unnamed' for empty inputs.
+
+    Source: https://github.com/django/django/blob/main/django/utils/text.py#L453
+    """
+    value = "" if value is None else str(value)
+    if not value:
+        return "unnamed"
+
+    if allow_unicode:
+        value = unicodedata.normalize("NFKC", value)
+    else:
+        value = (
+            unicodedata.normalize("NFKD", value)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+
+    value = value.lower()
+    # keep alphanumerics, underscores, spaces and hyphens
+    value = re.sub(r"[^\w\s-]", "", value)
+    value = re.sub(r"[-\s]+", "-", value).strip("-_ ")
+    return value or "unnamed"

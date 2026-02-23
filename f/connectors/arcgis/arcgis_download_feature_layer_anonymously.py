@@ -20,8 +20,8 @@ from pyproj import Transformer
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from f.common_logic.data_conversion import slugify
 from f.common_logic.file_operations import save_data_to_file
+from f.common_logic.identifier_utils import slugify
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
