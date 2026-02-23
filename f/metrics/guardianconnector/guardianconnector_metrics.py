@@ -21,13 +21,14 @@ from f.common_logic.db_operations import (
 )
 
 
+# https://hub.windmill.dev/resource_types/194/comapeo_server
 class comapeo_server(TypedDict):
     server_url: str
     access_token: str
 
 
-# https://hub.windmill.dev/resource_types/337/oauth_application
-class oauth_application(TypedDict):
+# https://hub.windmill.dev/resource_types/338/oauth_client_credentials
+class oauth_client_credentials(TypedDict):
     client_id: str
     client_secret: str
     domain: str
@@ -42,7 +43,7 @@ def main(
     db: Optional[postgresql] = None,
     attachment_root: Optional[str] = None,
     superset_db: Optional[str] = "superset_metastore",
-    oauth_application: Optional[oauth_application] = None,
+    oauth_client_credentials: Optional[oauth_client_credentials] = None,
 ):
     metrics = {}
     guardianconnector_db = (
@@ -79,9 +80,9 @@ def main(
         if datalake_metrics:
             metrics["datalake"] = datalake_metrics
 
-    # Get Auth0 metrics (requires oauth_application parameter)
-    if oauth_application:
-        auth0_metrics = get_auth0_metrics(oauth_application)
+    # Get Auth0 metrics (requires oauth_client_credentials parameter)
+    if oauth_client_credentials:
+        auth0_metrics = get_auth0_metrics(oauth_client_credentials)
         if auth0_metrics:
             metrics["auth0"] = auth0_metrics
 
@@ -375,12 +376,12 @@ def get_datalake_metrics(datalake_path: str) -> dict:
         return {}
 
 
-def get_auth0_metrics(oauth_application: oauth_application) -> dict:
+def get_auth0_metrics(oauth_client_credentials: oauth_client_credentials) -> dict:
     """Get metrics from Auth0 using the Management API.
 
     Parameters
     ----------
-    oauth_application : oauth_application
+    oauth_client_credentials : oauth_client_credentials
         Dictionary containing 'client_id', 'client_secret', and 'domain'
         for Auth0 M2M application.
 
@@ -391,14 +392,14 @@ def get_auth0_metrics(oauth_application: oauth_application) -> dict:
     """
     logger.info("Fetching Auth0 metrics...")
 
-    auth0_domain = oauth_application["domain"]
+    auth0_domain = oauth_client_credentials["domain"]
 
     try:
         # Step 1: Get Management API access token using client credentials flow
         token_url = f"https://{auth0_domain}/oauth/token"
         token_payload = {
-            "client_id": oauth_application["client_id"],
-            "client_secret": oauth_application["client_secret"],
+            "client_id": oauth_client_credentials["client_id"],
+            "client_secret": oauth_client_credentials["client_secret"],
             "audience": f"https://{auth0_domain}/api/v2/",
             "grant_type": "client_credentials",
         }

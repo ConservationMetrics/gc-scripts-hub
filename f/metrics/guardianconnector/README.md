@@ -71,12 +71,7 @@ To use this feature:
 1. Create an Auth0 Machine-to-Machine (M2M) application in your Auth0 dashboard
 2. Authorize it for the Auth0 Management API
 3. Grant the `read:users` and `read:stats` scopes to the application
-4. Create a Windmill resource of type `oauth_application` with:
+4. Create a Windmill resource of type `oauth_client_credentials` with:
    - `client_id`: Your M2M application's client ID
    - `client_secret`: Your M2M application's client secret
-   - `domain`: Your Auth0 domain (e.g., `your-tenant.us.auth0.com`)
-
-The script uses the OAuth 2.0 client credentials flow to obtain an access token, then queries:
-- `/api/v2/users` - Total user count
-- `/api/v2/users?q=last_login:[...]` - Active users in past 30 days
-- `/api/v2/users?fields=logins_count` - Paginated query to sum all users' login counts
+   - `domain`: Your Auth0 domain (e.g., `<tenant>.us.auth0.com`)
