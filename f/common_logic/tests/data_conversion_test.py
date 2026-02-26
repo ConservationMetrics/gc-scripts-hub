@@ -651,26 +651,30 @@ def test_osm_data_consistency_across_formats(
 
 def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
     """Test that GeoJSON files with null geometry features are accepted."""
-    result, output_format = convert_data(str(geojson_with_null_geometry_file), "geojson")
+    result, output_format = convert_data(
+        str(geojson_with_null_geometry_file), "geojson"
+    )
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
     # Check that we have both valid and null geometry features
     valid_features = [f for f in result["features"] if f["geometry"] is not None]
     null_features = [f for f in result["features"] if f["geometry"] is None]
-    
+
     assert len(valid_features) == 2
     assert len(null_features) == 1
-    
+
     # Validate the null geometry feature
     null_feature = null_features[0]
     assert null_feature["type"] == "Feature"
     assert null_feature["geometry"] is None
     assert null_feature["properties"]["name"] == "null_geometry_feature"
-    
+
     # Validate that valid features still work properly
     for feature in valid_features:
-        _validate_point_geometry(feature) if feature["geometry"]["type"] == "Point" else None
+        _validate_point_geometry(feature) if feature["geometry"][
+            "type"
+        ] == "Point" else None
         assert feature["properties"]["name"] in ["valid_point", "valid_line"]
 
 
@@ -969,6 +973,7 @@ def test_osmand_data_consistency_across_formats(
         # Should have OsmAnd extensions (at least visited_date)
         _assert_osmand_property(props, "visited_date")
 
+
 def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     """Test conversion of SMART patrol XML to GeoJSON format."""
     result, output_format = convert_data(str(smart_patrol_sample_xml_file), "smart")
@@ -987,30 +992,30 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     # Validate patrol-level properties are present
     first_feature = result["features"][0]
     props = first_feature["properties"]
-    
+
     assert props["patrol_id"] == "patrol-001"
     assert props["patrol_type"] == "wildlife"
     assert props["patrol_start_date"] == "2024-01-15"
     assert props["patrol_end_date"] == "2024-01-16"
     assert props["patrol_is_armed"] == "false"
     assert "Alpha Team" in props["patrol_team"]
-    
+
     # Validate leg-level properties
     assert props["leg_id"] == "leg-001"
     assert "John Doe" in props["leg_members"]
     assert "Jane Smith" in props["leg_members"]
-    
+
     # Validate day-level properties
     assert props["day_date"] == "2024-01-15"
-    
+
     # Validate waypoint-level properties
     assert props["waypoint_id"] is not None
     assert props["waypoint_x"] is not None
     assert props["waypoint_y"] is not None
-    
+
     # Validate observation-level properties
     assert props["category"] in ["wildlife-mammal", "wildlife-bird", "threat-logging"]
-    
+
     # Find specific observations and validate attributes
     jaguar_obs = next(
         (f for f in result["features"] if f["properties"].get("species") == "jaguar"),
@@ -1020,19 +1025,18 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     assert jaguar_obs["properties"]["count"] == 2.0
     assert jaguar_obs["properties"]["healthy"] is True
     assert jaguar_obs["properties"]["category"] == "wildlife-mammal"
-    
+
     # Validate coordinates are in reasonable range (Guyana region)
     coords = jaguar_obs["geometry"]["coordinates"]
     assert -59.0 < coords[0] < -58.0  # longitude
     assert 5.0 < coords[1] < 6.0  # latitude
-    
+
     # Check for multiple observations at same waypoint
     wp_002_features = [
-        f for f in result["features"]
-        if f["properties"].get("waypoint_id") == "wp-002"
+        f for f in result["features"] if f["properties"].get("waypoint_id") == "wp-002"
     ]
     assert len(wp_002_features) == 2  # bird and logging observations
-    
+
     # Validate eagle observation
     eagle_obs = next(
         (f for f in wp_002_features if f["properties"].get("species") == "harpy-eagle"),
@@ -1041,10 +1045,14 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     assert eagle_obs is not None
     assert eagle_obs["properties"]["count"] == 1.0
     assert "Nesting in tall tree" in eagle_obs["properties"]["notes"]
-    
+
     # Validate logging threat observation
     logging_obs = next(
-        (f for f in wp_002_features if f["properties"].get("category") == "threat-logging"),
+        (
+            f
+            for f in wp_002_features
+            if f["properties"].get("category") == "threat-logging"
+        ),
         None,
     )
     assert logging_obs is not None
@@ -1148,22 +1156,22 @@ def test_tabular_to_geojson__missing_coord_col_param():
         tabular_to_geojson(rows, coord_col=None)
 
 
-def test_tabular_to_geojson__invalid_json_coords():
+def test_tabular_to_geojson__invalid_json_coords_produces_null_geometry():
     rows = [
         ["name", "coords"],
         ["A", "not json"],
     ]
-    with pytest.raises(ValueError, match="Row 1: Coordinate value is not valid JSON"):
-        tabular_to_geojson(rows, coord_col="coords")
+    result = tabular_to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["geometry"] is None
 
 
-def test_tabular_to_geojson__empty_coordinate():
+def test_tabular_to_geojson__empty_coordinate_produces_null_geometry():
     rows = [
         ["name", "coords"],
         ["A", ""],
     ]
-    with pytest.raises(ValueError, match="Row 1: missing coordinate"):
-        tabular_to_geojson(rows, coord_col="coords")
+    result = tabular_to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["geometry"] is None
 
 
 def test_tabular_to_geojson__header_only():
@@ -1181,12 +1189,13 @@ def test_convert_data__csv_to_geojson(tmp_path):
     """Test converting a CSV with a coordinates column to GeoJSON."""
     csv_file = tmp_path / "spatial.csv"
     csv_file.write_text(
-        '_id,name,coords\n'
-        '1,Alpha,"[-59.0, 5.0]"\n'
-        '2,Bravo,"[-58.0, 6.0]"\n'
+        '_id,name,coords\n1,Alpha,"[-59.0, 5.0]"\n2,Bravo,"[-58.0, 6.0]"\n'
     )
     result, output_format = convert_data(
-        str(csv_file), "csv", output_format="geojson", coord_col="coords",
+        str(csv_file),
+        "csv",
+        output_format="geojson",
+        coord_col="coords",
     )
     assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
@@ -1196,8 +1205,7 @@ def test_convert_data__csv_to_geojson(tmp_path):
         assert "coords" not in feature["properties"]
 
     alpha = next(
-        f for f in result["features"]
-        if f["properties"].get("name") == "Alpha"
+        f for f in result["features"] if f["properties"].get("name") == "Alpha"
     )
     assert alpha["geometry"]["coordinates"] == (-59.0, 5.0)
 

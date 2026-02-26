@@ -21,6 +21,7 @@ import fiona
 # "Missing optional dependency 'openpyxl'"
 import openpyxl  # noqa: F401
 import pandas as pd
+
 from f.common_logic.geo_utils import coords_to_geojson_geometry
 
 logging.basicConfig(level=logging.INFO)
@@ -280,6 +281,10 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
     The coord_col column is consumed into geometry and excluded from feature
     properties. All other columns are preserved as string properties.
 
+    Rows with missing or invalid coordinates produce features with null
+    geometry rather than raising errors. This allows the overall file to be
+    converted even when some rows have incomplete or malformed spatial data.
+
     Parameters
     ----------
     rows : list[list[str]]
@@ -309,13 +314,13 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
     features = []
     for row_num, row in enumerate(rows[1:], start=1):
         raw = row[coord_idx] if coord_idx < len(row) else ""
-        if not raw.strip():
-            raise ValueError(f"Row {row_num}: missing coordinate value")
 
-        try:
-            geometry = coords_to_geojson_geometry(raw)
-        except ValueError as e:
-            raise ValueError(f"Row {row_num}: {e}")
+        geometry = None
+        if raw.strip():
+            try:
+                geometry = coords_to_geojson_geometry(raw)
+            except ValueError:
+                logger.warning("Row %d: invalid coordinates, setting geometry to null", row_num)
 
         properties = {h: row[i] for i, h in prop_cols if i < len(row)}
         feature_id = properties.get("_id") or properties.get("id") or str(row_num)
