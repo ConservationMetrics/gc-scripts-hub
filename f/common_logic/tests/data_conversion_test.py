@@ -1,6 +1,6 @@
 import pytest
 
-from f.common_logic.data_conversion import convert_data
+from f.common_logic.data_conversion import convert_data, to_geojson
 
 
 def _validate_geojson_structure(result, expected_feature_count):
@@ -203,6 +203,121 @@ def test_convert_data__geojson_with_invalid_top_level(
 ):
     with pytest.raises(ValueError, match="must be a FeatureCollection object"):
         convert_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
+
+
+def test_to_geojson__point():
+    rows = [
+        ["id", "name", "coords"],
+        ["1", "Alpha", "[-59.0, 5.0]"],
+        ["2", "Bravo", "[-58.0, 6.0]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    assert result["type"] == "FeatureCollection"
+    assert len(result["features"]) == 2
+
+    f1 = result["features"][0]
+    assert f1["geometry"]["type"] == "Point"
+    assert f1["geometry"]["coordinates"] == (-59.0, 5.0)
+    assert f1["properties"] == {"id": "1", "name": "Alpha"}
+    assert f1["id"] == "1"
+    assert "coords" not in f1["properties"]
+
+
+def test_to_geojson__linestring():
+    rows = [
+        ["name", "coords"],
+        ["trail", "[[-59.0, 5.0], [-58.0, 6.0], [-57.0, 5.5]]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    feat = result["features"][0]
+    assert feat["geometry"]["type"] == "LineString"
+    assert len(feat["geometry"]["coordinates"]) == 3
+
+
+def test_to_geojson__polygon():
+    rows = [
+        ["name", "coords"],
+        ["area", "[[[-59, 5], [-58, 5], [-58, 6], [-59, 5]]]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    feat = result["features"][0]
+    assert feat["geometry"]["type"] == "Polygon"
+
+
+def test_to_geojson__multipolygon():
+    rows = [
+        ["name", "coords"],
+        ["zones", "[[[[-59, 5], [-58, 5], [-58, 6], [-59, 5]]]]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    feat = result["features"][0]
+    assert feat["geometry"]["type"] == "MultiPolygon"
+
+
+def test_to_geojson__mixed_types():
+    """Rows with different geometry types in the same dataset."""
+    rows = [
+        ["id", "coords"],
+        ["pt", "[-59.0, 5.0]"],
+        ["line", "[[-59.0, 5.0], [-58.0, 6.0]]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["geometry"]["type"] == "Point"
+    assert result["features"][1]["geometry"]["type"] == "LineString"
+
+
+def test_to_geojson__fallback_row_number_id():
+    rows = [
+        ["name", "coords"],
+        ["X", "[1.0, 2.0]"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["id"] == "1"
+
+
+def test_to_geojson__missing_coord_col():
+    rows = [["name", "other"], ["A", "val"]]
+    with pytest.raises(ValueError, match="Coordinate column 'coords' not found"):
+        to_geojson(rows, coord_col="coords")
+
+
+def test_to_geojson__missing_coord_col_param():
+    rows = [["name", "coords"], ["A", "[1, 2]"]]
+    with pytest.raises(ValueError, match="coord_col is required"):
+        to_geojson(rows, coord_col=None)
+
+
+def test_to_geojson__invalid_json_coords_produces_null_geometry():
+    rows = [
+        ["name", "coords"],
+        ["A", "not json"],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["geometry"] is None
+
+
+def test_to_geojson__empty_coordinate_produces_null_geometry():
+    rows = [
+        ["name", "coords"],
+        ["A", ""],
+    ]
+    result = to_geojson(rows, coord_col="coords")
+    assert result["features"][0]["geometry"] is None
+
+
+def test_to_geojson__header_only():
+    rows = [["name", "coords"]]
+    with pytest.raises(ValueError, match="at least one data row"):
+        to_geojson(rows, coord_col="coords")
+
+
+def test_convert_data__geojson_explicit_same_as_default(mapeo_geojson_file):
+    """Explicit output_format matching the default is a no-op."""
+    result, output_format = convert_data(
+        str(mapeo_geojson_file), "geojson", output_format="geojson"
+    )
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
 
 
 # --- GPX tests ---
@@ -948,6 +1063,39 @@ def test_read_data__csv_only_headers(tmp_path):
         convert_data(str(file), "csv")
 
 
+def test_convert_data__csv_default_still_csv(kobotoolbox_csv_file):
+    """Backward compat: convert_data without output_format still returns CSV."""
+    result, output_format = convert_data(str(kobotoolbox_csv_file), "csv")
+    assert output_format == "csv"
+    assert isinstance(result, list)
+    assert isinstance(result[0], list)
+
+
+def test_convert_data__csv_to_geojson(tmp_path):
+    """Test converting a CSV with a coordinates column to GeoJSON."""
+    csv_file = tmp_path / "spatial.csv"
+    csv_file.write_text(
+        '_id,name,coords\n1,Alpha,"[-59.0, 5.0]"\n2,Bravo,"[-58.0, 6.0]"\n'
+    )
+    result, output_format = convert_data(
+        str(csv_file),
+        "csv",
+        output_format="geojson",
+        coord_col="coords",
+    )
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 2)
+
+    for feature in result["features"]:
+        assert feature["geometry"]["type"] == "Point"
+        assert "coords" not in feature["properties"]
+
+    alpha = next(
+        f for f in result["features"] if f["properties"].get("name") == "Alpha"
+    )
+    assert alpha["geometry"]["coordinates"] == (-59.0, 5.0)
+
+
 def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
     with pytest.raises(ValueError, match="no data"):
         convert_data(str(kobotoolbox_empty_submission_csv_file), "csv")
@@ -1085,3 +1233,9 @@ def test_osm_data_consistency_across_formats(
 def test_convert_data__unsupported():
     with pytest.raises(ValueError):
         convert_data("/fake/path.foo", "foo")
+
+
+def test_convert_data__unsupported_conversion(mapeo_geojson_file):
+    """Requesting an unsupported cross-format conversion raises ValueError."""
+    with pytest.raises(ValueError, match="Unsupported conversion"):
+        convert_data(str(mapeo_geojson_file), "geojson", output_format="csv")
