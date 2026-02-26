@@ -4,6 +4,7 @@ requests~=2.32
 """
 
 import logging
+import re
 from pathlib import Path
 
 import requests
@@ -31,6 +32,7 @@ def main(
       - 200: replace source → publish
     """
     _assert_secret_access_token(mapbox_secret_access_token)
+    _validate_tileset_id(tileset_id)
 
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
@@ -83,6 +85,18 @@ def _assert_secret_access_token(mapbox_secret_access_token: str) -> None:
     """
     if not mapbox_secret_access_token.startswith("sk.ey"):
         raise ValueError("mapbox_secret_access_token must start with 'sk.ey'")
+
+
+def _validate_tileset_id(tileset_id: str) -> None:
+    """Validate that the tileset ID is a valid Mapbox tileset ID (alphanumeric, hyphen, 1-32 characters).
+
+    Parameters
+    ----------
+    tileset_id : str
+        The short tileset identifier.
+    """
+    if not re.match(r"^[a-z0-9-]{1,32}$", tileset_id):
+        raise ValueError("tileset_id must be a valid Mapbox tileset ID")
 
 
 def _tileset_full_id(mapbox_username: str, tileset_id: str) -> str:
@@ -240,6 +254,13 @@ def _replace_tileset_source(
         response.raise_for_status()
         logger.info("Tileset source replaced successfully.")
         return response.json()
+    except requests.HTTPError as e:
+        if e.response.status_code == 409:
+            raise RuntimeError(
+                f"Tileset source '{tileset_id}' is still processing and cannot be updated at this time. "
+                "Please wait for the current processing to complete before retrying."
+            ) from e
+        raise
     finally:
         ld_file_path.unlink(missing_ok=True)
         logger.debug("Deleted temporary line-delimited GeoJSON file: %s", ld_file_path)

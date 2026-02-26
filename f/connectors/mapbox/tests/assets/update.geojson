@@ -1,39 +1,22 @@
 {
     "type": "FeatureCollection",
     "features": [
-        {
-            "type": "Feature",
-            "properties": {
-                "name": "Southern Colorado",
-                "description": "Bounding box for Southern Colorado."
-            },
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                [
-                    [
-                    -105.8,
-                    36.5
-                    ],
-                    [
-                    -104.5,
-                    36.5
-                    ],
-                    [
-                    -104.5,
-                    37.8
-                    ],
-                    [
-                    -105.8,
-                    37.8
-                    ],
-                    [
-                    -105.8,
-                    36.5
-                    ]
-                ]
-                ]
-            }
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Southern Colorado",
+          "description": "Bounding box for Southern Colorado."
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[
+            [-105.8, 36.5],
+            [-104.5, 36.5],
+            [-104.5, 37.8],
+            [-105.8, 37.8],
+            [-105.8, 36.5]
+          ]]
         }
+      }
     ]
-}
+  }
