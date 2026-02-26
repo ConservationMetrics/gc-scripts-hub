@@ -5,32 +5,23 @@ import pytest
 from f.connectors.mapbox.mapbox_replace_tileset_source import main
 from f.connectors.mapbox.tests.assets import server_responses
 
+ASSETS_DIR = Path(__file__).parent / "assets"
 
-def _copy_sample_geojson(tmp_path: Path) -> tuple[str, str]:
-    """Copy the bundled sample GeoJSON into a temporary attachment_root."""
+
+def _stage_geojson(tmp_path: Path, asset_name: str) -> tuple[str, str]:
+    """Copy a test asset GeoJSON into a temporary attachment_root."""
     attachment_root = tmp_path / "datalake"
     attachment_root.mkdir(parents=True, exist_ok=True)
 
-    sample_src = Path(__file__).parent / "assets" / "sample.geojson"
-    target_path = attachment_root / "sample.geojson"
-    target_path.write_bytes(sample_src.read_bytes())
+    src = ASSETS_DIR / asset_name
+    dest = attachment_root / asset_name
+    dest.write_bytes(src.read_bytes())
 
-    # Return (attachment_root, relative file_location)
-    return str(attachment_root), "sample.geojson"
+    return str(attachment_root), asset_name
 
 
-def test_replace_and_publish_success(tmp_path, mocked_responses, mapbox_tileset_source):
-    attachment_root, file_location = _copy_sample_geojson(tmp_path)
-
-    result = main(
-        mapbox_username=mapbox_tileset_source.username,
-        mapbox_secret_access_token=mapbox_tileset_source.access_token,
-        tileset_id=mapbox_tileset_source.tileset_id,
-        file_location=file_location,
-        attachment_root=attachment_root,
-    )
-
-    # Verify combined return structure
+def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source):
+    """Verify the standard two-call sequence (PUT replace, POST publish)."""
     expected_source = server_responses.mapbox_tileset_source_replace_response(
         mapbox_tileset_source.username, mapbox_tileset_source.tileset_id
     )
@@ -39,10 +30,7 @@ def test_replace_and_publish_success(tmp_path, mocked_responses, mapbox_tileset_
     )
     assert result == {"source": expected_source, "publish": expected_publish}
 
-    # Two calls: PUT (replace source), then POST (publish)
-    assert len(mocked_responses.calls) == 2
-
-    replace_call, publish_call = mocked_responses.calls
+    replace_call, publish_call = mocked_responses.calls[-2:]
     assert replace_call.request.method == "PUT"
     assert replace_call.request.url == server_responses.mapbox_tileset_source_url(
         mapbox_tileset_source.username,
@@ -56,8 +44,27 @@ def test_replace_and_publish_success(tmp_path, mocked_responses, mapbox_tileset_
         mapbox_tileset_source.access_token,
     )
 
-    # Uploaded body should contain line-delimited GeoJSON feature content
-    assert b"Northern Virginia" in replace_call.request.body
+    return replace_call
+
+
+def test_update_replaces_with_new_data(
+    tmp_path, mocked_responses, mapbox_tileset_source
+):
+    attachment_root, file_location = _stage_geojson(tmp_path, "update.geojson")
+
+    result = main(
+        mapbox_username=mapbox_tileset_source.username,
+        mapbox_secret_access_token=mapbox_tileset_source.access_token,
+        tileset_id=mapbox_tileset_source.tileset_id,
+        file_location=file_location,
+        attachment_root=attachment_root,
+    )
+
+    replace_call = _assert_replace_and_publish(
+        mocked_responses, result, mapbox_tileset_source
+    )
+    assert b"Southern Colorado" in replace_call.request.body
+    assert b"Northern Virginia" not in replace_call.request.body
 
 
 def test_invalid_access_token_raises():
