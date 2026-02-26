@@ -15,21 +15,36 @@ This script uses the Mapbox Tiling Service (MTS) to create **or** update a Mapbo
 > - [Mapbox tileset processing pricing](https://www.mapbox.com/pricing#tileset-processing)  
 > - [Mapbox tileset billing metrics](https://docs.mapbox.com/help/glossary/tileset-billing-metrics/)
 > 
-> Additionally, after scheduling, it is recommended to monitor your Mapbox usage to avoid unexpected charges when running frequent or large updates.
+> After scheduling, you should also monitor your Mapbox usage to avoid unexpected charges when running frequent or large updates.
 
-## Tileset Recipe
+## Intended use case
 
-If the tileset is created, the [tileset recipe](https://docs.mapbox.com/mapbox-tiling-service/guides/tileset-recipes/) uses zoom levels 0 to a configurable maximum (default: 11, valid range: 0–16) and creates a single layer named after the tileset ID (with hyphens replaced by underscores). 
+This script is intended for workflows where a GeoJSON dataset is updated regularly and needs to be reflected in a Mapbox tileset. For example:
 
-The maximum zoom level can be configured via the `max_zoom` parameter (ignored when updating an existing tileset).
+- A government agency maintains a protected areas feature layer in ArcGIS Online and updates it quarterly.
+- A Guardian Connector user displays this layer in a Mapbox map and wants the tileset to reflect the latest data.
+- The user schedules one of the [ArcGIS Download Feature Layer scripts](../arcgis/README.md) to download the updated data from ArcGIS Online and store it as a GeoJSON file.
+- The user then schedules the `mapbox_create_or_update_tileset` script to create or update the tileset from that file.
+- The Mapbox map will automatically display the updated data once the tileset publish job completes.
+
+## Zoom levels in the Tileset Recipe
+
+When creating a tileset, a [tileset recipe](https://docs.mapbox.com/mapbox-tiling-service/guides/tileset-recipes/) defines parameters such as zoom levels.
+
+In this script:
+
+- The minimum zoom level is hard-coded to `0`.
+- The maximum zoom level is configurable via the `max_zoom` parameter (default: `11`, valid range: `0-16`).
+- The `max_zoom` parameter is ignored when updating an existing tileset.
 
 > [!TIP]
 >
-> You can use [OpenStreetMap's Zoom levels](https://wiki.openstreetmap.org/wiki/Zoom_levels) guide to determine the appropriate zoom level for your tileset.
+> You can use [OpenStreetMap's Zoom Levels guide](https://wiki.openstreetmap.org/wiki/Zoom_levels) to help determine an appropriate maximum zoom level for your tileset.
 
 ## Endpoints
 
-See information about endpoints used in the Mapbox Tiling Service API docs:
+This script uses the following Mapbox Tiling Service API endpoints:
+
 - [Get a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#get-a-tileset)
 - [Create a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset-source)
 - [Create a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset)
@@ -38,7 +53,7 @@ See information about endpoints used in the Mapbox Tiling Service API docs:
 
 ## Possible Extensions
 
-**Datasets:** In the future, we may consider using the Datasets API as a preliminary step before creating a tileset, if we determine that using [Mapbox Datasets](https://docs.mapbox.com/studio-manual/reference/datasets/) adds value for a given use case (for example, enabling GeoJSON downloads from Mapbox Studio).
+**Datasets:** In the future, we may consider using the Datasets API as a preliminary step before creating a tileset, if using [Mapbox Datasets](https://docs.mapbox.com/studio-manual/reference/datasets/) provides additional value for a given use case (for example, enabling GeoJSON downloads from Mapbox Studio).
 
 ## TODO
 
