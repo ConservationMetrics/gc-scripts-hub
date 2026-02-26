@@ -15,8 +15,6 @@ from pathlib import Path
 
 import filetype
 import fiona
-from shapely.geometry import mapping as shapely_mapping
-from shapely.geometry import shape as shapely_shape
 
 # pandas requires openpyxl installed separately to read .xlsx files
 # it has to be imported in this module despite also being listed in
@@ -24,6 +22,10 @@ from shapely.geometry import shape as shapely_shape
 # "Missing optional dependency 'openpyxl'"
 import openpyxl  # noqa: F401
 import pandas as pd
+from shapely.geometry import mapping as shapely_mapping
+from shapely.geometry import shape as shapely_shape
+
+from f.common_logic.geom_utils import infer_geometry_type
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -273,42 +275,6 @@ def convert_data(
     raise ValueError(f"Unsupported conversion: {file_format} → {target}")
 
 
-# ---------------------------------------------------------------------------
-# Coordinate nesting depth → GeoJSON geometry type mapping
-# ---------------------------------------------------------------------------
-_DEPTH_TO_GEOM_TYPE = {
-    0: "Point",
-    1: "LineString",
-    2: "Polygon",
-    3: "MultiPolygon",
-}
-
-
-def _infer_geometry_type(coordinates) -> str:
-    """
-    Infer GeoJSON geometry type from coordinate nesting depth.
-
-    Depth 0 ([lon, lat])           → Point
-    Depth 1 ([[lon, lat], ...])    → LineString
-    Depth 2 ([[[lon, lat], ...]])  → Polygon
-    Depth 3 ([[[[lon, lat], ...]]]) → MultiPolygon
-
-    Note: MultiPoint and MultiLineString share nesting depth with LineString
-    and Polygon respectively. We default to the more common single-geometry
-    types. If disambiguation is needed in the future, an explicit geometry
-    type column can be added.
-    """
-    depth = 0
-    level = coordinates
-    while isinstance(level, (list, tuple)) and level and not isinstance(level[0], (int, float)):
-        depth += 1
-        level = level[0]
-    geom_type = _DEPTH_TO_GEOM_TYPE.get(depth)
-    if geom_type is None:
-        raise ValueError(f"Cannot infer geometry type: unsupported nesting depth {depth}")
-    return geom_type
-
-
 def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
     """
     Converts tabular data (list of lists with header row) to a GeoJSON
@@ -333,7 +299,9 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
     if not coord_col:
         raise ValueError("coord_col is required for tabular → GeoJSON conversion")
     if not rows or len(rows) < 2:
-        raise ValueError("Tabular data must have a header row and at least one data row")
+        raise ValueError(
+            "Tabular data must have a header row and at least one data row"
+        )
 
     headers = rows[0]
     if coord_col not in headers:
@@ -353,7 +321,7 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
         except json.JSONDecodeError:
             raise ValueError(f"Row {row_num}: coordinate value is not valid JSON")
 
-        geom_type = _infer_geometry_type(coordinates)
+        geom_type = infer_geometry_type(coordinates)
 
         # Validate geometry with Shapely
         geom_dict = {"type": geom_type, "coordinates": coordinates}
@@ -362,7 +330,9 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
         except Exception as e:
             raise ValueError(f"Row {row_num}: invalid {geom_type} geometry — {e}")
         if not geom.is_valid:
-            raise ValueError(f"Row {row_num}: invalid {geom_type} geometry — {geom.is_valid}")
+            raise ValueError(
+                f"Row {row_num}: invalid {geom_type} geometry — {geom.is_valid}"
+            )
 
         # Normalize coordinates back through Shapely for consistency
         geometry = dict(shapely_mapping(geom))
@@ -370,12 +340,14 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
         properties = {h: row[i] for i, h in prop_cols if i < len(row)}
         feature_id = properties.get("_id") or properties.get("id") or str(row_num)
 
-        features.append({
-            "type": "Feature",
-            "id": feature_id,
-            "geometry": geometry,
-            "properties": properties,
-        })
+        features.append(
+            {
+                "type": "Feature",
+                "id": feature_id,
+                "geometry": geometry,
+                "properties": properties,
+            }
+        )
 
     if not features:
         raise ValueError("No features could be created from tabular data")
