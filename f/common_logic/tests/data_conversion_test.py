@@ -51,6 +51,163 @@ def _assert_osmand_property(props, key, expected_value=None):
         )
 
 
+# --- GeoJSON tests ---
+
+
+def test_read_data__mapeo_geojson(mapeo_geojson_file):
+    result, output_format = convert_data(str(mapeo_geojson_file), "geojson")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
+
+    for feature in result["features"]:
+        assert feature["type"] == "Feature"
+        assert "geometry" in feature
+        assert "properties" in feature
+        assert isinstance(feature["properties"], dict)
+        assert "type" in feature["properties"]
+        assert "notes" in feature["properties"]
+
+
+def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
+    """Test reading of OSM Overpass GeoJSON data."""
+    result, output_format = convert_data(str(osm_overpass_geojson_file), "geojson")
+    assert output_format == "geojson"
+
+    # Root-level structure validation
+    _validate_geojson_structure(result, 15)
+
+    # All features should be Points in this dataset
+    for feature in result["features"]:
+        assert feature["type"] == "Feature"
+        assert feature["geometry"]["type"] == "Point"
+        assert isinstance(feature["geometry"]["coordinates"], list)
+        assert len(feature["geometry"]["coordinates"]) == 2  # lon, lat
+        assert isinstance(feature["properties"], dict)
+
+    # Validate specific OSM features and their properties
+    bus_station = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "Bus Station Lijn 5 bus"
+        ),
+        None,
+    )
+    assert bus_station is not None
+    props = bus_station["properties"]
+    assert props["amenity"] == "bus_station"
+    assert props["bus"] == "yes"
+    assert props["public_transport"] == "station"
+    assert "@id" in props
+    assert props["@id"] == "node/1660255196"
+
+    # Check multilingual name support
+    assert props["name:en"] == "Line 5 bus station"
+    assert props["name:nl"] == "Lijn 5 bus station"
+
+    # Check restaurant with source attribution
+    restaurant = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "Soeng Nige's"
+        ),
+        None,
+    )
+    assert restaurant is not None
+    assert restaurant["properties"]["amenity"] == "restaurant"
+    assert restaurant["properties"]["source"] == "KG Ground Survey 2016"
+
+    # Check address information
+    exchange = next(
+        (
+            f
+            for f in result["features"]
+            if "HJ De Vries Exchange" in f["properties"].get("name", "")
+        ),
+        None,
+    )
+    assert exchange is not None
+    props = exchange["properties"]
+    assert props["addr:city"] == "Paramaribo"
+    assert props["addr:housenumber"] == "92 - 96"
+    assert props["addr:street"] == "Waterkant"
+
+    # Check modern POI with crypto payment support
+    crypto_shop = next(
+        (
+            f
+            for f in result["features"]
+            if "SMG Schaafijs" in f["properties"].get("name", "")
+        ),
+        None,
+    )
+    assert crypto_shop is not None
+    props = crypto_shop["properties"]
+    assert props["amenity"] == "ice_cream"
+    assert props["currency:XBT"] == "yes"
+    assert props["payment:lightning"] == "yes"
+    assert "2024-10-04" in props["survey:date"]
+
+
+def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
+    """Test that GeoJSON files with null geometry features are accepted."""
+    result, output_format = convert_data(
+        str(geojson_with_null_geometry_file), "geojson"
+    )
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
+
+    # Check that we have both valid and null geometry features
+    valid_features = [f for f in result["features"] if f["geometry"] is not None]
+    null_features = [f for f in result["features"] if f["geometry"] is None]
+
+    assert len(valid_features) == 2
+    assert len(null_features) == 1
+
+    # Validate the null geometry feature
+    null_feature = null_features[0]
+    assert null_feature["type"] == "Feature"
+    assert null_feature["geometry"] is None
+    assert null_feature["properties"]["name"] == "null_geometry_feature"
+
+    # Validate that valid features still work properly
+    for feature in valid_features:
+        _validate_point_geometry(feature) if feature["geometry"][
+            "type"
+        ] == "Point" else None
+        assert feature["properties"]["name"] in ["valid_point", "valid_line"]
+
+
+def test_convert_data__empty_geojson(empty_geojson_file):
+    with pytest.raises(ValueError, match="GeoJSON contains no features"):
+        convert_data(str(empty_geojson_file), "geojson")
+
+
+def test_convert_data__geojson_with_missing_properties(
+    geojson_with_missing_properties_file,
+):
+    with pytest.raises(ValueError, match="missing properties"):
+        convert_data(str(geojson_with_missing_properties_file), "geojson")
+
+
+def test_convert_data__geojson_with_invalid_geometry(
+    geojson_with_invalid_geometry_file,
+):
+    with pytest.raises(ValueError, match="invalid geometry coordinates"):
+        convert_data(str(geojson_with_invalid_geometry_file), "geojson")
+
+
+def test_convert_data__geojson_with_invalid_top_level(
+    geojson_with_invalid_top_level_structure_file,
+):
+    with pytest.raises(ValueError, match="must be a FeatureCollection object"):
+        convert_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
+
+
+# --- GPX tests ---
+
+
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
     result, output_format = convert_data(str(locusmap_points_gpx_file), "gpx")
     assert output_format == "geojson"
@@ -74,81 +231,6 @@ def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
 
         assert "link" in properties
         assert any(properties["link"].strip().endswith(ext) for ext in [".jpg", ".m4a"])
-
-
-def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
-    result, output_format = convert_data(str(locusmap_points_kml_file), "kml")
-    assert output_format == "geojson"
-    _validate_geojson_structure(result, 2)
-
-    for feat in result["features"]:
-        _validate_point_geometry(feat)
-        props = feat["properties"]
-        assert "name" in props
-        assert "description" in props
-        assert "attachments" in props
-
-
-def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
-    result, output_format = convert_data(str(locusmap_tracks_kml_file), "kml")
-    assert output_format == "geojson"
-
-    # Root-level structure check
-    _validate_geojson_structure(result, 4)
-
-    # Group by geometry type (accept both LineString and MultiLineString)
-    lines = [
-        f
-        for f in result["features"]
-        if f["geometry"]["type"] in ["LineString", "MultiLineString"]
-    ]
-    points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
-
-    assert len(lines) == 3
-    assert len(points) == 1
-
-    # Validate each track
-    for line in lines:
-        geom = line["geometry"]
-        props = line["properties"]
-
-        # Coordinates sanity check (handle both LineString and MultiLineString)
-        assert isinstance(geom["coordinates"], list)
-        if geom["type"] == "LineString":
-            assert len(geom["coordinates"]) > 1
-        elif geom["type"] == "MultiLineString":
-            assert len(geom["coordinates"]) > 0
-            for linestring in geom["coordinates"]:
-                assert len(linestring) > 1
-                assert all(
-                    isinstance(coord, (list, tuple)) and len(coord) >= 2
-                    for coord in linestring
-                )
-
-        if geom["type"] == "LineString":
-            assert all(
-                isinstance(coord, (list, tuple)) and len(coord) >= 2
-                for coord in geom["coordinates"]
-            )
-
-        # Metadata expectations
-        assert "name" in props
-        assert props["name"].startswith("2025-01-17")
-        assert "description" in props
-        assert any(
-            keyword in props["description"].lower()
-            for keyword in ["walk", "trees", "path"]
-        )
-
-    # Check the single point feature
-    pt = points[0]
-    _validate_point_geometry(pt)
-    props = pt["properties"]
-
-    assert "attachments" in props
-    assert props["attachments"].endswith(".jpg")
-    assert "description" in props
-    assert "willow" in props["description"].lower()
 
 
 def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
@@ -250,87 +332,6 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
         assert len(coords) >= 2
 
 
-def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
-    result, output_format = convert_data(str(kobotoolbox_csv_file), "csv")
-    assert output_format == "csv"
-
-    headers = result[0]
-    assert "What community are you from?" in headers
-    assert "_id" in headers
-    assert "_submission_time" in headers
-
-    assert len(result) == 4
-
-    record = result[1]
-    assert "Arlington" in record
-    assert "Flourishing" in record
-    assert "bamboo, wild boar" in record
-
-
-def test_read_data__csv_only_headers(tmp_path):
-    file = tmp_path / "only_headers.csv"
-    file.write_text("start,location,comment\n")
-    with pytest.raises(ValueError, match="no data"):
-        convert_data(str(file), "csv")
-
-
-def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
-    result, output_format = convert_data(str(kobotoolbox_excel_file), "xlsx")
-    assert output_format == "csv"
-    headers = result[0]
-    assert "What community are you from?" in headers
-    assert "_id" in headers
-    assert "_submission_time" in headers
-
-    assert len(result) == 4
-
-    record = result[1]
-    assert "Arlington" in record
-    assert "Flourishing" in record
-    assert "bamboo, wild boar" in record
-
-
-def test_convert_data__kobotoolbox_multiple_sheets_xlsx(
-    kobotoolbox_multiple_sheets_excel_file,
-):
-    with pytest.raises(ValueError, match="only single-sheet files are supported"):
-        convert_data(str(kobotoolbox_multiple_sheets_excel_file), "xlsx")
-
-
-def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
-    with pytest.raises(ValueError, match="no data"):
-        convert_data(str(kobotoolbox_empty_submission_csv_file), "csv")
-
-
-def test_convert_data__json(tmp_path):
-    file = tmp_path / "test.json"
-    file.write_text('[{"a": 1, "b": 2}, {"a": 3}]')
-    result, output_format = convert_data(str(file), "json")
-    assert output_format == "csv"
-    assert result == [["a", "b"], ["1", "2"], ["3", ""]]
-
-
-def test_convert_data__json_empty(tmp_path):
-    file = tmp_path / "test_empty.json"
-    file.write_text("[]")
-    with pytest.raises(ValueError, match="JSON file contains no records"):
-        convert_data(str(file), "json")
-
-
-def test_read_data__mapeo_geojson(mapeo_geojson_file):
-    result, output_format = convert_data(str(mapeo_geojson_file), "geojson")
-    assert output_format == "geojson"
-    _validate_geojson_structure(result, 3)
-
-    for feature in result["features"]:
-        assert feature["type"] == "Feature"
-        assert "geometry" in feature
-        assert "properties" in feature
-        assert isinstance(feature["properties"], dict)
-        assert "type" in feature["properties"]
-        assert "notes" in feature["properties"]
-
-
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     """Test conversion of OSM Overpass GPX data with waypoints."""
     result, output_format = convert_data(str(osm_overpass_gpx_file), "gpx")
@@ -386,393 +387,6 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     assert exchange is not None
     assert "amenity=bureau_de_change" in exchange["properties"]["desc"]
     assert "Waterkant" in exchange["properties"]["desc"]
-
-
-def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
-    """Test reading of OSM Overpass GeoJSON data."""
-    result, output_format = convert_data(str(osm_overpass_geojson_file), "geojson")
-    assert output_format == "geojson"
-
-    # Root-level structure validation
-    _validate_geojson_structure(result, 15)
-
-    # All features should be Points in this dataset
-    for feature in result["features"]:
-        assert feature["type"] == "Feature"
-        assert feature["geometry"]["type"] == "Point"
-        assert isinstance(feature["geometry"]["coordinates"], list)
-        assert len(feature["geometry"]["coordinates"]) == 2  # lon, lat
-        assert isinstance(feature["properties"], dict)
-
-    # Validate specific OSM features and their properties
-    bus_station = next(
-        (
-            f
-            for f in result["features"]
-            if f["properties"].get("name") == "Bus Station Lijn 5 bus"
-        ),
-        None,
-    )
-    assert bus_station is not None
-    props = bus_station["properties"]
-    assert props["amenity"] == "bus_station"
-    assert props["bus"] == "yes"
-    assert props["public_transport"] == "station"
-    assert "@id" in props
-    assert props["@id"] == "node/1660255196"
-
-    # Check multilingual name support
-    assert props["name:en"] == "Line 5 bus station"
-    assert props["name:nl"] == "Lijn 5 bus station"
-
-    # Check restaurant with source attribution
-    restaurant = next(
-        (
-            f
-            for f in result["features"]
-            if f["properties"].get("name") == "Soeng Nige's"
-        ),
-        None,
-    )
-    assert restaurant is not None
-    assert restaurant["properties"]["amenity"] == "restaurant"
-    assert restaurant["properties"]["source"] == "KG Ground Survey 2016"
-
-    # Check address information
-    exchange = next(
-        (
-            f
-            for f in result["features"]
-            if "HJ De Vries Exchange" in f["properties"].get("name", "")
-        ),
-        None,
-    )
-    assert exchange is not None
-    props = exchange["properties"]
-    assert props["addr:city"] == "Paramaribo"
-    assert props["addr:housenumber"] == "92 - 96"
-    assert props["addr:street"] == "Waterkant"
-
-    # Check modern POI with crypto payment support
-    crypto_shop = next(
-        (
-            f
-            for f in result["features"]
-            if "SMG Schaafijs" in f["properties"].get("name", "")
-        ),
-        None,
-    )
-    assert crypto_shop is not None
-    props = crypto_shop["properties"]
-    assert props["amenity"] == "ice_cream"
-    assert props["currency:XBT"] == "yes"
-    assert props["payment:lightning"] == "yes"
-    assert "2024-10-04" in props["survey:date"]
-
-
-def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
-    """Test conversion of OSM Overpass KML data with ExtendedData."""
-    result, output_format = convert_data(str(osm_overpass_kml_file), "kml")
-    assert output_format == "geojson"
-
-    # Root-level structure validation
-    _validate_geojson_structure(result, 15)
-
-    # All features should be Points in this dataset
-    for feature in result["features"]:
-        assert feature["type"] == "Feature"
-        _validate_point_geometry(feature)
-
-    # Validate KML ExtendedData preservation
-    bus_station = next(
-        (
-            f
-            for f in result["features"]
-            if f["properties"].get("name") == "Bus Station Lijn 5 bus"
-        ),
-        None,
-    )
-    assert bus_station is not None
-    props = bus_station["properties"]
-
-    # Check that ExtendedData fields are preserved (these come from XML parsing)
-    assert props["@id"] == "node/1660255196"
-    assert props["amenity"] == "bus_station"
-    assert props["bus"] == "yes"
-    assert props["public_transport"] == "station"
-    assert props["name:en"] == "Line 5 bus station"
-    assert props["name:nl"] == "Lijn 5 bus station"
-
-    # Check restaurant with complete data
-    restaurant = next(
-        (
-            f
-            for f in result["features"]
-            if f["properties"].get("name") == "Soeng Nige's"
-        ),
-        None,
-    )
-    assert restaurant is not None
-    assert restaurant["properties"]["amenity"] == "restaurant"
-    assert restaurant["properties"]["source"] == "KG Ground Survey 2016"
-
-    # Check address data preservation
-    exchange = next(
-        (
-            f
-            for f in result["features"]
-            if "HJ De Vries Exchange" in f["properties"].get("name", "")
-        ),
-        None,
-    )
-    assert exchange is not None
-    props = exchange["properties"]
-    assert props["addr:city"] == "Paramaribo"
-    assert props["addr:housenumber"] == "92 - 96"
-    assert props["addr:street"] == "Waterkant"
-    assert props["amenity"] == "bureau_de_change"
-
-    # Check feature with description but no name (name extraction from XML)
-    parking_features = [
-        f for f in result["features"] if f["properties"].get("amenity") == "parking"
-    ]
-    assert len(parking_features) == 2
-
-    # Check that one parking has operator info
-    harevey_parking = next(
-        (
-            f
-            for f in parking_features
-            if "Harevey" in f["properties"].get("operator", "")
-        ),
-        None,
-    )
-    assert harevey_parking is not None
-    assert harevey_parking["properties"]["operator:type"] == "government"
-    assert harevey_parking["properties"]["survey:date"] == "2024-09-18"
-
-    # Check modern feature with crypto payments and description
-    crypto_shop = next(
-        (
-            f
-            for f in result["features"]
-            if "SMG Schaafijs" in f["properties"].get("name", "")
-        ),
-        None,
-    )
-    assert crypto_shop is not None
-    props = crypto_shop["properties"]
-    assert props["name"] == "SMG Schaafijs and More"
-    assert props["description"] == "Shaved ice with variety of flavors and cocktails"
-    assert props["amenity"] == "ice_cream"
-    assert props["currency:XBT"] == "yes"
-    assert props["payment:lightning"] == "yes"
-    assert props["payment:lightning_contactless"] == "yes"
-
-
-def test_osm_data_consistency_across_formats(
-    osm_overpass_gpx_file, osm_overpass_geojson_file, osm_overpass_kml_file
-):
-    """Test that the same OSM data is consistent across GPX, GeoJSON, and KML formats."""
-    gpx_result, gpx_format = convert_data(str(osm_overpass_gpx_file), "gpx")
-    geojson_result, geojson_format = convert_data(
-        str(osm_overpass_geojson_file), "geojson"
-    )
-    kml_result, kml_format = convert_data(str(osm_overpass_kml_file), "kml")
-
-    assert gpx_format == "geojson"
-    assert geojson_format == "geojson"
-    assert kml_format == "geojson"
-
-    # All should have the same number of features
-    assert len(gpx_result["features"]) == 15
-    assert len(geojson_result["features"]) == 15
-    assert len(kml_result["features"]) == 15
-
-    # Extract coordinates for comparison (normalize to [lon, lat])
-    def get_coordinates(features):
-        coords = []
-        for f in features:
-            geom_coords = f["geometry"]["coordinates"]
-            coords.append((geom_coords[0], geom_coords[1]))  # lon, lat only
-        return sorted(coords)
-
-    gpx_coords = get_coordinates(gpx_result["features"])
-    geojson_coords = get_coordinates(geojson_result["features"])
-    kml_coords = get_coordinates(kml_result["features"])
-
-    # All formats should have the same coordinate sets
-    assert gpx_coords == geojson_coords == kml_coords
-
-    # Check that key POI names are present in all formats
-    def get_feature_names(features):
-        names = set()
-        for f in features:
-            name = f["properties"].get("name")
-            if name:
-                names.add(name)
-        return names
-
-    gpx_names = get_feature_names(gpx_result["features"])
-    geojson_names = get_feature_names(geojson_result["features"])
-    kml_names = get_feature_names(kml_result["features"])
-
-    # Core names should be present across formats
-    expected_names = {
-        "Bus Station Lijn 5 bus",
-        "Soeng Nige's",
-        "HJ De Vries Exchange N.V.",
-        "Sara's",
-        "SMG Schaafijs and More",
-    }
-
-    assert expected_names.issubset(gpx_names)
-    assert expected_names.issubset(geojson_names)
-    assert expected_names.issubset(kml_names)
-
-    # Verify that amenity data is preserved across formats where available
-    def find_feature_by_name(features, name):
-        return next((f for f in features if f["properties"].get("name") == name), None)
-
-    # Check bus station across all formats
-    gpx_bus = find_feature_by_name(gpx_result["features"], "Bus Station Lijn 5 bus")
-    geojson_bus = find_feature_by_name(
-        geojson_result["features"], "Bus Station Lijn 5 bus"
-    )
-    kml_bus = find_feature_by_name(kml_result["features"], "Bus Station Lijn 5 bus")
-
-    assert gpx_bus and geojson_bus and kml_bus
-
-    # GPX has description field, GeoJSON/KML have structured amenity field
-    assert "amenity=bus_station" in gpx_bus["properties"]["desc"]
-    assert geojson_bus["properties"]["amenity"] == "bus_station"
-    assert kml_bus["properties"]["amenity"] == "bus_station"
-
-
-def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
-    """Test that GeoJSON files with null geometry features are accepted."""
-    result, output_format = convert_data(str(geojson_with_null_geometry_file), "geojson")
-    assert output_format == "geojson"
-    _validate_geojson_structure(result, 3)
-
-    # Check that we have both valid and null geometry features
-    valid_features = [f for f in result["features"] if f["geometry"] is not None]
-    null_features = [f for f in result["features"] if f["geometry"] is None]
-    
-    assert len(valid_features) == 2
-    assert len(null_features) == 1
-    
-    # Validate the null geometry feature
-    null_feature = null_features[0]
-    assert null_feature["type"] == "Feature"
-    assert null_feature["geometry"] is None
-    assert null_feature["properties"]["name"] == "null_geometry_feature"
-    
-    # Validate that valid features still work properly
-    for feature in valid_features:
-        _validate_point_geometry(feature) if feature["geometry"]["type"] == "Point" else None
-        assert feature["properties"]["name"] in ["valid_point", "valid_line"]
-
-
-def test_convert_data__empty_geojson(empty_geojson_file):
-    with pytest.raises(ValueError, match="GeoJSON contains no features"):
-        convert_data(str(empty_geojson_file), "geojson")
-
-
-def test_convert_data__geojson_with_missing_properties(
-    geojson_with_missing_properties_file,
-):
-    with pytest.raises(ValueError, match="missing properties"):
-        convert_data(str(geojson_with_missing_properties_file), "geojson")
-
-
-def test_convert_data__geojson_with_invalid_geometry(
-    geojson_with_invalid_geometry_file,
-):
-    with pytest.raises(ValueError, match="invalid geometry coordinates"):
-        convert_data(str(geojson_with_invalid_geometry_file), "geojson")
-
-
-def test_convert_data__geojson_with_invalid_top_level(
-    geojson_with_invalid_top_level_structure_file,
-):
-    with pytest.raises(ValueError, match="must be a FeatureCollection object"):
-        convert_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
-
-
-def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
-    result, output_format = convert_data(str(googleearth_sample_kml_file), "kml")
-    assert output_format == "geojson"
-    _validate_geojson_structure(result, 3)
-
-    for feat in result["features"]:
-        geom = feat["geometry"]
-        props = feat["properties"]
-
-        assert geom["type"] in [
-            "Point",
-            "LineString",
-            "Polygon",
-        ]
-        assert isinstance(geom["coordinates"], (list, tuple))
-
-        if geom["type"] == "Point":
-            assert (
-                len(geom["coordinates"]) >= 2
-            )  # basic sanity: lon, lat (may have elevation)
-        elif geom["type"] == "LineString":
-            assert (
-                len(geom["coordinates"]) >= 2
-            )  # basic sanity: at least 2 coords for a line
-        elif geom["type"] == "Polygon":
-            assert (
-                len(geom["coordinates"][0]) >= 3
-            )  # basic sanity: at least 3 coords for a polygon
-
-        assert "name" in props
-
-    sample = next(
-        f
-        for f in result["features"]
-        if f["properties"].get("name") == "Floating placemark"
-    )
-    props = sample["properties"]
-
-    assert props["description"] == "Floats a defined distance above the ground."
-    assert props["visibility"] == "0"
-    assert props["styleUrl"] == "#downArrowIcon"
-    assert "lookat_longitude" in props
-    assert "lookat_heading" in props
-    assert "lookat_tilt" in props
-
-
-def test_convert_data__gc_alerts_kml(alerts_kml_file):
-    result, output_format = convert_data(str(alerts_kml_file), "kml")
-    assert output_format == "geojson"
-    _validate_geojson_structure(result, 2)
-
-    for feat in result["features"]:
-        geom = feat["geometry"]
-        props = feat["properties"]
-
-        assert geom["type"] == "Polygon"
-        assert isinstance(geom["coordinates"], list)
-        assert len(geom["coordinates"][0]) >= 3  # basic sanity: at least 3 coords
-
-        assert "territory" in props
-        assert "alertType" in props
-        assert "alertID" in props
-        assert "t0_url" in props
-
-
-def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
-    with pytest.raises(ValueError, match="No valid features found in input file"):
-        convert_data(str(kml_with_missing_geometry_file), "kml")
-
-
-def test_convert_data__unsupported():
-    with pytest.raises(ValueError):
-        convert_data("/fake/path.foo", "foo")
 
 
 def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
@@ -969,6 +583,258 @@ def test_osmand_data_consistency_across_formats(
         # Should have OsmAnd extensions (at least visited_date)
         _assert_osmand_property(props, "visited_date")
 
+
+# --- KML tests ---
+
+
+def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
+    result, output_format = convert_data(str(locusmap_points_kml_file), "kml")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 2)
+
+    for feat in result["features"]:
+        _validate_point_geometry(feat)
+        props = feat["properties"]
+        assert "name" in props
+        assert "description" in props
+        assert "attachments" in props
+
+
+def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
+    result, output_format = convert_data(str(locusmap_tracks_kml_file), "kml")
+    assert output_format == "geojson"
+
+    # Root-level structure check
+    _validate_geojson_structure(result, 4)
+
+    # Group by geometry type (accept both LineString and MultiLineString)
+    lines = [
+        f
+        for f in result["features"]
+        if f["geometry"]["type"] in ["LineString", "MultiLineString"]
+    ]
+    points = [f for f in result["features"] if f["geometry"]["type"] == "Point"]
+
+    assert len(lines) == 3
+    assert len(points) == 1
+
+    # Validate each track
+    for line in lines:
+        geom = line["geometry"]
+        props = line["properties"]
+
+        # Coordinates sanity check (handle both LineString and MultiLineString)
+        assert isinstance(geom["coordinates"], list)
+        if geom["type"] == "LineString":
+            assert len(geom["coordinates"]) > 1
+        elif geom["type"] == "MultiLineString":
+            assert len(geom["coordinates"]) > 0
+            for linestring in geom["coordinates"]:
+                assert len(linestring) > 1
+                assert all(
+                    isinstance(coord, (list, tuple)) and len(coord) >= 2
+                    for coord in linestring
+                )
+
+        if geom["type"] == "LineString":
+            assert all(
+                isinstance(coord, (list, tuple)) and len(coord) >= 2
+                for coord in geom["coordinates"]
+            )
+
+        # Metadata expectations
+        assert "name" in props
+        assert props["name"].startswith("2025-01-17")
+        assert "description" in props
+        assert any(
+            keyword in props["description"].lower()
+            for keyword in ["walk", "trees", "path"]
+        )
+
+    # Check the single point feature
+    pt = points[0]
+    _validate_point_geometry(pt)
+    props = pt["properties"]
+
+    assert "attachments" in props
+    assert props["attachments"].endswith(".jpg")
+    assert "description" in props
+    assert "willow" in props["description"].lower()
+
+
+def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
+    """Test conversion of OSM Overpass KML data with ExtendedData."""
+    result, output_format = convert_data(str(osm_overpass_kml_file), "kml")
+    assert output_format == "geojson"
+
+    # Root-level structure validation
+    _validate_geojson_structure(result, 15)
+
+    # All features should be Points in this dataset
+    for feature in result["features"]:
+        assert feature["type"] == "Feature"
+        _validate_point_geometry(feature)
+
+    # Validate KML ExtendedData preservation
+    bus_station = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "Bus Station Lijn 5 bus"
+        ),
+        None,
+    )
+    assert bus_station is not None
+    props = bus_station["properties"]
+
+    # Check that ExtendedData fields are preserved (these come from XML parsing)
+    assert props["@id"] == "node/1660255196"
+    assert props["amenity"] == "bus_station"
+    assert props["bus"] == "yes"
+    assert props["public_transport"] == "station"
+    assert props["name:en"] == "Line 5 bus station"
+    assert props["name:nl"] == "Lijn 5 bus station"
+
+    # Check restaurant with complete data
+    restaurant = next(
+        (
+            f
+            for f in result["features"]
+            if f["properties"].get("name") == "Soeng Nige's"
+        ),
+        None,
+    )
+    assert restaurant is not None
+    assert restaurant["properties"]["amenity"] == "restaurant"
+    assert restaurant["properties"]["source"] == "KG Ground Survey 2016"
+
+    # Check address data preservation
+    exchange = next(
+        (
+            f
+            for f in result["features"]
+            if "HJ De Vries Exchange" in f["properties"].get("name", "")
+        ),
+        None,
+    )
+    assert exchange is not None
+    props = exchange["properties"]
+    assert props["addr:city"] == "Paramaribo"
+    assert props["addr:housenumber"] == "92 - 96"
+    assert props["addr:street"] == "Waterkant"
+    assert props["amenity"] == "bureau_de_change"
+
+    # Check feature with description but no name (name extraction from XML)
+    parking_features = [
+        f for f in result["features"] if f["properties"].get("amenity") == "parking"
+    ]
+    assert len(parking_features) == 2
+
+    # Check that one parking has operator info
+    harevey_parking = next(
+        (
+            f
+            for f in parking_features
+            if "Harevey" in f["properties"].get("operator", "")
+        ),
+        None,
+    )
+    assert harevey_parking is not None
+    assert harevey_parking["properties"]["operator:type"] == "government"
+    assert harevey_parking["properties"]["survey:date"] == "2024-09-18"
+
+    # Check modern feature with crypto payments and description
+    crypto_shop = next(
+        (
+            f
+            for f in result["features"]
+            if "SMG Schaafijs" in f["properties"].get("name", "")
+        ),
+        None,
+    )
+    assert crypto_shop is not None
+    props = crypto_shop["properties"]
+    assert props["name"] == "SMG Schaafijs and More"
+    assert props["description"] == "Shaved ice with variety of flavors and cocktails"
+    assert props["amenity"] == "ice_cream"
+    assert props["currency:XBT"] == "yes"
+    assert props["payment:lightning"] == "yes"
+    assert props["payment:lightning_contactless"] == "yes"
+
+
+def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
+    result, output_format = convert_data(str(googleearth_sample_kml_file), "kml")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
+
+    for feat in result["features"]:
+        geom = feat["geometry"]
+        props = feat["properties"]
+
+        assert geom["type"] in [
+            "Point",
+            "LineString",
+            "Polygon",
+        ]
+        assert isinstance(geom["coordinates"], (list, tuple))
+
+        if geom["type"] == "Point":
+            assert (
+                len(geom["coordinates"]) >= 2
+            )  # basic sanity: lon, lat (may have elevation)
+        elif geom["type"] == "LineString":
+            assert (
+                len(geom["coordinates"]) >= 2
+            )  # basic sanity: at least 2 coords for a line
+        elif geom["type"] == "Polygon":
+            assert (
+                len(geom["coordinates"][0]) >= 3
+            )  # basic sanity: at least 3 coords for a polygon
+
+        assert "name" in props
+
+    sample = next(
+        f
+        for f in result["features"]
+        if f["properties"].get("name") == "Floating placemark"
+    )
+    props = sample["properties"]
+
+    assert props["description"] == "Floats a defined distance above the ground."
+    assert props["visibility"] == "0"
+    assert props["styleUrl"] == "#downArrowIcon"
+    assert "lookat_longitude" in props
+    assert "lookat_heading" in props
+    assert "lookat_tilt" in props
+
+
+def test_convert_data__gc_alerts_kml(alerts_kml_file):
+    result, output_format = convert_data(str(alerts_kml_file), "kml")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 2)
+
+    for feat in result["features"]:
+        geom = feat["geometry"]
+        props = feat["properties"]
+
+        assert geom["type"] == "Polygon"
+        assert isinstance(geom["coordinates"], list)
+        assert len(geom["coordinates"][0]) >= 3  # basic sanity: at least 3 coords
+
+        assert "territory" in props
+        assert "alertType" in props
+        assert "alertID" in props
+        assert "t0_url" in props
+
+
+def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
+    with pytest.raises(ValueError, match="No valid features found in input file"):
+        convert_data(str(kml_with_missing_geometry_file), "kml")
+
+
+# --- SMART patrol XML tests ---
+
+
 def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     """Test conversion of SMART patrol XML to GeoJSON format."""
     result, output_format = convert_data(str(smart_patrol_sample_xml_file), "smart")
@@ -987,30 +853,30 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     # Validate patrol-level properties are present
     first_feature = result["features"][0]
     props = first_feature["properties"]
-    
+
     assert props["patrol_id"] == "patrol-001"
     assert props["patrol_type"] == "wildlife"
     assert props["patrol_start_date"] == "2024-01-15"
     assert props["patrol_end_date"] == "2024-01-16"
     assert props["patrol_is_armed"] == "false"
     assert "Alpha Team" in props["patrol_team"]
-    
+
     # Validate leg-level properties
     assert props["leg_id"] == "leg-001"
     assert "John Doe" in props["leg_members"]
     assert "Jane Smith" in props["leg_members"]
-    
+
     # Validate day-level properties
     assert props["day_date"] == "2024-01-15"
-    
+
     # Validate waypoint-level properties
     assert props["waypoint_id"] is not None
     assert props["waypoint_x"] is not None
     assert props["waypoint_y"] is not None
-    
+
     # Validate observation-level properties
     assert props["category"] in ["wildlife-mammal", "wildlife-bird", "threat-logging"]
-    
+
     # Find specific observations and validate attributes
     jaguar_obs = next(
         (f for f in result["features"] if f["properties"].get("species") == "jaguar"),
@@ -1020,19 +886,18 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     assert jaguar_obs["properties"]["count"] == 2.0
     assert jaguar_obs["properties"]["healthy"] is True
     assert jaguar_obs["properties"]["category"] == "wildlife-mammal"
-    
+
     # Validate coordinates are in reasonable range (Guyana region)
     coords = jaguar_obs["geometry"]["coordinates"]
     assert -59.0 < coords[0] < -58.0  # longitude
     assert 5.0 < coords[1] < 6.0  # latitude
-    
+
     # Check for multiple observations at same waypoint
     wp_002_features = [
-        f for f in result["features"]
-        if f["properties"].get("waypoint_id") == "wp-002"
+        f for f in result["features"] if f["properties"].get("waypoint_id") == "wp-002"
     ]
     assert len(wp_002_features) == 2  # bird and logging observations
-    
+
     # Validate eagle observation
     eagle_obs = next(
         (f for f in wp_002_features if f["properties"].get("species") == "harpy-eagle"),
@@ -1041,12 +906,182 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     assert eagle_obs is not None
     assert eagle_obs["properties"]["count"] == 1.0
     assert "Nesting in tall tree" in eagle_obs["properties"]["notes"]
-    
+
     # Validate logging threat observation
     logging_obs = next(
-        (f for f in wp_002_features if f["properties"].get("category") == "threat-logging"),
+        (
+            f
+            for f in wp_002_features
+            if f["properties"].get("category") == "threat-logging"
+        ),
         None,
     )
     assert logging_obs is not None
     assert logging_obs["properties"]["severity"] == "medium"
     assert logging_obs["properties"]["trees_cut"] == 5.0
+
+
+# --- CSV tests ---
+
+
+def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
+    result, output_format = convert_data(str(kobotoolbox_csv_file), "csv")
+    assert output_format == "csv"
+
+    headers = result[0]
+    assert "What community are you from?" in headers
+    assert "_id" in headers
+    assert "_submission_time" in headers
+
+    assert len(result) == 4
+
+    record = result[1]
+    assert "Arlington" in record
+    assert "Flourishing" in record
+    assert "bamboo, wild boar" in record
+
+
+def test_read_data__csv_only_headers(tmp_path):
+    file = tmp_path / "only_headers.csv"
+    file.write_text("start,location,comment\n")
+    with pytest.raises(ValueError, match="no data"):
+        convert_data(str(file), "csv")
+
+
+def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
+    with pytest.raises(ValueError, match="no data"):
+        convert_data(str(kobotoolbox_empty_submission_csv_file), "csv")
+
+
+# --- Excel tests ---
+
+
+def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
+    result, output_format = convert_data(str(kobotoolbox_excel_file), "xlsx")
+    assert output_format == "csv"
+    headers = result[0]
+    assert "What community are you from?" in headers
+    assert "_id" in headers
+    assert "_submission_time" in headers
+
+    assert len(result) == 4
+
+    record = result[1]
+    assert "Arlington" in record
+    assert "Flourishing" in record
+    assert "bamboo, wild boar" in record
+
+
+def test_convert_data__kobotoolbox_multiple_sheets_xlsx(
+    kobotoolbox_multiple_sheets_excel_file,
+):
+    with pytest.raises(ValueError, match="only single-sheet files are supported"):
+        convert_data(str(kobotoolbox_multiple_sheets_excel_file), "xlsx")
+
+
+# --- JSON tests ---
+
+
+def test_convert_data__json(tmp_path):
+    file = tmp_path / "test.json"
+    file.write_text('[{"a": 1, "b": 2}, {"a": 3}]')
+    result, output_format = convert_data(str(file), "json")
+    assert output_format == "csv"
+    assert result == [["a", "b"], ["1", "2"], ["3", ""]]
+
+
+def test_convert_data__json_empty(tmp_path):
+    file = tmp_path / "test_empty.json"
+    file.write_text("[]")
+    with pytest.raises(ValueError, match="JSON file contains no records"):
+        convert_data(str(file), "json")
+
+
+# --- Integrated tests ---
+
+
+def test_osm_data_consistency_across_formats(
+    osm_overpass_gpx_file, osm_overpass_geojson_file, osm_overpass_kml_file
+):
+    """Test that the same OSM data is consistent across GPX, GeoJSON, and KML formats."""
+    gpx_result, gpx_format = convert_data(str(osm_overpass_gpx_file), "gpx")
+    geojson_result, geojson_format = convert_data(
+        str(osm_overpass_geojson_file), "geojson"
+    )
+    kml_result, kml_format = convert_data(str(osm_overpass_kml_file), "kml")
+
+    assert gpx_format == "geojson"
+    assert geojson_format == "geojson"
+    assert kml_format == "geojson"
+
+    # All should have the same number of features
+    assert len(gpx_result["features"]) == 15
+    assert len(geojson_result["features"]) == 15
+    assert len(kml_result["features"]) == 15
+
+    # Extract coordinates for comparison (normalize to [lon, lat])
+    def get_coordinates(features):
+        coords = []
+        for f in features:
+            geom_coords = f["geometry"]["coordinates"]
+            coords.append((geom_coords[0], geom_coords[1]))  # lon, lat only
+        return sorted(coords)
+
+    gpx_coords = get_coordinates(gpx_result["features"])
+    geojson_coords = get_coordinates(geojson_result["features"])
+    kml_coords = get_coordinates(kml_result["features"])
+
+    # All formats should have the same coordinate sets
+    assert gpx_coords == geojson_coords == kml_coords
+
+    # Check that key POI names are present in all formats
+    def get_feature_names(features):
+        names = set()
+        for f in features:
+            name = f["properties"].get("name")
+            if name:
+                names.add(name)
+        return names
+
+    gpx_names = get_feature_names(gpx_result["features"])
+    geojson_names = get_feature_names(geojson_result["features"])
+    kml_names = get_feature_names(kml_result["features"])
+
+    # Core names should be present across formats
+    expected_names = {
+        "Bus Station Lijn 5 bus",
+        "Soeng Nige's",
+        "HJ De Vries Exchange N.V.",
+        "Sara's",
+        "SMG Schaafijs and More",
+    }
+
+    assert expected_names.issubset(gpx_names)
+    assert expected_names.issubset(geojson_names)
+    assert expected_names.issubset(kml_names)
+
+    # Verify that amenity data is preserved across formats where available
+    def find_feature_by_name(features, name):
+        return next((f for f in features if f["properties"].get("name") == name), None)
+
+    # Check bus station across all formats
+    gpx_bus = find_feature_by_name(gpx_result["features"], "Bus Station Lijn 5 bus")
+    geojson_bus = find_feature_by_name(
+        geojson_result["features"], "Bus Station Lijn 5 bus"
+    )
+    kml_bus = find_feature_by_name(kml_result["features"], "Bus Station Lijn 5 bus")
+
+    assert gpx_bus and geojson_bus and kml_bus
+
+    # GPX has description field, GeoJSON/KML have structured amenity field
+    assert "amenity=bus_station" in gpx_bus["properties"]["desc"]
+    assert geojson_bus["properties"]["amenity"] == "bus_station"
+    assert kml_bus["properties"]["amenity"] == "bus_station"
+
+
+# --- Error handling tests ---
+
+
+def test_convert_data__unsupported():
+    with pytest.raises(ValueError):
+        convert_data("/fake/path.foo", "foo")
