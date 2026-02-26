@@ -233,17 +233,17 @@ def convert_data(file_path: str, file_format: str):
         case "csv":
             return read_csv(path), "csv"
         case "xlsx" | "xls":
-            return excel_to_csv(path), "csv"
+            return read_excel(path), "csv"
         case "json":
-            return json_to_csv(path), "csv"
+            return read_json(path), "csv"
         case "geojson":
             return read_geojson(path), "geojson"
         case "gpx":
-            return gpx_to_geojson(path), "geojson"
+            return read_gpx(path), "geojson"
         case "kml":
-            return kml_to_geojson(path), "geojson"
+            return read_kml(path), "geojson"
         case "smart":
-            return smart_xml_to_geojson(path), "geojson"
+            return read_smart_xml(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -279,7 +279,7 @@ def read_csv(path: Path):
 
 
 @handle_file_errors
-def excel_to_csv(path: Path):
+def read_excel(path: Path):
     """
     Reads an Excel file and returns its content as a list of lists. The first row is treated
     as the header.
@@ -363,10 +363,10 @@ def read_geojson(path: Path):
 
 
 @handle_file_errors
-def json_to_csv(path: Path):
+def read_json(path: Path):
     """
-    Reads a JSON file and returns its content as a list of lists. The first row is treated
-    as the header.
+    Reads a JSON array-of-objects file and returns its content as a list of lists.
+    The first row is the header (sorted union of all keys).
     Raises ValueError if the file is empty or not a list of records.
 
     Returns
@@ -394,9 +394,9 @@ def json_to_csv(path: Path):
 
 
 @handle_file_errors
-def gpx_to_geojson(path: Path):
+def read_gpx(path: Path):
     """
-    Converts a GPX file to GeoJSON format using a hybrid approach.
+    Reads a GPX file and returns a GeoJSON FeatureCollection using a hybrid approach.
     Uses Fiona for reliable geometry parsing and XML for comprehensive property extraction.
 
     Implements specialized business logic for comprehensive GPX parsing:
@@ -411,7 +411,7 @@ def gpx_to_geojson(path: Path):
     Returns
     -------
     dict
-        The converted GPX data as a GeoJSON dictionary.
+        GeoJSON FeatureCollection.
     """
     features = []
 
@@ -542,9 +542,9 @@ def gpx_to_geojson(path: Path):
 
 
 @handle_file_errors
-def kml_to_geojson(path: Path):
+def read_kml(path: Path):
     """
-    Converts a KML file to GeoJSON format using a hybrid approach.
+    Reads a KML file and returns a GeoJSON FeatureCollection using a hybrid approach.
     Uses Fiona for reliable geometry parsing and XML for comprehensive property extraction.
 
     Implements specialized business logic for comprehensive KML parsing:
@@ -561,7 +561,7 @@ def kml_to_geojson(path: Path):
     Returns
     -------
     dict
-        The converted KML data as a GeoJSON dictionary.
+        GeoJSON FeatureCollection.
     """
     # Enable KML support in Fiona (not enabled by default)
     # See: https://github.com/geopandas/geopandas/issues/2481
@@ -660,9 +660,9 @@ def kml_to_geojson(path: Path):
 
 
 @handle_file_errors
-def smart_xml_to_geojson(path: Path):
+def read_smart_xml(path: Path):
     """
-    Converts a SMART patrol XML file to GeoJSON format.
+    Reads a SMART patrol XML file and returns a GeoJSON FeatureCollection.
 
     Parameters
     ----------
