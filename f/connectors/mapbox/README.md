@@ -1,12 +1,23 @@
 # `mapbox_replace_tileset_source`: Replace a Mapbox Tileset Source
 
-This script replaces a Mapbox tileset source with new GeoJSON data using the Mapbox Tiling Service (MTS).
+This script uses the Mapbox Tiling Service (MTS) to:
 
-The script calls the Mapbox **Replace a tileset source** endpoint:
+1. replace a Mapbox tileset source with new GeoJSON data, and
+2. publish the tileset to trigger a rebuild.
 
-- `PUT https://api.mapbox.com/tilesets/v1/sources/{username}/{id}`
+> [!NOTE]
+>
+> This script can only be used with tilesets that were created using the MTS via the `/tilesets/v1` endpoint. That is, it will **not** work with tilesets created directly in Mapbox Studio.
 
-and returns the JSON response from Mapbox, for example:
+> [!WARNING] 
+>
+> Tileset processing and hosting are billed separately by Mapbox. The free tier includes only a limited amount of tileset processing and hosting; beyond that, charges apply per processed km² and per stored km²·day. Before scheduling this script as a recurring job in Windmill, review the Mapbox tileset processing pricing and limits carefully:
+> [Mapbox tileset processing pricing](https://www.mapbox.com/pricing#tileset-processing)  
+> Additionally after scheduling, it is recommended to monitor your Mapbox usage to avoid unexpected charges when running frequent or large updates.
+
+## Endpoints
+
+- **Replace a tileset source**: `PUT https://api.mapbox.com/tilesets/v1/sources/{username}/{id}`
 
 ```json
 {
@@ -17,11 +28,15 @@ and returns the JSON response from Mapbox, for example:
 }
 ```
 
-See more information about the relevant endpoint from the Mapbox Tiling Service API in the [Mapbox documentation](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#replace-a-tileset-source).
+- **Publish a tileset**: `POST https://api.mapbox.com/tilesets/v1/{username}.{tileset_id}/publish`
 
-> [!WARNING] 
->
-> Tileset processing and hosting are billed separately by Mapbox. The free tier includes only a limited amount of tileset processing and hosting; beyond that, charges apply per processed km² and per stored km²·day. Before scheduling this script as a recurring job in Windmill, review the Mapbox tileset processing pricing and limits carefully:
-> [Mapbox tileset processing pricing](https://www.mapbox.com/pricing#tileset-processing)  
-> After scheduling, monitor your Mapbox usage to avoid unexpected charges when running frequent or large updates.
+```json
+{
+  "jobId": "cmm3loss5002x0gjx4lmt8lwf",
+  "message": "Processing username.hello-world"
+}
+```
 
+See more information about these endpoints in the Mapbox Tiling Service API docs:
+- [Replace a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#replace-a-tileset-source)
+- [Publish a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#publish-a-tileset)

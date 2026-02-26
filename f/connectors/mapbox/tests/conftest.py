@@ -22,7 +22,7 @@ def mocked_responses():
 class MapboxTilesetSource:
     username: str
     access_token: str
-    dataset_id: str
+    tileset_id: str
 
 
 @pytest.fixture
@@ -30,28 +30,31 @@ def mapbox_tileset_source(mocked_responses) -> MapboxTilesetSource:
     """
     A mock Mapbox tileset source configuration and pre-registered responses.
 
-    This fixture prepares a realistic Replace a tileset source interaction,
-    registering the expected PUT request URL and response JSON on the shared
-    `mocked_responses` instance.
+    Registers both the Replace (PUT) and Publish (POST) endpoints on the
+    shared `mocked_responses` instance.
     """
     username = "test-user"
-    dataset_id = "hello-world"
-    access_token = "pk.ey_test_public_token"
+    tileset_id = "hello-world"
+    access_token = "sk.ey_test_secret_token"
 
-    url = server_responses.mapbox_tileset_source_url(
-        username,
-        dataset_id,
-        access_token,
+    # Register Replace tileset source endpoint
+    replace_url = server_responses.mapbox_tileset_source_url(
+        username, tileset_id, access_token
     )
-    response_body = server_responses.mapbox_tileset_source_replace_response(
-        username,
-        dataset_id,
+    replace_body = server_responses.mapbox_tileset_source_replace_response(
+        username, tileset_id
     )
+    mocked_responses.put(replace_url, json=replace_body, status=200)
 
-    mocked_responses.put(url, json=response_body, status=200)
+    # Register Publish tileset endpoint
+    publish_url = server_responses.mapbox_publish_url(
+        username, tileset_id, access_token
+    )
+    publish_body = server_responses.mapbox_publish_response(username, tileset_id)
+    mocked_responses.post(publish_url, json=publish_body, status=200)
 
     return MapboxTilesetSource(
         username=username,
         access_token=access_token,
-        dataset_id=dataset_id,
+        tileset_id=tileset_id,
     )

@@ -13,26 +13,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _log_mapbox_error(action: str, response: requests.Response) -> None:
-    """
-    Log a detailed Mapbox API error message for the given response.
-
-    Attempts to parse JSON (to capture fields like `message`) and falls back
-    to the raw text body if JSON parsing fails.
-    """
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
-
-    logger.error(
-        "Mapbox API error during %s (status %s): %s",
-        action,
-        response.status_code,
-        payload,
-    )
-
-
 def _replace_tileset_source(
     mapbox_username: str,
     mapbox_secret_access_token: str,
@@ -65,11 +45,7 @@ def _replace_tileset_source(
             files = {"file": (ld_file_path.name, f, "application/json")}
             response = requests.put(url, files=files)
 
-        try:
-            response.raise_for_status()
-        except requests.HTTPError:
-            _log_mapbox_error("tileset source replacement", response)
-            raise
+        response.raise_for_status()
 
         logger.info("Tileset source replaced successfully.")
         return response.json()
@@ -97,11 +73,7 @@ def _publish_tileset(
     logger.info("Publishing tileset '%s'.", tileset_id)
     response = requests.post(url)
 
-    try:
-        response.raise_for_status()
-    except requests.HTTPError:
-        _log_mapbox_error("tileset publish", response)
-        raise
+    response.raise_for_status()
 
     logger.info("Tileset published successfully.")
     return response.json()
@@ -138,6 +110,9 @@ def main(
         Combined result with keys `source` (replace response) and
         `publish` (publish response containing `jobId`).
     """
+    if not mapbox_secret_access_token.startswith("sk.ey"):
+        raise ValueError("mapbox_secret_access_token must start with 'sk.ey'")
+
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
         raise FileNotFoundError(f"Source file not found at: {source_path}")

@@ -1,7 +1,8 @@
 summary: 'Mapbox: Replace Tileset Source & Publish'
 description: >-
-  This script replaces a Mapbox tileset source with new GeoJSON data and
-  publishes the tileset to rebuild tiles using the Mapbox Tiling Service (MTS).
+  This script uses the Mapbox Tiling Service (MTS) to replace a Mapbox tileset
+  source with new GeoJSON data, and publishes the tileset to rebuild tiles. It
+  can only be used with tilesets that were created using the MTS.
 lock: '!inline f/connectors/mapbox/mapbox_replace_tileset_source.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -33,8 +34,8 @@ schema:
     mapbox_secret_access_token:
       type: string
       description: >-
-        A Mapbox secret access token with the `tilesets:write` scope. Must start with
-        `sk.ey`.
+        A Mapbox secret access token with the `tilesets:write` scope. Must start
+        with `sk.ey`.
       default: null
       originalType: string
       pattern: ^sk\.ey.*$
@@ -45,8 +46,7 @@ schema:
       originalType: string
     tileset_id:
       type: string
-      description: >-
-        The ID for the tileset to be replaced and published.
+      description: The ID for the tileset to be replaced and published.
       default: null
       originalType: string
   required:

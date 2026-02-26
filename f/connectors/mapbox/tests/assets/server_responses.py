@@ -3,22 +3,22 @@ BASE_URL = "https://api.mapbox.com"
 
 def mapbox_tileset_source_url(
     username: str,
-    dataset_id: str,
+    tileset_id: str,
     access_token: str,
 ) -> str:
     """
-    Build the Replace a tileset source URL for a given user, dataset, and token.
+    Build the Replace a tileset source URL for a given user, tileset, and token.
     """
     return (
         f"{BASE_URL}/tilesets/v1/sources/"
-        f"{username}/{dataset_id}"
+        f"{username}/{tileset_id}"
         f"?access_token={access_token}"
     )
 
 
 def mapbox_tileset_source_replace_response(
     username: str,
-    dataset_id: str,
+    tileset_id: str,
     file_size: int = 10592,
     files: int = 1,
     source_size: int = 10592,
@@ -29,6 +29,29 @@ def mapbox_tileset_source_replace_response(
     return {
         "file_size": file_size,
         "files": files,
-        "id": f"mapbox://tileset-source/{username}/{dataset_id}",
+        "id": f"mapbox://tileset-source/{username}/{tileset_id}",
         "source_size": source_size,
+    }
+
+
+def mapbox_publish_url(
+    username: str,
+    tileset_id: str,
+    access_token: str,
+) -> str:
+    """Build the Publish a tileset URL."""
+    return (
+        f"{BASE_URL}/tilesets/v1/{username}.{tileset_id}/publish"
+        f"?access_token={access_token}"
+    )
+
+
+def mapbox_publish_response(
+    username: str,
+    tileset_id: str,
+) -> dict:
+    """Example response object for Publish a tileset."""
+    return {
+        "jobId": "test-job-id-123",
+        "message": f"Processing {username}.{tileset_id}",
     }
