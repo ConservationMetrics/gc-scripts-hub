@@ -1,0 +1,57 @@
+summary: 'Mapbox: Replace Tileset Source'
+description: >-
+  This script replaces a Mapbox tileset source with new GeoJSON data using the
+  Mapbox Tiling Service (MTS).
+lock: '!inline f/connectors/mapbox/mapbox_replace_tileset_source.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - mapbox_username
+    - mapbox_access_token
+    - dataset_id
+    - file_location
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        Base directory where the GeoJSON source file is stored. The
+        `file_location` parameter is interpreted as a path relative to this
+        directory.
+      default: /persistent-storage/datalake/
+      originalType: string
+    dataset_id:
+      type: string
+      description: >-
+        The ID for the tileset source to be replaced (for example,
+        `forest_expedition_observations`).
+      default: null
+      originalType: string
+    file_location:
+      type: string
+      description: >-
+        Relative path (from `attachment_root`) to the GeoJSON file to upload as
+        the tileset source.
+      default: null
+      originalType: string
+    mapbox_access_token:
+      type: string
+      description: >-
+        A Mapbox access token with the `tilesets:write` scope. Must start with
+        `pk.ey`.
+      default: null
+      originalType: string
+      pattern: ^pk\.ey.*$
+    mapbox_username:
+      type: string
+      description: The Mapbox username that owns the tileset source.
+      default: null
+      originalType: string
+  required:
+    - mapbox_username
+    - mapbox_access_token
+    - dataset_id
+    - file_location

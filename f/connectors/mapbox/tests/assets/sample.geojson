@@ -1,0 +1,70 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Northern Virginia",
+                "description": "Bounding box for Northern Virginia."
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                [
+                    [
+                    -106.97,
+                    37
+                    ],
+                    [
+                    -106,
+                    37
+                    ],
+                    [
+                    -106,
+                    38.5
+                    ],
+                    [
+                    -106.97,
+                    38.5
+                    ],
+                    [
+                    -106.97,
+                    37
+                    ]
+                ]
+                ]
+            }
+            },
+            {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "coordinates": [
+                [
+                    [
+                    -77.46792624103834,
+                    38.880717526856756
+                    ],
+                    [
+                    -77.46792624103834,
+                    38.813056946759644
+                    ],
+                    [
+                    -77.30522213991179,
+                    38.813056946759644
+                    ],
+                    [
+                    -77.30522213991179,
+                    38.880717526856756
+                    ],
+                    [
+                    -77.46792624103834,
+                    38.880717526856756
+                    ]
+                ]
+                ],
+                "type": "Polygon"
+            }
+        }
+    ]
+}
