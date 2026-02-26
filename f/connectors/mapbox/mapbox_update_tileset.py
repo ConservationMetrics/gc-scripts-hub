@@ -3,7 +3,6 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
 
 import requests
 
@@ -18,7 +17,7 @@ def _replace_tileset_source(
     mapbox_secret_access_token: str,
     tileset_id: str,
     source_path: Path,
-) -> Dict[str, Any]:
+):
     """
     Replace a Mapbox tileset source with new GeoJSON data.
 
@@ -58,7 +57,7 @@ def _publish_tileset(
     mapbox_username: str,
     mapbox_secret_access_token: str,
     tileset_id: str,
-) -> Dict[str, Any]:
+):
     """
     Publish a Mapbox tileset, triggering MTS to rebuild tiles from the current source.
 
@@ -85,7 +84,7 @@ def main(
     tileset_id: str,
     file_location: str,
     attachment_root: str = "/persistent-storage/datalake/",
-) -> Dict[str, Any]:
+):
     """
     Replace a Mapbox tileset source and publish the tileset.
 

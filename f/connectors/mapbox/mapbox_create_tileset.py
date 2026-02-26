@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict
 
 import requests
 
@@ -16,7 +15,7 @@ def _create_tileset_source(
     mapbox_secret_access_token: str,
     tileset_id: str,
     source_path: Path,
-) -> Dict[str, Any]:
+):
     """
     Create a Mapbox tileset source from a GeoJSON file.
 
@@ -58,7 +57,7 @@ def _build_recipe(
     tileset_id: str,
     layer_id: str,
     max_zoom: int,
-) -> Dict[str, Any]:
+):
     """
     Build a Mapbox tileset recipe.
 
@@ -86,7 +85,7 @@ def _create_tileset(
     mapbox_secret_access_token: str,
     tileset_id: str,
     max_zoom: int,
-) -> Dict[str, Any]:
+):
     """
     Create a Mapbox tileset with a simple recipe that points at the tileset source.
 
@@ -120,7 +119,7 @@ def main(
     file_location: str,
     attachment_root: str = "/persistent-storage/datalake/",
     max_zoom: int = 11,
-) -> Dict[str, Any]:
+):
     """
     Create a Mapbox tileset from a GeoJSON file.
 
