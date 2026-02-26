@@ -17,6 +17,8 @@ and returns the JSON response from Mapbox, for example:
 }
 ```
 
+See more information about the relevant endpoint from the Mapbox Tiling Service API in the [Mapbox documentation](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#replace-a-tileset-source).
+
 > [!WARNING] 
 >
 > Tileset processing and hosting are billed separately by Mapbox. The free tier includes only a limited amount of tileset processing and hosting; beyond that, charges apply per processed km² and per stored km²·day. Before scheduling this script as a recurring job in Windmill, review the Mapbox tileset processing pricing and limits carefully:

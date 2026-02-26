@@ -1,7 +1,7 @@
-summary: 'Mapbox: Replace Tileset Source'
+summary: 'Mapbox: Replace Tileset Source & Publish'
 description: >-
-  This script replaces a Mapbox tileset source with new GeoJSON data using the
-  Mapbox Tiling Service (MTS).
+  This script replaces a Mapbox tileset source with new GeoJSON data and
+  publishes the tileset to rebuild tiles using the Mapbox Tiling Service (MTS).
 lock: '!inline f/connectors/mapbox/mapbox_replace_tileset_source.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -10,8 +10,8 @@ schema:
   type: object
   order:
     - mapbox_username
-    - mapbox_access_token
-    - dataset_id
+    - mapbox_secret_access_token
+    - tileset_id
     - file_location
     - attachment_root
   properties:
@@ -23,13 +23,6 @@ schema:
         directory.
       default: /persistent-storage/datalake/
       originalType: string
-    dataset_id:
-      type: string
-      description: >-
-        The ID for the tileset source to be replaced (for example,
-        `forest_expedition_observations`).
-      default: null
-      originalType: string
     file_location:
       type: string
       description: >-
@@ -37,21 +30,27 @@ schema:
         the tileset source.
       default: null
       originalType: string
-    mapbox_access_token:
+    mapbox_secret_access_token:
       type: string
       description: >-
-        A Mapbox access token with the `tilesets:write` scope. Must start with
-        `pk.ey`.
+        A Mapbox secret access token with the `tilesets:write` scope. Must start with
+        `sk.ey`.
       default: null
       originalType: string
-      pattern: ^pk\.ey.*$
+      pattern: ^sk\.ey.*$
     mapbox_username:
       type: string
       description: The Mapbox username that owns the tileset source.
       default: null
       originalType: string
+    tileset_id:
+      type: string
+      description: >-
+        The ID for the tileset to be replaced and published.
+      default: null
+      originalType: string
   required:
     - mapbox_username
-    - mapbox_access_token
-    - dataset_id
+    - mapbox_secret_access_token
+    - tileset_id
     - file_location

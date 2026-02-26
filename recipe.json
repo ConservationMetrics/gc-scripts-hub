@@ -1,0 +1,15 @@
+{
+  "recipe": {
+    "version": 1,
+    "layers": {
+      "hello_world": {
+        "source": "mapbox://tileset-source/rkemper/hello-world",
+        "minzoom": 0,
+        "maxzoom": 5
+      }
+    }
+  },
+  "name": "Hello World",
+  "description": "Spaceship Earth with all of the people, places, and things.",
+  "attribution": [{ "text": "© Hello Legal World", "link": "" }]
+}
