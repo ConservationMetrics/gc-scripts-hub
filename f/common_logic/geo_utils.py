@@ -1,7 +1,13 @@
 import json
+import logging
+import tempfile
+from pathlib import Path
 
 from shapely.geometry import mapping as shapely_mapping
 from shapely.geometry import shape as shapely_shape
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def infer_geometry_type(coordinates) -> str:
@@ -84,3 +90,41 @@ def coords_to_geojson_geometry(raw: str) -> dict:
         raise ValueError(f"Invalid {geom_type} geometry — {geom.is_valid}")
 
     return dict(shapely_mapping(geom))
+
+
+def geojson_to_line_delimited(source_path: Path) -> Path:
+    """
+    Convert a standard GeoJSON file into line-delimited GeoJSON (one feature per line).
+
+    If the given path does not have a `.geojson` suffix, it is returned unchanged
+    with a flag indicating that no temporary file was created.
+    """
+    logger.info("Converting GeoJSON file %s to line-delimited format.", source_path)
+
+    with source_path.open(encoding="utf-8") as src:
+        data = json.load(src)
+
+    if isinstance(data, dict) and data.get("type") == "FeatureCollection":
+        features = data.get("features", [])
+    else:
+        # Fallback: treat the whole object as a single feature/geometry line
+        features = [data]
+
+    with tempfile.NamedTemporaryFile(
+        "w",
+        suffix=".geojson.ld",
+        encoding="utf-8",
+        delete=False,
+    ) as tmp:
+        ld_path = Path(tmp.name)
+        for feature in features:
+            json.dump(feature, tmp, ensure_ascii=False, separators=(",", ":"))
+            tmp.write("\n")
+
+    logger.debug(
+        "Finished writing %d line-delimited GeoJSON feature(s) to temporary file %s.",
+        len(features),
+        ld_path,
+    )
+
+    return ld_path
