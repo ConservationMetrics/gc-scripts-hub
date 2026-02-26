@@ -4,12 +4,12 @@ requests~=2.32
 """
 
 import logging
-import re
 from pathlib import Path
 
 import requests
 
 from f.common_logic.geo_utils import geojson_to_line_delimited
+from f.common_logic.identifier_utils import validate_identifier
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def main(
       - 200: replace source → publish
     """
     _assert_secret_access_token(mapbox_secret_access_token)
-    _validate_tileset_id(tileset_id)
+    validate_identifier(tileset_id, type="mapbox_tileset_id")
 
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
@@ -85,18 +85,6 @@ def _assert_secret_access_token(mapbox_secret_access_token: str) -> None:
     """
     if not mapbox_secret_access_token.startswith("sk.ey"):
         raise ValueError("mapbox_secret_access_token must start with 'sk.ey'")
-
-
-def _validate_tileset_id(tileset_id: str) -> None:
-    """Validate that the tileset ID is a valid Mapbox tileset ID (alphanumeric, hyphen, 1-32 characters).
-
-    Parameters
-    ----------
-    tileset_id : str
-        The short tileset identifier.
-    """
-    if not re.match(r"^[a-z0-9-]{1,32}$", tileset_id):
-        raise ValueError("tileset_id must be a valid Mapbox tileset ID")
 
 
 def _tileset_full_id(mapbox_username: str, tileset_id: str) -> str:

@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from f.connectors.mapbox.mapbox_create_or_update_tileset import (
-    _validate_tileset_id,
     main,
 )
 from f.connectors.mapbox.tests.assets import server_responses
@@ -20,42 +19,6 @@ def test_invalid_access_token_raises():
             file_location="sample.geojson",
             attachment_root="/does/not/matter",
         )
-
-
-def test_validate_tileset():
-    """Test that valid tileset IDs pass validation."""
-    valid_ids = [
-        "a",
-        "hello-world",
-        "test123",
-        "a1b2c3",
-        "my-tileset-123",
-        "x" * 32,  # Max length
-        "1" * 32,  # Max length with digits
-        "a-b-c-d-e-f",  # Multiple hyphens
-        "-hello",  # Starts with hyphen (allowed by regex)
-        "hello-",  # Ends with hyphen (allowed by regex)
-        "hello--world",  # Double hyphen (allowed by regex)
-    ]
-    for tileset_id in valid_ids:
-        _validate_tileset_id(tileset_id)  # Should not raise
-
-    """Test that invalid tileset IDs raise ValueError."""
-    invalid_cases = [
-        ("", "empty string"),
-        ("A", "uppercase letter"),
-        ("Hello-World", "uppercase letters"),
-        ("hello world", "contains space"),
-        ("hello_world", "contains underscore"),
-        ("hello.world", "contains dot"),
-        ("hello@world", "contains special character"),
-        ("x" * 33, "too long (33 chars)"),
-    ]
-    for tileset_id, description in invalid_cases:
-        with pytest.raises(
-            ValueError, match="tileset_id must be a valid Mapbox tileset ID"
-        ):
-            _validate_tileset_id(tileset_id)
 
 
 def test_missing_file_raises(tmp_path):
