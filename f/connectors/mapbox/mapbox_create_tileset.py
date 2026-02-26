@@ -53,17 +53,46 @@ def _create_tileset_source(
         logger.debug("Deleted temporary line-delimited GeoJSON file: %s", ld_file_path)
 
 
+def _build_recipe(
+    mapbox_username: str,
+    tileset_id: str,
+    layer_id: str,
+    max_zoom: int,
+) -> Dict[str, Any]:
+    """
+    Build a Mapbox tileset recipe.
+
+    Creates a single-layer recipe with zoom levels 0 to max_zoom.
+    This works well for most vector datasets, but may need to be extended to
+    accept dynamic parameters (e.g. per-layer zoom ranges, feature filters,
+    or tile-size overrides) if a one-size-fits-all recipe proves insufficient.
+
+    See Mapbox recipe specification for more details: https://docs.mapbox.com/help/troubleshooting/tileset-recipe-reference/#zoom-level-configuration
+    """
+    return {
+        "version": 1,
+        "layers": {
+            layer_id: {
+                "source": f"mapbox://tileset-source/{mapbox_username}/{tileset_id}",
+                "minzoom": 0,
+                "maxzoom": max_zoom,  # max: 16
+            }
+        },
+    }
+
+
 def _create_tileset(
     mapbox_username: str,
     mapbox_secret_access_token: str,
     tileset_id: str,
+    max_zoom: int,
 ) -> Dict[str, Any]:
     """
     Create a Mapbox tileset with a simple recipe that points at the tileset source.
 
     Calls `POST /tilesets/v1/{username}.{tileset_id}` with a recipe that uses the
     tileset source `mapbox://tileset-source/{username}/{tileset_id}` and
-    fixed zoom levels 0–22.
+    zoom levels 0 to max_zoom.
     """
     url = (
         f"https://api.mapbox.com/tilesets/v1/{mapbox_username}.{tileset_id}"
@@ -71,18 +100,7 @@ def _create_tileset(
     )
 
     layer_id = tileset_id.replace("-", "_")
-    recipe: Dict[str, Any] = {
-        "version": 1,
-        "layers": {
-            layer_id: {
-                "source": (
-                    f"mapbox://tileset-source/{mapbox_username}/{tileset_id}"
-                ),
-                "minzoom": 0,
-                "maxzoom": 22,
-            }
-        },
-    }
+    recipe = _build_recipe(mapbox_username, tileset_id, layer_id, max_zoom)
 
     payload = {"recipe": recipe, "name": tileset_id}
 
@@ -101,6 +119,7 @@ def main(
     tileset_id: str,
     file_location: str,
     attachment_root: str = "/persistent-storage/datalake/",
+    max_zoom: int = 11,
 ) -> Dict[str, Any]:
     """
     Create a Mapbox tileset from a GeoJSON file.
@@ -125,6 +144,8 @@ def main(
     attachment_root : str, optional
         Base directory where the source file is stored. Defaults to
         `"/persistent-storage/datalake/"`.
+    max_zoom : int, optional
+        Maximum zoom level for the tileset. Defaults to 16. Valid range is 0-22.
 
     Returns
     -------
@@ -135,9 +156,6 @@ def main(
         - `tileset`: create tileset response
         - `publish`: publish response containing `jobId`
     """
-    if not mapbox_secret_access_token.startswith("sk.ey"):
-        raise ValueError("mapbox_secret_access_token must start with 'sk.ey'")
-
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
         raise FileNotFoundError(f"Source file not found at: {source_path}")
@@ -152,6 +170,7 @@ def main(
         mapbox_username,
         mapbox_secret_access_token,
         tileset_id,
+        max_zoom,
     )
     publish_result = _publish_tileset(
         mapbox_username,
@@ -164,5 +183,3 @@ def main(
         "tileset": tileset_result,
         "publish": publish_result,
     }
-
-

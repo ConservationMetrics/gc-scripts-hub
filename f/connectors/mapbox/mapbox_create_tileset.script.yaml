@@ -16,6 +16,7 @@ schema:
     - tileset_id
     - file_location
     - attachment_root
+    - max_zoom
   properties:
     attachment_root:
       type: string
@@ -50,6 +51,15 @@ schema:
       description: The ID for the tileset to be created and published.
       default: null
       originalType: string
+    max_zoom:
+      type: integer
+      description: >-
+        Maximum zoom level for the tileset. Valid range is 0-22. Higher zoom
+        levels provide more detail but increase processing time and storage costs.
+      default: 11
+      originalType: integer
+      minimum: 0
+      maximum: 16
   required:
     - mapbox_username
     - mapbox_secret_access_token

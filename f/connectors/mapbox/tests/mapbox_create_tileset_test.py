@@ -105,7 +105,7 @@ def test_create_tileset_from_geojson(
         == f"mapbox://tileset-source/{mapbox_tileset_create_source.username}/{mapbox_tileset_create_source.tileset_id}"
     )
     assert payload["recipe"]["layers"][layer_id]["minzoom"] == 0
-    assert payload["recipe"]["layers"][layer_id]["maxzoom"] == 22
+    assert payload["recipe"]["layers"][layer_id]["maxzoom"] == 16
 
 
 def test_invalid_access_token_raises():
@@ -131,4 +131,3 @@ def test_missing_file_raises(tmp_path):
             file_location="does_not_exist.geojson",
             attachment_root=str(attachment_root),
         )
-

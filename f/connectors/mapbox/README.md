@@ -16,39 +16,11 @@ This script uses the Mapbox Tiling Service (MTS) to create a new Mapbox tileset 
 2. creating a tileset with a simple recipe that references that source, and
 3. publishing the tileset to begin processing.
 
-The recipe uses fixed zoom levels 0–22 and creates a single layer named after the tileset ID (with hyphens replaced by underscores).
+The recipe uses zoom levels 0 to a configurable maximum (default: 11, valid range: 0–16) and creates a single layer named after the tileset ID (with hyphens replaced by underscores). The maximum zoom level can be configured via the `max_zoom` parameter.
 
 ### Endpoints
 
-- **Create a tileset source**: `POST https://api.mapbox.com/tilesets/v1/sources/{username}/{id}`
-
-```json
-{
-  "id": "mapbox://tileset-source/username/hello-world",
-  "files": 1,
-  "source_size": 219,
-  "file_size": 219
-}
-```
-
-- **Create a tileset**: `POST https://api.mapbox.com/tilesets/v1/{username}.{tileset_id}`
-
-```json
-{
-  "message": "Successfully created empty tileset username.hello-world. Publish your tileset to begin processing your data into tiles."
-}
-```
-
-- **Publish a tileset**: `POST https://api.mapbox.com/tilesets/v1/{username}.{tileset_id}/publish`
-
-```json
-{
-  "jobId": "cmm3loss5002x0gjx4lmt8lwf",
-  "message": "Processing username.hello-world"
-}
-```
-
-See more information about these endpoints in the Mapbox Tiling Service API docs:
+See information about endpoints used in the Mapbox Tiling Service API docs:
 - [Create a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset-source)
 - [Create a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset)
 - [Publish a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#publish-a-tileset)
@@ -66,26 +38,6 @@ This script uses the Mapbox Tiling Service (MTS) to update a Mapbox tileset by:
 
 ### Endpoints
 
-- **Replace a tileset source**: `PUT https://api.mapbox.com/tilesets/v1/sources/{username}/{id}`
-
-```json
-{
-  "file_size": 10592,
-  "files": 1,
-  "id": "mapbox://tileset-source/username/hello-world",
-  "source_size": 10592
-}
-```
-
-- **Publish a tileset**: `POST https://api.mapbox.com/tilesets/v1/{username}.{tileset_id}/publish`
-
-```json
-{
-  "jobId": "cmm3loss5002x0gjx4lmt8lwf",
-  "message": "Processing username.hello-world"
-}
-```
-
-See more information about these endpoints in the Mapbox Tiling Service API docs:
+See information about endpoints used in the Mapbox Tiling Service API docs:
 - [Replace a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#replace-a-tileset-source)
 - [Publish a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#publish-a-tileset)
