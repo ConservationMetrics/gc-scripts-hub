@@ -1,5 +1,6 @@
 # requirements:
 # requests~=2.32
+# shapely~=2.1.2
 
 import logging
 from pathlib import Path
