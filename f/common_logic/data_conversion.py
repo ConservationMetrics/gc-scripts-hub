@@ -2,6 +2,7 @@
 # lxml
 # filetype
 # fiona
+# shapely
 # openpyxl
 # xlrd
 # pandas
@@ -14,6 +15,8 @@ from pathlib import Path
 
 import filetype
 import fiona
+from shapely.geometry import mapping as shapely_mapping
+from shapely.geometry import shape as shapely_shape
 
 # pandas requires openpyxl installed separately to read .xlsx files
 # it has to be imported in this module despite also being listed in
@@ -189,27 +192,30 @@ def handle_file_errors(func):
     return wrapper
 
 
-def convert_data(file_path: str, file_format: str):
+def convert_data(
+    file_path: str,
+    file_format: str,
+    output_format: str | None = None,
+    *,
+    coord_col: str | None = None,
+):
     """
-    Converts a structured input file into a standard tabular or spatial format.
+    Parses an input file and optionally converts it to a different output format.
 
-    NOTE: Right now, we are assuming that spatial data (e.g. GPX, KML) will only
-    be converted into GeoJSON, and not CSV. And that tabular data (e.g. Excel,
-    JSON) will only be converted into CSV, and not GeoJSON.
-    Exception: SMART XML contains spatial data but is converted to CSV format with
-    geometry columns (waypoint_x, waypoint_y, g__type, g__coordinates) for
-    compatibility with StructuredDBWriter.
-    In the future, we will want to de-couple the output format from the input format e.g.
-    1. Transform spatial CSV (with lat, lon columns) into GeoJSON
-    2. Convert GPX to Spatial CSV (with lat, lon columns)
-    3. Convert spatial GeoJSON to tabular CSV
-    In that case a better functional API might be a suite of `read_*()` fns that return
-    some intermediate representation, and a suite of `to_*()` fns that takes that intermediate
-    representation.
+    Input parsing and output serialization are decoupled: each input format is read
+    into an intermediate representation (tabular → list of lists, spatial → GeoJSON
+    dict), and an optional output_format parameter controls cross-format conversion.
+
+    When output_format is None (default), the implicit mapping is used:
+    - Tabular inputs (csv, xlsx, xls, json) → 'csv'
+    - Spatial inputs (gpx, kml, geojson, smart) → 'geojson'
+
+    When output_format is explicitly set, cross-format conversion is attempted.
+    Currently supported: tabular → 'geojson' (requires coord_col).
 
     NOTE: We assume that the input file has one layer only. In the future, we might
-    consider an extension where the number of layers might be > 1. e.g multiple sheets in Excel.
-    And/or carrying thru metadata from the source layer (e.g. Excel sheet name).
+    consider an extension where the number of layers might be > 1. e.g multiple sheets
+    in Excel. And/or carrying thru metadata from the source layer (e.g. Excel sheet name).
 
     Parameters
     ----------
@@ -218,34 +224,163 @@ def convert_data(file_path: str, file_format: str):
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
         'gpx', 'kml', 'geojson', 'smart'.
+    output_format : str, optional
+        Desired output format ('csv' or 'geojson'). When None, inferred from
+        file_format.
+    coord_col : str, optional
+        Name of the column containing GeoJSON-style coordinate arrays
+        (required for tabular → geojson conversion). Values should be
+        JSON arrays like [lon, lat], [[lon, lat], ...], etc.
 
     Returns
     -------
     tuple
-        A tuple containing (converted_data, output_format) where:
-        - converted_data: Union[list[list[str]], list[dict], dict] - Converted data as CSV (list of lists or list of dicts) or GeoJSON (dict)
-        - output_format: str - The output format ('csv' for tabular data, 'geojson' for spatial data)
+        A tuple of (converted_data, output_format) where:
+        - converted_data: list[list[str]] (csv) or dict (geojson)
+        - output_format: str ('csv' or 'geojson')
     """
     path = Path(file_path)
     logger.debug(f"Converting {file_path} with format {file_format}")
 
+    # Step 1: Parse input into intermediate representation
     match file_format:
         case "csv":
-            return read_csv(path), "csv"
+            data, default_output = read_csv(path), "csv"
         case "xlsx" | "xls":
-            return read_excel(path), "csv"
+            data, default_output = read_excel(path), "csv"
         case "json":
-            return read_json(path), "csv"
+            data, default_output = read_json(path), "csv"
         case "geojson":
-            return read_geojson(path), "geojson"
+            data, default_output = read_geojson(path), "geojson"
         case "gpx":
-            return read_gpx(path), "geojson"
+            data, default_output = read_gpx(path), "geojson"
         case "kml":
-            return read_kml(path), "geojson"
+            data, default_output = read_kml(path), "geojson"
         case "smart":
-            return read_smart_xml(path), "geojson"
+            data, default_output = read_smart_xml(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
+
+    # Step 2: Convert to requested output format (or return with default)
+    target = output_format or default_output
+
+    if target == default_output:
+        return data, target
+
+    if target == "geojson" and default_output == "csv":
+        return tabular_to_geojson(data, coord_col=coord_col), "geojson"
+
+    raise ValueError(f"Unsupported conversion: {file_format} → {target}")
+
+
+# ---------------------------------------------------------------------------
+# Coordinate nesting depth → GeoJSON geometry type mapping
+# ---------------------------------------------------------------------------
+_DEPTH_TO_GEOM_TYPE = {
+    0: "Point",
+    1: "LineString",
+    2: "Polygon",
+    3: "MultiPolygon",
+}
+
+
+def _infer_geometry_type(coordinates) -> str:
+    """
+    Infer GeoJSON geometry type from coordinate nesting depth.
+
+    Depth 0 ([lon, lat])           → Point
+    Depth 1 ([[lon, lat], ...])    → LineString
+    Depth 2 ([[[lon, lat], ...]])  → Polygon
+    Depth 3 ([[[[lon, lat], ...]]]) → MultiPolygon
+
+    Note: MultiPoint and MultiLineString share nesting depth with LineString
+    and Polygon respectively. We default to the more common single-geometry
+    types. If disambiguation is needed in the future, an explicit geometry
+    type column can be added.
+    """
+    depth = 0
+    level = coordinates
+    while isinstance(level, (list, tuple)) and level and not isinstance(level[0], (int, float)):
+        depth += 1
+        level = level[0]
+    geom_type = _DEPTH_TO_GEOM_TYPE.get(depth)
+    if geom_type is None:
+        raise ValueError(f"Cannot infer geometry type: unsupported nesting depth {depth}")
+    return geom_type
+
+
+def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
+    """
+    Converts tabular data (list of lists with header row) to a GeoJSON
+    FeatureCollection. Geometry type is inferred from coordinate nesting
+    depth and validated with Shapely.
+
+    The coord_col column is consumed into geometry and excluded from feature
+    properties. All other columns are preserved as string properties.
+
+    Parameters
+    ----------
+    rows : list[list[str]]
+        Tabular data where rows[0] is the header row.
+    coord_col : str
+        Name of the column containing GeoJSON-style coordinate arrays.
+
+    Returns
+    -------
+    dict
+        GeoJSON FeatureCollection.
+    """
+    if not coord_col:
+        raise ValueError("coord_col is required for tabular → GeoJSON conversion")
+    if not rows or len(rows) < 2:
+        raise ValueError("Tabular data must have a header row and at least one data row")
+
+    headers = rows[0]
+    if coord_col not in headers:
+        raise ValueError(f"Coordinate column '{coord_col}' not found in headers")
+
+    coord_idx = headers.index(coord_col)
+    prop_cols = [(i, h) for i, h in enumerate(headers) if i != coord_idx]
+
+    features = []
+    for row_num, row in enumerate(rows[1:], start=1):
+        raw = row[coord_idx] if coord_idx < len(row) else ""
+        if not raw.strip():
+            raise ValueError(f"Row {row_num}: missing coordinate value")
+
+        try:
+            coordinates = json.loads(raw)
+        except json.JSONDecodeError:
+            raise ValueError(f"Row {row_num}: coordinate value is not valid JSON")
+
+        geom_type = _infer_geometry_type(coordinates)
+
+        # Validate geometry with Shapely
+        geom_dict = {"type": geom_type, "coordinates": coordinates}
+        try:
+            geom = shapely_shape(geom_dict)
+        except Exception as e:
+            raise ValueError(f"Row {row_num}: invalid {geom_type} geometry — {e}")
+        if not geom.is_valid:
+            raise ValueError(f"Row {row_num}: invalid {geom_type} geometry — {geom.is_valid}")
+
+        # Normalize coordinates back through Shapely for consistency
+        geometry = dict(shapely_mapping(geom))
+
+        properties = {h: row[i] for i, h in prop_cols if i < len(row)}
+        feature_id = properties.get("_id") or properties.get("id") or str(row_num)
+
+        features.append({
+            "type": "Feature",
+            "id": feature_id,
+            "geometry": geometry,
+            "properties": properties,
+        })
+
+    if not features:
+        raise ValueError("No features could be created from tabular data")
+
+    return {"type": "FeatureCollection", "features": features}
 
 
 @handle_file_errors
