@@ -1,0 +1,10 @@
+summary: Shared logic for spatial data utilities
+description: ''
+lock: '!inline f/common_logic/geo_utils.script.lock'
+kind: script
+no_main_func: true
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties: {}
+  required: []
