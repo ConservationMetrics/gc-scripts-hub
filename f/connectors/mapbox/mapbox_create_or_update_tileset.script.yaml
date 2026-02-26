@@ -36,7 +36,7 @@ schema:
     mapbox_secret_access_token:
       type: string
       description: >-
-        A Mapbox secret access token with the `tilesets:write` scope. Must start
+        A Mapbox secret access token with scope to list, read, and write tilesets. Must start
         with `sk.ey`.
       default: null
       originalType: string

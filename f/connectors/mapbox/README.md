@@ -27,6 +27,18 @@ This script is intended for workflows where a GeoJSON dataset is updated regular
 - The user then schedules the `mapbox_create_or_update_tileset` script to create or update the tileset from that file.
 - The Mapbox map will automatically display the updated data once the tileset publish job completes.
 
+## Mapbox Secret Access Token
+
+For the scripts to work, you need to provide a Mapbox secret access token with scope to work with tilesets. You can create a new secret access token in Mapbox Studio by:
+
+1. Navigating to **Admin >  Tokens**
+2. Clicking **+ Create a token**
+3. Adding the following secret scopes:
+    - `tilesets:write`
+    - `tilesets:read`
+    - `tilesets:delete`
+4. Copy down the secret access token value (starting with `sk.ey...`) and save it as you will not be able to access it again after closing the dialog.
+
 ## Zoom levels in the Tileset Recipe
 
 When creating a tileset, a [tileset recipe](https://docs.mapbox.com/mapbox-tiling-service/guides/tileset-recipes/) defines parameters such as zoom levels.
