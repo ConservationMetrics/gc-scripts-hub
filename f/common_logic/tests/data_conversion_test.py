@@ -1153,7 +1153,7 @@ def test_tabular_to_geojson__invalid_json_coords():
         ["name", "coords"],
         ["A", "not json"],
     ]
-    with pytest.raises(ValueError, match="Row 1: coordinate value is not valid JSON"):
+    with pytest.raises(ValueError, match="Row 1: Coordinate value is not valid JSON"):
         tabular_to_geojson(rows, coord_col="coords")
 
 

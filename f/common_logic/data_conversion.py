@@ -2,7 +2,6 @@
 # lxml
 # filetype
 # fiona
-# shapely
 # openpyxl
 # xlrd
 # pandas
@@ -22,10 +21,7 @@ import fiona
 # "Missing optional dependency 'openpyxl'"
 import openpyxl  # noqa: F401
 import pandas as pd
-from shapely.geometry import mapping as shapely_mapping
-from shapely.geometry import shape as shapely_shape
-
-from f.common_logic.geom_utils import infer_geometry_type
+from f.common_logic.geo_utils import coords_to_geojson_geometry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -317,25 +313,9 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
             raise ValueError(f"Row {row_num}: missing coordinate value")
 
         try:
-            coordinates = json.loads(raw)
-        except json.JSONDecodeError:
-            raise ValueError(f"Row {row_num}: coordinate value is not valid JSON")
-
-        geom_type = infer_geometry_type(coordinates)
-
-        # Validate geometry with Shapely
-        geom_dict = {"type": geom_type, "coordinates": coordinates}
-        try:
-            geom = shapely_shape(geom_dict)
-        except Exception as e:
-            raise ValueError(f"Row {row_num}: invalid {geom_type} geometry — {e}")
-        if not geom.is_valid:
-            raise ValueError(
-                f"Row {row_num}: invalid {geom_type} geometry — {geom.is_valid}"
-            )
-
-        # Normalize coordinates back through Shapely for consistency
-        geometry = dict(shapely_mapping(geom))
+            geometry = coords_to_geojson_geometry(raw)
+        except ValueError as e:
+            raise ValueError(f"Row {row_num}: {e}")
 
         properties = {h: row[i] for i, h in prop_cols if i < len(row)}
         feature_id = properties.get("_id") or properties.get("id") or str(row_num)
