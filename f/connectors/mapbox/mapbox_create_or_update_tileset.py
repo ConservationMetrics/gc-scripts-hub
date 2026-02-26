@@ -1,7 +1,5 @@
-"""
-requirements:
-requests~=2.32
-"""
+# requirements:
+# requests~=2.32
 
 import logging
 from pathlib import Path
