@@ -320,7 +320,9 @@ def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -
             try:
                 geometry = coords_to_geojson_geometry(raw)
             except ValueError:
-                logger.warning("Row %d: invalid coordinates, setting geometry to null", row_num)
+                logger.warning(
+                    "Row %d: invalid coordinates, setting geometry to null", row_num
+                )
 
         properties = {h: row[i] for i, h in prop_cols if i < len(row)}
         feature_id = properties.get("_id") or properties.get("id") or str(row_num)
