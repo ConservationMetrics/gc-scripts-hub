@@ -1,9 +1,10 @@
 summary: 'Mapbox: Create or Update Tileset'
 description: >-
   This script uses the Mapbox Tiling Service (MTS) to create or update a Mapbox
-  tileset from a GeoJSON file. It first checks whether the tileset exists. If it does not exist, it creates a tileset
-  source, creates the tileset with a simple recipe, and publishes it. If it
-  exists, it replaces the tileset source and publishes to rebuild tiles.
+  tileset from a GeoJSON file. It first checks whether the tileset exists. If it
+  does not exist, it creates a tileset source, creates the tileset with a simple
+  recipe, and publishes it. If it exists, it replaces the tileset source and
+  publishes to rebuild tiles.
 lock: '!inline f/connectors/mapbox/mapbox_create_or_update_tileset.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -36,8 +37,8 @@ schema:
     mapbox_secret_access_token:
       type: string
       description: >-
-        A Mapbox secret access token with scope to list, read, and write tilesets. Must start
-        with `sk.ey`.
+        A Mapbox secret access token with `tilesets:write`, `tilesets:read`, and
+        `tilesets:delete` scopes. Must start with `sk.ey`.
       default: null
       originalType: string
       pattern: ^sk\.ey.*$
@@ -60,11 +61,9 @@ schema:
       description: The tileset ID (without the username prefix).
       default: null
       originalType: string
-      pattern: ^[A-Za-z0-9_-]{1,32}$
+      pattern: '^[A-Za-z0-9_-]{1,32}$'
   required:
     - mapbox_username
     - mapbox_secret_access_token
     - tileset_id
     - file_location
-
-
