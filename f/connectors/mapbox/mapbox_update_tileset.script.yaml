@@ -1,9 +1,9 @@
-summary: 'Mapbox: Replace Tileset Source & Publish'
+summary: 'Mapbox: Update Tileset'
 description: >-
   This script uses the Mapbox Tiling Service (MTS) to replace a Mapbox tileset
   source with new GeoJSON data, and publishes the tileset to rebuild tiles. It
   can only be used with tilesets that were created using the MTS.
-lock: '!inline f/connectors/mapbox/mapbox_replace_tileset_source.script.lock'
+lock: '!inline f/connectors/mapbox/mapbox_update_tileset.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:

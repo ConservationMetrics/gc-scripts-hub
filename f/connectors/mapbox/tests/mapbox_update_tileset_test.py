@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from f.connectors.mapbox.mapbox_replace_tileset_source import main
+from f.connectors.mapbox.mapbox_update_tileset import main
 from f.connectors.mapbox.tests.assets import server_responses
 
 ASSETS_DIR = Path(__file__).parent / "assets"

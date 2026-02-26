@@ -1,0 +1,57 @@
+summary: 'Mapbox: Create Tileset'
+description: >-
+  This script uses the Mapbox Tiling Service (MTS) to create a new Mapbox
+  tileset from a GeoJSON file. It creates a tileset source, creates a tileset
+  with a simple recipe pointing at that source, and publishes the tileset to
+  begin processing.
+lock: '!inline f/connectors/mapbox/mapbox_create_tileset.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - mapbox_username
+    - mapbox_secret_access_token
+    - tileset_id
+    - file_location
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        Base directory where the GeoJSON source file is stored. The
+        `file_location` parameter is interpreted as a path relative to this
+        directory.
+      default: /persistent-storage/datalake/
+      originalType: string
+    file_location:
+      type: string
+      description: >-
+        Relative path (from `attachment_root`) to the GeoJSON file to upload as
+        the tileset source.
+      default: null
+      originalType: string
+    mapbox_secret_access_token:
+      type: string
+      description: >-
+        A Mapbox secret access token with the `tilesets:write` scope. Must start
+        with `sk.ey`.
+      default: null
+      originalType: string
+      pattern: ^sk\.ey.*$
+    mapbox_username:
+      type: string
+      description: The Mapbox username that will own the tileset.
+      default: null
+      originalType: string
+    tileset_id:
+      type: string
+      description: The ID for the tileset to be created and published.
+      default: null
+      originalType: string
+  required:
+    - mapbox_username
+    - mapbox_secret_access_token
+    - tileset_id
+    - file_location
