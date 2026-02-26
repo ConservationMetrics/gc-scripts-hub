@@ -3,6 +3,7 @@
 # filetype
 # fiona
 # openpyxl
+# shapely
 # xlrd
 # pandas
 
