@@ -51,6 +51,11 @@ def _assert_osmand_property(props, key, expected_value=None):
         )
 
 
+# ---------------------------------------------------------------------------
+# GPX/KML conversion tests
+# ---------------------------------------------------------------------------
+
+
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
     result, output_format = convert_data(str(locusmap_points_gpx_file), "gpx")
     assert output_format == "geojson"
@@ -250,6 +255,11 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
         assert len(coords) >= 2
 
 
+# ---------------------------------------------------------------------------
+# Tabular format conversion tests (CSV, Excel, JSON)
+# ---------------------------------------------------------------------------
+
+
 def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
     result, output_format = convert_data(str(kobotoolbox_csv_file), "csv")
     assert output_format == "csv"
@@ -317,6 +327,11 @@ def test_convert_data__json_empty(tmp_path):
         convert_data(str(file), "json")
 
 
+# ---------------------------------------------------------------------------
+# GeoJSON conversion tests
+# ---------------------------------------------------------------------------
+
+
 def test_read_data__mapeo_geojson(mapeo_geojson_file):
     result, output_format = convert_data(str(mapeo_geojson_file), "geojson")
     assert output_format == "geojson"
@@ -329,6 +344,11 @@ def test_read_data__mapeo_geojson(mapeo_geojson_file):
         assert isinstance(feature["properties"], dict)
         assert "type" in feature["properties"]
         assert "notes" in feature["properties"]
+
+
+# ---------------------------------------------------------------------------
+# OSM Overpass data tests
+# ---------------------------------------------------------------------------
 
 
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
@@ -649,6 +669,11 @@ def test_osm_data_consistency_across_formats(
     assert kml_bus["properties"]["amenity"] == "bus_station"
 
 
+# ---------------------------------------------------------------------------
+# GeoJSON validation tests
+# ---------------------------------------------------------------------------
+
+
 def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
     """Test that GeoJSON files with null geometry features are accepted."""
     result, output_format = convert_data(
@@ -704,6 +729,11 @@ def test_convert_data__geojson_with_invalid_top_level(
         convert_data(str(geojson_with_invalid_top_level_structure_file), "geojson")
 
 
+# ---------------------------------------------------------------------------
+# Google Earth KML tests
+# ---------------------------------------------------------------------------
+
+
 def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
     result, output_format = convert_data(str(googleearth_sample_kml_file), "kml")
     assert output_format == "geojson"
@@ -750,6 +780,11 @@ def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
     assert "lookat_tilt" in props
 
 
+# ---------------------------------------------------------------------------
+# GC Alerts KML tests
+# ---------------------------------------------------------------------------
+
+
 def test_convert_data__gc_alerts_kml(alerts_kml_file):
     result, output_format = convert_data(str(alerts_kml_file), "kml")
     assert output_format == "geojson"
@@ -774,9 +809,19 @@ def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
         convert_data(str(kml_with_missing_geometry_file), "kml")
 
 
+# ---------------------------------------------------------------------------
+# Error handling tests
+# ---------------------------------------------------------------------------
+
+
 def test_convert_data__unsupported():
     with pytest.raises(ValueError):
         convert_data("/fake/path.foo", "foo")
+
+
+# ---------------------------------------------------------------------------
+# OsmAnd GPX tests
+# ---------------------------------------------------------------------------
 
 
 def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
@@ -972,6 +1017,11 @@ def test_osmand_data_consistency_across_formats(
 
         # Should have OsmAnd extensions (at least visited_date)
         _assert_osmand_property(props, "visited_date")
+
+
+# ---------------------------------------------------------------------------
+# SMART patrol XML tests
+# ---------------------------------------------------------------------------
 
 
 def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
