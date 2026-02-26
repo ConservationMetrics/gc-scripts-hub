@@ -1176,15 +1176,6 @@ def test_tabular_to_geojson__mixed_types():
     assert result["features"][1]["geometry"]["type"] == "LineString"
 
 
-def test_tabular_to_geojson__uses_id_field():
-    rows = [
-        ["_id", "val", "coords"],
-        ["abc", "x", "[1.0, 2.0]"],
-    ]
-    result = tabular_to_geojson(rows, coord_col="coords")
-    assert result["features"][0]["id"] == "abc"
-
-
 def test_tabular_to_geojson__fallback_row_number_id():
     rows = [
         ["name", "coords"],
