@@ -1,10 +1,10 @@
-summary: 'Mapbox: Create Tileset'
+summary: 'Mapbox: Create or Update Tileset'
 description: >-
-  This script uses the Mapbox Tiling Service (MTS) to create a new Mapbox
-  tileset from a GeoJSON file. It creates a tileset source, creates a tileset
-  with a simple recipe pointing at that source, and publishes the tileset to
-  begin processing.
-lock: '!inline f/connectors/mapbox/mapbox_create_tileset.script.lock'
+  This script uses the Mapbox Tiling Service (MTS) to create or update a Mapbox
+  tileset from a GeoJSON file. It first checks whether the tileset exists. If it does not exist, it creates a tileset
+  source, creates the tileset with a simple recipe, and publishes it. If it
+  exists, it replaces the tileset source and publishes to rebuild tiles.
+lock: '!inline f/connectors/mapbox/mapbox_create_or_update_tileset.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
@@ -43,23 +43,21 @@ schema:
       pattern: ^sk\.ey.*$
     mapbox_username:
       type: string
-      description: The Mapbox username that will own the tileset.
+      description: The Mapbox username that owns the tileset.
       default: null
       originalType: string
     max_zoom:
       type: integer
       description: >-
-        Maximum zoom level for the tileset. Valid range is 0-16. Higher zoom
-        levels provide more detail but increase processing time and storage
-        costs. See https://wiki.openstreetmap.org/wiki/Zoom_levels for more
-        information.
+        Maximum zoom level for a newly-created tileset. Valid range is 0-16.
+        (Ignored when updating an existing tileset.)
       default: 11
       maximum: 16
       minimum: 0
       originalType: integer
     tileset_id:
       type: string
-      description: The ID for the tileset to be created and published.
+      description: The tileset ID (without the username prefix).
       default: null
       originalType: string
   required:
@@ -67,3 +65,5 @@ schema:
     - mapbox_secret_access_token
     - tileset_id
     - file_location
+
+

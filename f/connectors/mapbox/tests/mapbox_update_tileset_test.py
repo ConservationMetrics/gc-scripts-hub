@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from f.connectors.mapbox.mapbox_update_tileset import main
+from f.connectors.mapbox.mapbox_create_or_update_tileset import main
 from f.connectors.mapbox.tests.assets import server_responses
 
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -21,16 +21,25 @@ def _stage_geojson(tmp_path: Path, asset_name: str) -> tuple[str, str]:
 
 
 def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source):
-    """Verify the standard two-call sequence (PUT replace, POST publish)."""
+    """Verify the standard three-call sequence (GET exists, PUT replace, POST publish)."""
     expected_source = server_responses.mapbox_tileset_source_replace_response(
         mapbox_tileset_source.username, mapbox_tileset_source.tileset_id
     )
     expected_publish = server_responses.mapbox_publish_response(
         mapbox_tileset_source.username, mapbox_tileset_source.tileset_id
     )
-    assert result == {"source": expected_source, "publish": expected_publish}
+    assert result == {
+        "action": "update",
+        "source": expected_source,
+        "publish": expected_publish,
+    }
 
-    replace_call, publish_call = mocked_responses.calls[-2:]
+    get_call, replace_call, publish_call = mocked_responses.calls[-3:]
+    assert get_call.request.method == "GET"
+    assert get_call.request.url == server_responses.mapbox_tileset_get_url(
+        f"{mapbox_tileset_source.username}.{mapbox_tileset_source.tileset_id}",
+        mapbox_tileset_source.access_token,
+    )
     assert replace_call.request.method == "PUT"
     assert replace_call.request.url == server_responses.mapbox_tileset_source_url(
         mapbox_tileset_source.username,

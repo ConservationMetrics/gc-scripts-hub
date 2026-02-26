@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from f.connectors.mapbox.mapbox_create_tileset import main
+from f.connectors.mapbox.mapbox_create_or_update_tileset import main
 from f.connectors.mapbox.tests.assets import server_responses
 
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -23,7 +23,7 @@ def _stage_geojson(tmp_path: Path, asset_name: str) -> tuple[str, str]:
 def _assert_create_source_tileset_and_publish(
     mocked_responses, result, mapbox_tileset_create_source
 ):
-    """Verify the standard three-call sequence (POST create source, POST create tileset, POST publish)."""
+    """Verify the standard four-call sequence (GET exists, POST create source, POST create tileset, POST publish)."""
     expected_source = server_responses.mapbox_tileset_source_create_response(
         mapbox_tileset_create_source.username,
         mapbox_tileset_create_source.tileset_id,
@@ -37,12 +37,20 @@ def _assert_create_source_tileset_and_publish(
         mapbox_tileset_create_source.tileset_id,
     )
     assert result == {
+        "action": "create",
         "source": expected_source,
         "tileset": expected_tileset,
         "publish": expected_publish,
     }
 
-    create_source_call, create_tileset_call, publish_call = mocked_responses.calls[-3:]
+    get_call, create_source_call, create_tileset_call, publish_call = (
+        mocked_responses.calls[-4:]
+    )
+    assert get_call.request.method == "GET"
+    assert get_call.request.url == server_responses.mapbox_tileset_get_url(
+        f"{mapbox_tileset_create_source.username}.{mapbox_tileset_create_source.tileset_id}",
+        mapbox_tileset_create_source.access_token,
+    )
     assert create_source_call.request.method == "POST"
     assert create_source_call.request.url == (
         server_responses.mapbox_tileset_source_create_url(
@@ -105,7 +113,7 @@ def test_create_tileset_from_geojson(
         == f"mapbox://tileset-source/{mapbox_tileset_create_source.username}/{mapbox_tileset_create_source.tileset_id}"
     )
     assert payload["recipe"]["layers"][layer_id]["minzoom"] == 0
-    assert payload["recipe"]["layers"][layer_id]["maxzoom"] == 16
+    assert payload["recipe"]["layers"][layer_id]["maxzoom"] == 11
 
 
 def test_invalid_access_token_raises():

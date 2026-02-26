@@ -1,6 +1,16 @@
 BASE_URL = "https://api.mapbox.com"
 
 
+def mapbox_tileset_get_url(tileset_full_id: str, access_token: str) -> str:
+    """Build the Get a tileset URL."""
+    return f"{BASE_URL}/tilesets/v1/{tileset_full_id}?access_token={access_token}"
+
+
+def mapbox_tileset_get_response(tileset_full_id: str) -> dict:
+    """Minimal example response object for Get a tileset (content not used by tests)."""
+    return {"id": tileset_full_id}
+
+
 def mapbox_tileset_source_url(
     username: str,
     tileset_id: str,
@@ -96,10 +106,7 @@ def mapbox_create_tileset_url(
     access_token: str,
 ) -> str:
     """Build the Create a tileset URL."""
-    return (
-        f"{BASE_URL}/tilesets/v1/{username}.{tileset_id}"
-        f"?access_token={access_token}"
-    )
+    return f"{BASE_URL}/tilesets/v1/{username}.{tileset_id}?access_token={access_token}"
 
 
 def mapbox_create_tileset_response(

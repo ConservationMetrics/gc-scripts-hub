@@ -30,12 +30,18 @@ def mapbox_tileset_source(mocked_responses) -> MapboxTilesetSource:
     """
     A mock Mapbox tileset source configuration and pre-registered responses.
 
-    Registers both the Replace (PUT) and Publish (POST) endpoints on the
-    shared `mocked_responses` instance.
+    Registers the Get (200), Replace (PUT), and Publish (POST) endpoints on the
+    shared `mocked_responses` instance for the "update existing tileset" flow.
     """
     username = "test-user"
     tileset_id = "hello-world"
     access_token = "sk.ey_test_secret_token"
+
+    # Register Get tileset endpoint (tileset exists)
+    tileset_full_id = f"{username}.{tileset_id}"
+    get_url = server_responses.mapbox_tileset_get_url(tileset_full_id, access_token)
+    get_body = server_responses.mapbox_tileset_get_response(tileset_full_id)
+    mocked_responses.get(get_url, json=get_body, status=200)
 
     # Register Replace tileset source endpoint
     replace_url = server_responses.mapbox_tileset_source_url(
@@ -65,12 +71,18 @@ def mapbox_tileset_create_source(mocked_responses) -> MapboxTilesetSource:
     """
     A mock Mapbox tileset source configuration for create operations.
 
-    Registers the Create tileset source (POST), Create tileset (POST), and
-    Publish (POST) endpoints on the shared `mocked_responses` instance.
+    Registers the Get (404), Create tileset source (POST), Create tileset (POST),
+    and Publish (POST) endpoints on the shared `mocked_responses` instance for
+    the "create missing tileset" flow.
     """
     username = "test-user"
     tileset_id = "hello-world"
     access_token = "sk.ey_test_secret_token"
+
+    # Register Get tileset endpoint (tileset missing)
+    tileset_full_id = f"{username}.{tileset_id}"
+    get_url = server_responses.mapbox_tileset_get_url(tileset_full_id, access_token)
+    mocked_responses.get(get_url, status=404)
 
     # Register Create tileset source endpoint
     create_source_url = server_responses.mapbox_tileset_source_create_url(

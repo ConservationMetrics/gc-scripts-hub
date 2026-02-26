@@ -8,15 +8,15 @@ This directory contains scripts for working with the Mapbox Tiling Service (MTS)
 > [Mapbox tileset processing pricing](https://www.mapbox.com/pricing#tileset-processing)  
 > Additionally after scheduling, it is recommended to monitor your Mapbox usage to avoid unexpected charges when running frequent or large updates.
 
-## `mapbox_create_tileset`: Create a Mapbox Tileset
+## `mapbox_create_or_update_tileset`: Create or Update a Mapbox Tileset
 
-This script uses the Mapbox Tiling Service (MTS) to create a new Mapbox tileset from a GeoJSON file by:
+This script uses the Mapbox Tiling Service (MTS) to create **or** update a Mapbox tileset from a GeoJSON file by:
 
-1. creating a tileset source from the GeoJSON data,
-2. creating a tileset with a simple recipe that references that source, and
-3. publishing the tileset to begin processing.
+1. checking if the tileset exists (GET),
+2. creating the tileset if missing (404), otherwise updating it (200), and
+3. publishing the tileset to (re)build tiles from the current source.
 
-The recipe uses zoom levels 0 to a configurable maximum (default: 11, valid range: 0–16) and creates a single layer named after the tileset ID (with hyphens replaced by underscores). The maximum zoom level can be configured via the `max_zoom` parameter.
+If the tileset is created, the recipe uses zoom levels 0 to a configurable maximum (default: 11, valid range: 0–16) and creates a single layer named after the tileset ID (with hyphens replaced by underscores). The maximum zoom level can be configured via the `max_zoom` parameter (ignored when updating an existing tileset).
 
 > ![TIP]
 >
@@ -25,24 +25,9 @@ The recipe uses zoom levels 0 to a configurable maximum (default: 11, valid rang
 ### Endpoints
 
 See information about endpoints used in the Mapbox Tiling Service API docs:
+- [Get a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#get-a-tileset)
 - [Create a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset-source)
 - [Create a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#create-a-tileset)
-- [Publish a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#publish-a-tileset)
-
-## `mapbox_update_tileset`: Update a Mapbox Tileset
-
-This script uses the Mapbox Tiling Service (MTS) to update a Mapbox tileset by:
-
-1. replacing the tileset source with new GeoJSON data, and
-2. publishing the tileset to trigger a rebuild.
-
-> [!NOTE]
->
-> This script can only be used with tilesets that were created using the MTS via the `/tilesets/v1` endpoint. That is, it will **not** work with tilesets created directly in Mapbox Studio.
-
-### Endpoints
-
-See information about endpoints used in the Mapbox Tiling Service API docs:
 - [Replace a tileset source](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#replace-a-tileset-source)
 - [Publish a tileset](https://docs.mapbox.com/api/maps/mapbox-tiling-service/#publish-a-tileset)
 
