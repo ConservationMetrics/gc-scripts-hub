@@ -268,12 +268,12 @@ def convert_data(
         return data, target
 
     if target == "geojson" and default_output == "csv":
-        return tabular_to_geojson(data, coord_col=coord_col), "geojson"
+        return to_geojson(data, coord_col=coord_col), "geojson"
 
     raise ValueError(f"Unsupported conversion: {file_format} → {target}")
 
 
-def tabular_to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
+def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
     """
     Converts tabular data (list of lists with header row) to a GeoJSON
     FeatureCollection. Geometry type is inferred from coordinate nesting

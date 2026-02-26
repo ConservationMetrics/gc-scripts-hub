@@ -2,12 +2,12 @@ import pytest
 
 from f.common_logic.geo_utils import coords_to_geojson_geometry, infer_geometry_type
 
-
 # --- infer_geometry_type ---
 
 
 def test_infer_point():
     assert infer_geometry_type([-59.0, 5.0]) == "Point"
+    assert infer_geometry_type([-59, 5]) == "Point"
 
 
 def test_infer_point_with_elevation():
@@ -29,7 +29,7 @@ def test_infer_multipolygon():
 
 
 def test_unsupported_nesting_depth():
-    coords = [[[[[-59, 5], [-58, 5]]]]]  # depth 4
+    coords = [[[[[-59, 5], [-58, 5]]]]]
     with pytest.raises(ValueError, match="unsupported nesting depth"):
         infer_geometry_type(coords)
 
@@ -37,10 +37,6 @@ def test_unsupported_nesting_depth():
 def test_empty_list():
     """Empty list has no numeric first element, but depth stays 0."""
     assert infer_geometry_type([]) == "Point"
-
-
-def test_integer_coordinates():
-    assert infer_geometry_type([-59, 5]) == "Point"
 
 
 def test_tuple_coordinates():

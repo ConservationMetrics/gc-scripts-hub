@@ -19,7 +19,7 @@ def infer_geometry_type(coordinates) -> str:
     type column can be added.
     """
 
-    _DEPTH_TO_GEOM_TYPE = {
+    DEPTH_TO_GEOM_TYPE = {
         0: "Point",
         1: "LineString",
         2: "Polygon",
@@ -35,7 +35,7 @@ def infer_geometry_type(coordinates) -> str:
     ):
         depth += 1
         level = level[0]
-    geom_type = _DEPTH_TO_GEOM_TYPE.get(depth)
+    geom_type = DEPTH_TO_GEOM_TYPE.get(depth)
     if geom_type is None:
         raise ValueError(
             f"Cannot infer geometry type: unsupported nesting depth {depth}"
