@@ -65,4 +65,7 @@ This script uses the following Mapbox Tiling Service API endpoints:
 
 ## Possible Extensions
 
-**Datasets:** In the future, we may consider using the Datasets API as a preliminary step before creating a tileset, if using [Mapbox Datasets](https://docs.mapbox.com/studio-manual/reference/datasets/) provides additional value for a given use case (for example, enabling GeoJSON downloads from Mapbox Studio).
+- **Datasets:** In the future, we may consider using the Datasets API as a preliminary step before creating a tileset, if using [Mapbox Datasets](https://docs.mapbox.com/studio-manual/reference/datasets/) provides additional value for a given use case (for example, enabling GeoJSON downloads from Mapbox Studio).
+- **Windmill Flow**: We could consider chaining this script to another connector (like the [ArcGIS Download Feature Layer script](../arcgis/README.md)) to create a flow that:
+  - downloads and stores a feature layer from ArcGIS Online
+  - publishes the tileset to Mapbox.
