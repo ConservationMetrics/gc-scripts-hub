@@ -66,7 +66,3 @@ This script uses the following Mapbox Tiling Service API endpoints:
 ## Possible Extensions
 
 **Datasets:** In the future, we may consider using the Datasets API as a preliminary step before creating a tileset, if using [Mapbox Datasets](https://docs.mapbox.com/studio-manual/reference/datasets/) provides additional value for a given use case (for example, enabling GeoJSON downloads from Mapbox Studio).
-
-## TODO
-
-- [ ] Use Mapbox credentials resource type (when approved) https://hub.windmill.dev/resource_types/340/mapbox_credentials

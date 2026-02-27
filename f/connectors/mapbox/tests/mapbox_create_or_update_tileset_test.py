@@ -2,9 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from f.connectors.mapbox.mapbox_create_or_update_tileset import (
-    main,
-)
+from f.connectors.mapbox.mapbox_create_or_update_tileset import main, mapbox
 from f.connectors.mapbox.tests.assets import server_responses
 
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -13,8 +11,7 @@ ASSETS_DIR = Path(__file__).parent / "assets"
 def test_invalid_access_token_raises():
     with pytest.raises(ValueError, match="sk.ey"):
         main(
-            mapbox_username="test-user",
-            mapbox_secret_access_token="pk.not_a_secret_token",
+            mapbox=mapbox(username="test-user", access_token="pk.not_a_secret_token"),
             tileset_id="hello-world",
             file_location="sample.geojson",
             attachment_root="/does/not/matter",
@@ -27,8 +24,7 @@ def test_missing_file_raises(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         main(
-            mapbox_username="test-user",
-            mapbox_secret_access_token="sk.ey_valid_token",
+            mapbox=mapbox(username="test-user", access_token="sk.ey_valid_token"),
             tileset_id="hello-world",
             file_location="does_not_exist.geojson",
             attachment_root=str(attachment_root),
@@ -52,17 +48,19 @@ def _assert_create_source_tileset_and_publish(
 ):
     """Verify the standard four-call sequence (GET exists, POST create source, POST create tileset, POST publish)."""
     source = mapbox_tileset_create_source
+    username = source.mapbox["username"]
+    access_token = source.mapbox["access_token"]
 
     expected_source = server_responses.mapbox_tileset_source_create_response(
-        source.username,
+        username,
         source.tileset_id,
     )
     expected_tileset = server_responses.mapbox_create_tileset_response(
-        source.username,
+        username,
         source.tileset_id,
     )
     expected_publish = server_responses.mapbox_publish_response(
-        source.username,
+        username,
         source.tileset_id,
     )
     assert result == {
@@ -77,30 +75,30 @@ def _assert_create_source_tileset_and_publish(
     )
     assert get_call.request.method == "GET"
     assert get_call.request.url == server_responses.mapbox_tileset_get_url(
-        f"{source.username}.{source.tileset_id}",
-        source.access_token,
+        f"{username}.{source.tileset_id}",
+        access_token,
     )
     assert create_source_call.request.method == "POST"
     assert create_source_call.request.url == (
         server_responses.mapbox_tileset_source_create_url(
-            source.username,
+            username,
             source.tileset_id,
-            source.access_token,
+            access_token,
         )
     )
     assert create_tileset_call.request.method == "POST"
     assert create_tileset_call.request.url == (
         server_responses.mapbox_create_tileset_url(
-            source.username,
+            username,
             source.tileset_id,
-            source.access_token,
+            access_token,
         )
     )
     assert publish_call.request.method == "POST"
     assert publish_call.request.url == server_responses.mapbox_publish_url(
-        source.username,
+        username,
         source.tileset_id,
-        source.access_token,
+        access_token,
     )
 
     return create_source_call, create_tileset_call
@@ -109,12 +107,14 @@ def _assert_create_source_tileset_and_publish(
 def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source):
     """Verify the standard three-call sequence (GET exists, PUT replace, POST publish)."""
     source = mapbox_tileset_source
+    username = source.mapbox["username"]
+    access_token = source.mapbox["access_token"]
 
     expected_source = server_responses.mapbox_tileset_source_replace_response(
-        source.username, source.tileset_id
+        username, source.tileset_id
     )
     expected_publish = server_responses.mapbox_publish_response(
-        source.username, source.tileset_id
+        username, source.tileset_id
     )
     assert result == {
         "action": "update",
@@ -125,20 +125,20 @@ def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source)
     get_call, replace_call, publish_call = mocked_responses.calls[-3:]
     assert get_call.request.method == "GET"
     assert get_call.request.url == server_responses.mapbox_tileset_get_url(
-        f"{source.username}.{source.tileset_id}",
-        source.access_token,
+        f"{username}.{source.tileset_id}",
+        access_token,
     )
     assert replace_call.request.method == "PUT"
     assert replace_call.request.url == server_responses.mapbox_tileset_source_url(
-        source.username,
+        username,
         source.tileset_id,
-        source.access_token,
+        access_token,
     )
     assert publish_call.request.method == "POST"
     assert publish_call.request.url == server_responses.mapbox_publish_url(
-        source.username,
+        username,
         source.tileset_id,
-        source.access_token,
+        access_token,
     )
 
     return replace_call
@@ -150,8 +150,7 @@ def test_create_tileset_from_geojson(
     attachment_root, file_location = _stage_geojson(tmp_path, "initial.geojson")
 
     result = main(
-        mapbox_username=mapbox_tileset_create_source.username,
-        mapbox_secret_access_token=mapbox_tileset_create_source.access_token,
+        mapbox=mapbox_tileset_create_source.mapbox,
         tileset_id=mapbox_tileset_create_source.tileset_id,
         file_location=file_location,
         attachment_root=attachment_root,
@@ -168,6 +167,7 @@ def test_create_tileset_from_geojson(
     request_json = create_tileset_call.request.body
     import json
 
+    username = mapbox_tileset_create_source.mapbox["username"]
     payload = json.loads(request_json)
     assert payload["name"] == mapbox_tileset_create_source.tileset_id
     assert "recipe" in payload
@@ -177,7 +177,7 @@ def test_create_tileset_from_geojson(
     assert layer_id in payload["recipe"]["layers"]
     assert (
         payload["recipe"]["layers"][layer_id]["source"]
-        == f"mapbox://tileset-source/{mapbox_tileset_create_source.username}/{mapbox_tileset_create_source.tileset_id}"
+        == f"mapbox://tileset-source/{username}/{mapbox_tileset_create_source.tileset_id}"
     )
     assert payload["recipe"]["layers"][layer_id]["minzoom"] == 0
     assert payload["recipe"]["layers"][layer_id]["maxzoom"] == 11
@@ -189,8 +189,7 @@ def test_update_replaces_with_new_data(
     attachment_root, file_location = _stage_geojson(tmp_path, "update.geojson")
 
     result = main(
-        mapbox_username=mapbox_tileset_source.username,
-        mapbox_secret_access_token=mapbox_tileset_source.access_token,
+        mapbox=mapbox_tileset_source.mapbox,
         tileset_id=mapbox_tileset_source.tileset_id,
         file_location=file_location,
         attachment_root=attachment_root,
@@ -231,8 +230,7 @@ def test_replace_tileset_source_409_conflict(tmp_path, mocked_responses):
         ),
     ):
         main(
-            mapbox_username=username,
-            mapbox_secret_access_token=access_token,
+            mapbox=mapbox(username=username, access_token=access_token),
             tileset_id=tileset_id,
             file_location=file_location,
             attachment_root=attachment_root,

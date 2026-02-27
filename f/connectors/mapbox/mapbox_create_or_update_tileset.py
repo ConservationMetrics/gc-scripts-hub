@@ -3,6 +3,7 @@
 
 import logging
 from pathlib import Path
+from typing import TypedDict
 
 import requests
 
@@ -13,12 +14,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# https://hub.windmill.dev/resource_types/340/mapbox_credentials
+class mapbox(TypedDict):
+    username: str
+    access_token: str
+
+
 def main(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    mapbox: mapbox,
     tileset_id: str,
     file_location: str,
-    attachment_root: str = "/persistent-storage/datalake/",
+    attachment_root: str = "/persistent-storage/datalake",
     max_zoom: int = 11,
 ) -> dict:
     """
@@ -29,37 +35,33 @@ def main(
       - 404: create source → create tileset → publish
       - 200: replace source → publish
     """
-    _assert_secret_access_token(mapbox_secret_access_token)
+
+    username = mapbox["username"]
+    access_token = mapbox["access_token"]
+
+    _assert_secret_access_token(access_token)
     validate_identifier(tileset_id, type="mapbox_tileset_id")
 
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
         raise FileNotFoundError(f"Source file not found at: {source_path}")
 
-    tileset_exists = _tileset_exists(
-        mapbox_username, mapbox_secret_access_token, tileset_id
-    )
+    tileset_exists = _tileset_exists(username, access_token, tileset_id)
 
     # Pathway 1: Update existing tileset
     if tileset_exists:
         source_result = _replace_tileset_source(
-            mapbox_username, mapbox_secret_access_token, tileset_id, source_path
+            username, access_token, tileset_id, source_path
         )
-        publish_result = _publish_tileset(
-            mapbox_username, mapbox_secret_access_token, tileset_id
-        )
+        publish_result = _publish_tileset(username, access_token, tileset_id)
         return {"action": "update", "source": source_result, "publish": publish_result}
 
     # Pathway 2: Create new tileset
     source_result = _create_tileset_source(
-        mapbox_username, mapbox_secret_access_token, tileset_id, source_path
+        username, access_token, tileset_id, source_path
     )
-    tileset_result = _create_tileset(
-        mapbox_username, mapbox_secret_access_token, tileset_id, max_zoom
-    )
-    publish_result = _publish_tileset(
-        mapbox_username, mapbox_secret_access_token, tileset_id
-    )
+    tileset_result = _create_tileset(username, access_token, tileset_id, max_zoom)
+    publish_result = _publish_tileset(username, access_token, tileset_id)
     return {
         "action": "create",
         "source": source_result,
@@ -68,12 +70,12 @@ def main(
     }
 
 
-def _assert_secret_access_token(mapbox_secret_access_token: str) -> None:
+def _assert_secret_access_token(access_token: str) -> None:
     """Validate that the Mapbox access token is a secret token.
 
     Parameters
     ----------
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token to validate.
 
     Raises
@@ -81,11 +83,11 @@ def _assert_secret_access_token(mapbox_secret_access_token: str) -> None:
     ValueError
         If the token does not start with 'sk.ey'.
     """
-    if not mapbox_secret_access_token.startswith("sk.ey"):
-        raise ValueError("mapbox_secret_access_token must start with 'sk.ey'")
+    if not access_token.startswith("sk.ey"):
+        raise ValueError("access_token must start with 'sk.ey'")
 
 
-def _tileset_full_id(mapbox_username: str, tileset_id: str) -> str:
+def _tileset_full_id(username: str, tileset_id: str) -> str:
     """Build the full Mapbox tileset identifier.
 
     The Mapbox API uses ``username.tileset_id`` as the full identifier,
@@ -93,7 +95,7 @@ def _tileset_full_id(mapbox_username: str, tileset_id: str) -> str:
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
     tileset_id : str
         The short tileset identifier.
@@ -103,21 +105,21 @@ def _tileset_full_id(mapbox_username: str, tileset_id: str) -> str:
     str
         The full tileset identifier in the form ``username.tileset_id``.
     """
-    return f"{mapbox_username}.{tileset_id}"
+    return f"{username}.{tileset_id}"
 
 
 def _tileset_exists(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    username: str,
+    access_token: str,
     tileset_id: str,
 ) -> bool:
     """Check whether a Mapbox tileset already exists.
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token.
     tileset_id : str
         The short tileset identifier.
@@ -127,8 +129,8 @@ def _tileset_exists(
     bool
         True if the tileset exists (HTTP 200), False if not found (HTTP 404).
     """
-    tileset_full_id = _tileset_full_id(mapbox_username, tileset_id)
-    url = f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}?access_token={mapbox_secret_access_token}"
+    tileset_full_id = _tileset_full_id(username, tileset_id)
+    url = f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}?access_token={access_token}"
 
     response = requests.get(url)
 
@@ -144,8 +146,8 @@ def _tileset_exists(
 
 
 def _create_tileset_source(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    username: str,
+    access_token: str,
     tileset_id: str,
     source_path: Path,
 ) -> dict:
@@ -156,9 +158,9 @@ def _create_tileset_source(
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token.
     tileset_id : str
         The short tileset identifier.
@@ -175,7 +177,7 @@ def _create_tileset_source(
     logger.info(
         "Creating tileset source '%s' for user '%s' from file: %s",
         tileset_id,
-        mapbox_username,
+        username,
         ld_file_path,
     )
 
@@ -183,7 +185,7 @@ def _create_tileset_source(
         with ld_file_path.open("rb") as f:
             files = {"file": (ld_file_path.name, f, "application/json")}
             response = requests.post(
-                f"https://api.mapbox.com/tilesets/v1/sources/{mapbox_username}/{tileset_id}?access_token={mapbox_secret_access_token}",
+                f"https://api.mapbox.com/tilesets/v1/sources/{username}/{tileset_id}?access_token={access_token}",
                 files=files,
             )
         response.raise_for_status()
@@ -195,8 +197,8 @@ def _create_tileset_source(
 
 
 def _replace_tileset_source(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    username: str,
+    access_token: str,
     tileset_id: str,
     source_path: Path,
 ) -> dict:
@@ -207,9 +209,9 @@ def _replace_tileset_source(
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token.
     tileset_id : str
         The short tileset identifier.
@@ -226,7 +228,7 @@ def _replace_tileset_source(
     logger.info(
         "Replacing tileset source '%s' for user '%s' with file: %s",
         tileset_id,
-        mapbox_username,
+        username,
         ld_file_path,
     )
 
@@ -234,7 +236,7 @@ def _replace_tileset_source(
         with ld_file_path.open("rb") as f:
             files = {"file": (ld_file_path.name, f, "application/json")}
             response = requests.put(
-                f"https://api.mapbox.com/tilesets/v1/sources/{mapbox_username}/{tileset_id}?access_token={mapbox_secret_access_token}",
+                f"https://api.mapbox.com/tilesets/v1/sources/{username}/{tileset_id}?access_token={access_token}",
                 files=files,
             )
         response.raise_for_status()
@@ -253,7 +255,7 @@ def _replace_tileset_source(
 
 
 def _build_tileset_recipe(
-    mapbox_username: str,
+    username: str,
     tileset_id: str,
     layer_id: str,
     max_zoom: int,
@@ -262,7 +264,7 @@ def _build_tileset_recipe(
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
     tileset_id : str
         The short tileset identifier.
@@ -280,7 +282,7 @@ def _build_tileset_recipe(
         "version": 1,
         "layers": {
             layer_id: {
-                "source": f"mapbox://tileset-source/{mapbox_username}/{tileset_id}",
+                "source": f"mapbox://tileset-source/{username}/{tileset_id}",
                 "minzoom": 0,
                 "maxzoom": max_zoom,  # max: 16
             }
@@ -289,8 +291,8 @@ def _build_tileset_recipe(
 
 
 def _create_tileset(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    username: str,
+    access_token: str,
     tileset_id: str,
     max_zoom: int,
 ) -> dict:
@@ -298,9 +300,9 @@ def _create_tileset(
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token.
     tileset_id : str
         The short tileset identifier.
@@ -312,18 +314,16 @@ def _create_tileset(
     dict
         The JSON response from the Mapbox API.
     """
-    tileset_full_id = _tileset_full_id(mapbox_username, tileset_id)
+    tileset_full_id = _tileset_full_id(username, tileset_id)
     layer_id = tileset_id.replace("-", "_")
     payload = {
-        "recipe": _build_tileset_recipe(
-            mapbox_username, tileset_id, layer_id, max_zoom
-        ),
+        "recipe": _build_tileset_recipe(username, tileset_id, layer_id, max_zoom),
         "name": tileset_id,
     }
 
     logger.info("Creating tileset '%s'.", tileset_full_id)
     response = requests.post(
-        f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}?access_token={mapbox_secret_access_token}",
+        f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}?access_token={access_token}",
         json=payload,
     )
     response.raise_for_status()
@@ -332,17 +332,17 @@ def _create_tileset(
 
 
 def _publish_tileset(
-    mapbox_username: str,
-    mapbox_secret_access_token: str,
+    username: str,
+    access_token: str,
     tileset_id: str,
 ) -> dict:
     """Publish a Mapbox tileset, triggering tile processing.
 
     Parameters
     ----------
-    mapbox_username : str
+    username : str
         The Mapbox account username.
-    mapbox_secret_access_token : str
+    access_token : str
         The Mapbox secret access token.
     tileset_id : str
         The short tileset identifier.
@@ -352,11 +352,11 @@ def _publish_tileset(
     dict
         The JSON response from the Mapbox API.
     """
-    tileset_full_id = _tileset_full_id(mapbox_username, tileset_id)
+    tileset_full_id = _tileset_full_id(username, tileset_id)
 
     logger.info("Publishing tileset '%s'.", tileset_full_id)
     response = requests.post(
-        f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}/publish?access_token={mapbox_secret_access_token}"
+        f"https://api.mapbox.com/tilesets/v1/{tileset_full_id}/publish?access_token={access_token}"
     )
     response.raise_for_status()
     logger.info("Tileset published successfully.")

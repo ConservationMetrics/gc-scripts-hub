@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 import responses
 
+from f.connectors.mapbox.mapbox_create_or_update_tileset import mapbox
 from f.connectors.mapbox.tests.assets import server_responses
 
 
@@ -20,8 +21,7 @@ def mocked_responses():
 
 @dataclass
 class MapboxTilesetSource:
-    username: str
-    access_token: str
+    mapbox: mapbox
     tileset_id: str
 
 
@@ -60,8 +60,7 @@ def mapbox_tileset_source(mocked_responses) -> MapboxTilesetSource:
     mocked_responses.post(publish_url, json=publish_body, status=200)
 
     return MapboxTilesetSource(
-        username=username,
-        access_token=access_token,
+        mapbox=mapbox(username=username, access_token=access_token),
         tileset_id=tileset_id,
     )
 
@@ -110,7 +109,6 @@ def mapbox_tileset_create_source(mocked_responses) -> MapboxTilesetSource:
     mocked_responses.post(publish_url, json=publish_body, status=200)
 
     return MapboxTilesetSource(
-        username=username,
-        access_token=access_token,
+        mapbox=mapbox(username=username, access_token=access_token),
         tileset_id=tileset_id,
     )

@@ -12,8 +12,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - mapbox_username
-    - mapbox_secret_access_token
+    - mapbox
     - tileset_id
     - file_location
     - attachment_root
@@ -34,19 +33,12 @@ schema:
         the tileset source.
       default: null
       originalType: string
-    mapbox_secret_access_token:
-      type: string
+    mapbox:
+      type: object
       description: >-
-        A Mapbox secret access token with `tilesets:write`, `tilesets:read`, and
-        `tilesets:delete` scopes. Must start with `sk.ey`.
+        A Mapbox account username and access token (must be a secret token).
       default: null
-      originalType: string
-      pattern: ^sk\.ey.*$
-    mapbox_username:
-      type: string
-      description: The Mapbox username that owns the tileset.
-      default: null
-      originalType: string
+      format: resource-mapbox
     max_zoom:
       type: integer
       description: >-
@@ -63,7 +55,6 @@ schema:
       originalType: string
       pattern: '^[A-Za-z0-9_-]{1,32}$'
   required:
-    - mapbox_username
-    - mapbox_secret_access_token
+    - resource-mapbox
     - tileset_id
     - file_location
