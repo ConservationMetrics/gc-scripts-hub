@@ -262,8 +262,8 @@ def slugify(value, allow_unicode: bool = False) -> str:
 
 _IDENTIFIER_PATTERNS = {
     "mapbox_tileset_id": r"^[a-z0-9-]{1,32}$",
-    # future:
-    # "postgres": r"^[a-z_][a-z0-9_]{0,62}$",
+    # other identifier types that can be added here in the future might include e.g.
+    # "postgres_table_name": r"^[a-z_][a-z0-9_]{0,62}$",
 }
 
 

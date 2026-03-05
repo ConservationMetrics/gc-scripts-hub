@@ -95,9 +95,6 @@ def coords_to_geojson_geometry(raw: str) -> dict:
 def geojson_to_line_delimited(source_path: Path) -> Path:
     """
     Convert a standard GeoJSON file into line-delimited GeoJSON (one feature per line).
-
-    If the given path does not have a `.geojson` suffix, it is returned unchanged
-    with a flag indicating that no temporary file was created.
     """
     logger.info("Converting GeoJSON file %s to line-delimited format.", source_path)
 
