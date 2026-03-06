@@ -41,6 +41,7 @@ value:
       text:
         class: ''
         style: ''
+  darkMode: false
   fullscreen: false
   grid:
     - '12':
@@ -136,9 +137,40 @@ value:
         horizontalAlignment: center
         verticalAlignment: top
     - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 4
+        x: 4
+        'y': 5
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: c
+      data:
+        id: c
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
+    - '12':
         fixed: true
         fullHeight: false
-        h: 13
+        h: 14
         w: 8
         x: 2
         'y': 6
@@ -182,37 +214,6 @@ value:
           - Upload your file
           - Choose data source
           - Finalize
-    - '12':
-        fixed: false
-        fullHeight: false
-        h: 1
-        w: 4
-        x: 4
-        'y': 19
-      '3':
-        fixed: false
-        fullHeight: false
-        h: 2
-        w: 1
-        x: 1
-        'y': 0
-      id: c
-      data:
-        id: c
-        type: htmlcomponent
-        componentInput:
-          type: templatev2
-          connections: []
-          eval: >-
-            <center><em>Need help? Visit our <a
-            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
-            target="_blank">documentation website</a>.</em></center>
-          fieldType: template
-        configuration: {}
-        customCss:
-          container:
-            class: ''
-            style: ''
   hiddenInlineScripts:
     - type: runnableByName
       name: Background Runnable 0
