@@ -141,7 +141,7 @@ value:
         h: 13
         w: 8
         x: 2
-        'y': 5
+        'y': 6
       '3':
         fixed: true
         fullHeight: false
@@ -169,8 +169,6 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: validSqlName
-                - id: state
-                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -187,10 +185,10 @@ value:
     - '12':
         fixed: false
         fullHeight: false
-        h: 2
+        h: 1
         w: 4
         x: 4
-        'y': 18
+        'y': 19
       '3':
         fixed: false
         fullHeight: false
@@ -535,60 +533,48 @@ value:
           verticalAlignment: center
     formStepper-1:
       - '12':
-          fixed: true
+          fixed: false
           fullHeight: false
-          h: 1
+          h: 2
           w: 10
           x: 1
           'y': 0
         '3':
-          fixed: true
+          fixed: false
           fullHeight: false
-          h: 1
+          h: 2
           w: 1
-          x: 3
-          'y': 0
-        id: acceptedFormatsLabel
+          x: 0
+          'y': 1
+        id: d
         data:
-          id: acceptedFormatsLabel
-          type: textcomponent
-          actions: []
+          id: d
+          type: htmlcomponent
           componentInput:
             type: templatev2
             connections: []
             eval: >-
-              Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
-              (SMART only)
+              <p style="font-size: medium; text-align: center;"><strong>Accepted
+              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
+              (<em>SMART only</em>)<br>
+
+              <strong>Note:</strong> To upload media attachments (like photos),
+              please use Filebrowser. See <a
+              href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+              target="_blank">documentation</a>.</p>
             fieldType: template
-          configuration:
-            copyButton:
-              type: static
-              value: false
-            disableNoText:
-              type: static
-              value: false
-            style:
-              type: static
-              value: Body
-            tooltip:
-              type: static
-              value: ''
+          configuration: {}
           customCss:
             container:
               class: ''
               style: ''
-            text:
-              class: ''
-              style: 'font-size: 0.7em;'
-          horizontalAlignment: center
-          verticalAlignment: center
       - '12':
           fixed: true
           fullHeight: false
           h: 5
           w: 12
           x: 0
-          'y': 1
+          'y': 2
         '3':
           fixed: true
           fullHeight: false
@@ -655,7 +641,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 6
+          'y': 7
         '3':
           fixed: true
           fullHeight: false
@@ -853,7 +839,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 7
+          'y': 8
         '3':
           fixed: true
           fullHeight: false
@@ -894,12 +880,6 @@ value:
                 suggestedRefreshOn:
                   - id: state
                     key: tableExists
-                  - id: state
-                    key: updatedRows
-                  - id: state
-                    key: newColumns
-                  - id: state
-                    key: newRows
           configuration:
             copyButton:
               type: static
