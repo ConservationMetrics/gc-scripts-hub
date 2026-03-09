@@ -1,4 +1,5 @@
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -242,3 +243,12 @@ def osmand_poi_gpx_file():
 @pytest.fixture
 def smart_patrol_sample_xml_file():
     return Path(__file__).parent / "assets" / "smart_patrol_sample.xml"
+
+
+@pytest.fixture
+def shapefile_paths(tmp_path):
+    """Extract my_data.zip shapefile and return list of file path strings."""
+    zip_file = Path(__file__).parent / "assets" / "my_data.zip"
+    with zipfile.ZipFile(zip_file) as zf:
+        zf.extractall(tmp_path)
+    return [str(p) for p in tmp_path.rglob("*") if p.is_file()]

@@ -76,11 +76,10 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
         file_format = detect_structured_data_type(file_paths)
         logger.info(f"Detected file format: {file_format}")
 
-        input_path = file_paths[0]
-        converted_data, output_format = convert_data(input_path, file_format)
+        converted_data, output_format = convert_data(file_paths, file_format)
         logger.info(f"Converted to format: {output_format}")
 
-        output_filename = f"{Path(input_path).stem}_parsed.{output_format}"
+        output_filename = f"{Path(file_paths[0]).stem}_parsed.{output_format}"
 
         if output_format == "csv":
             output = StringIO()
