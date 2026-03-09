@@ -60,6 +60,8 @@ def test_structured_data_type__geojson_with_json_extension_minimal(tmp_path: Pat
     """Test minimal valid GeoJSON with .json extension."""
     file_path = tmp_path / "minimal.json"
     file_path.write_text('{"type": "FeatureCollection", "features": []}')
+    # This should still be detected as json because read_geojson would reject empty features
+    # but the detection should identify it as geojson based on structure
     assert detect_structured_data_type([str(file_path)]) == "geojson"
 
 
