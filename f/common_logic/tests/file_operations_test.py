@@ -183,6 +183,25 @@ def test_save_uploaded_file_to_temp__kobotoolbox_submissions_xlsx(tmp_path: Path
     assert saved_path.read_bytes() == xlsx_file.read_bytes()
 
 
+def test_save_uploaded_file_to_temp__shapefile_zip(tmp_path: Path):
+    assets_dir = Path(__file__).parent / "assets"
+    zip_file = assets_dir / "my_data.zip"
+
+    encoded = base64.b64encode(zip_file.read_bytes()).decode()
+
+    result = save_uploaded_file_to_temp(
+        [{"name": "my_data.zip", "data": encoded}], tmp_dir=str(tmp_path)
+    )
+
+    assert "file_paths" in result
+    paths = sorted(result["file_paths"])
+    names = {Path(p).suffix for p in paths}
+    assert names == {".cpg", ".dbf", ".prj", ".shp", ".shx"}
+    for p in paths:
+        assert Path(p).exists()
+    assert not (tmp_path / "my_data.zip").exists()
+
+
 def test_read_csv_to_list(tmp_path: Path):
     csv_file = tmp_path / "test.csv"
     csv_file.write_text("col1,col2,col3\nfoo,123,bar\nbaz,456,qux")
