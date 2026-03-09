@@ -1,7 +1,7 @@
-# py: 3.11
+# py: 3.13
 annotated-types==0.7.0
-certifi==2026.1.4
-charset-normalizer==3.4.4
+certifi==2026.2.25
+charset-normalizer==3.4.5
 idna==3.11
 lxml==6.0.2
 psycopg==3.3.3
