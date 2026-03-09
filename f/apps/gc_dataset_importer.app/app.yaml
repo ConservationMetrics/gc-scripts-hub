@@ -41,6 +41,7 @@ value:
       text:
         class: ''
         style: ''
+  darkMode: false
   fullscreen: false
   grid:
     - '12':
@@ -136,12 +137,43 @@ value:
         horizontalAlignment: center
         verticalAlignment: top
     - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 4
+        x: 4
+        'y': 5
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: c
+      data:
+        id: c
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
+    - '12':
         fixed: true
         fullHeight: false
-        h: 13
+        h: 14
         w: 8
         x: 2
-        'y': 5
+        'y': 6
       '3':
         fixed: true
         fullHeight: false
@@ -161,7 +193,6 @@ value:
           fieldType: any
           recomputeOnInputChanged: false
           runnable:
-            type: runnableByName
             name: 0 Form stepper validations
             inlineScript:
               content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
@@ -170,8 +201,6 @@ value:
               suggestedRefreshOn:
                 - id: state
                   key: validSqlName
-                - id: state
-                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -191,8 +220,7 @@ value:
       fields: {}
       hidden: true
       recomputeIds: []
-    - type: runnableByName
-      name: 2 File has been selected
+    - name: 2 File has been selected
       autoRefresh: false
       fields: {}
       inlineScript:
@@ -208,8 +236,7 @@ value:
       name: Background Runnable 2
       fields: {}
       hidden: true
-    - type: runnableByName
-      name: 3 Set data source state
+    - name: 3 Set data source state
       autoRefresh: false
       fields: {}
       inlineScript:
@@ -336,7 +363,6 @@ value:
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
-              type: runnableByName
               name: 1 Check if database table exists
               inlineScript:
                 content: '!inline 1_check_if_database_table_exists.inline_script.py'
@@ -471,7 +497,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 1 Eval of enterDatasetNameResult
               inlineScript:
                 content: >-
@@ -509,60 +534,48 @@ value:
           verticalAlignment: center
     formStepper-1:
       - '12':
-          fixed: true
+          fixed: false
           fullHeight: false
-          h: 1
+          h: 2
           w: 10
           x: 1
           'y': 0
         '3':
-          fixed: true
+          fixed: false
           fullHeight: false
-          h: 1
+          h: 2
           w: 1
-          x: 3
-          'y': 0
-        id: acceptedFormatsLabel
+          x: 0
+          'y': 1
+        id: d
         data:
-          id: acceptedFormatsLabel
-          type: textcomponent
-          actions: []
+          id: d
+          type: htmlcomponent
           componentInput:
             type: templatev2
             connections: []
             eval: >-
-              Accepted formats: CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
-              (SMART only)
+              <p style="font-size: medium; text-align: center;"><strong>Accepted
+              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
+              (<em>SMART only</em>)<br>
+
+              <strong>Note:</strong> To upload media attachments (like photos),
+              please use Filebrowser. See <a
+              href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+              target="_blank">documentation</a>.</p>
             fieldType: template
-          configuration:
-            copyButton:
-              type: static
-              value: false
-            disableNoText:
-              type: static
-              value: false
-            style:
-              type: static
-              value: Body
-            tooltip:
-              type: static
-              value: ''
+          configuration: {}
           customCss:
             container:
               class: ''
               style: ''
-            text:
-              class: ''
-              style: 'font-size: 0.7em;'
-          horizontalAlignment: center
-          verticalAlignment: center
       - '12':
           fixed: true
           fullHeight: false
           h: 5
           w: 12
           x: 0
-          'y': 1
+          'y': 2
         '3':
           fixed: true
           fullHeight: false
@@ -629,7 +642,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 6
+          'y': 7
         '3':
           fixed: true
           fullHeight: false
@@ -686,7 +699,6 @@ value:
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
-              type: runnableByName
               name: 2 Upload and convert file
               inlineScript:
                 content: '!inline 2_upload_and_convert_file.inline_script.py'
@@ -828,7 +840,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 7
+          'y': 8
         '3':
           fixed: true
           fullHeight: false
@@ -852,7 +864,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 2 Update result message
               inlineScript:
                 content: '!inline 2_update_result_message.inline_script.frontend.js'
@@ -870,12 +881,6 @@ value:
                 suggestedRefreshOn:
                   - id: state
                     key: tableExists
-                  - id: state
-                    key: updatedRows
-                  - id: state
-                    key: newColumns
-                  - id: state
-                    key: newRows
           configuration:
             copyButton:
               type: static
@@ -1276,7 +1281,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 2 Eval of fileUploaded
               inlineScript:
                 content: '!inline 2_eval_of_fileuploaded.inline_script.frontend.js'
@@ -1386,7 +1390,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 3 Eval of dataSource
               inlineScript:
                 content: '!inline 3_eval_of_datasource.inline_script.frontend.js'
@@ -1500,7 +1503,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: inline
               name: 4 Evaluate number of changes
               inlineScript:
                 content: '!inline 4_evaluate_number_of_changes.inline_script.frontend.js'
@@ -1617,7 +1619,6 @@ value:
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
-              type: runnableByName
               name: 4 Apply transformation and write to database
               inlineScript:
                 content: >-
@@ -1781,7 +1782,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 4 Eval of saveResult
               inlineScript:
                 content: '!inline 4_eval_of_saveresult.inline_script.frontend.js'
@@ -1848,7 +1848,6 @@ value:
             hideRefreshButton: true
             recomputeOnInputChanged: true
             runnable:
-              type: runnableByName
               name: 4 Eval of saveLabel
               inlineScript:
                 content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
@@ -1886,71 +1885,3 @@ value:
     type: inlined
     css: ''
   unusedInlineScripts: []
-policy:
-  allowed_s3_keys: []
-  execution_mode: publisher
-  s3_inputs: []
-  triggerables_v2:
-    'b:rawscript/49e444594b84c8a839281e5febc10a9a0618a076e80d504be635da579fe2e001':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'bg_0:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'bg_1:rawscript/aabe938468289958a90ebe7e964e513568364b412f31e199baf76bfb169c9dd7':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'bg_2:rawscript/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'bg_3:rawscript/eb598dc66943f8daaeee655cf32953fb14eea371b4f886619c79b7161cd12f40':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'checkAvailability:rawscript/7526ffedf8ad00abfac544df6271d0c3d954e618fb40e0acdd502816491f83ac':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs:
-        db: '$res:f/connectors/postgresql'
-    'datasetNameResult:rawscript/ca5f4871265314f132ca9bfba59e6dd5ab6a6af38063c2de72a08decaf0911d3':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'dataSource:rawscript/03b0b24613940852c512362a2e9df99934b9f5b42d77052aa5b1967ea6045cbd':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'fileUploaded:rawscript/c8afc9500163ab5f943ef27cc21d42c5666fb94cec35ada3afc558d59f756b69':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'formStepper:rawscript/605961b3d1d5b8eb1a2e82e84b2b95275d114743d26d9788381bee5b8c2a120a':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'saveLabel:rawscript/1e9c0df5f9976b417b52d7f0096b1ce27d8dbc3bf1d28b80a24f2660254bc27d':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'saveResult:rawscript/e6f29736569ce3e7e8d48900457f7ae702bee218e5cefa75917073e25d5da1b7':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
-    'transformAndWrite:rawscript/8095dc5efdd733a649775f144b09f81d34ae5e431d6c57ce26ffca2f8e5529a1':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs:
-        db: '$res:f/connectors/postgresql'
-    'uploadFile:rawscript/a44baca6744fd75a637c33fc43b1a982bcd82eac8e91ac8dd294fd5cfaf4874e':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs:
-        db: '$res:f/connectors/postgresql'
-    'uploadFileResult:rawscript/b8e2f9a461e36866deb638e9e96fc73e1c9dc477a74fba55a3a05d9ba5237d4f':
-      allow_user_resources: []
-      one_of_inputs: {}
-      static_inputs: {}
