@@ -3,61 +3,61 @@ value:
   css:
     buttoncomponent:
       button:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     checkboxcomponent:
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
       text:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     containercomponent:
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     fileinputcomponent:
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     formcomponent:
       button:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     steppercomponent:
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
     textcomponent:
       container:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
       text:
-        class: ""
-        style: ""
+        class: ''
+        style: ''
   darkMode: false
   fullscreen: false
   grid:
-    - "12":
+    - '12':
         fixed: true
         fullHeight: false
         h: 1
         w: 8
         x: 2
-        "y": 1
-      "3":
+        'y': 1
+      '3':
         fixed: true
         fullHeight: false
         h: 1
         w: 1
         x: 0
-        "y": 0
+        'y': 0
       id: pageTitle
       data:
         id: pageTitle
@@ -80,30 +80,30 @@ value:
             value: Title
           tooltip:
             type: static
-            value: ""
+            value: ''
         customCss:
           container:
-            class: ""
-            style: ""
+            class: ''
+            style: ''
           text:
-            class: ""
-            style: ""
+            class: ''
+            style: ''
         horizontalAlignment: center
         verticalAlignment: top
-    - "12":
+    - '12':
         fixed: false
         fullHeight: false
         h: 1
         w: 8
         x: 2
-        "y": 3
-      "3":
+        'y': 3
+      '3':
         fixed: false
         fullHeight: false
         h: 1
         w: 1
         x: 1
-        "y": 6
+        'y': 6
       id: formTitle
       data:
         id: formTitle
@@ -126,30 +126,75 @@ value:
             value: Subtitle
           tooltip:
             type: static
-            value: ""
+            value: ''
         customCss:
           container:
-            class: ""
-            style: ""
+            class: ''
+            style: ''
           text:
-            class: ""
-            style: ""
+            class: ''
+            style: ''
         horizontalAlignment: center
         verticalAlignment: top
-    - "12":
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 14
+        w: 8
+        x: 2
+        'y': 5
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 8
+        w: 2
+        x: 1
+        'y': 7
+      id: formStepper
+      data:
+        id: formStepper
+        type: steppercomponent
+        actions: []
+        componentInput:
+          type: runnable
+          autoRefresh: false
+          fields: {}
+          fieldType: any
+          recomputeOnInputChanged: false
+          runnable:
+            name: 0 Form stepper validations
+            inlineScript:
+              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
+              language: frontend
+              path: f/apps/gc_dataset_importer/0_Form_stepper_validations
+              suggestedRefreshOn: []
+        configuration: {}
+        customCss:
+          container:
+            class: border-2 border-blue-300 border-dashed
+            style: ''
+        numberOfSubgrids: 4
+        onNext: []
+        onPrevious: []
+        tabs:
+          - Name your dataset
+          - Upload your file
+          - Choose data source
+          - Finalize
+    - '12':
         fixed: false
         fullHeight: false
         h: 1
         w: 4
         x: 4
-        "y": 5
-      "3":
+        'y': 19
+      '3':
         fixed: false
         fullHeight: false
         h: 2
         w: 1
         x: 1
-        "y": 0
+        'y': 0
       id: c
       data:
         id: c
@@ -165,55 +210,8 @@ value:
         configuration: {}
         customCss:
           container:
-            class: ""
-            style: ""
-    - "12":
-        fixed: true
-        fullHeight: false
-        h: 14
-        w: 8
-        x: 2
-        "y": 6
-      "3":
-        fixed: true
-        fullHeight: false
-        h: 8
-        w: 2
-        x: 1
-        "y": 7
-      id: formStepper
-      data:
-        id: formStepper
-        type: steppercomponent
-        actions: []
-        componentInput:
-          type: runnable
-          autoRefresh: false
-          fields: {}
-          fieldType: any
-          recomputeOnInputChanged: false
-          runnable:
-            name: 0 Form stepper validations
-            inlineScript:
-              content: "!inline 0_form_stepper_validations.inline_script.frontend.js"
-              language: frontend
-              path: f/apps/gc_dataset_importer/0_Form_stepper_validations
-              suggestedRefreshOn:
-                - id: state
-                  key: validSqlName
-        configuration: {}
-        customCss:
-          container:
-            class: border-2 border-blue-300 border-dashed
-            style: ""
-        numberOfSubgrids: 4
-        onNext: []
-        onPrevious: []
-        tabs:
-          - Name your dataset
-          - Upload your file
-          - Choose data source
-          - Finalize
+            class: ''
+            style: ''
   hiddenInlineScripts:
     - type: runnableByName
       name: Background Runnable 0
@@ -224,7 +222,7 @@ value:
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: "!inline 2_file_has_been_selected.inline_script.frontend.js"
+        content: '!inline 2_file_has_been_selected.inline_script.frontend.js'
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
         suggestedRefreshOn:
@@ -240,7 +238,7 @@ value:
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: "!inline 3_set_data_source_state.inline_script.frontend.js"
+        content: '!inline 3_set_data_source_state.inline_script.frontend.js'
         language: frontend
         path: f/apps/gc_dataset_importer/3_Set_data_source_state
         refreshOn:
@@ -258,20 +256,20 @@ value:
   norefreshbar: false
   subgrids:
     formStepper-0:
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 5
           w: 10
           x: 1
-          "y": 1
-        "3":
+          'y': 1
+        '3':
           fixed: true
           fullHeight: false
           h: 8
           w: 3
           x: 0
-          "y": 1
+          'y': 1
         id: enterDatasetName
         data:
           id: enterDatasetName
@@ -289,22 +287,22 @@ value:
                   customErrorMessage: >-
                     Must be no longer than 61 characters, and cannot contain
                     line breaks.
-                  default: ""
+                  default: ''
                   disableVariablePicker: true
                   nullable: false
-                  pattern: "^.{1,61}$"
-                  placeholder: ""
+                  pattern: '^.{1,61}$'
+                  placeholder: ''
               required:
                 - Dataset name
             connections: []
-            expr: ""
+            expr: ''
             fieldType: schema
           configuration:
             defaultValues:
               type: static
               value: {}
               connections: []
-              expr: "{}"
+              expr: '{}'
             displayType:
               type: static
               value: false
@@ -316,28 +314,28 @@ value:
               value: false
           customCss:
             description:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             label:
-              class: ""
-              style: ""
-      - "12":
+              class: ''
+              style: ''
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 2
           x: 5
-          "y": 6
-        "3":
+          'y': 6
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 10
-          "y": 5
+          'y': 5
         id: checkAvailability
         data:
           id: checkAvailability
@@ -357,7 +355,7 @@ value:
                 fieldType: string
               db:
                 type: static
-                value: "$res:f/connectors/postgresql"
+                value: '$res:f/connectors/postgresql'
                 fieldType: object
                 format: resource-postgresql
             fieldType: any
@@ -365,22 +363,22 @@ value:
             runnable:
               name: 1 Check if database table exists
               inlineScript:
-                content: "!inline 1_check_if_database_table_exists.inline_script.py"
-                lock: "!inline 1_check_if_database_table_exists.inline_script.lock"
+                content: '!inline 1_check_if_database_table_exists.inline_script.py'
+                lock: '!inline 1_check_if_database_table_exists.inline_script.lock'
                 language: python3
                 path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
                 schema:
-                  $schema: "https://json-schema.org/draft/2020-12/schema"
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
                     dataset_name:
                       type: string
-                      description: ""
+                      description: ''
                       default: null
                       originalType: string
                     db:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                       format: resource-postgresql
                   required:
@@ -406,7 +404,7 @@ value:
               value: search
             beforeIcon:
               type: static
-              value: ""
+              value: ''
             color:
               type: static
               value: dark
@@ -421,7 +419,7 @@ value:
               connections:
                 - id: valid
                   componentId: enterDatasetName
-              expr: "!enterDatasetName.valid"
+              expr: '!enterDatasetName.valid'
             fillContainer:
               type: static
               value: false
@@ -456,29 +454,29 @@ value:
               value: false
           customCss:
             button:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           recomputeIds:
             - bg_0
           verticalAlignment: center
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 2
           w: 10
           x: 1
-          "y": 7
-        "3":
+          'y': 7
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 0
+          'y': 0
         id: datasetNameResult
         data:
           id: datasetNameResult
@@ -490,7 +488,7 @@ value:
             connections:
               - id: result
                 componentId: submitDatasetName
-            eval: ""
+            eval: ''
             expr: submitDatasetName.result
             fields: {}
             fieldType: template
@@ -522,31 +520,31 @@ value:
               value: Label
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           verticalAlignment: center
     formStepper-1:
-      - "12":
+      - '12':
           fixed: false
           fullHeight: false
           h: 2
           w: 10
           x: 1
-          "y": 0
-        "3":
+          'y': 0
+        '3':
           fixed: false
           fullHeight: false
           h: 2
           w: 1
           x: 0
-          "y": 1
+          'y': 1
         id: d
         data:
           id: d
@@ -556,8 +554,8 @@ value:
             connections: []
             eval: >-
               <p style="font-size: medium; text-align: center;"><strong>Accepted
-              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, Shapefile, XLS, XLSX, XML
-              (<em>SMART only</em>)<br>
+              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, Shapefile, XLS,
+              XLSX, XML (<em>SMART only</em>)<br>
 
               <strong>Note:</strong> To upload media attachments (like photos),
               please use Filebrowser. See <a
@@ -567,22 +565,22 @@ value:
           configuration: {}
           customCss:
             container:
-              class: ""
-              style: ""
-      - "12":
+              class: ''
+              style: ''
+      - '12':
           fixed: true
           fullHeight: false
           h: 5
           w: 12
           x: 0
-          "y": 2
-        "3":
+          'y': 2
+        '3':
           fixed: true
           fullHeight: false
           h: 4
           w: 3
           x: 1
-          "y": 1
+          'y': 1
         id: selectFile
         data:
           id: selectFile
@@ -612,7 +610,7 @@ value:
               type: static
               value: false
               connections: []
-              expr: "false"
+              expr: 'false'
             includeMimeType:
               type: static
               value: false
@@ -632,24 +630,24 @@ value:
               expr: '"Drag and drop files or click to select them"'
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           onFileChange:
             - bg_1
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 2
           x: 5
-          "y": 7
-        "3":
+          'y': 7
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 0
+          'y': 0
         id: uploadFile
         data:
           id: uploadFile
@@ -669,7 +667,7 @@ value:
                 fieldType: string
               db:
                 type: static
-                value: "$res:f/connectors/postgresql"
+                value: '$res:f/connectors/postgresql'
                 fieldType: object
                 format: resource-postgresql
               table_exists:
@@ -701,34 +699,34 @@ value:
             runnable:
               name: 2 Upload and convert file
               inlineScript:
-                content: "!inline 2_upload_and_convert_file.inline_script.py"
-                lock: "!inline 2_upload_and_convert_file.inline_script.lock"
+                content: '!inline 2_upload_and_convert_file.inline_script.py'
+                lock: '!inline 2_upload_and_convert_file.inline_script.lock'
                 language: python3
                 path: f/apps/gc_dataset_importer/2_Upload_and_convert_file
                 schema:
-                  $schema: "https://json-schema.org/draft/2020-12/schema"
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
                     dataset_name:
                       type: string
-                      description: ""
+                      description: ''
                       default: null
                     db:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                       format: resource-postgresql
                     table_exists:
                       type: boolean
-                      description: ""
+                      description: ''
                       default: null
                     table_name:
                       type: string
-                      description: ""
+                      description: ''
                       default: null
                     uploaded_file:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                   required:
                     - uploaded_file
@@ -767,7 +765,7 @@ value:
               value: upload
             beforeIcon:
               type: static
-              value: ""
+              value: ''
             color:
               type: static
               value: dark
@@ -782,7 +780,7 @@ value:
               connections:
                 - id: uploadButtonEnabled
                   componentId: state
-              expr: "!state.uploadButtonEnabled === true"
+              expr: '!state.uploadButtonEnabled === true'
             fillContainer:
               type: static
               value: false
@@ -811,7 +809,7 @@ value:
                 sendToast:
                   message:
                     type: static
-                    value: ""
+                    value: ''
               selected: sendToast
             runInBackground:
               type: static
@@ -826,28 +824,28 @@ value:
               value: false
           customCss:
             button:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           recomputeIds: []
           verticalAlignment: center
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 2
           w: 10
           x: 1
-          "y": 8
-        "3":
+          'y': 8
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 6
+          'y': 6
         id: uploadFileResult
         data:
           id: uploadFileResult
@@ -857,8 +855,8 @@ value:
             type: runnable
             autoRefresh: false
             connections: []
-            eval: ""
-            expr: ""
+            eval: ''
+            expr: ''
             fields: {}
             fieldType: template
             hideRefreshButton: true
@@ -866,7 +864,7 @@ value:
             runnable:
               name: 2 Update result message
               inlineScript:
-                content: "!inline 2_update_result_message.inline_script.frontend.js"
+                content: '!inline 2_update_result_message.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/2_Update_result_message
                 refreshOn:
@@ -893,31 +891,31 @@ value:
               value: Label
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           verticalAlignment: center
     formStepper-2:
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          "y": 2
-        "3":
+          'y': 2
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          "y": 1
+          'y': 1
         id: dataSourceToggle
         data:
           id: dataSourceToggle
@@ -935,29 +933,29 @@ value:
               value: Is this dataset from a known source or tool?
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: center
           onToggle: []
           recomputeIds: []
           verticalAlignment: center
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 2
           w: 10
           x: 1
-          "y": 3
-        "3":
+          'y': 3
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          "y": 0
+          'y': 0
         id: dataSourceHint
         data:
           id: dataSourceHint
@@ -982,32 +980,32 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: |-
                 italic 
                 text-sm
-              style: ""
+              style: ''
           horizontalAlignment: center
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 6
           x: 3
-          "y": 5
-        "3":
+          'y': 5
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 2
           x: 0
-          "y": 1
+          'y': 1
         id: dataSources
         data:
           id: dataSources
@@ -1025,7 +1023,7 @@ value:
               connections:
                 - id: result
                   componentId: dataSourceToggle
-              expr: "!dataSourceToggle.result"
+              expr: '!dataSourceToggle.result'
             fullWidth:
               type: static
               value: true
@@ -1053,8 +1051,8 @@ value:
               value: false
           customCss:
             input:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
               tooltip: >-
                 https://github.com/rob-balfre/svelte-select/blob/master/docs/theming_variables.md
           onSelect:
@@ -1062,20 +1060,20 @@ value:
           recomputeIds: []
           verticalAlignment: center
     formStepper-3:
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 12
           x: 0
-          "y": 0
-        "3":
+          'y': 0
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 0
+          'y': 0
         id: finalizeTitle
         data:
           id: finalizeTitle
@@ -1098,30 +1096,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: center
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: false
           fullHeight: false
           h: 1
           w: 3
           x: 1
-          "y": 1
-        "3":
+          'y': 1
+        '3':
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          "y": 0
+          'y': 0
         id: datasetNameLabel
         data:
           id: datasetNameLabel
@@ -1130,7 +1128,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "Dataset name:"
+            eval: 'Dataset name:'
             fieldType: template
           configuration:
             copyButton:
@@ -1144,30 +1142,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 7
           x: 4
-          "y": 1
-        "3":
+          'y': 1
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          "y": 0
+          'y': 0
         id: datasetName
         data:
           id: datasetName
@@ -1178,7 +1176,7 @@ value:
             connections:
               - id: datasetName
                 componentId: state
-            eval: "${selectFile.result[0].name}"
+            eval: '${selectFile.result[0].name}'
             expr: state.datasetName
             fieldType: template
           configuration:
@@ -1193,30 +1191,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: "bg-gray-100 dark:bg-gray-800"
-              style: ""
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 3
           x: 1
-          "y": 2
-        "3":
+          'y': 2
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 1
+          'y': 1
         id: fileUploadedLabel
         data:
           id: fileUploadedLabel
@@ -1225,7 +1223,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "File uploaded:"
+            eval: 'File uploaded:'
             fieldType: template
           configuration:
             copyButton:
@@ -1239,30 +1237,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 7
           x: 4
-          "y": 2
-        "3":
+          'y': 2
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          "y": 1
+          'y': 1
         id: fileUploaded
         data:
           id: fileUploaded
@@ -1283,7 +1281,7 @@ value:
             runnable:
               name: 2 Eval of fileUploaded
               inlineScript:
-                content: "!inline 2_eval_of_fileuploaded.inline_script.frontend.js"
+                content: '!inline 2_eval_of_fileuploaded.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/2_Eval_of_fileUploaded
                 refreshOn:
@@ -1302,30 +1300,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: "bg-gray-100 dark:bg-gray-800"
-              style: ""
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: true
           h: 1
           w: 3
           x: 1
-          "y": 3
-        "3":
+          'y': 3
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          "y": 1
+          'y': 1
         id: dataSourceLabel
         data:
           id: dataSourceLabel
@@ -1334,7 +1332,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "Data source:"
+            eval: 'Data source:'
             fieldType: template
           configuration:
             copyButton:
@@ -1348,30 +1346,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 7
           x: 4
-          "y": 3
-        "3":
+          'y': 3
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 2
+          'y': 2
         id: dataSource
         data:
           id: dataSource
@@ -1383,7 +1381,7 @@ value:
             connections:
               - id: result
                 componentId: dataSources
-            eval: "Hello ${ctx.username}"
+            eval: 'Hello ${ctx.username}'
             expr: dataSources.result
             fields: {}
             fieldType: template
@@ -1392,7 +1390,7 @@ value:
             runnable:
               name: 3 Eval of dataSource
               inlineScript:
-                content: "!inline 3_eval_of_datasource.inline_script.frontend.js"
+                content: '!inline 3_eval_of_datasource.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/3_Eval_of_dataSource
                 refreshOn:
@@ -1415,30 +1413,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: "bg-gray-100 dark:bg-gray-800"
-              style: ""
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: true
           h: 1
           w: 3
           x: 1
-          "y": 4
-        "3":
+          'y': 4
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          "y": 3
+          'y': 3
         id: a
         data:
           id: a
@@ -1447,7 +1445,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "Changes:"
+            eval: 'Changes:'
             fieldType: template
           configuration:
             copyButton:
@@ -1461,30 +1459,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: font-bold
-              style: ""
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: true
           fullHeight: false
           h: 2
           w: 7
           x: 4
-          "y": 4
-        "3":
+          'y': 4
+        '3':
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          "y": 3
+          'y': 3
         id: b
         data:
           id: b
@@ -1496,7 +1494,7 @@ value:
             connections:
               - id: result
                 componentId: dataSources
-            eval: "Hello ${ctx.username}"
+            eval: 'Hello ${ctx.username}'
             expr: dataSources.result
             fields: {}
             fieldType: template
@@ -1505,7 +1503,7 @@ value:
             runnable:
               name: 4 Evaluate number of changes
               inlineScript:
-                content: "!inline 4_evaluate_number_of_changes.inline_script.frontend.js"
+                content: '!inline 4_evaluate_number_of_changes.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/4_Evaluate_number_of_changes
                 refreshOn:
@@ -1530,30 +1528,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: "bg-gray-100 dark:bg-gray-800"
-              style: ""
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: left
           verticalAlignment: top
-      - "12":
+      - '12':
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 5
-          "y": 6
-        "3":
+          'y': 6
+        '3':
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          "y": 2
+          'y': 2
         id: transformAndWrite
         data:
           id: transformAndWrite
@@ -1581,7 +1579,7 @@ value:
                 fieldType: object
               db:
                 type: static
-                value: "$res:f/connectors/postgresql"
+                value: '$res:f/connectors/postgresql'
                 fieldType: object
                 format: resource-postgresql
               filename_original:
@@ -1631,37 +1629,37 @@ value:
                 path: >-
                   f/apps/gc_dataset_importer/4_Apply_transformation_and_write_to_database
                 schema:
-                  $schema: "https://json-schema.org/draft/2020-12/schema"
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
                   type: object
                   properties:
                     data_source:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                     dataset_name:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                     db:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                       format: resource-postgresql
                     filename_original:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                     filename_parsed:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                     output_format:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                     valid_sql_name:
                       type: object
-                      description: ""
+                      description: ''
                       default: null
                   required:
                     - db
@@ -1688,7 +1686,7 @@ value:
               value: cloud-upload
             beforeIcon:
               type: static
-              value: ""
+              value: ''
             color:
               type: static
               value: dark
@@ -1744,28 +1742,28 @@ value:
               value: false
           customCss:
             button:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           recomputeIds: []
           verticalAlignment: center
-      - "12":
+      - '12':
           fixed: false
           fullHeight: false
           h: 2
           w: 12
           x: 0
-          "y": 7
-        "3":
+          'y': 7
+        '3':
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          "y": 3
+          'y': 3
         id: saveResult
         data:
           id: saveResult
@@ -1775,8 +1773,8 @@ value:
             type: runnable
             autoRefresh: true
             connections: []
-            eval: ""
-            expr: ""
+            eval: ''
+            expr: ''
             fields: {}
             fieldType: template
             hideRefreshButton: true
@@ -1784,7 +1782,7 @@ value:
             runnable:
               name: 4 Eval of saveResult
               inlineScript:
-                content: "!inline 4_eval_of_saveresult.inline_script.frontend.js"
+                content: '!inline 4_eval_of_saveresult.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/4_Eval_of_saveResult
                 refreshOn:
@@ -1809,30 +1807,30 @@ value:
               value: Label
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
           horizontalAlignment: center
           verticalAlignment: center
-      - "12":
+      - '12':
           fixed: false
           fullHeight: false
           h: 1
           w: 12
           x: 0
-          "y": 9
-        "3":
+          'y': 9
+        '3':
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          "y": 2
+          'y': 2
         id: saveLabel
         data:
           id: saveLabel
@@ -1850,7 +1848,7 @@ value:
             runnable:
               name: 4 Eval of saveLabel
               inlineScript:
-                content: "!inline 4_eval_of_savelabel.inline_script.frontend.js"
+                content: '!inline 4_eval_of_savelabel.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/gc_dataset_importer/4_Eval_of_saveLabel
                 refreshOn:
@@ -1869,19 +1867,19 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ""
+              value: ''
           customCss:
             container:
-              class: ""
-              style: ""
+              class: ''
+              style: ''
             text:
               class: |-
                 italic 
                 text-sm
-              style: ""
+              style: ''
           horizontalAlignment: center
           verticalAlignment: center
   theme:
     type: inlined
-    css: ""
+    css: ''
   unusedInlineScripts: []
