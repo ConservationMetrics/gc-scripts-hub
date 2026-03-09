@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def detect_structured_data_type(file_path: str) -> str:
+def detect_structured_data_type(file_paths: list[str]) -> str:
     """
     Lightweight detection of structured data file types using MIME type analysis and extension
     fallbacks, focusing on geospatial and tabular formats.
@@ -37,16 +37,17 @@ def detect_structured_data_type(file_path: str) -> str:
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
-    TODO: Add support for ESRI shapefiles, which requires a different approach as a
-    collection of files rather than a single file.
+    Accepts a list of file paths (as i.e. returned by save_uploaded_file_to_temp) to
+    support multi-file formats like ESRI shapefiles. For single-file
+    formats the list will contain one element.
 
     Format detection is intentionally lightweight. Comprehensive validation is expected
     to occur later in the data processing pipeline (e.g., in convert_data).
 
     Parameters
     ----------
-    file_path : str
-        Path to the file to inspect.
+    file_paths : list[str]
+        Paths to the file(s) to inspect.
 
     Returns
     -------
@@ -127,6 +128,7 @@ def detect_structured_data_type(file_path: str) -> str:
             return "xml"
         return "unsupported"
 
+    file_path = file_paths[0]
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"File does not exist: {file_path}")

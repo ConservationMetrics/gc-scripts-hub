@@ -70,12 +70,13 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
         logger.info(f"Created dataset temp directory: {temp_dir}")
 
         saved_input = save_uploaded_file_to_temp(uploaded_file, tmp_dir=str(temp_dir))
-        input_path = saved_input["file_paths"][0]
-        logger.info(f"Saved original file to: {input_path}")
+        file_paths = saved_input["file_paths"]
+        logger.info(f"Saved original file(s): {file_paths}")
 
-        file_format = detect_structured_data_type(input_path)
+        file_format = detect_structured_data_type(file_paths)
         logger.info(f"Detected file format: {file_format}")
 
+        input_path = file_paths[0]
         converted_data, output_format = convert_data(input_path, file_format)
         logger.info(f"Converted to format: {output_format}")
 

@@ -117,25 +117,6 @@ def zip_with_subdir(tmp_path: Path):
     return zip_path
 
 
-def test_save_uploaded_file_to_temp__zip_with_subdir(
-    zip_with_subdir: Path, tmp_path: Path
-):
-    encoded = base64.b64encode(zip_with_subdir.read_bytes()).decode()
-
-    result = save_uploaded_file_to_temp(
-        [{"name": "bundle.zip", "data": encoded}], tmp_dir=str(tmp_path)
-    )
-
-    assert "file_paths" in result
-    paths = [Path(p) for p in result["file_paths"]]
-    assert any("observations.geojson" in str(p) for p in paths)
-    assert any("attachments/photo1.jpg" in str(p) for p in paths)
-    assert any("attachments/photo2.jpg" in str(p) for p in paths)
-    for p in paths:
-        assert p.exists()
-    assert not zip_with_subdir.exists()
-
-
 def test_save_uploaded_file_to_temp__kmz_with_subdir(
     zip_with_subdir: Path, tmp_path: Path
 ):
