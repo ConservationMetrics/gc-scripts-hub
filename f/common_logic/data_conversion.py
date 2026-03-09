@@ -33,7 +33,7 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
 
     This function identifies structured datasets used in environmental, geographic, and
     tabular data pipelines. It supports:
-    - Spatial formats: geojson, kml, gpx
+    - Spatial formats: geojson, kml, gpx, shapefile
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
@@ -127,6 +127,21 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
             logger.info(f"File {path.name} detected as xml (generic)")
             return "xml"
         return "unsupported"
+
+    def _is_valid_shapefile(path: str) -> bool:
+        try:
+            with fiona.open(path) as src:
+                _ = src.schema
+                _ = src.crs
+            return True
+        except Exception:
+            return False
+
+    # Check for shapefile first (multi-file format: .shp + sidecar files)
+    shp_path = next((p for p in file_paths if Path(p).suffix.lower() == ".shp"), None)
+    if shp_path and _is_valid_shapefile(shp_path):
+        logger.info(f"File set detected as shapefile (via {Path(shp_path).name})")
+        return "shapefile"
 
     file_path = file_paths[0]
     path = Path(file_path)

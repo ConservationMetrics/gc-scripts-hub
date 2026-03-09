@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -130,3 +131,11 @@ def test_structured_data_type__generic_xml_format(tmp_path: Path):
         '<root><child>value</child></root>'
     )
     assert detect_structured_data_type([str(file_path)]) == "xml"
+
+
+def test_structured_data_type__shapefile(tmp_path: Path):
+    zip_file = Path(__file__).parent / "assets" / "my_data.zip"
+    with zipfile.ZipFile(zip_file) as zf:
+        zf.extractall(tmp_path)
+    file_paths = [str(p) for p in tmp_path.rglob("*") if p.is_file()]
+    assert detect_structured_data_type(file_paths) == "shapefile"
