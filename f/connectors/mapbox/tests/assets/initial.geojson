@@ -1,0 +1,22 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Northern Virginia",
+        "description": "Approximate bounding box for Northern Virginia."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-78.35, 38.55],
+          [-77.00, 38.55],
+          [-77.00, 39.30],
+          [-78.35, 39.30],
+          [-78.35, 38.55]
+        ]]
+      }
+    }
+  ]
+}

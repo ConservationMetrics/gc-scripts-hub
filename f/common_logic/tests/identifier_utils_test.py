@@ -4,6 +4,7 @@ from f.common_logic.identifier_utils import (
     normalize_identifier,
     sanitize_sql_message,
     slugify,
+    validate_identifier,
 )
 
 
@@ -318,3 +319,36 @@ def test_slugify_empty_and_unicode():
     assert slugify("") == "unnamed"
     assert slugify("Hello World!") == "hello-world"
     assert slugify("Café", allow_unicode=False) == "cafe"
+
+
+def test_validate_identifier_mapbox_tileset_id():
+    """Test that valid tileset IDs pass validation."""
+    valid_ids = [
+        "a",
+        "hello-world",
+        "test123",
+        "a1b2c3",
+        "my-tileset-123",
+        "x" * 32,  # Max length
+        "1" * 32,  # Max length with digits
+        "a-b-c-d-e-f",  # Multiple hyphens
+        "-hello",  # Starts with hyphen (allowed by regex)
+        "hello-",  # Ends with hyphen (allowed by regex)
+        "hello--world",  # Double hyphen (allowed by regex)
+    ]
+    for tileset_id in valid_ids:
+        assert validate_identifier(tileset_id, type="mapbox_tileset_id") is True
+
+    """Test that invalid tileset IDs raise ValueError."""
+    invalid_cases = [
+        ("", "empty string"),
+        ("A", "uppercase letter"),
+        ("Hello-World", "uppercase letters"),
+        ("hello world", "contains space"),
+        ("hello_world", "contains underscore"),
+        ("hello.world", "contains dot"),
+        ("hello@world", "contains special character"),
+        ("x" * 33, "too long (33 chars)"),
+    ]
+    for tileset_id, description in invalid_cases:
+        assert validate_identifier(tileset_id, type="mapbox_tileset_id") is False

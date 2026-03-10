@@ -1,0 +1,59 @@
+summary: 'Mapbox: Create or Update Tileset'
+description: >-
+  This script uses the Mapbox Tiling Service (MTS) to create or update a Mapbox
+  tileset from a GeoJSON file. It first checks whether the tileset exists. If it
+  does not exist, it creates a tileset source, creates the tileset with a simple
+  recipe, and publishes it. If it exists, it replaces the tileset source and
+  publishes to rebuild tiles.
+lock: '!inline f/connectors/mapbox/mapbox_create_or_update_tileset.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - mapbox
+    - tileset_id
+    - file_location
+    - attachment_root
+    - max_zoom
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        Base directory where the GeoJSON source file is stored. The
+        `file_location` parameter is interpreted as a path relative to this
+        directory.
+      default: /persistent-storage/datalake
+      originalType: string
+    file_location:
+      type: string
+      description: >-
+        Relative path (from `attachment_root`) to the GeoJSON file to upload as
+        the tileset source.
+      default: null
+      originalType: string
+    mapbox:
+      type: object
+      description: A Mapbox account username and access token (must be a secret token).
+      default: null
+      format: resource-mapbox
+    max_zoom:
+      type: integer
+      description: >-
+        Maximum zoom level for a newly-created tileset. Valid range is 0-16.
+        (Ignored when updating an existing tileset.)
+      default: 11
+      maximum: 16
+      minimum: 0
+      originalType: integer
+    tileset_id:
+      type: string
+      description: The tileset ID (without the username prefix).
+      default: null
+      originalType: string
+      pattern: '^[A-Za-z0-9_-]{1,32}$'
+  required:
+    - mapbox
+    - tileset_id
+    - file_location

@@ -258,3 +258,34 @@ def slugify(value, allow_unicode: bool = False) -> str:
     value = re.sub(r"[^\w\s-]", "", value)
     value = re.sub(r"[-\s]+", "-", value).strip("-_ ")
     return value or "unnamed"
+
+
+_IDENTIFIER_PATTERNS = {
+    "mapbox_tileset_id": r"^[a-z0-9-]{1,32}$",
+    # other identifier types that can be added here in the future might include e.g.
+    # "postgres_table_name": r"^[a-z_][a-z0-9_]{0,62}$",
+}
+
+
+def validate_identifier(
+    value: str,
+    type: str,
+) -> bool:
+    """
+    Validate an identifier according to a predefined identifier type.
+
+    Parameters
+    ----------
+    value : str
+        The identifier value to validate.
+    type : str
+        Identifier type policy (e.g., "mapbox_tileset_id").
+    """
+    if type not in _IDENTIFIER_PATTERNS:
+        raise ValueError(f"Unknown identifier type: {type}")
+
+    pattern = _IDENTIFIER_PATTERNS[type]
+    if re.fullmatch(pattern, value) is None:
+        return False
+
+    return True
