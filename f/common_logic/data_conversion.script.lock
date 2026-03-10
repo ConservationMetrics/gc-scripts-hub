@@ -1,6 +1,7 @@
-# py: 3.11
+# workspace-dependencies-mode: manual
+# py: 3.13
 attrs==25.4.0
-certifi==2026.1.4
+certifi==2026.2.25
 click==8.3.1
 click-plugins==1.1.1.2
 cligj==0.7.2
@@ -8,7 +9,7 @@ et-xmlfile==2.0.0
 filetype==1.2.0
 fiona==1.10.1
 lxml==6.0.2
-numpy==2.4.2
+numpy==2.4.3
 openpyxl==3.1.5
 pandas==3.0.1
 python-dateutil==2.9.0.post0
