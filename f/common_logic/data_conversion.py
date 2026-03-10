@@ -214,7 +214,7 @@ def convert_data(
     coord_col: str | None = None,
 ):
     """
-    Parses input file(s) and optionally converts to a different output format.
+    Parses an input file and optionally converts it to a different output format.
 
     Input parsing and output serialization are decoupled: each input format is read
     into an intermediate representation (tabular → list of lists, spatial → GeoJSON
@@ -263,8 +263,6 @@ def convert_data(
         path = Path(shp_path)
     else:
         path = Path(file_paths[0])
-
-    logger.debug(f"Converting {path} with format {file_format}")
 
     # Step 1: Parse input into intermediate representation
     match file_format:

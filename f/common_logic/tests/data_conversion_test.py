@@ -1215,10 +1215,10 @@ def test_convert_data__shapefile(shapefile_paths):
 
 def test_convert_data__unsupported():
     with pytest.raises(ValueError):
-        convert_data(["/fake/path.foo"], "foo")
+        convert_data("/fake/path.foo", "foo")
 
 
 def test_convert_data__unsupported_conversion(mapeo_geojson_file):
     """Requesting an unsupported cross-format conversion raises ValueError."""
     with pytest.raises(ValueError, match="Unsupported conversion"):
-        convert_data([str(mapeo_geojson_file)], "geojson", output_format="csv")
+        convert_data(str(mapeo_geojson_file), "geojson", output_format="csv")
