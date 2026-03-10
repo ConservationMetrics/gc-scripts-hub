@@ -23,8 +23,6 @@ import fiona
 import openpyxl  # noqa: F401
 import pandas as pd
 
-from f.common_logic.geo_utils import coords_to_geojson_geometry
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
