@@ -3,7 +3,6 @@
 # filetype
 # fiona
 # openpyxl
-# shapely
 # xlrd
 # pandas
 
@@ -226,9 +225,9 @@ def convert_data(
         Desired output format ('csv' or 'geojson'). When None, inferred from
         file_format.
     coord_col : str, optional
-        Name of the column containing GeoJSON-style coordinate arrays
-        (required for tabular → geojson conversion). Values should be
-        JSON arrays like [lon, lat], [[lon, lat], ...], etc.
+        Name of the column containing ``[lon, lat]`` pair strings
+        (required for tabular → geojson conversion). Only Point geometry
+        is produced; Polygons and LineStrings are not supported.
 
     Returns
     -------
@@ -274,8 +273,11 @@ def convert_data(
 def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
     """
     Converts tabular data (list of lists with header row) to a GeoJSON
-    FeatureCollection. Geometry type is inferred from coordinate nesting
-    depth and validated with Shapely.
+    FeatureCollection with Point geometries.
+
+    Only Point geometry is supported — each coordinate value must be a
+    JSON-encoded ``[lon, lat]`` pair. Polygons, LineStrings, and other
+    geometry types are intentionally not supported.
 
     The coord_col column is consumed into geometry and excluded from feature
     properties. All other columns are preserved as string properties.
@@ -289,7 +291,7 @@ def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
     rows : list[list[str]]
         Tabular data where rows[0] is the header row.
     coord_col : str
-        Name of the column containing GeoJSON-style coordinate arrays.
+        Name of the column containing ``[lon, lat]`` pair strings.
 
     Returns
     -------
@@ -317,8 +319,15 @@ def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
         geometry = None
         if raw.strip():
             try:
-                geometry = coords_to_geojson_geometry(raw)
-            except ValueError:
+                coords = json.loads(raw)
+                if not (
+                    isinstance(coords, list)
+                    and len(coords) == 2
+                    and all(isinstance(c, (int, float)) for c in coords)
+                ):
+                    raise ValueError("Expected a [lon, lat] pair")
+                geometry = {"type": "Point", "coordinates": coords}
+            except (json.JSONDecodeError, ValueError):
                 logger.warning(
                     "Row %d: invalid coordinates, setting geometry to null", row_num
                 )

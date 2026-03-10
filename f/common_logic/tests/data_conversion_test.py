@@ -217,53 +217,21 @@ def test_to_geojson__point():
 
     f1 = result["features"][0]
     assert f1["geometry"]["type"] == "Point"
-    assert f1["geometry"]["coordinates"] == (-59.0, 5.0)
+    assert f1["geometry"]["coordinates"] == [-59.0, 5.0]
     assert f1["properties"] == {"id": "1", "name": "Alpha"}
     assert f1["id"] == "1"
     assert "coords" not in f1["properties"]
 
 
-def test_to_geojson__linestring():
+def test_to_geojson__non_point_coords_produce_null_geometry():
+    """Non-point coordinate structures (LineString, Polygon, etc.) yield null geometry."""
     rows = [
         ["name", "coords"],
         ["trail", "[[-59.0, 5.0], [-58.0, 6.0], [-57.0, 5.5]]"],
-    ]
-    result = to_geojson(rows, coord_col="coords")
-    feat = result["features"][0]
-    assert feat["geometry"]["type"] == "LineString"
-    assert len(feat["geometry"]["coordinates"]) == 3
-
-
-def test_to_geojson__polygon():
-    rows = [
-        ["name", "coords"],
         ["area", "[[[-59, 5], [-58, 5], [-58, 6], [-59, 5]]]"],
     ]
     result = to_geojson(rows, coord_col="coords")
-    feat = result["features"][0]
-    assert feat["geometry"]["type"] == "Polygon"
-
-
-def test_to_geojson__multipolygon():
-    rows = [
-        ["name", "coords"],
-        ["zones", "[[[[-59, 5], [-58, 5], [-58, 6], [-59, 5]]]]"],
-    ]
-    result = to_geojson(rows, coord_col="coords")
-    feat = result["features"][0]
-    assert feat["geometry"]["type"] == "MultiPolygon"
-
-
-def test_to_geojson__mixed_types():
-    """Rows with different geometry types in the same dataset."""
-    rows = [
-        ["id", "coords"],
-        ["pt", "[-59.0, 5.0]"],
-        ["line", "[[-59.0, 5.0], [-58.0, 6.0]]"],
-    ]
-    result = to_geojson(rows, coord_col="coords")
-    assert result["features"][0]["geometry"]["type"] == "Point"
-    assert result["features"][1]["geometry"]["type"] == "LineString"
+    assert all(f["geometry"] is None for f in result["features"])
 
 
 def test_to_geojson__fallback_row_number_id():
@@ -1093,7 +1061,7 @@ def test_convert_data__csv_to_geojson(tmp_path):
     alpha = next(
         f for f in result["features"] if f["properties"].get("name") == "Alpha"
     )
-    assert alpha["geometry"]["coordinates"] == (-59.0, 5.0)
+    assert alpha["geometry"]["coordinates"] == [-59.0, 5.0]
 
 
 def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
