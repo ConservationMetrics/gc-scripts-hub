@@ -24,7 +24,7 @@ schema:
         Base directory where the GeoJSON source file is stored. The
         `file_location` parameter is interpreted as a path relative to this
         directory.
-      default: /persistent-storage/datalake/
+      default: /persistent-storage/datalake
       originalType: string
     file_location:
       type: string
@@ -35,8 +35,7 @@ schema:
       originalType: string
     mapbox:
       type: object
-      description: >-
-        A Mapbox account username and access token (must be a secret token).
+      description: A Mapbox account username and access token (must be a secret token).
       default: null
       format: resource-mapbox
     max_zoom:
@@ -55,6 +54,6 @@ schema:
       originalType: string
       pattern: '^[A-Za-z0-9_-]{1,32}$'
   required:
-    - resource-mapbox
+    - mapbox
     - tileset_id
     - file_location
