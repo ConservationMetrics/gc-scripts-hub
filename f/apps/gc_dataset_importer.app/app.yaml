@@ -137,43 +137,12 @@ value:
         horizontalAlignment: center
         verticalAlignment: top
     - '12':
-        fixed: false
-        fullHeight: false
-        h: 1
-        w: 4
-        x: 4
-        'y': 5
-      '3':
-        fixed: false
-        fullHeight: false
-        h: 2
-        w: 1
-        x: 1
-        'y': 0
-      id: c
-      data:
-        id: c
-        type: htmlcomponent
-        componentInput:
-          type: templatev2
-          connections: []
-          eval: >-
-            <center><em>Need help? Visit our <a
-            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
-            target="_blank">documentation website</a>.</em></center>
-          fieldType: template
-        configuration: {}
-        customCss:
-          container:
-            class: ''
-            style: ''
-    - '12':
         fixed: true
         fullHeight: false
         h: 14
         w: 8
         x: 2
-        'y': 6
+        'y': 5
       '3':
         fixed: true
         fullHeight: false
@@ -198,9 +167,7 @@ value:
               content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
-              suggestedRefreshOn:
-                - id: state
-                  key: validSqlName
+              suggestedRefreshOn: []
         configuration: {}
         customCss:
           container:
@@ -214,6 +181,37 @@ value:
           - Upload your file
           - Choose data source
           - Finalize
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 4
+        x: 4
+        'y': 19
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: c
+      data:
+        id: c
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
   hiddenInlineScripts:
     - type: runnableByName
       name: Background Runnable 0
@@ -556,8 +554,8 @@ value:
             connections: []
             eval: >-
               <p style="font-size: medium; text-align: center;"><strong>Accepted
-              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
-              (<em>SMART only</em>)<br>
+              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, Shapefile, XLS,
+              XLSX, XML (<em>SMART only</em>)<br>
 
               <strong>Note:</strong> To upload media attachments (like photos),
               please use Filebrowser. See <a

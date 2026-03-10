@@ -26,27 +26,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def detect_structured_data_type(file_path: str) -> str:
+def detect_structured_data_type(file_paths: list[str]) -> str:
     """
     Lightweight detection of structured data file types using MIME type analysis and extension
     fallbacks, focusing on geospatial and tabular formats.
 
     This function identifies structured datasets used in environmental, geographic, and
     tabular data pipelines. It supports:
-    - Spatial formats: geojson, kml, gpx
+    - Spatial formats: geojson, kml, gpx, shapefile
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
-    TODO: Add support for ESRI shapefiles, which requires a different approach as a
-    collection of files rather than a single file.
+    Accepts a list of file paths (as i.e. returned by save_uploaded_file_to_temp) to
+    support multi-file formats like ESRI shapefiles. For single-file
+    formats the list will contain one element.
 
     Format detection is intentionally lightweight. Comprehensive validation is expected
     to occur later in the data processing pipeline (e.g., in convert_data).
 
     Parameters
     ----------
-    file_path : str
-        Path to the file to inspect.
+    file_paths : list[str]
+        Paths to the file(s) to inspect.
 
     Returns
     -------
@@ -127,6 +128,22 @@ def detect_structured_data_type(file_path: str) -> str:
             return "xml"
         return "unsupported"
 
+    def _is_valid_shapefile(path: str) -> bool:
+        try:
+            with fiona.open(path) as src:
+                _ = src.schema
+                _ = src.crs
+            return True
+        except Exception:
+            return False
+
+    # Check for shapefile first (multi-file format: .shp + sidecar files)
+    shp_path = next((p for p in file_paths if Path(p).suffix.lower() == ".shp"), None)
+    if shp_path and _is_valid_shapefile(shp_path):
+        logger.info(f"File set detected as shapefile (via {Path(shp_path).name})")
+        return "shapefile"
+
+    file_path = file_paths[0]
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"File does not exist: {file_path}")
@@ -190,7 +207,7 @@ def handle_file_errors(func):
 
 
 def convert_data(
-    file_path: str,
+    file_paths: list[str],
     file_format: str,
     output_format: str | None = None,
     *,
@@ -205,7 +222,7 @@ def convert_data(
 
     When output_format is None (default), the implicit mapping is used:
     - Tabular inputs (csv, xlsx, xls, json) → 'csv'
-    - Spatial inputs (gpx, kml, geojson, smart) → 'geojson'
+    - Spatial inputs (gpx, kml, geojson, smart, shapefile) → 'geojson'
 
     When output_format is explicitly set, cross-format conversion is attempted.
     Currently supported: tabular → 'geojson' (requires coord_col).
@@ -216,11 +233,12 @@ def convert_data(
 
     Parameters
     ----------
-    file_path : str
-        Path to the input file.
+    file_paths : list[str]
+        Paths to the input file(s), as returned by save_uploaded_file_to_temp.
+        For multi-file formats (shapefile), the .shp is located automatically.
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
-        'gpx', 'kml', 'geojson', 'smart'.
+        'gpx', 'kml', 'geojson', 'smart', 'shapefile'.
     output_format : str, optional
         Desired output format ('csv' or 'geojson'). When None, inferred from
         file_format.
@@ -236,8 +254,15 @@ def convert_data(
         - converted_data: list[list[str]] (csv) or dict (geojson)
         - output_format: str ('csv' or 'geojson')
     """
-    path = Path(file_path)
-    logger.debug(f"Converting {file_path} with format {file_format}")
+    if file_format == "shapefile":
+        shp_path = next(
+            (p for p in file_paths if Path(p).suffix.lower() == ".shp"), None
+        )
+        if not shp_path:
+            raise ValueError("No .shp file found in file_paths")
+        path = Path(shp_path)
+    else:
+        path = Path(file_paths[0])
 
     # Step 1: Parse input into intermediate representation
     match file_format:
@@ -255,6 +280,8 @@ def convert_data(
             data, default_output = read_kml(path), "geojson"
         case "smart":
             data, default_output = read_smart_xml(path), "geojson"
+        case "shapefile":
+            data, default_output = read_shapefile(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -780,3 +807,39 @@ def read_smart_xml(path: Path):
     from f.connectors.smart.smart_patrols import parse_smart_patrol_xml
 
     return parse_smart_patrol_xml(path)
+
+
+@handle_file_errors
+def read_shapefile(path: Path):
+    """
+    Reads an ESRI shapefile and returns a GeoJSON FeatureCollection.
+
+    Uses Fiona/GDAL for reliable shapefile parsing. The .shp path is expected;
+    sidecar files (.dbf, .shx, .prj, .cpg, etc.) must be co-located.
+
+    Returns
+    -------
+    dict
+        GeoJSON FeatureCollection.
+    """
+    features = []
+    with fiona.open(path) as src:
+        for i, feature in enumerate(src):
+            props = {
+                k: v
+                for k, v in (dict(feature["properties"]) or {}).items()
+                if v is not None
+            }
+            features.append(
+                {
+                    "type": "Feature",
+                    "id": str(i + 1),
+                    "geometry": dict(feature["geometry"]),
+                    "properties": props,
+                }
+            )
+
+    if not features:
+        raise ValueError("No valid features found in shapefile")
+
+    return {"type": "FeatureCollection", "features": features}
