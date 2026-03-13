@@ -207,18 +207,23 @@ def test_convert_data__geojson_with_invalid_top_level(
 
 def test_to_geojson__point():
     rows = [
-        ["id", "name", "coords"],
-        ["1", "Alpha", "[-59.0, 5.0]"],
-        ["2", "Bravo", "[-58.0, 6.0]"],
+        ["id", "name", "lat", "lon"],
+        ["1", "Alpha", "5.0", "-59.0"],
+        ["2", "Bravo", "6.0", "-58.0"],
     ]
-    result = to_geojson(rows, coord_col="coords")
+    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
     f1 = result["features"][0]
     assert f1["geometry"]["type"] == "Point"
     assert f1["geometry"]["coordinates"] == [-59.0, 5.0]
-    assert f1["properties"] == {"id": "1", "name": "Alpha"}
+    assert f1["properties"] == {
+        "id": "1",
+        "name": "Alpha",
+        "lat": "5.0",
+        "lon": "-59.0",
+    }
     assert f1["id"] == "1"
     assert "coords" not in f1["properties"]
 
@@ -226,57 +231,63 @@ def test_to_geojson__point():
 def test_to_geojson__non_point_coords_produce_null_geometry():
     """Non-point coordinate structures (LineString, Polygon, etc.) yield null geometry."""
     rows = [
-        ["name", "coords"],
-        ["trail", "[[-59.0, 5.0], [-58.0, 6.0], [-57.0, 5.5]]"],
-        ["area", "[[[-59, 5], [-58, 5], [-58, 6], [-59, 5]]]"],
+        ["name", "lat", "lon"],
+        ["trail", "not-a-number", "-59.0"],
+        ["area", "5.0", ""],
     ]
-    result = to_geojson(rows, coord_col="coords")
+    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
     assert all(f["geometry"] is None for f in result["features"])
 
 
 def test_to_geojson__fallback_row_number_id():
     rows = [
-        ["name", "coords"],
-        ["X", "[1.0, 2.0]"],
+        ["name", "lat", "lon"],
+        ["X", "2.0", "1.0"],
     ]
-    result = to_geojson(rows, coord_col="coords")
+    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["id"] == "1"
 
 
 def test_to_geojson__missing_coord_col():
     rows = [["name", "other"], ["A", "val"]]
-    with pytest.raises(ValueError, match="Coordinate column 'coords' not found"):
-        to_geojson(rows, coord_col="coords")
+    with pytest.raises(
+        ValueError,
+        match="Coordinate columns 'lat' and/or 'lon' not found in headers",
+    ):
+        to_geojson(rows, longitude_col="lon", latitude_col="lat")
 
 
 def test_to_geojson__missing_coord_col_param():
-    rows = [["name", "coords"], ["A", "[1, 2]"]]
-    with pytest.raises(ValueError, match="coord_col is required"):
-        to_geojson(rows, coord_col=None)
+    rows = [["name", "lat", "lon"], ["A", "1", "2"]]
+    with pytest.raises(
+        ValueError,
+        match="latitude_col and longitude_col are required for tabular → GeoJSON conversion",
+    ):
+        to_geojson(rows)
 
 
 def test_to_geojson__invalid_json_coords_produces_null_geometry():
     rows = [
-        ["name", "coords"],
-        ["A", "not json"],
+        ["name", "lat", "lon"],
+        ["A", "not-a-number", "3.0"],
     ]
-    result = to_geojson(rows, coord_col="coords")
+    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["geometry"] is None
 
 
 def test_to_geojson__empty_coordinate_produces_null_geometry():
     rows = [
-        ["name", "coords"],
-        ["A", ""],
+        ["name", "lat", "lon"],
+        ["A", "", ""],
     ]
-    result = to_geojson(rows, coord_col="coords")
+    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["geometry"] is None
 
 
 def test_to_geojson__header_only():
-    rows = [["name", "coords"]]
+    rows = [["name", "lat", "lon"]]
     with pytest.raises(ValueError, match="at least one data row"):
-        to_geojson(rows, coord_col="coords")
+        to_geojson(rows, longitude_col="lon", latitude_col="lat")
 
 
 def test_convert_data__geojson_explicit_same_as_default(mapeo_geojson_file):
@@ -1042,21 +1053,19 @@ def test_convert_data__csv_default_still_csv(kobotoolbox_csv_file):
 def test_convert_data__csv_to_geojson(tmp_path):
     """Test converting a CSV with a coordinates column to GeoJSON."""
     csv_file = tmp_path / "spatial.csv"
-    csv_file.write_text(
-        '_id,name,coords\n1,Alpha,"[-59.0, 5.0]"\n2,Bravo,"[-58.0, 6.0]"\n'
-    )
+    csv_file.write_text("_id,name,lat,lon\n1,Alpha,5.0,-59.0\n2,Bravo,6.0,-58.0\n")
     result, output_format = convert_data(
         str(csv_file),
         "csv",
         output_format="geojson",
-        coord_col="coords",
+        longitude_col="lon",
+        latitude_col="lat",
     )
     assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
 
     for feature in result["features"]:
         assert feature["geometry"]["type"] == "Point"
-        assert "coords" not in feature["properties"]
 
     alpha = next(
         f for f in result["features"] if f["properties"].get("name") == "Alpha"

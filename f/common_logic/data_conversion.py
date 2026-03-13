@@ -194,7 +194,8 @@ def convert_data(
     file_format: str,
     output_format: str | None = None,
     *,
-    coord_col: str | None = None,
+    longitude_col: str | None = None,
+    latitude_col: str | None = None,
 ):
     """
     Parses an input file and optionally converts it to a different output format.
@@ -208,7 +209,7 @@ def convert_data(
     - Spatial inputs (gpx, kml, geojson, smart) → 'geojson'
 
     When output_format is explicitly set, cross-format conversion is attempted.
-    Currently supported: tabular → 'geojson' (requires coord_col).
+    Currently supported: tabular → 'geojson' (requires latitude_col and longitude_col).
 
     NOTE: We assume that the input file has one layer only. In the future, we might
     consider an extension where the number of layers might be > 1. e.g multiple sheets
@@ -224,10 +225,10 @@ def convert_data(
     output_format : str, optional
         Desired output format ('csv' or 'geojson'). When None, inferred from
         file_format.
-    coord_col : str, optional
-        Name of the column containing ``[lon, lat]`` pair strings
-        (required for tabular → geojson conversion). Only Point geometry
-        is produced; Polygons and LineStrings are not supported.
+    longitude_col : str, optional
+        Name of the column containing longitude values.
+    latitude_col : str, optional
+        Name of the column containing latitude values.
 
     Returns
     -------
@@ -265,22 +266,34 @@ def convert_data(
         return data, target
 
     if target == "geojson" and default_output == "csv":
-        return to_geojson(data, coord_col=coord_col), "geojson"
+        return (
+            to_geojson(
+                data,
+                longitude_col=longitude_col,
+                latitude_col=latitude_col,
+            ),
+            "geojson",
+        )
 
     raise ValueError(f"Unsupported conversion: {file_format} → {target}")
 
 
-def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
+def to_geojson(
+    rows: list[list[str]],
+    *,
+    longitude_col: str | None = None,
+    latitude_col: str | None = None,
+) -> dict:
     """
     Converts tabular data (list of lists with header row) to a GeoJSON
     FeatureCollection with Point geometries.
 
-    Only Point geometry is supported — each coordinate value must be a
-    JSON-encoded ``[lon, lat]`` pair. Polygons, LineStrings, and other
+    Only Point geometry is supported. Polygons, LineStrings, and other
     geometry types are intentionally not supported.
 
-    The coord_col column is consumed into geometry and excluded from feature
-    properties. All other columns are preserved as string properties.
+    The latitude and longitude columns are used to build the Point geometry.
+    All columns (including latitude and longitude) are preserved as string
+    properties.
 
     Rows with missing or invalid coordinates produce features with null
     geometry rather than raising errors. This allows the overall file to be
@@ -290,44 +303,47 @@ def to_geojson(rows: list[list[str]], *, coord_col: str | None = None) -> dict:
     ----------
     rows : list[list[str]]
         Tabular data where rows[0] is the header row.
-    coord_col : str
-        Name of the column containing ``[lon, lat]`` pair strings.
+    longitude_col : str
+        Name of the column containing longitude values.
+    latitude_col : str
+        Name of the column containing latitude values.
 
     Returns
     -------
     dict
         GeoJSON FeatureCollection.
     """
-    if not coord_col:
-        raise ValueError("coord_col is required for tabular → GeoJSON conversion")
+    if longitude_col is None or latitude_col is None:
+        raise ValueError(
+            "latitude_col and longitude_col are required for tabular → GeoJSON conversion"
+        )
     if not rows or len(rows) < 2:
         raise ValueError(
             "Tabular data must have a header row and at least one data row"
         )
 
     headers = rows[0]
-    if coord_col not in headers:
-        raise ValueError(f"Coordinate column '{coord_col}' not found in headers")
+    if longitude_col not in headers or latitude_col not in headers:
+        raise ValueError(
+            f"Coordinate columns '{latitude_col}' and/or '{longitude_col}' not found in headers"
+        )
 
-    coord_idx = headers.index(coord_col)
-    prop_cols = [(i, h) for i, h in enumerate(headers) if i != coord_idx]
+    lon_idx = headers.index(longitude_col)
+    lat_idx = headers.index(latitude_col)
+    prop_cols = [(i, h) for i, h in enumerate(headers)]
 
     features = []
     for row_num, row in enumerate(rows[1:], start=1):
-        raw = row[coord_idx] if coord_idx < len(row) else ""
+        lon_raw = row[lon_idx] if lon_idx < len(row) else ""
+        lat_raw = row[lat_idx] if lat_idx < len(row) else ""
 
         geometry = None
-        if raw.strip():
+        if lon_raw.strip() and lat_raw.strip():
             try:
-                coords = json.loads(raw)
-                if not (
-                    isinstance(coords, list)
-                    and len(coords) == 2
-                    and all(isinstance(c, (int, float)) for c in coords)
-                ):
-                    raise ValueError("Expected a [lon, lat] pair")
-                geometry = {"type": "Point", "coordinates": coords}
-            except (json.JSONDecodeError, ValueError):
+                lon = float(lon_raw)
+                lat = float(lat_raw)
+                geometry = {"type": "Point", "coordinates": [lon, lat]}
+            except ValueError:
                 logger.warning(
                     "Row %d: invalid coordinates, setting geometry to null", row_num
                 )
