@@ -168,14 +168,14 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
+                - id: state
+                  key: uploadSuccess
+                - id: latitudeCol
+                  key: result
                 - id: longitudeCol
                   key: result
                 - id: state
-                  key: uploadSuccess
-                - id: state
                   key: validSqlName
-                - id: latitudeCol
-                  key: result
         configuration: {}
         customCss:
           container:
@@ -2020,12 +2020,20 @@ value:
                 expr: state.fileNameParsed
                 fieldType: object
               latitude_col:
-                type: static
+                type: evalv2
                 value: state.latitudeCol
+                connections:
+                  - id: latitudeCol
+                    componentId: state
+                expr: state.latitudeCol
                 fieldType: ''
               longitude_col:
-                type: static
+                type: evalv2
                 value: state.longitudeCol
+                connections:
+                  - id: longitudeCol
+                    componentId: state
+                expr: state.longitudeCol
                 fieldType: ''
               output_format:
                 type: evalv2
@@ -2106,8 +2114,8 @@ value:
                     - data_source
                     - dataset_name
                     - valid_sql_name
-                    - latitude_col
                     - longitude_col
+                    - latitude_col
             transformer:
               content: |-
                 state.finalizeSuccess = result[0];
@@ -2229,7 +2237,9 @@ value:
                     key: newRows
                   - id: state
                     key: updatedRows
-                suggestedRefreshOn: []
+                suggestedRefreshOn:
+                  - id: state
+                    key: finalizeErrorMessage
           configuration:
             copyButton:
               type: static

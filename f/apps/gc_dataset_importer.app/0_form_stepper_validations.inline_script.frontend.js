@@ -15,6 +15,11 @@ if (currentStepIndex === 2 && (!!longitudeCol.result !== !!latitudeCol.result)) 
   throw new Error("Please specify both a longitude and latitude column, or erase both.");
 }
 
+if (currentStepIndex === 2 && longitudeCol.result && latitudeCol.result) {
+  state.longitudeCol = longitudeCol.result;
+  state.latitudeCol = latitudeCol.result;
+}
+
 // Step 4: Can't reuse same session
 if (currentStepIndex === 3 && state.finalizeSuccess) {
   throw new Error("Please refresh the page to upload another file.");

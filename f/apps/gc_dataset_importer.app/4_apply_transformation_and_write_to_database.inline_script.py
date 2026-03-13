@@ -30,8 +30,8 @@ def main(
     data_source,
     dataset_name,
     valid_sql_name,
-    latitude_col,
     longitude_col,
+    latitude_col,
 ):
     """
     Apply transformations and store data in database and data lake.
@@ -64,10 +64,11 @@ def main(
         Human-readable name of the dataset.
     valid_sql_name : str
         SQL-safe name used for database tables and directories.
-    latitude_col : str
-        Name of the latitude column.
     longitude_col : str
         Name of the longitude column.
+    latitude_col : str
+        Name of the latitude column.
+
 
     Returns
     -------
@@ -98,27 +99,42 @@ def main(
             data, data_source, dataset_name, output_format
         )
 
-        # If coordinates are provided, convert tabular data to GeoJSON
-        if longitude_col and latitude_col and output_format == "csv":
-            data = to_geojson(
-                data, longitude_col=longitude_col, latitude_col=latitude_col
-            )
-            output_format = "geojson"
+        final_data = data
+        final_output_format = output_format
+        did_transform = False
 
-        # Handle transformed vs original file
+        # First: apply any normal transformation
         if transformed:
-            output_filename = f"{uploaded_path.stem}_transformed.{output_format}"
+            final_data = data
+            did_transform = True
+
+        # Second: if lon/lat are provided and the current data is tabular, convert to GeoJSON
+        if longitude_col and latitude_col and final_output_format == "csv":
+            final_data, final_output_format = _convert_to_geojson(
+                final_data,
+                longitude_col=longitude_col,
+                latitude_col=latitude_col,
+            )
+            did_transform = True
+
+        # Save result
+        if did_transform:
+            output_filename = f"{uploaded_path.stem}_transformed.{final_output_format}"
             file_path = _save_transformed_file(
-                data, output_filename, output_format, tmp_dir
+                final_data,
+                output_filename,
+                final_output_format,
+                tmp_dir,
             )
             logger.info("Transformed file saved to temp directory")
         else:
-            file_path = str(uploaded_path)
+            output_filename = f"{uploaded_path.stem}.{final_output_format}"
+            file_path = output_filename
             logger.info(f"Using original file: {file_path}")
-
+            
         # Save to PostgreSQL
         file_path_obj = Path(file_path)
-        if output_format == "geojson":
+        if final_output_format == "geojson":
             save_geojson_to_postgres(
                 db=db,
                 db_table_name=valid_sql_name,
@@ -164,7 +180,7 @@ def main(
         logger.error(error_msg)
         return False, error_msg
 
-    finally:
+    # # finally:
         # Clean up dataset-specific temp directory
         if tmp_dir.exists():
             try:
@@ -229,6 +245,31 @@ def _copy_to_datalake(source_path, datalake_dir, output_filename):
     datalake_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, datalake_dir / output_filename)
     logger.info(f"Copied file to datalake: {output_filename}")
+
+
+def _convert_to_geojson(data, longitude_col, latitude_col):
+    """
+    Normalize tabular data and convert it to GeoJSON using the provided
+    longitude and latitude column names.
+    """
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        fieldnames = sorted({key for row in data for key in row})
+        normalized_rows = [fieldnames]
+        for row in data:
+            normalized_rows.append(
+                [str(row.get(field, "")).strip() for field in fieldnames]
+            )
+        data = normalized_rows
+
+    logger.info(
+        f"Converting tabular data to GeoJSON with coordinates: {longitude_col} and {latitude_col}"
+    )
+    geojson = to_geojson(
+        data,
+        longitude_col=longitude_col,
+        latitude_col=latitude_col,
+    )
+    return geojson, "geojson"
 
 
 def _add_data_source_to_csv(data, data_source):
