@@ -2019,6 +2019,14 @@ value:
                     componentId: state
                 expr: state.fileNameParsed
                 fieldType: object
+              latitude_col:
+                type: static
+                value: state.latitudeCol
+                fieldType: ''
+              longitude_col:
+                type: static
+                value: state.longitudeCol
+                fieldType: ''
               output_format:
                 type: evalv2
                 value: null
@@ -2074,6 +2082,14 @@ value:
                       type: object
                       description: ''
                       default: null
+                    latitude_col:
+                      type: ''
+                      description: ''
+                      default: null
+                    longitude_col:
+                      type: ''
+                      description: ''
+                      default: null
                     output_format:
                       type: object
                       description: ''
@@ -2090,17 +2106,15 @@ value:
                     - data_source
                     - dataset_name
                     - valid_sql_name
+                    - latitude_col
+                    - longitude_col
             transformer:
               content: |-
                 state.finalizeSuccess = result[0];
                 state.finalizeErrorMessage = result[1];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
-              suggestedRefreshOn:
-                - id: state
-                  key: finalizeSuccess
-                - id: state
-                  key: finalizeErrorMessage
+              suggestedRefreshOn: []
           configuration:
             afterIcon:
               type: static

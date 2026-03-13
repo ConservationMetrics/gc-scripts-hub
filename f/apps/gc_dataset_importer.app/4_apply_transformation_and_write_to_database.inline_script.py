@@ -3,6 +3,7 @@ import logging
 import shutil
 from pathlib import Path
 
+from f.common_logic.data_conversion import to_geojson
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import (
     list_to_csv_string,
@@ -19,6 +20,164 @@ from f.connectors.smart.smart_patrols import transform_smart_patrol_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def main(
+    db: postgresql,
+    filename_original,
+    filename_parsed,
+    output_format,
+    data_source,
+    dataset_name,
+    valid_sql_name,
+    latitude_col,
+    longitude_col,
+):
+    """
+    Apply transformations and store data in database and data lake.
+
+    Processes parsed data files by applying data source-specific transformations,
+    storing data in PostgreSQL, and organizing all files in the data lake.
+
+    Processing Steps:
+        1. Load parsed data from temporary storage
+        2. Apply data source-specific transformations if available
+        3. If coordinates are provided, convert tabular data to GeoJSON
+        3. Save transformed data to temporary files (if transformation applied)
+        4. Store data in PostgreSQL database table
+        5. Copy original, parsed, and transformed files to data lake
+        6. Clean up temporary directories
+
+    Parameters
+    ----------
+    db : postgresql
+        Database connection object for PostgreSQL operations.
+    filename_original : str
+        Name of the original uploaded file.
+    filename_parsed : str
+        Name of the parsed/converted file from previous step.
+    output_format : str
+        Format of the parsed file ('csv' or 'geojson').
+    data_source : str
+        Source system identifier ('CoMapeo', 'KoboToolbox', 'ODK', etc.).
+    dataset_name : str
+        Human-readable name of the dataset.
+    valid_sql_name : str
+        SQL-safe name used for database tables and directories.
+    latitude_col : str
+        Name of the latitude column.
+    longitude_col : str
+        Name of the longitude column.
+
+    Returns
+    -------
+    tuple[bool, str | None]
+        A tuple containing (success, error_message):
+        - success : bool
+            True if processing completed successfully, False if an error occurred.
+        - error_message : str or None
+            Error message if success is False, None if success is True.
+    """
+    tmp_dir = Path(f"/persistent-storage/tmp/{valid_sql_name}")
+    datalake_dir = Path(f"/persistent-storage/datalake/{valid_sql_name}")
+    uploaded_path = tmp_dir / filename_parsed
+    original_path = tmp_dir / filename_original
+
+    try:
+        logger.info(f"Processing {output_format.upper()} file")
+
+        # Load data based on format
+        if output_format == "geojson":
+            with open(uploaded_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:  # csv
+            data = read_csv_to_list(uploaded_path)
+
+        # Apply transformation based on data source
+        data, transformed = _apply_transformation(
+            data, data_source, dataset_name, output_format
+        )
+
+        # If coordinates are provided, convert tabular data to GeoJSON
+        if longitude_col and latitude_col and output_format == "csv":
+            data = to_geojson(
+                data, longitude_col=longitude_col, latitude_col=latitude_col
+            )
+            output_format = "geojson"
+
+        # Handle transformed vs original file
+        if transformed:
+            output_filename = f"{uploaded_path.stem}_transformed.{output_format}"
+            file_path = _save_transformed_file(
+                data, output_filename, output_format, tmp_dir
+            )
+            logger.info("Transformed file saved to temp directory")
+        else:
+            file_path = str(uploaded_path)
+            logger.info(f"Using original file: {file_path}")
+
+        # Save to PostgreSQL
+        file_path_obj = Path(file_path)
+        if output_format == "geojson":
+            save_geojson_to_postgres(
+                db=db,
+                db_table_name=valid_sql_name,
+                geojson_path=file_path_obj.name,
+                attachment_root=str(file_path_obj.parent),
+            )
+            logger.info(f"GeoJSON saved to PostgreSQL table: {valid_sql_name}")
+        else:  # csv
+            save_csv_to_postgres(
+                db=db,
+                db_table_name=valid_sql_name,
+                csv_path=file_path_obj.name,
+                attachment_root=str(file_path_obj.parent),
+            )
+            logger.info(f"CSV saved to PostgreSQL table: {valid_sql_name}")
+
+        # Copy parsed/transformed file to datalake
+        if transformed:
+            datalake_filename = filename_parsed.replace("_parsed", "_transformed")
+        else:
+            datalake_filename = filename_parsed
+
+        _copy_to_datalake(
+            file_path,
+            datalake_dir,
+            datalake_filename,
+        )
+
+        # Save originally uploaded file to the same directory as parsed/transformed files
+        if original_path.exists():
+            # Copy original file to datalake directory
+            # TODO: only copy if the file wasn't converted from a different format (e.g. GPX to GeoJSON)
+            # Otherwise, it's probably not worth keeping around for only minor transformation differences
+            _copy_to_datalake(original_path, datalake_dir, filename_original)
+        else:
+            logger.warning(f"Original file not found: {original_path}")
+
+        # Return success
+        return True, None
+
+    except Exception as e:
+        error_msg = f"Error during dataset import process: {e}"
+        logger.error(error_msg)
+        return False, error_msg
+
+    finally:
+        # Clean up dataset-specific temp directory
+        if tmp_dir.exists():
+            try:
+                shutil.rmtree(tmp_dir)
+                logger.info(f"Removed dataset temp directory: {tmp_dir}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to remove dataset temp directory {tmp_dir}: {e}"
+                )
+        else:
+            logger.debug(
+                f"Dataset temp directory not found (already removed?): {tmp_dir}"
+            )
 
 
 def _save_transformed_file(data, filename, file_format, tmp_dir):
@@ -174,147 +333,3 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
     else:
         logger.info("No transformation applied for this data source")
         return data, False
-
-
-def main(
-    db: postgresql,
-    filename_original,
-    filename_parsed,
-    output_format,
-    data_source,
-    dataset_name,
-    valid_sql_name,
-):
-    """
-    Apply transformations and store data in database and data lake.
-
-    Processes parsed data files by applying data source-specific transformations,
-    storing data in PostgreSQL, and organizing all files in the data lake.
-
-    Processing Steps:
-        1. Load parsed data from temporary storage
-        2. Apply data source-specific transformations if available
-        3. Save transformed data to temporary files (if transformation applied)
-        4. Store data in PostgreSQL database table
-        5. Copy original, parsed, and transformed files to data lake
-        6. Clean up temporary directories
-
-    Parameters
-    ----------
-    db : postgresql
-        Database connection object for PostgreSQL operations.
-    filename_original : str
-        Name of the original uploaded file.
-    filename_parsed : str
-        Name of the parsed/converted file from previous step.
-    output_format : str
-        Format of the parsed file ('csv' or 'geojson').
-    data_source : str
-        Source system identifier ('CoMapeo', 'KoboToolbox', 'ODK', etc.).
-    dataset_name : str
-        Human-readable name of the dataset.
-    valid_sql_name : str
-        SQL-safe name used for database tables and directories.
-
-    Returns
-    -------
-    tuple[bool, str | None]
-        A tuple containing (success, error_message):
-        - success : bool
-            True if processing completed successfully, False if an error occurred.
-        - error_message : str or None
-            Error message if success is False, None if success is True.
-    """
-    tmp_dir = Path(f"/persistent-storage/tmp/{valid_sql_name}")
-    datalake_dir = Path(f"/persistent-storage/datalake/{valid_sql_name}")
-    uploaded_path = tmp_dir / filename_parsed
-    original_path = tmp_dir / filename_original
-
-    try:
-        logger.info(f"Processing {output_format.upper()} file")
-
-        # Load data based on format
-        if output_format == "geojson":
-            with open(uploaded_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:  # csv
-            data = read_csv_to_list(uploaded_path)
-
-        # Apply transformation based on data source
-        data, transformed = _apply_transformation(
-            data, data_source, dataset_name, output_format
-        )
-
-        # Handle transformed vs original file
-        if transformed:
-            output_filename = f"{uploaded_path.stem}_transformed.{output_format}"
-            file_path = _save_transformed_file(
-                data, output_filename, output_format, tmp_dir
-            )
-            logger.info("Transformed file saved to temp directory")
-        else:
-            file_path = str(uploaded_path)
-            logger.info(f"Using original file: {file_path}")
-
-        # Save to PostgreSQL
-        file_path_obj = Path(file_path)
-        if output_format == "geojson":
-            save_geojson_to_postgres(
-                db=db,
-                db_table_name=valid_sql_name,
-                geojson_path=file_path_obj.name,
-                attachment_root=str(file_path_obj.parent),
-            )
-            logger.info(f"GeoJSON saved to PostgreSQL table: {valid_sql_name}")
-        else:  # csv
-            save_csv_to_postgres(
-                db=db,
-                db_table_name=valid_sql_name,
-                csv_path=file_path_obj.name,
-                attachment_root=str(file_path_obj.parent),
-            )
-            logger.info(f"CSV saved to PostgreSQL table: {valid_sql_name}")
-
-        # Copy parsed/transformed file to datalake
-        if transformed:
-            datalake_filename = filename_parsed.replace("_parsed", "_transformed")
-        else:
-            datalake_filename = filename_parsed
-
-        _copy_to_datalake(
-            file_path,
-            datalake_dir,
-            datalake_filename,
-        )
-
-        # Save originally uploaded file to the same directory as parsed/transformed files
-        if original_path.exists():
-            # Copy original file to datalake directory
-            # TODO: only copy if the file wasn't converted from a different format (e.g. GPX to GeoJSON)
-            # Otherwise, it's probably not worth keeping around for only minor transformation differences
-            _copy_to_datalake(original_path, datalake_dir, filename_original)
-        else:
-            logger.warning(f"Original file not found: {original_path}")
-
-        # Return success
-        return True, None
-
-    except Exception as e:
-        error_msg = f"Error during dataset import process: {e}"
-        logger.error(error_msg)
-        return False, error_msg
-
-    finally:
-        # Clean up dataset-specific temp directory
-        if tmp_dir.exists():
-            try:
-                shutil.rmtree(tmp_dir)
-                logger.info(f"Removed dataset temp directory: {tmp_dir}")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to remove dataset temp directory {tmp_dir}: {e}"
-                )
-        else:
-            logger.debug(
-                f"Dataset temp directory not found (already removed?): {tmp_dir}"
-            )
