@@ -41,7 +41,7 @@ value:
       text:
         class: ''
         style: ''
-  darkMode: false
+  darkMode: true
   fullscreen: false
   grid:
     - '12':
@@ -137,43 +137,12 @@ value:
         horizontalAlignment: center
         verticalAlignment: top
     - '12':
-        fixed: false
-        fullHeight: false
-        h: 1
-        w: 4
-        x: 4
-        'y': 5
-      '3':
-        fixed: false
-        fullHeight: false
-        h: 2
-        w: 1
-        x: 1
-        'y': 0
-      id: c
-      data:
-        id: c
-        type: htmlcomponent
-        componentInput:
-          type: templatev2
-          connections: []
-          eval: >-
-            <center><em>Need help? Visit our <a
-            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
-            target="_blank">documentation website</a>.</em></center>
-          fieldType: template
-        configuration: {}
-        customCss:
-          container:
-            class: ''
-            style: ''
-    - '12':
         fixed: true
         fullHeight: false
-        h: 14
+        h: 15
         w: 8
         x: 2
-        'y': 6
+        'y': 5
       '3':
         fixed: true
         fullHeight: false
@@ -199,8 +168,14 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
+                - id: longitudeCol
+                  key: result
+                - id: state
+                  key: uploadSuccess
                 - id: state
                   key: validSqlName
+                - id: latitudeCol
+                  key: result
         configuration: {}
         customCss:
           container:
@@ -214,12 +189,52 @@ value:
           - Upload your file
           - Choose data source
           - Finalize
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 20
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: linkToDocumentation
+      data:
+        id: linkToDocumentation
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
   hiddenInlineScripts:
-    - type: runnableByName
-      name: Background Runnable 0
+    - name: 3 Set latitude state
+      autoRefresh: true
       fields: {}
-      hidden: true
+      inlineScript:
+        content: '!inline 3_set_latitude_state.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/3_Set_latitude_state
+        suggestedRefreshOn:
+          - id: latitudeCol
+            key: result
+          - id: state
+            key: latitudeCol
       recomputeIds: []
+      recomputeOnInputChanged: true
     - name: 2 File has been selected
       autoRefresh: false
       fields: {}
@@ -228,14 +243,28 @@ value:
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
         suggestedRefreshOn:
+          - id: state
+            key: uploadSuccess
           - id: selectFile
             key: result
+          - id: state
+            key: uploadButtonEnabled
       recomputeIds: []
       recomputeOnInputChanged: true
-    - type: runnableByName
-      name: Background Runnable 2
+    - name: 3 Set longitude state
+      autoRefresh: true
       fields: {}
-      hidden: true
+      inlineScript:
+        content: '!inline 3_set_longitude_state.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/3_Set_longitude_state
+        suggestedRefreshOn:
+          - id: longitudeCol
+            key: result
+          - id: state
+            key: longitudeCol
+      recomputeIds: []
+      recomputeOnInputChanged: true
     - name: 3 Set data source state
       autoRefresh: false
       fields: {}
@@ -247,10 +276,10 @@ value:
           - id: dataSourceToggle
             key: result
         suggestedRefreshOn:
-          - id: dataSources
-            key: result
           - id: state
             key: dataSource
+          - id: dataSources
+            key: result
       recomputeIds: []
       recomputeOnInputChanged: true
   hideLegacyTopBar: true
@@ -264,7 +293,7 @@ value:
           h: 5
           w: 10
           x: 1
-          'y': 1
+          'y': 2
         '3':
           fixed: true
           fullHeight: false
@@ -330,7 +359,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 6
+          'y': 7
         '3':
           fixed: true
           fullHeight: false
@@ -471,7 +500,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 7
+          'y': 8
         '3':
           fixed: true
           fullHeight: false
@@ -537,9 +566,9 @@ value:
           fixed: false
           fullHeight: false
           h: 2
-          w: 10
-          x: 1
-          'y': 0
+          w: 12
+          x: 0
+          'y': 1
         '3':
           fixed: false
           fullHeight: false
@@ -547,9 +576,9 @@ value:
           w: 1
           x: 0
           'y': 1
-        id: d
+        id: selectFileLabel
         data:
-          id: d
+          id: selectFileLabel
           type: htmlcomponent
           componentInput:
             type: templatev2
@@ -575,7 +604,7 @@ value:
           h: 5
           w: 12
           x: 0
-          'y': 2
+          'y': 3
         '3':
           fixed: true
           fullHeight: false
@@ -642,7 +671,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 7
+          'y': 8
         '3':
           fixed: true
           fullHeight: false
@@ -746,21 +775,30 @@ value:
                 state.newRows = result[4];
                 state.updatedRows = result[5];
                 state.newColumns = result[6];
+                state.columnNames= result[7];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: uploadSuccess
+                  key: newRows
                 - id: state
                   key: outputFormat
                 - id: state
-                  key: fileNameParsed
+                  key: uploadSuccess
                 - id: state
                   key: fileNameOriginal
-                - id: state
-                  key: uploadErrorMessage
                 - id: selectFile
                   key: result
+                - id: state
+                  key: updatedRows
+                - id: state
+                  key: uploadErrorMessage
+                - id: state
+                  key: newColumns
+                - id: state
+                  key: fileNameParsed
+                - id: state
+                  key: columnNames
           configuration:
             afterIcon:
               type: static
@@ -840,7 +878,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 8
+          'y': 9
         '3':
           fixed: true
           fullHeight: false
@@ -880,7 +918,13 @@ value:
                     key: uploadButtonEnabled
                 suggestedRefreshOn:
                   - id: state
+                    key: newRows
+                  - id: state
                     key: tableExists
+                  - id: state
+                    key: updatedRows
+                  - id: state
+                    key: newColumns
           configuration:
             copyButton:
               type: static
@@ -905,12 +949,57 @@ value:
           verticalAlignment: center
     formStepper-2:
       - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 0
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 3
+        id: dataSourceTitle
+        data:
+          id: dataSourceTitle
+          type: textcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "\U0001F5C3️ Data source"
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Subtitle
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 2
+          'y': 1
         '3':
           fixed: true
           fullHeight: false
@@ -950,7 +1039,7 @@ value:
           h: 2
           w: 10
           x: 1
-          'y': 3
+          'y': 2
         '3':
           fixed: true
           fullHeight: false
@@ -966,9 +1055,9 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: >
-              (We use this to add a "data source" column to the dataset, and in
-              some cases, apply special formatting logic.)
+            eval: >-
+              We use this to add a "data source" column to the dataset, and in
+              some cases, apply special formatting logic.
             fieldType: template
           configuration:
             copyButton:
@@ -993,14 +1082,14 @@ value:
                 text-sm
               style: ''
           horizontalAlignment: center
-          verticalAlignment: top
+          verticalAlignment: center
       - '12':
           fixed: true
           fullHeight: false
           h: 1
           w: 6
           x: 3
-          'y': 5
+          'y': 4
         '3':
           fixed: true
           fullHeight: false
@@ -1061,6 +1150,332 @@ value:
             - bg_3
           recomputeIds: []
           verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 6
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 4
+        id: d
+        data:
+          id: d
+          type: textcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "\U0001F504 Data conversion (for tabular data only)"
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Subtitle
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: lonLatLabel
+        data:
+          id: lonLatLabel
+          type: textcomponent
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: >-
+              Does this data have latitude and longitude coordinates, and you
+              want to convert the data to GeoJSON? If so, select the columns:
+            fields: {}
+            fieldType: template
+            hideRefreshButton: false
+            recomputeOnInputChanged: true
+            runnable:
+              name: 3 Eval of lonLatLabel
+              inlineScript:
+                content: '!inline 3_eval_of_lonlatlabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/gc_dataset_importer/3_Eval_of_lonLatLabel
+                refreshOn:
+                  - id: state
+                    key: outputFormat
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Caption
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: 'font-weight: normal;'
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 0
+        id: longitudeColLabel
+        data:
+          id: longitudeColLabel
+          type: textcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: Longitude column
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Caption
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 6
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 2
+        id: latitudeColLabel
+        data:
+          id: latitudeColLabel
+          type: textcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: Latitude column
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Caption
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 4
+          x: 1
+          'y': 10
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 2
+        id: longitudeCol
+        data:
+          id: longitudeCol
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: outputFormat
+                  componentId: state
+              expr: state.outputFormat !== "csv"
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value:
+                - value: foo
+                  label: Foo
+                - value: bar
+                  label: Bar
+              connections:
+                - id: columnNames
+                  componentId: state
+              expr: |-
+                (state.columnNames || [])
+                  .filter(c => c !== "_id")
+                  .sort((a, b) => b.toLowerCase().startsWith("lon") - a.toLowerCase().startsWith("lon"))
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select an item
+            preselectFirst:
+              type: static
+              value: true
+          customCss:
+            input:
+              class: ''
+              style: ''
+          onSelect:
+            - bg_2
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 4
+          x: 6
+          'y': 10
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 3
+        id: latitudeCol
+        data:
+          id: latitudeCol
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: outputFormat
+                  componentId: state
+              expr: state.outputFormat !== "csv"
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value:
+                - value: foo
+                  label: Foo
+                - value: bar
+                  label: Bar
+              connections:
+                - id: columnNames
+                  componentId: state
+              expr: |-
+                (state.columnNames || [])
+                  .filter(c => c !== "_id")
+                  .sort((a, b) => b.toLowerCase().startsWith("lon") - a.toLowerCase().startsWith("lat"))
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select an item
+            preselectFirst:
+              type: static
+              value: true
+          customCss:
+            input:
+              class: ''
+              style: ''
+          onSelect:
+            - bg_0
+          recomputeIds: []
+          verticalAlignment: center
     formStepper-3:
       - '12':
           fixed: true
@@ -1068,7 +1483,7 @@ value:
           h: 1
           w: 12
           x: 0
-          'y': 0
+          'y': 1
         '3':
           fixed: true
           fullHeight: false
@@ -1114,7 +1529,7 @@ value:
           h: 1
           w: 3
           x: 1
-          'y': 1
+          'y': 2
         '3':
           fixed: false
           fullHeight: false
@@ -1160,7 +1575,7 @@ value:
           h: 1
           w: 7
           x: 4
-          'y': 1
+          'y': 2
         '3':
           fixed: true
           fullHeight: false
@@ -1209,7 +1624,7 @@ value:
           h: 1
           w: 3
           x: 1
-          'y': 2
+          'y': 3
         '3':
           fixed: true
           fullHeight: false
@@ -1255,7 +1670,7 @@ value:
           h: 1
           w: 7
           x: 4
-          'y': 2
+          'y': 3
         '3':
           fixed: true
           fullHeight: false
@@ -1318,7 +1733,7 @@ value:
           h: 1
           w: 3
           x: 1
-          'y': 3
+          'y': 4
         '3':
           fixed: true
           fullHeight: false
@@ -1364,7 +1779,7 @@ value:
           h: 1
           w: 7
           x: 4
-          'y': 3
+          'y': 4
         '3':
           fixed: true
           fullHeight: false
@@ -1402,7 +1817,11 @@ value:
                     key: result
                 suggestedRefreshOn:
                   - id: state
+                    key: longitudeCol
+                  - id: state
                     key: dataSource
+                  - id: state
+                    key: latitudeCol
           configuration:
             copyButton:
               type: static
@@ -1431,7 +1850,7 @@ value:
           h: 1
           w: 3
           x: 1
-          'y': 4
+          'y': 5
         '3':
           fixed: true
           fullHeight: false
@@ -1439,9 +1858,9 @@ value:
           w: 1
           x: 1
           'y': 3
-        id: a
+        id: changesLabel
         data:
-          id: a
+          id: changesLabel
           type: textcomponent
           actions: []
           componentInput:
@@ -1477,7 +1896,7 @@ value:
           h: 2
           w: 7
           x: 4
-          'y': 4
+          'y': 5
         '3':
           fixed: true
           fullHeight: false
@@ -1485,9 +1904,9 @@ value:
           w: 1
           x: 2
           'y': 3
-        id: b
+        id: evaluateNumberOfChanges
         data:
-          id: b
+          id: evaluateNumberOfChanges
           type: textcomponent
           actions: []
           componentInput:
@@ -1546,7 +1965,7 @@ value:
           h: 1
           w: 2
           x: 5
-          'y': 6
+          'y': 7
         '3':
           fixed: false
           fullHeight: false
@@ -1758,7 +2177,7 @@ value:
           h: 2
           w: 12
           x: 0
-          'y': 7
+          'y': 8
         '3':
           fixed: false
           fullHeight: false
@@ -1825,7 +2244,7 @@ value:
           h: 1
           w: 12
           x: 0
-          'y': 9
+          'y': 10
         '3':
           fixed: false
           fullHeight: false

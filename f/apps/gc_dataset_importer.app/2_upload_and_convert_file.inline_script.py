@@ -38,9 +38,17 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
 
     Returns
     -------
-    tuple[bool, str | None, str | None, str | None, int | None, int | None, int | None]
-        A tuple containing (success, error_message, output_filename, output_format,
-                           new_rows, updates, new_columns):
+    tuple[bool, str | None, str | None, str | None, int | None, int | None, int | None, list[str] | None]
+        A tuple containing (
+            success,
+            error_message,
+            output_filename,
+            output_format,
+            new_rows,
+            updates,
+            new_columns,
+            column_names,
+        ):
         - success : bool
             True if processing completed successfully, False if an error occurred.
         - error_message : str or None
@@ -55,10 +63,13 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             Number of rows that will be updated (only if table_exists).
         - new_columns : int or None
             Number of new columns that will be added (only if table_exists).
+        - column_names : list[str] or None
+            All detected column names in the converted data.
     """
     new_rows = None
     updates = None
     new_columns = None
+    column_names = None
     data_for_comparison = []
 
     try:
@@ -128,6 +139,7 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
 
         # Analyze data: compare if table exists, count if new dataset
         if data_for_comparison:
+            column_names = sorted({k for row in data_for_comparison for k in row})
             if table_exists:
                 logger.info(
                     f"Analyzing changes for {len(data_for_comparison)} rows against existing table"
@@ -143,11 +155,7 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
                 logger.info("Counting rows and columns for new dataset")
                 new_rows = len(data_for_comparison)
                 updates = 0
-                # Count unique columns across all rows
-                all_columns = set()
-                for row in data_for_comparison:
-                    all_columns.update(row.keys())
-                new_columns = len(all_columns)
+                new_columns = len(column_names)
                 logger.info(
                     f"New dataset will have {new_rows} rows and {new_columns} columns"
                 )
@@ -162,9 +170,10 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             new_rows,
             updates,
             new_columns,
+            column_names,
         )
 
     except Exception as e:
         error_msg = f"Error during file upload and conversion: {e}"
         logger.error(error_msg)
-        return False, error_msg, None, None, None, None, None
+        return False, error_msg, None, None, None, None, None, None
