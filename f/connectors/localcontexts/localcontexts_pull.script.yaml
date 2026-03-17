@@ -1,10 +1,10 @@
-summary: "Local Contexts: Fetch Labels"
+summary: 'Local Contexts: Fetch Labels'
 description: Fetch labels from the Local Contexts API
-lock: "!inline f/connectors/localcontexts/localcontexts_pull.script.lock"
+lock: '!inline f/connectors/localcontexts/localcontexts_pull.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: "https://json-schema.org/draft/2020-12/schema"
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
     - localcontexts
@@ -30,5 +30,5 @@ schema:
       default: null
       format: resource-localcontexts
   required:
-    - localcontexts
+    - local_contexts
     - db
