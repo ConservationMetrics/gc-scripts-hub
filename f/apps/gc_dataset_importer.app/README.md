@@ -15,17 +15,19 @@ The importer follows a structured 4-step process:
 ### Step 2: File Upload and Format Detection
 - Accepts file uploads with automatic format detection
 - Extracts ZIP/KMZ archives and processes contents
-
-### Step 3: Data Source Configuration
-- User optionally selects source type for known data formats (i.e. CoMapeo, KoboToolbox, ODK, or something else)
-- If the data is tabular, the user can choose to convert it to GeoJSON if coordinates are provided
-
-### Step 4: Transformation and Database + File Storage
 - Converts files to standardized formats:
   - **Tabular data** → CSV (Excel, JSON, CSV) or GeoJSON (if coordinates are provided)
   - **Spatial data** → GeoJSON (GPX, KML, existing GeoJSON)
 - Saves parsed files to temporary storage for processing
+
+### Step 3: Data Source Configuration
+- User optionally selects source type for known data formats (i.e. CoMapeo, KoboToolbox, ODK, or something else)
+- User optionally provides coordinates to convert tabular data to GeoJSON
+
+### Step 4: Transformation and Database + File Storage
+
 - Optionally applies data source-specific transformations for known data formats
+- Handles the conversion of longitude/latitude coordinates to GeoJSON if provided
 - Ingests transformed data into PostgreSQL tables (creates new table or appends to existing)
 - Archives all file versions (original, parsed, transformed) to data lake
 - Cleans up temporary files and reports completion status
@@ -156,10 +158,10 @@ The application uses a Windmill [Stepper](https://www.windmill.dev/docs/apps/app
 #### 3. Data Transformation (`4_apply_transformation_and_write_to_database.inline_script.py`)
 - Applies connector-specific business logic through modular transformation functions
 - Supports multiple data source types with extensible transformation pipeline
+- Converts longitude/latitude coordinates to GeoJSON if provided
 - Saves transformed data to PostgreSQL tables (appends if table exists, creates if new)
 - Copies all file versions (original, parsed, transformed) to data lake
 - Cleans up temporary files and reports completion status
-
 
 ### How to review the code
 
