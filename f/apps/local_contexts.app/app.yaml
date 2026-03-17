@@ -703,7 +703,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001FAB6 Select <span class=\"text-emerald-700 dark:text-emerald-300 font-semibold\">biocultural</span> labels<span class=\"text-red-500\"></span>\n</h5>"
+            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001F33F Select <span class=\"text-emerald-700 dark:text-emerald-300 font-semibold\">biocultural</span> labels<span class=\"text-red-500\"></span>\n</h5>"
             fieldType: template
           configuration: {}
           customCss:
