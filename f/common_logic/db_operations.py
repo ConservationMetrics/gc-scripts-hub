@@ -171,6 +171,59 @@ def fetch_data_from_postgres(db_connection_string: str, table_name: str):
     return columns, rows
 
 
+def truncate_table(
+    db_connection_string: str,
+    table_name: str,
+    schema: str = "public",
+    *,
+    restart_identity: bool = False,
+    cascade: bool = False,
+):
+    """
+    Truncate a table if it exists.
+
+    Parameters
+    ----------
+    db_connection_string : str
+        psycopg connection string.
+    table_name : str
+        Table name (without schema).
+    schema : str, optional
+        Schema name (default: "public").
+    restart_identity : bool, optional
+        If True, also resets any identity sequences (default: False).
+    cascade : bool, optional
+        If True, also truncates tables with foreign-key dependencies (default: False).
+    """
+    with connect(db_connection_string, autocommit=True) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = %s AND table_name = %s
+                )
+                """,
+                (schema, table_name),
+            )
+            exists = cursor.fetchone()[0]
+
+            if not exists:
+                return False
+
+            query = sql.SQL("TRUNCATE TABLE {table}").format(
+                table=sql.Identifier(schema, table_name)
+            )
+            if restart_identity:
+                query += sql.SQL(" RESTART IDENTITY")
+            if cascade:
+                query += sql.SQL(" CASCADE")
+
+            cursor.execute(query)
+            return True
+
+
 def summarize_new_rows_updates_and_columns(
     db: postgresql,
     table_name: str,
