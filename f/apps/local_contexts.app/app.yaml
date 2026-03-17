@@ -41,7 +41,6 @@ value:
       text:
         class: ''
         style: ''
-  darkMode: true
   fullscreen: false
   grid:
     - '12':
@@ -161,6 +160,15 @@ value:
           fields: {}
           fieldType: any
           recomputeOnInputChanged: false
+          runnable:
+            name: 0 Form stepper validations
+            inlineScript:
+              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
+              language: frontend
+              path: f/apps/local_contexts/0_Form_stepper_validations
+              suggestedRefreshOn:
+                - id: state
+                  key: dataset
         configuration: {}
         customCss:
           container:
@@ -205,14 +213,67 @@ value:
             class: ''
             style: ''
   hiddenInlineScripts:
-    - type: inline
-      name: Background Runnable 0
+    - name: 0 Fetch tables from Postgres
+      autoRefresh: true
+      fields:
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+      inlineScript:
+        content: '!inline 0_fetch_tables_from_postgres.inline_script.py'
+        lock: '!inline 0_fetch_tables_from_postgres.inline_script.lock'
+        language: python3
+        path: f/apps/local_contexts/0_Fetch_tables_from_Postgres
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+          required:
+            - db
+      recomputeIds: []
+      recomputeOnInputChanged: false
+      transformer:
+        content: |-
+          state.tables = Object.values(result)
+            // Remove tables that end with internal suffixes we don’t want to show
+            .filter(name =>
+              !name.endsWith("__columns") &&
+              !name.endsWith("__labels") &&
+              !name.endsWith("__metadata")
+            )
+            // Remove local contexts tables
+            .filter(name =>
+              !name.includes("localcontexts")
+            )
+            // Sort remaining table names alphabetically
+            .sort((a, b) => a.localeCompare(b))
+        language: frontend
+        path: f/apps/local_contexts/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tables
+    - name: 1 Set dataset
+      autoRefresh: false
       fields: {}
-      hidden: true
-    - type: inline
-      name: Background Runnable 1
-      fields: {}
-      hidden: true
+      inlineScript:
+        content: '!inline 1_set_dataset.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/local_contexts/1_Set_dataset
+        refreshOn:
+          - id: selectTable
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: dataset
+      recomputeIds: []
+      recomputeOnInputChanged: true
     - type: inline
       name: Background Runnable 2
       fields: {}
@@ -221,7 +282,94 @@ value:
   mobileViewOnSmallerScreens: false
   norefreshbar: false
   subgrids:
-    formStepper-0: []
+    formStepper-0:
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 3
+          w: 10
+          x: 1
+          'y': 3
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 2
+          'y': 0
+        id: a
+        data:
+          id: a
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: |-
+              <h5 class="text-[16px] font-semibold text-gray-800 mb-1">
+                Select a dataset<span class="text-red-500">*</span>
+              </h5>
+
+              <p class="text-sm text-gray-500 leading-relaxed">
+                Select a dataset you wish to annotate using <a href="https://localcontexts.org/" target="_blank">Local Contexts</a> labels. 
+                <em>Note: datasets are tables in your data warehouse.</em>
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 6
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 0
+        id: selectTable
+        data:
+          id: selectTable
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: static
+              value: false
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value: []
+              connections:
+                - id: tables
+                  componentId: state
+              expr: state.tables
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select a dataset
+            preselectFirst:
+              type: static
+              value: false
+          customCss:
+            input:
+              class: ''
+              style: ''
+          verticalAlignment: center
     formStepper-1: []
     formStepper-2:
       - '12':
