@@ -171,13 +171,13 @@ value:
                 - id: state
                   key: datasetName
                 - id: state
-                  key: localContextsTable
-                - id: state
-                  key: tkLabels
-                - id: state
                   key: labelsToApply
                 - id: state
                   key: bcLabels
+                - id: state
+                  key: tkLabels
+                - id: state
+                  key: localContextsTable
         configuration: {}
         customCss:
           container:
@@ -847,6 +847,117 @@ value:
             eval: '${selectFile.result[0].name}'
             expr: state.datasetName
             fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 3
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 1
+        id: labelsToApplyLabel
+        data:
+          id: labelsToApplyLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Labels to apply:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 4
+          w: 7
+          x: 4
+          'y': 3
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 1
+        id: labelsToApply
+        data:
+          id: labelsToApply
+          type: textcomponent
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: labelsToApply
+                componentId: state
+            eval: '${state.labelsToApply}'
+            expr: state.labelsToApply
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              name: 3 Format list comma-appended
+              inlineScript:
+                content: '!inline 3_format_list_comma-appended.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_Format_list_comma-appended
+                suggestedRefreshOn:
+                  - id: state
+                    key: tkLabels
+                  - id: state
+                    key: bcLabels
+                  - id: state
+                    key: labelsToApply
           configuration:
             copyButton:
               type: static
