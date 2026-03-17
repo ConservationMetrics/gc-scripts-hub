@@ -48,27 +48,38 @@ def main(db: postgresql, table_name, labels_to_apply):
 
     Returns
     -------
-    str
-        Name of the created Local Contexts label table.
+    tuple[bool, str | None]
+        A tuple containing (success, error_message):
+        - success : bool
+            True if the label table was refreshed successfully, False otherwise.
+        - error_message : str or None
+            Error message if success is False, None if success is True.
     """
     labels_to_apply = labels_to_apply or []
 
-    writer = StructuredDBWriter(
-        conninfo(db),
-        table_name,
-        suffix=_LC_LABELS_SUFFIX,
-        predefined_schema=_create_lc_labels_table,
-    )
-    output_table = writer.table_name
+    try:
+        writer = StructuredDBWriter(
+            conninfo(db),
+            table_name,
+            suffix=_LC_LABELS_SUFFIX,
+            predefined_schema=_create_lc_labels_table,
+        )
+        output_table = writer.table_name
 
-    logger.info(f"Refreshing Local Contexts label table: {output_table}")
-    truncate_table(conninfo(db), output_table)
+        logger.info(f"Refreshing Local Contexts label table: {output_table}")
+        truncate_table(conninfo(db), output_table)
 
-    rows = [{"_id": str(i), "label": label} for i, label in enumerate(labels_to_apply)]
-    writer.handle_output(rows)
+        rows = [
+            {"_id": str(i), "label": label}
+            for i, label in enumerate(labels_to_apply)
+        ]
+        writer.handle_output(rows)
 
-    logger.info(
-        f"Created {output_table} with {len(labels_to_apply)} Local Contexts label(s)."
-    )
-
-    return output_table
+        logger.info(
+            f"Created {output_table} with {len(labels_to_apply)} Local Contexts label(s)."
+        )
+        return True, None
+    except Exception as e:
+        error_msg = f"Error while refreshing Local Contexts label table: {e}"
+        logger.error(error_msg)
+        return False, error_msg

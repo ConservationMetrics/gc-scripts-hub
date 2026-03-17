@@ -19,3 +19,8 @@ if (currentStepIndex === 1) {
     throw new Error("Please select at least one Local Contexts label.");
   }
 }
+
+// Step 3: Can't reuse same session
+if (currentStepIndex === 2 && state.finalizeSuccess) {
+  throw new Error("Please refresh the page to apply labels to another dataset.");
+}

@@ -1,4 +1,10 @@
-from f.common_logic.db_operations import conninfo, postgresql, fetch_data_from_postgres
+import logging
+
+from f.common_logic.db_operations import conninfo, fetch_data_from_postgres, postgresql
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def main(db: postgresql, lcTableName):
     """
@@ -29,6 +35,8 @@ def main(db: postgresql, lcTableName):
             "bc_labels": None,
         }
 
+    logger.info(f"Fetching Local Contexts labels from table: {lcTableName}")
+
     columns, rows = fetch_data_from_postgres(conninfo(db), lcTableName)
 
     label_type_idx = columns.index("label_type")
@@ -52,6 +60,8 @@ def main(db: postgresql, lcTableName):
             tk_labels.append(option)
         elif category == "BC":
             bc_labels.append(option)
+
+    logger.info(f"Fetched {len(tk_labels)} TK labels and {len(bc_labels)} BC labels")
 
     return {
         "tk_labels": tk_labels,
