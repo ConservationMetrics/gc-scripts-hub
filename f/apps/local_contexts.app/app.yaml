@@ -41,6 +41,7 @@ value:
       text:
         class: ''
         style: ''
+  darkMode: true
   fullscreen: false
   grid:
     - '12':
@@ -168,6 +169,8 @@ value:
               path: f/apps/local_contexts/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
+                  key: localContextsTable
+                - id: state
                   key: dataset
         configuration: {}
         customCss:
@@ -254,24 +257,38 @@ value:
             )
             // Sort remaining table names alphabetically
             .sort((a, b) => a.localeCompare(b))
+
+            state.localContextsTables = Object.values(result)
+            // Only local contexts tables
+            .filter(name =>
+              name.includes("localcontexts")
+            )
+            // Sort remaining table names alphabetically
+            .sort((a, b) => a.localeCompare(b))
         language: frontend
         path: f/apps/local_contexts/Transformer
         suggestedRefreshOn:
           - id: state
             key: tables
-    - name: 1 Set dataset
+          - id: state
+            key: localContextsTables
+    - name: 1 Set dataset & LC label-set
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline 1_set_dataset.inline_script.frontend.js'
+        content: '!inline 1_set_dataset_&_lc_label-set.inline_script.frontend.js'
         language: frontend
-        path: f/apps/local_contexts/1_Set_dataset
+        path: f/apps/local_contexts/1_Set_dataset_&_LC_label-set
         refreshOn:
-          - id: selectTable
+          - id: selectDatasetTable
+            key: result
+          - id: selectLocalContextsTable
             key: result
         suggestedRefreshOn:
           - id: state
             key: dataset
+          - id: state
+            key: localContextsTable
       recomputeIds: []
       recomputeOnInputChanged: true
     - type: inline
@@ -289,7 +306,7 @@ value:
           h: 3
           w: 10
           x: 1
-          'y': 3
+          'y': 2
         '3':
           fixed: false
           fullHeight: false
@@ -297,21 +314,34 @@ value:
           w: 1
           x: 2
           'y': 0
-        id: a
+        id: selectDatasetTableTitle
         data:
-          id: a
+          id: selectDatasetTableTitle
           type: htmlcomponent
           componentInput:
             type: templatev2
             connections: []
-            eval: |-
-              <h5 class="text-[16px] font-semibold text-gray-800 mb-1">
+            eval: >-
+              <h5 class="text-[16px] font-semibold text-gray-900
+              dark:text-gray-100 mb-1">
                 Select a dataset<span class="text-red-500">*</span>
               </h5>
 
-              <p class="text-sm text-gray-500 leading-relaxed">
-                Select a dataset you wish to annotate using <a href="https://localcontexts.org/" target="_blank">Local Contexts</a> labels. 
-                <em>Note: datasets are tables in your data warehouse.</em>
+
+              <p class="text-sm text-gray-600 dark:text-gray-400
+              leading-relaxed">
+                Select a dataset you wish to annotate using 
+                <a 
+                  href="https://localcontexts.org/" 
+                  target="_blank"
+                  class="text-blue-600 dark:text-blue-400 underline"
+                >
+                  Local Contexts
+                </a> 
+                labels. 
+                <em class="text-gray-500 dark:text-gray-500">
+                  Note: datasets are tables in your data warehouse.
+                </em>
               </p>
             fieldType: template
           configuration: {}
@@ -325,7 +355,7 @@ value:
           h: 1
           w: 10
           x: 1
-          'y': 6
+          'y': 5
         '3':
           fixed: false
           fullHeight: false
@@ -333,9 +363,9 @@ value:
           w: 2
           x: 0
           'y': 0
-        id: selectTable
+        id: selectDatasetTable
         data:
-          id: selectTable
+          id: selectDatasetTable
           type: selectcomponent
           configuration:
             create:
@@ -365,6 +395,95 @@ value:
             preselectFirst:
               type: static
               value: false
+          customCss:
+            input:
+              class: ''
+              style: ''
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 0
+          'y': 1
+        id: selectLocalContextsTableTitle
+        data:
+          id: selectLocalContextsTableTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <h5 class="text-[16px] font-semibold text-gray-900
+              dark:text-gray-100 mb-1">
+                Select Local Contexts label-set to apply<span class="text-red-500">*</span>
+              </h5>
+
+
+              <p class="text-sm text-gray-600 dark:text-gray-400
+              leading-relaxed">
+                Select the table containing the Local Contexts labels that you wish to apply.
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 1
+          'y': 2
+        id: selectLocalContextsTable
+        data:
+          id: selectLocalContextsTable
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: static
+              value: false
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value: []
+              connections:
+                - id: localContextsTables
+                  componentId: state
+              expr: state.localContextsTables
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select a dataset
+            preselectFirst:
+              type: static
+              value: true
           customCss:
             input:
               class: ''
