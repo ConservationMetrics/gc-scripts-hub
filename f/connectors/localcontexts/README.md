@@ -38,6 +38,10 @@ The envisioned usage of Local Contexts labels in Guardian Connector is as follow
 8. Get the **project ID**, and an **API key** for your community account.
 9. In Windmill, create a Local Contexts resource with the project ID, API key, and server URL.
 
+> [!NOTE]
+>
+> The resource type in Windmill has a suggestion for `server_url` of `https://localcontextshub.org/api/`. However, `/api/` should be omitted. Only the base URL should be provided (e.g. `https://localcontextshub.org` or `https://sandbox.localcontextshub.org`).
+
 ## Endpoints
 
 ### `GET /projects/{project_id}`
