@@ -11,10 +11,9 @@ Local Contexts provides a structured, community-informed metadata framework that
 The envisioned usage of Local Contexts labels in Guardian Connector is as follows:
 
 1. Labels are fetched by the `localcontexts_pull` script from a Local Contexts Hub project and stored locally in Guardian Connector, along with their icons and descriptions.
-2. Applying labels is a deliberate action, done after a dataset exists. 
-   - TODO: a Windmill app will be created to help with this. See https://github.com/ConservationMetrics/gc-scripts-hub/issues/198
+2. Applying labels is a deliberate action, done after a dataset exists, using the [GC Local Contexts Annotations application](../../apps/local_contexts.app/README.md).
 3. The vision is that only selected labels are applied to a dataset; having labels in a Hub project (or downloaded by this script) does not mean they will automatically apply to all datasets.
-4. Labels are stored separately from the data itself, as per-dataset metadata, e.g. `my_dataset__local_contexts_tags`.
+4. Labels are stored separately from the data itself, as per-dataset metadata, e.g. `my_dataset__lc_labels`.
 5. Labels remain stable over time and are only changed when someone intentionally updates them. (This script may be run on an as-needed basis, or scheduled to run periodically.)
 
 > [!NOTE]
