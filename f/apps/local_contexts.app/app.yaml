@@ -1,0 +1,1152 @@
+summary: GC Local Contexts Annotations
+value:
+  css:
+    buttoncomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    checkboxcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+    containercomponent:
+      container:
+        class: ''
+        style: ''
+    fileinputcomponent:
+      container:
+        class: ''
+        style: ''
+    formcomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    steppercomponent:
+      container:
+        class: ''
+        style: ''
+    textcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+  darkMode: true
+  fullscreen: false
+  grid:
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 1
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 0
+        'y': 0
+      id: pageTitle
+      data:
+        id: pageTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: Guardian Connector Local Contexts Annotations
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Title
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 3
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 1
+        'y': 6
+      id: formTitle
+      data:
+        id: formTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: "\U0001F3F7️ Apply Local Contexts labels to a dataset"
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Subtitle
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 15
+        w: 8
+        x: 2
+        'y': 5
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 8
+        w: 2
+        x: 1
+        'y': 7
+      id: formStepper
+      data:
+        id: formStepper
+        type: steppercomponent
+        actions: []
+        componentInput:
+          type: runnable
+          autoRefresh: false
+          fields: {}
+          fieldType: any
+          recomputeOnInputChanged: false
+        configuration: {}
+        customCss:
+          container:
+            class: border-2 border-blue-300 border-dashed
+            style: ''
+        numberOfSubgrids: 3
+        onNext: []
+        onPrevious: []
+        tabs:
+          - Select your dataset
+          - Choose labels to apply
+          - Finalize
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 20
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: linkToDocumentation
+      data:
+        id: linkToDocumentation
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
+  hiddenInlineScripts:
+    - type: inline
+      name: Background Runnable 0
+      fields: {}
+      hidden: true
+    - type: inline
+      name: Background Runnable 1
+      fields: {}
+      hidden: true
+    - type: inline
+      name: Background Runnable 2
+      fields: {}
+      hidden: true
+  hideLegacyTopBar: true
+  mobileViewOnSmallerScreens: false
+  norefreshbar: false
+  subgrids:
+    formStepper-0: []
+    formStepper-1:
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 12
+          x: 0
+          'y': 1
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 0
+          'y': 1
+        id: selectFileLabel
+        data:
+          id: selectFileLabel
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <p style="font-size: medium; text-align: center;"><strong>Accepted
+              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, XLS, XLSX, XML
+              (<em>SMART only</em>)<br>
+
+              <strong>Note:</strong> To upload media attachments (like photos),
+              please use Filebrowser. See <a
+              href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+              target="_blank">documentation</a>.</p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 5
+          w: 12
+          x: 0
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 4
+          w: 3
+          x: 1
+          'y': 1
+        id: selectFile
+        data:
+          id: selectFile
+          type: fileinputcomponent
+          actions: []
+          configuration:
+            acceptedFileTypes:
+              type: static
+              value:
+                - text/csv
+                - application/gpx+xml
+                - application/vnd.google-earth.kml+xml
+                - application/vnd.google-earth.kmz
+                - >-
+                  application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                - application/vnd.ms-excel
+                - application/json
+                - application/xml
+              connections:
+                - id: result
+                  componentId: selectFile
+              expr: selectFile.result
+            allowMultiple:
+              type: static
+              value: false
+            disabled:
+              type: static
+              value: false
+              connections: []
+              expr: 'false'
+            includeMimeType:
+              type: static
+              value: false
+            submittedFileText:
+              type: static
+              value: Selected file
+              connections: []
+              expr: '"Selected file"'
+            text:
+              type: static
+              value: >-
+                Drag and drop files into this box, or click to select them.
+
+                Then click "Upload File" to finish before going to the next
+                step.
+              connections: []
+              expr: '"Drag and drop files or click to select them"'
+          customCss:
+            container:
+              class: ''
+              style: ''
+          onFileChange:
+            - bg_1
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 8
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: uploadFile
+        data:
+          id: uploadFile
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields: {}
+            fieldType: any
+            recomputeOnInputChanged: false
+            transformer:
+              content: |-
+                state.uploadSuccess = result[0];
+                state.uploadErrorMessage = result[1];
+                state.fileNameOriginal = selectFile.result[0].name;
+                state.fileNameParsed = result[2];
+                state.outputFormat = result[3];
+                state.newRows = result[4];
+                state.updatedRows = result[5];
+                state.newColumns = result[6];
+                state.columnNames= result[7];
+              language: frontend
+              path: f/apps/gc_dataset_importer/Transformer
+              suggestedRefreshOn:
+                - id: state
+                  key: outputFormat
+                - id: state
+                  key: newColumns
+                - id: state
+                  key: columnNames
+                - id: state
+                  key: newRows
+                - id: state
+                  key: updatedRows
+                - id: state
+                  key: uploadSuccess
+                - id: state
+                  key: fileNameOriginal
+                - id: state
+                  key: uploadErrorMessage
+                - id: selectFile
+                  key: result
+                - id: state
+                  key: fileNameParsed
+          configuration:
+            afterIcon:
+              type: static
+              value: upload
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: uploadButtonEnabled
+                  componentId: state
+              expr: '!state.uploadButtonEnabled === true'
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Upload File
+            onError:
+              type: oneOf
+              configuration:
+                sendErrorToast:
+                  appendError:
+                    type: static
+                    value: true
+                  message:
+                    type: static
+                    value: An error occurred
+              selected: sendErrorToast
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            onSuccess:
+              type: oneOf
+              configuration:
+                sendToast:
+                  message:
+                    type: static
+                    value: ''
+              selected: sendToast
+            runInBackground:
+              type: static
+              value: false
+            size:
+              type: static
+              value: xs
+            tooltip:
+              type: static
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 9
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 6
+        id: uploadFileResult
+        data:
+          id: uploadFileResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+    formStepper-2:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: finalizeTitle
+        data:
+          id: finalizeTitle
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "\U0001F4C4 Review summary"
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 2
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 0
+        id: datasetNameLabel
+        data:
+          id: datasetNameLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Dataset name:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 2
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 0
+        id: datasetName
+        data:
+          id: datasetName
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: evalv2
+            connections:
+              - id: datasetName
+                componentId: state
+            eval: '${selectFile.result[0].name}'
+            expr: state.datasetName
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 1
+        id: fileUploadedLabel
+        data:
+          id: fileUploadedLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'File uploaded:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 3
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 1
+        id: fileUploaded
+        data:
+          id: fileUploaded
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: fileNameOriginal
+                componentId: state
+            eval: state.fileName
+            expr: state.fileNameOriginal
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: true
+          h: 1
+          w: 3
+          x: 1
+          'y': 4
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 1
+        id: dataSourceLabel
+        data:
+          id: dataSourceLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Data source:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 4
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 2
+        id: dataSource
+        data:
+          id: dataSource
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            connections:
+              - id: result
+                componentId: dataSources
+            eval: 'Hello ${ctx.username}'
+            expr: dataSources.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: true
+          h: 1
+          w: 3
+          x: 1
+          'y': 5
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 3
+        id: changesLabel
+        data:
+          id: changesLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Changes:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 7
+          x: 4
+          'y': 5
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 3
+        id: evaluateNumberOfChanges
+        data:
+          id: evaluateNumberOfChanges
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections:
+              - id: result
+                componentId: dataSources
+            eval: 'Hello ${ctx.username}'
+            expr: dataSources.result
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 7
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 2
+        id: transformAndWrite
+        data:
+          id: transformAndWrite
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields: {}
+            fieldType: any
+            recomputeOnInputChanged: false
+          configuration:
+            afterIcon:
+              type: static
+              value: cloud-upload
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: newColumns
+                  componentId: state
+                - id: newRows
+                  componentId: state
+                - id: finalizeSuccess
+                  componentId: state
+              expr: >-
+                state.finalizeSuccess || !(state.newRows > 0 && state.newColumns
+                > 0)
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Save & Finish
+            onError:
+              type: oneOf
+              configuration:
+                errorOverlay: {}
+              selected: errorOverlay
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            onSuccess:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            runInBackground:
+              type: static
+              value: false
+            size:
+              type: static
+              value: xs
+            tooltip:
+              type: static
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 8
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 3
+        id: saveResult
+        data:
+          id: saveResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 10
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 2
+        id: saveLabel
+        data:
+          id: saveLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ✍️ Ready to write this dataset to your warehouse?
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: |-
+                italic 
+                text-sm
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+  theme:
+    type: inlined
+    css: ''
+  unusedInlineScripts: []
