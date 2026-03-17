@@ -169,15 +169,9 @@ value:
               path: f/apps/local_contexts/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: tkLabels
-                - id: state
-                  key: finalizeSuccess
-                - id: state
                   key: datasetName
                 - id: state
                   key: localContextsTable
-                - id: state
-                  key: bcLabels
                 - id: state
                   key: labelsToApply
         configuration: {}
@@ -186,7 +180,8 @@ value:
             class: border-2 border-blue-300 border-dashed
             style: ''
         numberOfSubgrids: 3
-        onNext: []
+        onNext:
+          - bg_2
         onPrevious: []
         tabs:
           - Select your dataset
@@ -296,12 +291,18 @@ value:
         suggestedRefreshOn:
           - id: state
             key: localContextsTable
-      recomputeIds:
-        - bg_2
       recomputeOnInputChanged: true
-    - name: 1 Fetch LC labels
+    - name: 1 Fetch LC labels and existing mappings
       autoRefresh: false
       fields:
+        dataset_name:
+          type: evalv2
+          value: null
+          connections:
+            - id: datasetName
+              componentId: state
+          expr: state.datasetName
+          fieldType: ''
         db:
           type: static
           value: '$res:f/connectors/postgresql'
@@ -316,14 +317,18 @@ value:
           expr: state.localContextsTable
           fieldType: ''
       inlineScript:
-        content: '!inline 1_fetch_lc_labels.inline_script.py'
-        lock: '!inline 1_fetch_lc_labels.inline_script.lock'
+        content: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.py'
+        lock: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.lock'
         language: python3
-        path: f/apps/local_contexts/1_Fetch_LC_labels
+        path: f/apps/local_contexts/1_Fetch_LC_labels_and_existing_mappings
         schema:
           $schema: 'https://json-schema.org/draft/2020-12/schema'
           type: object
           properties:
+            dataset_name:
+              type: ''
+              description: ''
+              default: null
             db:
               type: object
               description: ''
@@ -336,19 +341,29 @@ value:
           required:
             - db
             - lcTableName
+            - dataset_name
       recomputeIds: []
       recomputeOnInputChanged: false
       transformer:
         content: |-
-          state.tkLabels = result.tk_labels
-          state.bcLabels = result.bc_labels
+          state.tkLabelsAvailable = result.tk_labels_available
+          state.bcLabelsAvailable = result.bc_labels_available
+          state.tkLabelsAlreadyApplied = result.tk_labels_already_applied
+          state.bcLabelsAlreadyApplied = result.bc_labels_already_applied
+          state.canApplyLabels = true
         language: frontend
         path: f/apps/local_contexts/Transformer
         suggestedRefreshOn:
           - id: state
-            key: tkLabels
+            key: tkLabelsAlreadyApplied
           - id: state
-            key: bcLabels
+            key: bcLabelsAvailable
+          - id: state
+            key: tkLabelsAvailable
+          - id: state
+            key: bcLabelsAlreadyApplied
+          - id: state
+            key: canApplyLabels
     - name: 1 Set state.datasetName
       autoRefresh: true
       fields: {}
@@ -392,7 +407,7 @@ value:
           h: 3
           w: 10
           x: 1
-          'y': 2
+          'y': 1
         '3':
           fixed: false
           fullHeight: false
@@ -441,7 +456,7 @@ value:
           h: 1
           w: 10
           x: 1
-          'y': 5
+          'y': 4
         '3':
           fixed: false
           fullHeight: false
@@ -489,10 +504,10 @@ value:
       - '12':
           fixed: false
           fullHeight: false
-          h: 2
+          h: 3
           w: 10
           x: 1
-          'y': 7
+          'y': 6
         '3':
           fixed: false
           fullHeight: false
@@ -517,6 +532,9 @@ value:
               <p class="text-sm text-gray-600 dark:text-gray-400
               leading-relaxed">
                 Select the table containing the Local Contexts labels that you wish to apply.
+                <em class="text-gray-500 dark:text-gray-500">
+                  Note: this application assumes you have already run the "Local Contexts: Fetch Labels" script in Windmill.
+                </em>
               </p>
             fieldType: template
           configuration: {}
@@ -630,23 +648,33 @@ value:
               type: static
               value: false
             defaultItems:
-              type: static
+              type: evalv2
               value: []
+              connections:
+                - id: tkLabelsAlreadyApplied
+                  componentId: state
+              expr: state.tkLabelsAlreadyApplied
             disabled:
-              type: static
+              type: evalv2
               value: false
+              connections:
+                - id: canApplyLabels
+                  componentId: state
+              expr: '!state.canApplyLabels'
             items:
               type: evalv2
               value:
                 - Foo
                 - Bar
               connections:
-                - id: tkLabels
+                - id: tkLabelsAvailable
                   componentId: state
-              expr: state.tkLabels
+              expr: state.tkLabelsAvailable
             placeholder:
               type: static
               value: Select labels
+              connections: []
+              expr: '"Select labels"'
           customCss:
             multiselect:
               style: ''
@@ -708,20 +736,28 @@ value:
               type: static
               value: false
             defaultItems:
-              type: static
+              type: evalv2
               value: []
+              connections:
+                - id: bcLabelsAlreadyApplied
+                  componentId: state
+              expr: state.bcLabelsAlreadyApplied
             disabled:
-              type: static
+              type: evalv2
               value: false
+              connections:
+                - id: canApplyLabels
+                  componentId: state
+              expr: '!state.canApplyLabels'
             items:
               type: evalv2
               value:
                 - Foo
                 - Bar
               connections:
-                - id: bcLabels
+                - id: bcLabelsAvailable
                   componentId: state
-              expr: state.bcLabels
+              expr: state.bcLabelsAvailable
             placeholder:
               type: static
               value: Select labels
@@ -959,11 +995,7 @@ value:
                 refreshOn:
                   - id: state
                     key: labelsToApply
-                suggestedRefreshOn:
-                  - id: state
-                    key: bcLabels
-                  - id: state
-                    key: tkLabels
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1070,11 +1102,7 @@ value:
                 state.finalizeErrorMessage = result[1];
               language: frontend
               path: f/apps/local_contexts/Transformer
-              suggestedRefreshOn:
-                - id: state
-                  key: finalizeErrorMessage
-                - id: state
-                  key: finalizeSuccess
+              suggestedRefreshOn: []
           configuration:
             afterIcon:
               type: static

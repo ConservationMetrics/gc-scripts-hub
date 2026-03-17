@@ -1,6 +1,6 @@
 const allLabels = [
-  ...(state.tkLabels || []),
-  ...(state.bcLabels || [])
+  ...(state.tkLabelsAvailable || []),
+  ...(state.bcLabelsAvailable || [])
 ]
 
 return (state.labelsToApply || [])
