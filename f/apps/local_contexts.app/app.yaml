@@ -216,7 +216,7 @@ value:
             class: ''
             style: ''
   hiddenInlineScripts:
-    - name: 0 Fetch tables from Postgres
+    - name: 1 Fetch tables from Postgres
       autoRefresh: true
       fields:
         db:
@@ -225,10 +225,10 @@ value:
           fieldType: object
           format: resource-postgresql
       inlineScript:
-        content: '!inline 0_fetch_tables_from_postgres.inline_script.py'
-        lock: '!inline 0_fetch_tables_from_postgres.inline_script.lock'
+        content: '!inline 1_fetch_tables_from_postgres.inline_script.py'
+        lock: '!inline 1_fetch_tables_from_postgres.inline_script.lock'
         language: python3
-        path: f/apps/local_contexts/0_Fetch_tables_from_Postgres
+        path: f/apps/local_contexts/1_Fetch_tables_from_Postgres
         schema:
           $schema: 'https://json-schema.org/draft/2020-12/schema'
           type: object
@@ -272,29 +272,89 @@ value:
             key: tables
           - id: state
             key: localContextsTables
-    - name: 1 Set dataset & LC label-set
+    - name: 1 Set state.localContextsTable & trigger fetch
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline 1_set_dataset_&_lc_label-set.inline_script.frontend.js'
+        content: >-
+          !inline
+          1_set_state.localcontextstable_&_trigger_fetch.inline_script.frontend.js
         language: frontend
-        path: f/apps/local_contexts/1_Set_dataset_&_LC_label-set
+        path: f/apps/local_contexts/1_Set_state.localContextsTable_&_trigger_fetch
         refreshOn:
-          - id: selectDatasetTable
-            key: result
           - id: selectLocalContextsTable
             key: result
         suggestedRefreshOn:
           - id: state
-            key: dataset
-          - id: state
             key: localContextsTable
+      recomputeIds:
+        - bg_2
+      recomputeOnInputChanged: true
+    - name: 1 Fetch TK labels
+      autoRefresh: false
+      fields:
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+        lcTableName:
+          type: evalv2
+          value: null
+          connections:
+            - id: localContextsTable
+              componentId: state
+          expr: state.localContextsTable
+          fieldType: ''
+      inlineScript:
+        content: '!inline 1_fetch_tk_labels.inline_script.py'
+        lock: '!inline 1_fetch_tk_labels.inline_script.lock'
+        language: python3
+        path: f/apps/local_contexts/1_Fetch_TK_labels
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+            lcTableName:
+              type: ''
+              description: ''
+              default: null
+          required:
+            - db
+            - lcTableName
+      recomputeIds: []
+      recomputeOnInputChanged: false
+      transformer:
+        content: |-
+          state.tkLabels = result.tk_labels
+          state.bcLabels = result.bc_labels
+        language: frontend
+        path: f/apps/local_contexts/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tkLabels
+          - id: state
+            key: bcLabels
+    - name: '1 Set state.dataset '
+      autoRefresh: true
+      fields: {}
+      inlineScript:
+        content: '!inline 1_set_state.dataset_.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/local_contexts/1_Set_state.dataset_
+        refreshOn:
+          - id: selectDatasetTable
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: dataset
       recomputeIds: []
       recomputeOnInputChanged: true
-    - type: inline
-      name: Background Runnable 2
-      fields: {}
-      hidden: true
   hideLegacyTopBar: true
   mobileViewOnSmallerScreens: false
   norefreshbar: false
