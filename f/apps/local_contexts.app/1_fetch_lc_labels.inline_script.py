@@ -3,9 +3,10 @@ from f.common_logic.db_operations import conninfo, postgresql, fetch_data_from_p
 def main(db: postgresql, lcTableName):
     """
     Fetch Local Contexts labels from a Postgres table and split them into
-    TK and BC label dictionaries.
+    TK and BC label option lists for UI consumption.
 
-    Assumes that `label_type` values are unique within the table.
+    Each option is formatted as:
+    { "label": label_type, "value": name }
 
     Parameters
     ----------
@@ -18,9 +19,10 @@ def main(db: postgresql, lcTableName):
     -------
     dict
         Dictionary with two keys:
-        - "tk_labels": dict mapping {label_type: name} for TK labels
-        - "bc_labels": dict mapping {label_type: name} for BC labels
+        - "tk_labels": list of option objects for TK labels, or None
+        - "bc_labels": list of option objects for BC labels, or None
     """
+
     if not lcTableName:
         return {
             "tk_labels": None,
@@ -33,18 +35,23 @@ def main(db: postgresql, lcTableName):
     name_idx = columns.index("name")
     label_category_idx = columns.index("label_category")
 
-    tk_labels = {}
-    bc_labels = {}
+    tk_labels = []
+    bc_labels = []
 
     for row in rows:
         label_type = row[label_type_idx]
         name = row[name_idx]
         category = row[label_category_idx]
 
+        option = {
+            "label": name,
+            "value": label_type,
+        }
+
         if category == "TK":
-            tk_labels[label_type] = name
+            tk_labels.append(option)
         elif category == "BC":
-            bc_labels[label_type] = name
+            bc_labels.append(option)
 
     return {
         "tk_labels": tk_labels,
