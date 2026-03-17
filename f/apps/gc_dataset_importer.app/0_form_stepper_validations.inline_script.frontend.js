@@ -15,9 +15,14 @@ if (currentStepIndex === 2 && (!!longitudeCol.result !== !!latitudeCol.result)) 
   throw new Error("Please specify both a longitude and latitude column, or erase both.");
 }
 
-if (currentStepIndex === 2 && longitudeCol.result && latitudeCol.result) {
-  state.longitudeCol = longitudeCol.result;
-  state.latitudeCol = latitudeCol.result;
+if (currentStepIndex === 2) {
+    if (lonLatToggle.result && longitudeCol.result && latitudeCol.result) {
+      state.longitudeCol = longitudeCol.result;
+      state.latitudeCol = latitudeCol.result;
+  } else {
+      state.longitudeCol = null;
+      state.latitudeCol = null;
+  }
 }
 
 // Step 4: Can't reuse same session

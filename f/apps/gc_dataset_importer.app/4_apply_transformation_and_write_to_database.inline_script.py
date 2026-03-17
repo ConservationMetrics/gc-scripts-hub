@@ -151,17 +151,10 @@ def main(
             )
             logger.info(f"CSV saved to PostgreSQL table: {valid_sql_name}")
 
-        # Copy parsed/transformed file to datalake
-        if transformed:
-            datalake_filename = filename_parsed.replace("_parsed", "_transformed")
-        else:
-            datalake_filename = filename_parsed
-
-        _copy_to_datalake(
-            file_path,
-            datalake_dir,
-            datalake_filename,
-        )
+        # Copy parsed/transformed file to datalake (use did_transform so lon/lat→GeoJSON is saved with correct name)
+        datalake_filename = output_filename if did_transform else filename_parsed
+        source_path = Path(file_path) if did_transform else uploaded_path
+        _copy_to_datalake(source_path, datalake_dir, datalake_filename)
 
         # Save originally uploaded file to the same directory as parsed/transformed files
         if original_path.exists():
@@ -180,7 +173,7 @@ def main(
         logger.error(error_msg)
         return False, error_msg
 
-    # # finally:
+    finally:
         # Clean up dataset-specific temp directory
         if tmp_dir.exists():
             try:

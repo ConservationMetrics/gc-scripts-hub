@@ -168,14 +168,16 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
-                - id: state
-                  key: uploadSuccess
                 - id: latitudeCol
                   key: result
                 - id: longitudeCol
                   key: result
                 - id: state
                   key: validSqlName
+                - id: lonLatToggle
+                  key: result
+                - id: state
+                  key: uploadSuccess
         configuration: {}
         customCss:
           container:
@@ -780,25 +782,25 @@ value:
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
+                  key: outputFormat
+                - id: state
+                  key: newColumns
+                - id: state
+                  key: columnNames
+                - id: state
                   key: newRows
                 - id: state
-                  key: outputFormat
+                  key: updatedRows
                 - id: state
                   key: uploadSuccess
                 - id: state
                   key: fileNameOriginal
+                - id: state
+                  key: uploadErrorMessage
                 - id: selectFile
                   key: result
                 - id: state
-                  key: updatedRows
-                - id: state
-                  key: uploadErrorMessage
-                - id: state
-                  key: newColumns
-                - id: state
                   key: fileNameParsed
-                - id: state
-                  key: columnNames
           configuration:
             afterIcon:
               type: static
@@ -918,13 +920,13 @@ value:
                     key: uploadButtonEnabled
                 suggestedRefreshOn:
                   - id: state
-                    key: newRows
-                  - id: state
                     key: tableExists
+                  - id: state
+                    key: newColumns
                   - id: state
                     key: updatedRows
                   - id: state
-                    key: newColumns
+                    key: newRows
           configuration:
             copyButton:
               type: static
@@ -948,51 +950,6 @@ value:
           horizontalAlignment: center
           verticalAlignment: center
     formStepper-2:
-      - '12':
-          fixed: false
-          fullHeight: false
-          h: 1
-          w: 10
-          x: 1
-          'y': 0
-        '3':
-          fixed: false
-          fullHeight: false
-          h: 1
-          w: 1
-          x: 2
-          'y': 3
-        id: dataSourceTitle
-        data:
-          id: dataSourceTitle
-          type: textcomponent
-          componentInput:
-            type: templatev2
-            connections: []
-            eval: "\U0001F5C3️ Data source"
-            fieldType: template
-          configuration:
-            copyButton:
-              type: static
-              value: false
-            disableNoText:
-              type: static
-              value: false
-            style:
-              type: static
-              value: Subtitle
-            tooltip:
-              type: static
-              value: ''
-          customCss:
-            container:
-              class: ''
-              style: ''
-            text:
-              class: ''
-              style: ''
-          horizontalAlignment: center
-          verticalAlignment: center
       - '12':
           fixed: true
           fullHeight: false
@@ -1163,37 +1120,34 @@ value:
           h: 1
           w: 1
           x: 0
-          'y': 4
-        id: d
+          'y': 0
+        id: lonLatToggle
         data:
-          id: d
-          type: textcomponent
-          componentInput:
-            type: templatev2
-            connections: []
-            eval: "\U0001F504 Data conversion (for tabular data only)"
-            fieldType: template
+          id: lonLatToggle
+          type: checkboxcomponent
           configuration:
-            copyButton:
+            defaultValue:
               type: static
               value: false
-            disableNoText:
-              type: static
+            disabled:
+              type: evalv2
               value: false
-            style:
+              connections:
+                - id: outputFormat
+                  componentId: state
+              expr: state.outputFormat !== "csv"
+            label:
               type: static
-              value: Subtitle
-            tooltip:
-              type: static
-              value: ''
+              value: Convert lat/long coordinates to GeoJSON?
           customCss:
             container:
               class: ''
               style: ''
             text:
-              class: ''
+              class: font-bold
               style: ''
           horizontalAlignment: center
+          recomputeIds: []
           verticalAlignment: center
       - '12':
           fixed: false
@@ -1214,26 +1168,16 @@ value:
           id: lonLatLabel
           type: textcomponent
           componentInput:
-            type: runnable
+            type: templatev2
             autoRefresh: true
             connections: []
             eval: >-
-              Does this data have latitude and longitude coordinates, and you
-              want to convert the data to GeoJSON? If so, select the columns:
+              If so, select the columns that contain your coordinates (for
+              tabular data only):
             fields: {}
             fieldType: template
-            hideRefreshButton: false
+            hideRefreshButton: true
             recomputeOnInputChanged: true
-            runnable:
-              name: 3 Eval of lonLatLabel
-              inlineScript:
-                content: '!inline 3_eval_of_lonlatlabel.inline_script.frontend.js'
-                language: frontend
-                path: f/apps/gc_dataset_importer/3_Eval_of_lonLatLabel
-                refreshOn:
-                  - id: state
-                    key: outputFormat
-                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
@@ -1374,9 +1318,9 @@ value:
               type: evalv2
               value: false
               connections:
-                - id: outputFormat
-                  componentId: state
-              expr: state.outputFormat !== "csv"
+                - id: result
+                  componentId: lonLatToggle
+              expr: '!lonLatToggle.result'
             fullWidth:
               type: static
               value: true
@@ -1388,12 +1332,16 @@ value:
                 - value: bar
                   label: Bar
               connections:
+                - id: outputFormat
+                  componentId: state
                 - id: columnNames
                   componentId: state
               expr: |-
-                (state.columnNames || [])
-                  .filter(c => c !== "_id")
-                  .sort((a, b) => b.toLowerCase().startsWith("lon") - a.toLowerCase().startsWith("lon"))
+                state.outputFormat === "csv"
+                  ? (state.columnNames || [])
+                      .filter(c => c !== "_id")
+                      .sort((a, b) => b.toLowerCase().startsWith("lon") - a.toLowerCase().startsWith("lon"))
+                  : null
             nativeHtmlSelect:
               type: static
               value: false
@@ -1439,9 +1387,9 @@ value:
               type: evalv2
               value: false
               connections:
-                - id: outputFormat
-                  componentId: state
-              expr: state.outputFormat !== "csv"
+                - id: result
+                  componentId: lonLatToggle
+              expr: '!lonLatToggle.result'
             fullWidth:
               type: static
               value: true
@@ -1455,10 +1403,14 @@ value:
               connections:
                 - id: columnNames
                   componentId: state
+                - id: outputFormat
+                  componentId: state
               expr: |-
-                (state.columnNames || [])
-                  .filter(c => c !== "_id")
-                  .sort((a, b) => b.toLowerCase().startsWith("lon") - a.toLowerCase().startsWith("lat"))
+                state.outputFormat === "csv"
+                  ? (state.columnNames || [])
+                      .filter(c => c !== "_id")
+                      .sort((a, b) => b.toLowerCase().startsWith("lat") - a.toLowerCase().startsWith("lat"))
+                  : null
             nativeHtmlSelect:
               type: static
               value: false
@@ -1815,13 +1767,13 @@ value:
                     key: result
                   - id: dataSourceToggle
                     key: result
-                suggestedRefreshOn:
                   - id: state
                     key: longitudeCol
                   - id: state
-                    key: dataSource
-                  - id: state
                     key: latitudeCol
+                suggestedRefreshOn:
+                  - id: state
+                    key: dataSource
           configuration:
             copyButton:
               type: static
@@ -2197,8 +2149,8 @@ value:
           fixed: false
           fullHeight: false
           h: 2
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 8
         '3':
           fixed: false
@@ -2266,8 +2218,8 @@ value:
           fixed: false
           fullHeight: false
           h: 1
-          w: 12
-          x: 0
+          w: 10
+          x: 1
           'y': 10
         '3':
           fixed: false
