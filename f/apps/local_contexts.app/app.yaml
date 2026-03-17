@@ -169,15 +169,15 @@ value:
               path: f/apps/local_contexts/0_Form_stepper_validations
               suggestedRefreshOn:
                 - id: state
-                  key: datasetName
+                  key: bcLabels
                 - id: state
                   key: labelsToApply
                 - id: state
-                  key: bcLabels
-                - id: state
-                  key: tkLabels
+                  key: datasetName
                 - id: state
                   key: localContextsTable
+                - id: state
+                  key: tkLabels
         configuration: {}
         customCss:
           container:
@@ -356,7 +356,9 @@ value:
         refreshOn:
           - id: selectDatasetTable
             key: result
-        suggestedRefreshOn: []
+        suggestedRefreshOn:
+          - id: state
+            key: datasetName
       recomputeIds: []
       recomputeOnInputChanged: true
     - name: 2 Set state.labelsToApply
@@ -935,7 +937,7 @@ value:
           type: textcomponent
           componentInput:
             type: runnable
-            autoRefresh: true
+            autoRefresh: false
             connections:
               - id: labelsToApply
                 componentId: state
@@ -951,13 +953,14 @@ value:
                 content: '!inline 3_format_list_comma-appended.inline_script.frontend.js'
                 language: frontend
                 path: f/apps/local_contexts/3_Format_list_comma-appended
+                refreshOn:
+                  - id: state
+                    key: labelsToApply
                 suggestedRefreshOn:
                   - id: state
                     key: tkLabels
                   - id: state
                     key: bcLabels
-                  - id: state
-                    key: labelsToApply
           configuration:
             copyButton:
               type: static
@@ -1002,9 +1005,62 @@ value:
           componentInput:
             type: runnable
             autoRefresh: false
-            fields: {}
+            fields:
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
+              labels_to_apply:
+                type: evalv2
+                value: null
+                connections:
+                  - id: labelsToApply
+                    componentId: state
+                expr: state.labelsToApply
+                fieldType: ''
+              table_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: datasetName
+                    componentId: state
+                expr: state.datasetName
+                fieldType: ''
             fieldType: any
             recomputeOnInputChanged: false
+            runnable:
+              name: 3 Write label mapping to database table
+              inlineScript:
+                content: >-
+                  !inline
+                  3_write_label_mapping_to_database_table.inline_script.py
+                lock: >-
+                  !inline
+                  3_write_label_mapping_to_database_table.inline_script.lock
+                language: python3
+                path: f/apps/local_contexts/3_Write_label_mapping_to_database_table
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
+                    labels_to_apply:
+                      type: ''
+                      description: ''
+                      default: null
+                    table_name:
+                      type: ''
+                      description: ''
+                      default: null
+                  required:
+                    - db
+                    - table_name
+                    - labels_to_apply
           configuration:
             afterIcon:
               type: static
@@ -1024,15 +1080,11 @@ value:
               type: evalv2
               value: false
               connections:
-                - id: newColumns
-                  componentId: state
-                - id: newRows
-                  componentId: state
                 - id: finalizeSuccess
                   componentId: state
-              expr: >-
-                state.finalizeSuccess || !(state.newRows > 0 && state.newColumns
-                > 0)
+                - id: labelsToApply
+                  componentId: state
+              expr: state.finalizeSuccess || !state.labelsToApply
             fillContainer:
               type: static
               value: false
@@ -1104,6 +1156,15 @@ value:
             fieldType: template
             hideRefreshButton: true
             recomputeOnInputChanged: true
+            runnable:
+              name: 3 eval of saveResult
+              inlineScript:
+                content: '!inline 3_eval_of_saveresult.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_eval_of_saveResult
+                suggestedRefreshOn:
+                  - id: state
+                    key: datasetName
           configuration:
             copyButton:
               type: static
@@ -1154,6 +1215,13 @@ value:
             fieldType: template
             hideRefreshButton: true
             recomputeOnInputChanged: true
+            runnable:
+              name: 3 Eval of saveLabel
+              inlineScript:
+                content: '!inline 3_eval_of_savelabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_Eval_of_saveLabel
+                suggestedRefreshOn: []
           configuration:
             copyButton:
               type: static
