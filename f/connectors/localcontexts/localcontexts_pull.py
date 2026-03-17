@@ -15,7 +15,7 @@ from f.common_logic.identifier_utils import normalize_identifier
 
 
 # https://hub.windmill.dev/resource_types/336/localcontexts
-class local_contexts(TypedDict):
+class localcontexts(TypedDict):
     server_url: str
     api_key: str
     project_id: str
@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 def main(
-    local_contexts: local_contexts,
+    localcontexts: localcontexts,
     db: postgresql,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    server_url = local_contexts["server_url"]
-    api_key = local_contexts["api_key"]
-    project_id = local_contexts["project_id"]
+    server_url = localcontexts["server_url"]
+    api_key = localcontexts["api_key"]
+    project_id = localcontexts["project_id"]
 
     project_data = fetch_project_data(server_url, api_key, project_id)
 
