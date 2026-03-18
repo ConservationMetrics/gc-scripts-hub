@@ -1,5 +1,5 @@
 if (state.finalizeSuccess) {
-  return ""
+  return "";
 } else {
-  return "✍️ Ready to apply these labels to your dataset?"
+  return "✍️ Ready to apply these Labels to your dataset?";
 }

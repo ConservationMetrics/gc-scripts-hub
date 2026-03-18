@@ -3,61 +3,61 @@ value:
   css:
     buttoncomponent:
       button:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     checkboxcomponent:
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
       text:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     containercomponent:
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     fileinputcomponent:
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     formcomponent:
       button:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     steppercomponent:
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
     textcomponent:
       container:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
       text:
-        class: ''
-        style: ''
+        class: ""
+        style: ""
   darkMode: true
   fullscreen: false
   grid:
-    - '12':
+    - "12":
         fixed: true
         fullHeight: false
         h: 1
         w: 8
         x: 2
-        'y': 1
-      '3':
+        "y": 1
+      "3":
         fixed: true
         fullHeight: false
         h: 1
         w: 1
         x: 0
-        'y': 0
+        "y": 0
       id: pageTitle
       data:
         id: pageTitle
@@ -80,30 +80,30 @@ value:
             value: Title
           tooltip:
             type: static
-            value: ''
+            value: ""
         customCss:
           container:
-            class: ''
-            style: ''
+            class: ""
+            style: ""
           text:
-            class: ''
-            style: ''
+            class: ""
+            style: ""
         horizontalAlignment: center
         verticalAlignment: top
-    - '12':
+    - "12":
         fixed: false
         fullHeight: false
         h: 1
         w: 8
         x: 2
-        'y': 3
-      '3':
+        "y": 3
+      "3":
         fixed: false
         fullHeight: false
         h: 1
         w: 1
         x: 1
-        'y': 6
+        "y": 6
       id: formTitle
       data:
         id: formTitle
@@ -112,7 +112,7 @@ value:
         componentInput:
           type: templatev2
           connections: []
-          eval: "\U0001F3F7️ Apply Local Contexts labels to a dataset"
+          eval: "\U0001F3F7️ Apply Local Contexts Labels to a dataset"
           fieldType: template
         configuration:
           copyButton:
@@ -126,30 +126,30 @@ value:
             value: Subtitle
           tooltip:
             type: static
-            value: ''
+            value: ""
         customCss:
           container:
-            class: ''
-            style: ''
+            class: ""
+            style: ""
           text:
-            class: ''
-            style: ''
+            class: ""
+            style: ""
         horizontalAlignment: center
         verticalAlignment: top
-    - '12':
+    - "12":
         fixed: true
         fullHeight: false
         h: 15
         w: 8
         x: 2
-        'y': 5
-      '3':
+        "y": 5
+      "3":
         fixed: true
         fullHeight: false
         h: 8
         w: 2
         x: 1
-        'y': 7
+        "y": 7
       id: formStepper
       data:
         id: formStepper
@@ -164,7 +164,7 @@ value:
           runnable:
             name: 0 Form stepper validations
             inlineScript:
-              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
+              content: "!inline 0_form_stepper_validations.inline_script.frontend.js"
               language: frontend
               path: f/apps/local_contexts/0_Form_stepper_validations
               suggestedRefreshOn:
@@ -178,29 +178,29 @@ value:
         customCss:
           container:
             class: border-2 border-blue-300 border-dashed
-            style: ''
+            style: ""
         numberOfSubgrids: 3
         onNext:
           - bg_2
         onPrevious: []
         tabs:
           - Select your dataset
-          - Choose labels to apply
+          - Choose Labels to apply
           - Finalize
-    - '12':
+    - "12":
         fixed: false
         fullHeight: false
         h: 1
         w: 8
         x: 2
-        'y': 20
-      '3':
+        "y": 20
+      "3":
         fixed: false
         fullHeight: false
         h: 2
         w: 1
         x: 1
-        'y': 0
+        "y": 0
       id: linkToDocumentation
       data:
         id: linkToDocumentation
@@ -216,29 +216,29 @@ value:
         configuration: {}
         customCss:
           container:
-            class: ''
-            style: ''
+            class: ""
+            style: ""
   hiddenInlineScripts:
     - name: 1 Fetch tables from Postgres
       autoRefresh: true
       fields:
         db:
           type: static
-          value: '$res:f/connectors/postgresql'
+          value: "$res:f/connectors/postgresql"
           fieldType: object
           format: resource-postgresql
       inlineScript:
-        content: '!inline 1_fetch_tables_from_postgres.inline_script.py'
-        lock: '!inline 1_fetch_tables_from_postgres.inline_script.lock'
+        content: "!inline 1_fetch_tables_from_postgres.inline_script.py"
+        lock: "!inline 1_fetch_tables_from_postgres.inline_script.lock"
         language: python3
         path: f/apps/local_contexts/1_Fetch_tables_from_Postgres
         schema:
-          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          $schema: "https://json-schema.org/draft/2020-12/schema"
           type: object
           properties:
             db:
               type: object
-              description: ''
+              description: ""
               default: null
               format: resource-postgresql
           required:
@@ -292,7 +292,7 @@ value:
           - id: state
             key: localContextsTable
       recomputeOnInputChanged: true
-    - name: 1 Fetch LC labels and existing mappings
+    - name: 1 Fetch LC Labels and existing mappings
       autoRefresh: false
       fields:
         dataset_name:
@@ -302,10 +302,10 @@ value:
             - id: datasetName
               componentId: state
           expr: state.datasetName
-          fieldType: ''
+          fieldType: ""
         db:
           type: static
-          value: '$res:f/connectors/postgresql'
+          value: "$res:f/connectors/postgresql"
           fieldType: object
           format: resource-postgresql
         lcTableName:
@@ -315,28 +315,28 @@ value:
             - id: localContextsTable
               componentId: state
           expr: state.localContextsTable
-          fieldType: ''
+          fieldType: ""
       inlineScript:
-        content: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.py'
-        lock: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.lock'
+        content: "!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.py"
+        lock: "!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.lock"
         language: python3
         path: f/apps/local_contexts/1_Fetch_LC_labels_and_existing_mappings
         schema:
-          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          $schema: "https://json-schema.org/draft/2020-12/schema"
           type: object
           properties:
             dataset_name:
-              type: ''
-              description: ''
+              type: ""
+              description: ""
               default: null
             db:
               type: object
-              description: ''
+              description: ""
               default: null
               format: resource-postgresql
             lcTableName:
-              type: ''
-              description: ''
+              type: ""
+              description: ""
               default: null
           required:
             - db
@@ -368,7 +368,7 @@ value:
       autoRefresh: true
       fields: {}
       inlineScript:
-        content: '!inline 1_set_state.datasetname.inline_script.frontend.js'
+        content: "!inline 1_set_state.datasetname.inline_script.frontend.js"
         language: frontend
         path: f/apps/local_contexts/1_Set_state.datasetName
         refreshOn:
@@ -383,7 +383,7 @@ value:
       autoRefresh: false
       fields: {}
       inlineScript:
-        content: '!inline 2_set_state.labelstoapply.inline_script.frontend.js'
+        content: "!inline 2_set_state.labelstoapply.inline_script.frontend.js"
         language: frontend
         path: f/apps/local_contexts/2_Set_state.labelsToApply
         refreshOn:
@@ -401,20 +401,20 @@ value:
   norefreshbar: false
   subgrids:
     formStepper-0:
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 3
           w: 10
           x: 1
-          'y': 1
-        '3':
+          "y": 1
+        "3":
           fixed: false
           fullHeight: false
           h: 2
           w: 1
           x: 2
-          'y': 0
+          "y": 0
         id: selectDatasetTableTitle
         data:
           id: selectDatasetTableTitle
@@ -439,7 +439,7 @@ value:
                 >
                   Local Contexts
                 </a> 
-                labels. 
+                Labels. 
                 <em class="text-gray-500 dark:text-gray-500">
                   Note: datasets are tables in your data warehouse.
                 </em>
@@ -448,22 +448,22 @@ value:
           configuration: {}
           customCss:
             container:
-              class: ''
-              style: ''
-      - '12':
+              class: ""
+              style: ""
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 4
-        '3':
+          "y": 4
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 0
-          'y': 0
+          "y": 0
         id: selectDatasetTable
         data:
           id: selectDatasetTable
@@ -498,23 +498,23 @@ value:
               value: false
           customCss:
             input:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           verticalAlignment: center
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 3
           w: 10
           x: 1
-          'y': 6
-        '3':
+          "y": 6
+        "3":
           fixed: false
           fullHeight: false
           h: 2
           w: 1
           x: 0
-          'y': 1
+          "y": 1
         id: selectLocalContextsTableTitle
         data:
           id: selectLocalContextsTableTitle
@@ -525,13 +525,13 @@ value:
             eval: >-
               <h5 class="text-[16px] font-semibold text-gray-900
               dark:text-gray-100 mb-1">
-                Select Local Contexts label set to apply
+                Select Local Contexts Label set to apply
               </h5>
 
 
               <p class="text-sm text-gray-600 dark:text-gray-400
               leading-relaxed">
-                Select the table containing the Local Contexts labels that you wish to apply.
+                Select the table containing the Local Contexts Labels that you wish to apply.
                 <em class="text-gray-500 dark:text-gray-500">
                   Note: this application assumes you have already run the "Local Contexts: Fetch Labels" script in Windmill.
                 </em>
@@ -540,22 +540,22 @@ value:
           configuration: {}
           customCss:
             container:
-              class: ''
-              style: ''
-      - '12':
+              class: ""
+              style: ""
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 9
-        '3':
+          "y": 9
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 1
-          'y': 2
+          "y": 2
         id: selectLocalContextsTable
         data:
           id: selectLocalContextsTable
@@ -590,24 +590,24 @@ value:
               value: true
           customCss:
             input:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           verticalAlignment: center
     formStepper-1:
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 1
-        '3':
+          "y": 1
+        "3":
           fixed: false
           fullHeight: false
           h: 2
           w: 1
           x: 0
-          'y': 0
+          "y": 0
         id: selectTKLabelsTitle
         data:
           id: selectTKLabelsTitle
@@ -615,27 +615,27 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001FAB6 Select <span class=\"text-amber-700 dark:text-amber-300 font-semibold\">traditional knowledge</span> labels\n</h5>"
+            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001FAB6 Select <span class=\"text-amber-700 dark:text-amber-300 font-semibold\">traditional knowledge</span> Labels\n</h5>"
             fieldType: template
           configuration: {}
           customCss:
             container:
-              class: ''
-              style: ''
-      - '12':
+              class: ""
+              style: ""
+      - "12":
           fixed: false
           fullHeight: false
           h: 3
           w: 10
           x: 1
-          'y': 2
-        '3':
+          "y": 2
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 0
-          'y': 2
+          "y": 2
         id: selectTKLabels
         data:
           id: selectTKLabels
@@ -660,7 +660,7 @@ value:
               connections:
                 - id: canApplyLabels
                   componentId: state
-              expr: '!state.canApplyLabels'
+              expr: "!state.canApplyLabels"
             items:
               type: evalv2
               value:
@@ -672,30 +672,30 @@ value:
               expr: state.tkLabelsAvailable
             placeholder:
               type: static
-              value: Select labels
+              value: Select Labels
               connections: []
-              expr: '"Select labels"'
+              expr: '"Select Labels"'
           customCss:
             multiselect:
-              style: ''
+              style: ""
               tooltip: >-
                 See https://multiselect.janosh.dev/#with-css-variables for the
                 available variables
           verticalAlignment: center
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 6
-        '3':
+          "y": 6
+        "3":
           fixed: false
           fullHeight: false
           h: 2
           w: 1
           x: 1
-          'y': 0
+          "y": 0
         id: selectBCLabelsTitle
         data:
           id: selectBCLabelsTitle
@@ -703,27 +703,27 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001F33F Select <span class=\"text-emerald-700 dark:text-emerald-300 font-semibold\">biocultural</span> labels<span class=\"text-red-500\"></span>\n</h5>"
+            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001F33F Select <span class=\"text-emerald-700 dark:text-emerald-300 font-semibold\">biocultural</span> Labels<span class=\"text-red-500\"></span>\n</h5>"
             fieldType: template
           configuration: {}
           customCss:
             container:
-              class: ''
-              style: ''
-      - '12':
+              class: ""
+              style: ""
+      - "12":
           fixed: false
           fullHeight: false
           h: 3
           w: 10
           x: 1
-          'y': 7
-        '3':
+          "y": 7
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 0
-          'y': 4
+          "y": 4
         id: selectBCLabels
         data:
           id: selectBCLabels
@@ -748,7 +748,7 @@ value:
               connections:
                 - id: canApplyLabels
                   componentId: state
-              expr: '!state.canApplyLabels'
+              expr: "!state.canApplyLabels"
             items:
               type: evalv2
               value:
@@ -760,29 +760,29 @@ value:
               expr: state.bcLabelsAvailable
             placeholder:
               type: static
-              value: Select labels
+              value: Select Labels
           customCss:
             multiselect:
-              style: ''
+              style: ""
               tooltip: >-
                 See https://multiselect.janosh.dev/#with-css-variables for the
                 available variables
           verticalAlignment: center
     formStepper-2:
-      - '12':
+      - "12":
           fixed: true
           fullHeight: false
           h: 1
           w: 12
           x: 0
-          'y': 1
-        '3':
+          "y": 1
+        "3":
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          'y': 0
+          "y": 0
         id: finalizeTitle
         data:
           id: finalizeTitle
@@ -805,30 +805,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             text:
               class: font-bold
-              style: ''
+              style: ""
           horizontalAlignment: center
           verticalAlignment: top
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 3
           x: 1
-          'y': 2
-        '3':
+          "y": 2
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          'y': 0
+          "y": 0
         id: datasetNameLabel
         data:
           id: datasetNameLabel
@@ -837,7 +837,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Dataset name:'
+            eval: "Dataset name:"
             fieldType: template
           configuration:
             copyButton:
@@ -851,30 +851,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             text:
               class: font-bold
-              style: ''
+              style: ""
           horizontalAlignment: left
           verticalAlignment: top
-      - '12':
+      - "12":
           fixed: true
           fullHeight: false
           h: 1
           w: 7
           x: 4
-          'y': 2
-        '3':
+          "y": 2
+        "3":
           fixed: true
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          'y': 0
+          "y": 0
         id: datasetName
         data:
           id: datasetName
@@ -885,7 +885,7 @@ value:
             connections:
               - id: datasetName
                 componentId: state
-            eval: '${selectFile.result[0].name}'
+            eval: "${selectFile.result[0].name}"
             expr: state.datasetName
             fieldType: template
           configuration:
@@ -900,30 +900,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: 'bg-gray-100 dark:bg-gray-800'
-              style: ''
+              class: "bg-gray-100 dark:bg-gray-800"
+              style: ""
             text:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           horizontalAlignment: left
           verticalAlignment: top
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 3
           x: 1
-          'y': 3
-        '3':
+          "y": 3
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          'y': 1
+          "y": 1
         id: labelsToApplyLabel
         data:
           id: labelsToApplyLabel
@@ -932,7 +932,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: 'Labels to apply:'
+            eval: "Labels to apply:"
             fieldType: template
           configuration:
             copyButton:
@@ -946,30 +946,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             text:
               class: font-bold
-              style: ''
+              style: ""
           horizontalAlignment: left
           verticalAlignment: top
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 4
           w: 7
           x: 4
-          'y': 3
-        '3':
+          "y": 3
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          'y': 1
+          "y": 1
         id: labelsToApply
         data:
           id: labelsToApply
@@ -980,7 +980,7 @@ value:
             connections:
               - id: labelsToApply
                 componentId: state
-            eval: '${state.labelsToApply}'
+            eval: "${state.labelsToApply}"
             expr: state.labelsToApply
             fields: {}
             fieldType: template
@@ -989,7 +989,7 @@ value:
             runnable:
               name: 3 Format list comma-appended
               inlineScript:
-                content: '!inline 3_format_list_comma-appended.inline_script.frontend.js'
+                content: "!inline 3_format_list_comma-appended.inline_script.frontend.js"
                 language: frontend
                 path: f/apps/local_contexts/3_Format_list_comma-appended
                 refreshOn:
@@ -1008,30 +1008,30 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: 'bg-gray-100 dark:bg-gray-800'
-              style: ''
+              class: "bg-gray-100 dark:bg-gray-800"
+              style: ""
             text:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           horizontalAlignment: left
           verticalAlignment: top
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 2
           x: 5
-          'y': 7
-        '3':
+          "y": 7
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 1
-          'y': 2
+          "y": 2
         id: saveAndFinishButton
         data:
           id: saveAndFinishButton
@@ -1043,7 +1043,7 @@ value:
             fields:
               db:
                 type: static
-                value: '$res:f/connectors/postgresql'
+                value: "$res:f/connectors/postgresql"
                 fieldType: object
                 format: resource-postgresql
               labels_to_apply:
@@ -1053,7 +1053,7 @@ value:
                   - id: labelsToApply
                     componentId: state
                 expr: state.labelsToApply
-                fieldType: ''
+                fieldType: ""
               table_name:
                 type: evalv2
                 value: null
@@ -1061,7 +1061,7 @@ value:
                   - id: datasetName
                     componentId: state
                 expr: state.datasetName
-                fieldType: ''
+                fieldType: ""
             fieldType: any
             recomputeOnInputChanged: false
             runnable:
@@ -1076,21 +1076,21 @@ value:
                 language: python3
                 path: f/apps/local_contexts/3_Write_label_mapping_to_database_table
                 schema:
-                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  $schema: "https://json-schema.org/draft/2020-12/schema"
                   type: object
                   properties:
                     db:
                       type: object
-                      description: ''
+                      description: ""
                       default: null
                       format: resource-postgresql
                     labels_to_apply:
-                      type: ''
-                      description: ''
+                      type: ""
+                      description: ""
                       default: null
                     table_name:
-                      type: ''
-                      description: ''
+                      type: ""
+                      description: ""
                       default: null
                   required:
                     - db
@@ -1109,7 +1109,7 @@ value:
               value: cloud-upload
             beforeIcon:
               type: static
-              value: ''
+              value: ""
             color:
               type: static
               value: dark
@@ -1161,28 +1161,28 @@ value:
               value: false
           customCss:
             button:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           horizontalAlignment: center
           recomputeIds: []
           verticalAlignment: center
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 2
           w: 10
           x: 1
-          'y': 8
-        '3':
+          "y": 8
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 0
-          'y': 3
+          "y": 3
         id: saveResult
         data:
           id: saveResult
@@ -1192,8 +1192,8 @@ value:
             type: runnable
             autoRefresh: true
             connections: []
-            eval: ''
-            expr: ''
+            eval: ""
+            expr: ""
             fields: {}
             fieldType: template
             hideRefreshButton: true
@@ -1201,7 +1201,7 @@ value:
             runnable:
               name: 3 eval of saveResult
               inlineScript:
-                content: '!inline 3_eval_of_saveresult.inline_script.frontend.js'
+                content: "!inline 3_eval_of_saveresult.inline_script.frontend.js"
                 language: frontend
                 path: f/apps/local_contexts/3_eval_of_saveResult
                 refreshOn:
@@ -1224,30 +1224,30 @@ value:
               value: Label
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             text:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
           horizontalAlignment: center
           verticalAlignment: center
-      - '12':
+      - "12":
           fixed: false
           fullHeight: false
           h: 1
           w: 10
           x: 1
-          'y': 10
-        '3':
+          "y": 10
+        "3":
           fixed: false
           fullHeight: false
           h: 1
           w: 1
           x: 2
-          'y': 2
+          "y": 2
         id: saveLabel
         data:
           id: saveLabel
@@ -1265,7 +1265,7 @@ value:
             runnable:
               name: 3 Eval of saveLabel
               inlineScript:
-                content: '!inline 3_eval_of_savelabel.inline_script.frontend.js'
+                content: "!inline 3_eval_of_savelabel.inline_script.frontend.js"
                 language: frontend
                 path: f/apps/local_contexts/3_Eval_of_saveLabel
                 refreshOn:
@@ -1284,19 +1284,19 @@ value:
               value: Body
             tooltip:
               type: static
-              value: ''
+              value: ""
           customCss:
             container:
-              class: ''
-              style: ''
+              class: ""
+              style: ""
             text:
               class: |-
                 italic 
                 text-sm
-              style: ''
+              style: ""
           horizontalAlignment: center
           verticalAlignment: center
   theme:
     type: inlined
-    css: ''
+    css: ""
   unusedInlineScripts: []
