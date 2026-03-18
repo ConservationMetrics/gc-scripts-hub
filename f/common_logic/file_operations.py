@@ -119,8 +119,7 @@ def save_uploaded_file_to_temp(
 
     Notes:
 
-    * We accept ZIP files to support uploading data with attachments,
-    or in the future, data types that consist of multiple files like
+    * We accept ZIP files to support uploading data with data types that consist of multiple files like
     ESRI shapefiles.
     * The expectation is that a downstream process will delete
     the temporary files in `tmp_dir` after processing.

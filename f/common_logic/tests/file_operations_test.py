@@ -117,25 +117,6 @@ def zip_with_subdir(tmp_path: Path):
     return zip_path
 
 
-def test_save_uploaded_file_to_temp__zip_with_subdir(
-    zip_with_subdir: Path, tmp_path: Path
-):
-    encoded = base64.b64encode(zip_with_subdir.read_bytes()).decode()
-
-    result = save_uploaded_file_to_temp(
-        [{"name": "bundle.zip", "data": encoded}], tmp_dir=str(tmp_path)
-    )
-
-    assert "file_paths" in result
-    paths = [Path(p) for p in result["file_paths"]]
-    assert any("observations.geojson" in str(p) for p in paths)
-    assert any("attachments/photo1.jpg" in str(p) for p in paths)
-    assert any("attachments/photo2.jpg" in str(p) for p in paths)
-    for p in paths:
-        assert p.exists()
-    assert not zip_with_subdir.exists()
-
-
 def test_save_uploaded_file_to_temp__kmz_with_subdir(
     zip_with_subdir: Path, tmp_path: Path
 ):
@@ -181,6 +162,25 @@ def test_save_uploaded_file_to_temp__kobotoolbox_submissions_xlsx(tmp_path: Path
 
     # Verify the file content is preserved
     assert saved_path.read_bytes() == xlsx_file.read_bytes()
+
+
+def test_save_uploaded_file_to_temp__shapefile_zip(tmp_path: Path):
+    assets_dir = Path(__file__).parent / "assets"
+    zip_file = assets_dir / "my_shapefile_data.zip"
+
+    encoded = base64.b64encode(zip_file.read_bytes()).decode()
+
+    result = save_uploaded_file_to_temp(
+        [{"name": "my_shapefile_data.zip", "data": encoded}], tmp_dir=str(tmp_path)
+    )
+
+    assert "file_paths" in result
+    paths = sorted(result["file_paths"])
+    names = {Path(p).suffix for p in paths}
+    assert names == {".cpg", ".dbf", ".prj", ".shp", ".shx"}
+    for p in paths:
+        assert Path(p).exists()
+    assert not (tmp_path / "my_shapefile_data.zip").exists()
 
 
 def test_read_csv_to_list(tmp_path: Path):
