@@ -17,15 +17,16 @@ schema:
   properties:
     api_key:
       type: string
-      description: >-
-        The API key for authenticating with the Earth Index API.
+      description: The API key for authenticating with the Earth Index API.
       default: null
       originalType: string
-    project_id:
+    attachment_root:
       type: string
       description: >-
-        The unique identifier of the Earth Index project to fetch features from.
-      default: null
+        A path where Earth Index data files will be stored. Data files will be
+        stored in the following directory schema:
+        `{attachment_root}/earthindex/{project_title}/...`
+      default: /persistent-storage/datalake
       originalType: string
     db:
       type: object
@@ -35,18 +36,15 @@ schema:
     db_table_prefix:
       type: string
       description: >-
-        A prefix added to the database table name. The table name is
-        constructed as `{db_table_prefix}_{project_title}`, where
-        `project_title` is the sanitized title of the Earth Index project.
+        A prefix added to the database table name. The table name is constructed
+        as `{db_table_prefix}_{project_title}`, where `project_title` is the
+        sanitized title of the Earth Index project.
       default: earthindex
       originalType: string
-    attachment_root:
+    project_id:
       type: string
-      description: >-
-        A path where Earth Index data files will be stored. Data files will be
-        stored in the following directory schema:
-        `{attachment_root}/earthindex/{project_title}/...`
-      default: /persistent-storage/datalake
+      description: The unique identifier of the Earth Index project to fetch features from.
+      default: null
       originalType: string
   required:
     - api_key
