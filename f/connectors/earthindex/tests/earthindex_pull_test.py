@@ -4,14 +4,12 @@ import psycopg
 import requests
 
 from f.connectors.earthindex.earthindex_pull import (
-    BASE_URL,
     fetch_layer_points,
-    fetch_layers,
     fetch_project,
+    format_features_as_geojson,
     main,
 )
 from f.connectors.earthindex.tests.assets.server_responses import (
-    SAMPLE_LAYERS,
     SAMPLE_POINTS,
     SAMPLE_PROJECT,
 )
@@ -27,25 +25,42 @@ def test_fetch_project(earthindex_server):
     assert project["id"] == SAMPLE_PROJECT["id"]
 
 
-def test_fetch_layers(earthindex_server):
-    session = requests.Session()
-    session.headers.update({"Authorization": f"Bearer {earthindex_server['api_key']}"})
-
-    layers = fetch_layers(session, earthindex_server["project_id"])
-
-    assert len(layers) == 1
-    assert layers[0]["id"] == SAMPLE_LAYERS[0]["id"]
-
-
 def test_fetch_layer_points(earthindex_server):
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {earthindex_server['api_key']}"})
 
-    layer_id = SAMPLE_LAYERS[0]["id"]
+    layer_id = SAMPLE_PROJECT["layers"][0]["id"]
     points = fetch_layer_points(session, earthindex_server["project_id"], layer_id)
 
     assert points["type"] == "FeatureCollection"
     assert len(points["features"]) == len(SAMPLE_POINTS["features"])
+
+
+def test_format_features_as_geojson():
+    project_id = SAMPLE_PROJECT["id"]
+    project_title = SAMPLE_PROJECT["title"]
+    layer_id = SAMPLE_PROJECT["layers"][0]["id"]
+
+    result = format_features_as_geojson(SAMPLE_POINTS, project_id, project_title, layer_id)
+
+    assert result["type"] == "FeatureCollection"
+    assert len(result["features"]) == len(SAMPLE_POINTS["features"])
+
+    feature = result["features"][0]
+    assert feature["properties"]["layer_id"] == layer_id
+    assert feature["properties"]["data_source"] == "Earth Index"
+    assert feature["properties"]["project_id"] == project_id
+    assert feature["properties"]["project_title"] == "Springfield mapping"
+    assert "score" in feature["properties"]
+    assert "label" in feature["properties"]
+
+
+def test_format_features_as_geojson_empty():
+    result = format_features_as_geojson(
+        {"features": []}, "proj-1", "Empty Project", "layer-1"
+    )
+
+    assert result == {"type": "FeatureCollection", "features": []}
 
 
 def test_script_e2e(earthindex_server, pg_database, tmp_path):

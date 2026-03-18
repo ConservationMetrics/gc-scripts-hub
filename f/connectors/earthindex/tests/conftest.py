@@ -17,16 +17,11 @@ def earthindex_server(mocked_responses):
     """A mock Earth Index API server with one project, one layer, and 7 features."""
     api_key = "test-api-key-12345"
     project_id = server_responses.SAMPLE_PROJECT["id"]
-    layer_id = server_responses.SAMPLE_LAYERS[0]["id"]
+    layer_id = server_responses.SAMPLE_PROJECT["layers"][0]["id"]
 
     mocked_responses.get(
         f"{BASE_URL}/v1/projects/{project_id}",
         json=server_responses.SAMPLE_PROJECT,
-        status=200,
-    )
-    mocked_responses.get(
-        f"{BASE_URL}/v1/projects/{project_id}/layers",
-        json=server_responses.SAMPLE_LAYERS,
         status=200,
     )
     mocked_responses.get(
@@ -42,16 +37,12 @@ def earthindex_server(mocked_responses):
 def earthindex_server_no_layers(mocked_responses):
     """A mock Earth Index API server with a project that has no layers."""
     api_key = "test-api-key-12345"
-    project_id = server_responses.SAMPLE_PROJECT["id"]
+    project_no_layers = {**server_responses.SAMPLE_PROJECT, "layers": []}
+    project_id = project_no_layers["id"]
 
     mocked_responses.get(
         f"{BASE_URL}/v1/projects/{project_id}",
-        json=server_responses.SAMPLE_PROJECT,
-        status=200,
-    )
-    mocked_responses.get(
-        f"{BASE_URL}/v1/projects/{project_id}/layers",
-        json=[],
+        json=project_no_layers,
         status=200,
     )
 

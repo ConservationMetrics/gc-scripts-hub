@@ -44,28 +44,6 @@ SAMPLE_PROJECT = {
     "public": True,
 }
 
-SAMPLE_LAYERS = [
-    {
-        "id": "f1af7315-45e0-4eb6-9d1a-5fba73be2804",
-        "projectId": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
-        "snapshotId": "76923014-1337-2024-4242-987654321000",
-        "selectedImagery": "satellite",
-        "additionalMetadata": {"confidenceThreshold": 0.9407004614878623},
-        "numResults": 500,
-        "placeLabels": True,
-        "points": None,
-        "timePeriods": [
-            {
-                "startTime": "2024-01-01T00:00:00Z",
-                "endTime": "2025-01-01T00:00:00Z",
-            }
-        ],
-        "createdAt": "2026-03-18T18:44:30.105967Z",
-        "updatedAt": "2026-03-18T18:48:06.430431Z",
-        "public": False,
-    }
-]
-
 SAMPLE_POINTS = {
     "features": [
         {

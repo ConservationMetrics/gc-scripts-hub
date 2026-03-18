@@ -4,6 +4,11 @@
 
 This script fetches features that are detected in a project from the Earth Index API.
 
+As we are still just experimenting with Earth Index and their API is under active development, we are not using a Windmill Resource to encapsulate the API key or Project ID. Instead, we are passing them as script parameters directly.
+
+>[!IMPORTANT]
+>
+>Currently, the script assumes that there is **exactly 1 layer per project**. As features like Deep Search and change detection are added, multiple layers may be returned — at which point this script should be adapted to i.e. iterate over all layers.
 
 ## Endpoints
 
@@ -46,28 +51,7 @@ The request header must include an access token in the format:
   "geometry": {
     "type": "Polygon",
     "coordinates": [
-      [
-        [
-          -77.36311765959915,
-          38.711849825335435
-        ],
-        [
-          -77.08730800803413,
-          38.711849825335435
-        ],
-        [
-          -77.08730800803413,
-          38.90231389323236
-        ],
-        [
-          -77.36311765959915,
-          38.90231389323236
-        ],
-        [
-          -77.36311765959915,
-          38.711849825335435
-        ]
-      ]
+        ...
     ]
   },
   "additionalMetadata": {
@@ -81,34 +65,7 @@ The request header must include an access token in the format:
 }
 ```
 
-### `GET /v1/projects/<project_id>/layers`
-
-```json
-[
-  {
-    "id": "12345678-aaaa-bbbb-cccc-000000001111",
-    "projectId": "22223333-4444-5555-6666-777788889999",
-    "snapshotId": "76923014-1337-2024-4242-987654321000",
-    "selectedImagery": "satellite",
-    "additionalMetadata": {
-      "confidenceThreshold": 0.9407004614878623
-    },
-    "numResults": 500,
-    "placeLabels": true,
-    "points": null,
-    "timePeriods": [
-      {
-        "startTime": "2024-01-01T00:00:00Z",
-        "endTime": "2025-01-01T00:00:00Z"
-      }
-    ],
-    "createdAt": "2026-03-18T18:44:30.105967Z",
-    "updatedAt": "2026-03-18T18:48:06.430431Z",
-    "public": false
-  }
-]
-
-```
+_There is also a `v1/projects/<project_id>/layers` endpoint, but it returns the same data as the `layers` array in the `v1/projects/<project_id>` endpoint, so we are not using it._
 
 ### `GET /v1/projects/<project_id>/layers/<layer_id>/points`
 
@@ -133,6 +90,7 @@ The request header must include an access token in the format:
     ],
     ...
 }
+```
 
 ## 📚 Reference
 
