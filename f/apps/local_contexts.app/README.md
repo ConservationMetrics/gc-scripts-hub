@@ -15,13 +15,12 @@ That table is then selected in this app as the source of available TK/BC labels.
 
 See the [Local Contexts: Pull Labels](../../connectors/localcontexts/README.md) documentation for more details.
 
-## What this app does
+## What this app does, code-wise
 
 1. Lists available dataset tables in Postgres (`1_fetch_tables_from_postgres.inline_script.py`).
 2. Reads available labels from the selected Local Contexts label-set table and splits
-   them into TK and BC options
-   (`1_fetch_lc_labels_and_existing_mappings.inline_script.py`).
-3. Reads any labels already applied to the selected dataset from
+   them into TK and BC options (`1_fetch_lc_labels_and_existing_mappings.inline_script.py`). 
+3. The same Python inline script reads any labels already applied to the selected dataset from
    `{dataset_name}__lc_labels` and returns them as:
    - `tk_labels_already_applied`
    - `bc_labels_already_applied`
