@@ -1,0 +1,52 @@
+summary: 'Earth Index: Fetch Features from Project'
+description: >-
+  This script fetches features from the Earth Index API for a given project,
+  saving the results as GeoJSON to the datalake and PostgreSQL.
+lock: '!inline f/connectors/earthindex/earthindex_pull.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - api_key
+    - project_id
+    - db
+    - db_table_prefix
+    - attachment_root
+  properties:
+    api_key:
+      type: string
+      description: The API key for authenticating with the Earth Index API.
+      default: null
+      originalType: string
+    attachment_root:
+      type: string
+      description: >-
+        A path where Earth Index data files will be stored. Data files will be
+        stored in the following directory schema:
+        `{attachment_root}/earthindex/{project_title}/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_prefix:
+      type: string
+      description: >-
+        A prefix added to the database table name. The table name is constructed
+        as `{db_table_prefix}_{project_title}`, where `project_title` is the
+        sanitized title of the Earth Index project.
+      default: earthindex
+      originalType: string
+    project_id:
+      type: string
+      description: The unique identifier of the Earth Index project to fetch features from.
+      default: null
+      originalType: string
+  required:
+    - api_key
+    - project_id
+    - db
