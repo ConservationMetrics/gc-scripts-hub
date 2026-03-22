@@ -211,6 +211,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
                 "territory_id",
                 "territory_name",
                 "year_detec",
+                "day_detec",
                 "length_alert_km",
                 "g__type",
                 "g__coordinates",
@@ -599,7 +600,7 @@ def test_max_months_lookback_e2e(
 
 def test_generate_alerts_statistics_from_data():
     """Test that _generate_alerts_statistics_from_data correctly generates statistics."""
-    # Test with valid data
+    # Test with valid data (no day_detec — day should be absent from stats)
     prepared_data = [
         {
             "alert_id": "alert_1",
@@ -627,6 +628,7 @@ def test_generate_alerts_statistics_from_data():
     assert stats["total_alerts"] == "1"  # Only 1 alert in latest month (10/2023)
     assert stats["month_year"] == "10/2023"
     assert stats["description_alerts"] == "deforestation"
+    assert "day" not in stats
 
     # Test with no data
     assert _generate_alerts_statistics_from_data([]) is None
@@ -650,9 +652,30 @@ def test_generate_alerts_statistics_from_data():
     stats_multi = _generate_alerts_statistics_from_data(prepared_data_multi)
     assert stats_multi["total_alerts"] == "2"
     assert stats_multi["month_year"] == "10/2023"
-    # Check both types are present (order may vary)
     assert "deforestation" in stats_multi["description_alerts"]
     assert "illegal mining" in stats_multi["description_alerts"]
+
+    # Test with day_detec present — day should appear in stats
+    prepared_data_with_day = [
+        {
+            "alert_id": "alert_1",
+            "month_detec": "9",
+            "year_detec": "2023",
+            "day_detec": "10",
+            "alert_type": "deforestation",
+        },
+        {
+            "alert_id": "alert_2",
+            "month_detec": "9",
+            "year_detec": "2023",
+            "day_detec": "25",
+            "alert_type": "deforestation",
+        },
+    ]
+
+    stats_with_day = _generate_alerts_statistics_from_data(prepared_data_with_day)
+    assert stats_with_day is not None
+    assert stats_with_day["day"] == "25"  # Latest day in the period
 
 
 def test_choose_latest_alerts_statistics():
@@ -769,6 +792,89 @@ def test_alerts_statistics_from_both_sources(tmp_path):
     assert stats["month_year"] == "9/2023"
     assert "deforestation" in stats["description_alerts"]
     assert "illegal mining" in stats["description_alerts"]
+    assert "day" not in stats  # day_detec absent from source data
+
+
+def test_day_detec_absent_from_dataset(tmp_path):
+    """Test that datasets without day_detec still work — day_detec is NULL and stats omit day."""
+    test_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {
+                    "id": "no_day_alert_1",
+                    "territory_id": 100,
+                    "month_detec": "3",
+                    "year_detec": "2024",
+                    "alert_type": "deforestation",
+                },
+            },
+        ],
+    }
+
+    test_file = tmp_path / "no_day.geojson"
+    with open(test_file, "w") as f:
+        json.dump(test_geojson, f)
+
+    prepared_data, stats = prepare_alerts_data(
+        tmp_path, [str(test_file)], "test_provider"
+    )
+
+    assert len(prepared_data) == 1
+    assert prepared_data[0]["day_detec"] is None
+
+    assert stats is not None
+    assert "day" not in stats
+
+
+def test_day_detec_present_in_dataset(tmp_path):
+    """Test that datasets with day_detec populate the field and include day in stats."""
+    test_geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [0, 0]},
+                "properties": {
+                    "id": "day_alert_1",
+                    "territory_id": 100,
+                    "month_detec": "3",
+                    "year_detec": "2024",
+                    "day_detec": "22",
+                    "alert_type": "deforestation",
+                },
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [1, 1]},
+                "properties": {
+                    "id": "day_alert_2",
+                    "territory_id": 100,
+                    "month_detec": "3",
+                    "year_detec": "2024",
+                    "day_detec": "5",
+                    "alert_type": "deforestation",
+                },
+            },
+        ],
+    }
+
+    test_file = tmp_path / "with_day.geojson"
+    with open(test_file, "w") as f:
+        json.dump(test_geojson, f)
+
+    prepared_data, stats = prepare_alerts_data(
+        tmp_path, [str(test_file)], "test_provider"
+    )
+
+    assert len(prepared_data) == 2
+    assert prepared_data[0]["day_detec"] == "22"
+    assert prepared_data[1]["day_detec"] == "5"
+
+    assert stats is not None
+    assert stats["day"] == "22"  # Latest day in the period
 
 
 def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path):

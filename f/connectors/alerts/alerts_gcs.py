@@ -624,11 +624,29 @@ def _generate_alerts_statistics_from_data(prepared_alerts_data):
         sorted(str(at).replace("_", " ") for at in alert_types)
     )
 
-    return {
+    stats = {
         "total_alerts": str(len(latest_alerts)),
         "month_year": f"{latest_month}/{latest_year}",
         "description_alerts": description_alerts,
     }
+
+    # Include day if any alert in the latest period has day_detec
+    latest_day = None
+    for alert in latest_alerts:
+        day_detec = alert.get("day_detec")
+        if day_detec is None:
+            continue
+        try:
+            day = int(day_detec)
+            if latest_day is None or day > latest_day:
+                latest_day = day
+        except (ValueError, TypeError):
+            continue
+
+    if latest_day is not None:
+        stats["day"] = str(latest_day)
+
+    return stats
 
 
 def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
