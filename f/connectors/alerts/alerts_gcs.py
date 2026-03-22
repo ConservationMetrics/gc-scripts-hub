@@ -705,6 +705,7 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
                     "territory_id": props.get("territory_id"),
                     "territory_name": props.get("territory_name"),
                     "year_detec": props.get("year_detec"),
+                    "day_detec": props.get("day_detec"),
                     "length_alert_km": props.get("length_alert_km"),
                     # Geometry flattening
                     "g__type": geom.get("type"),
@@ -748,6 +749,7 @@ def create_alerts_table(cursor, table_name):
             territory_id bigint,
             territory_name text,
             year_detec text,
+            day_detec text,
             length_alert_km double precision,  -- only present for linestring
             -- Deconstruct the "geometry" of a Feature:            
             g__type text,
