@@ -69,9 +69,9 @@ def _choose_latest_alerts_statistics(
     Parameters
     ----------
     alerts_statistics_from_metadata : dict or None
-        Statistics from prepare_alerts_metadata with keys: total_alerts, month_year, description_alerts.
+        Statistics from prepare_alerts_metadata with keys: total_alerts, date, description_alerts.
     alerts_statistics_from_data : dict or None
-        Statistics from prepare_alerts_data with keys: total_alerts, month_year, description_alerts.
+        Statistics from prepare_alerts_data with keys: total_alerts, date, description_alerts.
 
     Returns
     -------
@@ -80,34 +80,36 @@ def _choose_latest_alerts_statistics(
 
     Notes
     -----
-    If both statistics have the same month_year, the metadata version is preferred.
-    If one has a later month_year, that version is returned.
+    If both statistics have the same date, the metadata version is preferred.
+    If one has a later date, that version is returned.
     """
     if alerts_statistics_from_metadata is None:
         return alerts_statistics_from_data
     if alerts_statistics_from_data is None:
         return alerts_statistics_from_metadata
 
-    # Parse month_year from both (format: "M/YYYY" or "MM/YYYY")
-    def parse_month_year(month_year_str):
+    def parse_date(date_str):
+        """Parse 'DD/MM/YYYY' or 'MM/YYYY' into a comparable (year, month, day) tuple."""
         try:
-            month, year = month_year_str.split("/")
-            return (int(year), int(month))
+            parts = date_str.split("/")
+            if len(parts) == 3:
+                return (int(parts[2]), int(parts[1]), int(parts[0]))
+            if len(parts) == 2:
+                return (int(parts[1]), int(parts[0]), 0)
+            return (0, 0, 0)
         except (ValueError, AttributeError):
-            return (0, 0)
+            return (0, 0, 0)
 
-    metadata_date = parse_month_year(alerts_statistics_from_metadata.get("month_year"))
-    data_date = parse_month_year(alerts_statistics_from_data.get("month_year"))
+    metadata_date = parse_date(alerts_statistics_from_metadata.get("date"))
+    data_date = parse_date(alerts_statistics_from_data.get("date"))
 
-    # If data has a later date, use data statistics
     if data_date > metadata_date:
         logger.info(
-            f"Using alerts statistics from data (month_year: {alerts_statistics_from_data['month_year']}) "
-            f"instead of metadata (month_year: {alerts_statistics_from_metadata['month_year']})"
+            f"Using alerts statistics from data (date: {alerts_statistics_from_data['date']}) "
+            f"instead of metadata (date: {alerts_statistics_from_metadata['date']})"
         )
         return alerts_statistics_from_data
 
-    # Otherwise (equal or metadata is later), use metadata statistics
     return alerts_statistics_from_metadata
 
 
@@ -533,30 +535,41 @@ def prepare_alerts_metadata(
         logger.info("No metadata rows after filtering.")
         return [], None
 
-    # Determine latest month and year
-    latest_month_year = (
-        filtered_df[["month", "year"]]
+    # Determine the latest date, optionally including day if the column exists
+    has_day = "day" in filtered_df.columns
+    date_cols = ["day", "month", "year"] if has_day else ["month", "year"]
+    sort_cols = ["year", "month", "day"] if has_day else ["year", "month"]
+
+    latest_date = (
+        filtered_df[date_cols]
         .drop_duplicates()
-        .sort_values(by=["year", "month"], ascending=[False, False])
+        .sort_values(by=sort_cols, ascending=False)
         .iloc[0]
     )
 
-    # Filter for rows matching the latest month and year
-    # (This could be more than one row if there are are multiple
-    # types of alert for the same month and year)
-    latest_rows = filtered_df[
-        (filtered_df["month"] == latest_month_year["month"])
-        & (filtered_df["year"] == latest_month_year["year"])
-    ]
+    # Filter for rows matching the latest date
+    # (This could be more than one row if there are multiple
+    # types of alert for the same date)
+    mask = (filtered_df["month"] == latest_date["month"]) & (
+        filtered_df["year"] == latest_date["year"]
+    )
+    if has_day:
+        mask = mask & (filtered_df["day"] == latest_date["day"])
+    latest_rows = filtered_df[mask]
 
-    # Generate alert statistics for the latest month and year
     total_alerts = latest_rows["total_alerts"].sum()
     description_alerts = ", ".join(
         latest_rows["description_alerts"].drop_duplicates().str.replace("_", " ")
     )
+
+    date_str = (
+        f"{latest_date['day']}/{latest_date['month']}/{latest_date['year']}"
+        if has_day
+        else f"{latest_date['month']}/{latest_date['year']}"
+    )
     alerts_statistics = {
         "total_alerts": str(total_alerts),
-        "month_year": f"{latest_month_year['month']}/{latest_month_year['year']}",
+        "date": date_str,
         "description_alerts": description_alerts,
     }
 
@@ -574,7 +587,7 @@ def _generate_alerts_statistics_from_data(prepared_alerts_data):
     Returns
     -------
     dict or None
-        A dictionary with 'total_alerts', 'month_year', and 'description_alerts',
+        A dictionary with 'total_alerts', 'date', and 'description_alerts',
         or None if no data available.
     """
     if not prepared_alerts_data:
@@ -624,9 +637,27 @@ def _generate_alerts_statistics_from_data(prepared_alerts_data):
         sorted(str(at).replace("_", " ") for at in alert_types)
     )
 
+    latest_day = None
+    for alert in latest_alerts:
+        day_detec = alert.get("day_detec")
+        if day_detec is None:
+            continue
+        try:
+            day = int(day_detec)
+            if latest_day is None or day > latest_day:
+                latest_day = day
+        except (ValueError, TypeError):
+            continue
+
+    date = (
+        f"{latest_day}/{latest_month}/{latest_year}"
+        if latest_day is not None
+        else f"{latest_month}/{latest_year}"
+    )
+
     return {
         "total_alerts": str(len(latest_alerts)),
-        "month_year": f"{latest_month}/{latest_year}",
+        "date": date,
         "description_alerts": description_alerts,
     }
 
@@ -696,8 +727,10 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
                     "date_end_t1": props.get("date_end_t1"),
                     "date_start_t0": props.get("date_start_t0"),
                     "date_start_t1": props.get("date_start_t1"),
+                    "day_detec": props.get("day_detec"),
                     "grid": props.get("grid"),
                     "label": props.get("label"),
+                    "length_alert_km": props.get("length_alert_km"),
                     "month_detec": props.get("month_detec"),
                     "sat_detect_prefix": props.get("sat_detect_prefix"),
                     "sat_viz_prefix": props.get("sat_viz_prefix"),
@@ -705,7 +738,6 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
                     "territory_id": props.get("territory_id"),
                     "territory_name": props.get("territory_name"),
                     "year_detec": props.get("year_detec"),
-                    "length_alert_km": props.get("length_alert_km"),
                     # Geometry flattening
                     "g__type": geom.get("type"),
                     "g__coordinates": json.dumps(geom.get("coordinates")),
@@ -739,8 +771,10 @@ def create_alerts_table(cursor, table_name):
             date_end_t1 text,
             date_start_t0 text,
             date_start_t1 text,
+            day_detec text,
             grid bigint,
             label bigint,
+            length_alert_km double precision,  -- only present for linestring
             month_detec text,
             sat_detect_prefix text,
             sat_viz_prefix text,
@@ -748,7 +782,6 @@ def create_alerts_table(cursor, table_name):
             territory_id bigint,
             territory_name text,
             year_detec text,
-            length_alert_km double precision,  -- only present for linestring
             -- Deconstruct the "geometry" of a Feature:            
             g__type text,
             g__coordinates text,
