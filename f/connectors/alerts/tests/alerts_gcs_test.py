@@ -35,7 +35,7 @@ def test_prepare_alerts_metadata():
     )
 
     # Check that alerts statistics is the latest month and year in the CSV
-    assert alert_statistics["month_year"] == "2/2024"
+    assert alert_statistics["date"] == "2/2024"
     assert alert_statistics["total_alerts"] == "1"
     assert alert_statistics["description_alerts"] == "ghostly barrow noises"
 
@@ -626,9 +626,8 @@ def test_generate_alerts_statistics_from_data():
 
     assert stats is not None
     assert stats["total_alerts"] == "1"  # Only 1 alert in latest month (10/2023)
-    assert stats["month_year"] == "10/2023"
+    assert stats["date"] == "10/2023"
     assert stats["description_alerts"] == "deforestation"
-    assert "day" not in stats
 
     # Test with no data
     assert _generate_alerts_statistics_from_data([]) is None
@@ -651,7 +650,7 @@ def test_generate_alerts_statistics_from_data():
 
     stats_multi = _generate_alerts_statistics_from_data(prepared_data_multi)
     assert stats_multi["total_alerts"] == "2"
-    assert stats_multi["month_year"] == "10/2023"
+    assert stats_multi["date"] == "10/2023"
     assert "deforestation" in stats_multi["description_alerts"]
     assert "illegal mining" in stats_multi["description_alerts"]
 
@@ -675,7 +674,7 @@ def test_generate_alerts_statistics_from_data():
 
     stats_with_day = _generate_alerts_statistics_from_data(prepared_data_with_day)
     assert stats_with_day is not None
-    assert stats_with_day["day"] == "25"  # Latest day in the period
+    assert stats_with_day["date"] == "25/9/2023"
 
 
 def test_choose_latest_alerts_statistics():
@@ -683,18 +682,18 @@ def test_choose_latest_alerts_statistics():
     # Both None
     assert _choose_latest_alerts_statistics(None, None) is None
 
-    # Only metadata
+    # Only metadata (MM/YYYY format)
     metadata_stats = {
         "total_alerts": "5",
-        "month_year": "10/2023",
+        "date": "10/2023",
         "description_alerts": "test",
     }
     assert _choose_latest_alerts_statistics(metadata_stats, None) == metadata_stats
 
-    # Only data
+    # Only data (DD/MM/YYYY format)
     data_stats = {
         "total_alerts": "3",
-        "month_year": "11/2023",
+        "date": "15/11/2023",
         "description_alerts": "other",
     }
     assert _choose_latest_alerts_statistics(None, data_stats) == data_stats
@@ -702,12 +701,12 @@ def test_choose_latest_alerts_statistics():
     # Data is newer - should choose data
     metadata_older = {
         "total_alerts": "5",
-        "month_year": "10/2023",
+        "date": "10/2023",
         "description_alerts": "test",
     }
     data_newer = {
         "total_alerts": "3",
-        "month_year": "11/2023",
+        "date": "11/2023",
         "description_alerts": "other",
     }
     result = _choose_latest_alerts_statistics(metadata_older, data_newer)
@@ -716,12 +715,12 @@ def test_choose_latest_alerts_statistics():
     # Same month/year - should choose metadata
     metadata_same = {
         "total_alerts": "5",
-        "month_year": "10/2023",
+        "date": "10/2023",
         "description_alerts": "test",
     }
     data_same = {
         "total_alerts": "3",
-        "month_year": "10/2023",
+        "date": "10/2023",
         "description_alerts": "other",
     }
     result = _choose_latest_alerts_statistics(metadata_same, data_same)
@@ -730,16 +729,30 @@ def test_choose_latest_alerts_statistics():
     # Metadata is newer - should choose metadata
     metadata_newer = {
         "total_alerts": "5",
-        "month_year": "12/2023",
+        "date": "12/2023",
         "description_alerts": "test",
     }
     data_older = {
         "total_alerts": "3",
-        "month_year": "11/2023",
+        "date": "11/2023",
         "description_alerts": "other",
     }
     result = _choose_latest_alerts_statistics(metadata_newer, data_older)
     assert result == metadata_newer
+
+    # DD/MM/YYYY data beats MM/YYYY metadata in the same month
+    metadata_month_only = {
+        "total_alerts": "5",
+        "date": "10/2023",
+        "description_alerts": "test",
+    }
+    data_with_day = {
+        "total_alerts": "3",
+        "date": "15/10/2023",
+        "description_alerts": "other",
+    }
+    result = _choose_latest_alerts_statistics(metadata_month_only, data_with_day)
+    assert result == data_with_day
 
 
 def test_alerts_statistics_from_both_sources(tmp_path):
@@ -789,10 +802,9 @@ def test_alerts_statistics_from_both_sources(tmp_path):
     # Check that statistics are generated correctly
     assert stats is not None
     assert stats["total_alerts"] == "2"
-    assert stats["month_year"] == "9/2023"
+    assert stats["date"] == "9/2023"
     assert "deforestation" in stats["description_alerts"]
     assert "illegal mining" in stats["description_alerts"]
-    assert "day" not in stats  # day_detec absent from source data
 
 
 def test_day_detec_absent_from_dataset(tmp_path):
@@ -826,7 +838,7 @@ def test_day_detec_absent_from_dataset(tmp_path):
     assert prepared_data[0]["day_detec"] is None
 
     assert stats is not None
-    assert "day" not in stats
+    assert stats["date"] == "3/2024"
 
 
 def test_day_detec_present_in_dataset(tmp_path):
@@ -874,7 +886,7 @@ def test_day_detec_present_in_dataset(tmp_path):
     assert prepared_data[1]["day_detec"] == "5"
 
     assert stats is not None
-    assert stats["day"] == "22"  # Latest day in the period
+    assert stats["date"] == "22/3/2024"
 
 
 def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path):

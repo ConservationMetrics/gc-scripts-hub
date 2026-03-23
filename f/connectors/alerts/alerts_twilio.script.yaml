@@ -1,10 +1,10 @@
-summary: 'Alerts: Send a Twilio Message'
+summary: "Alerts: Send a Twilio Message"
 description: Send a Twilio WhatsApp message with a summary of the latest processed alerts.
-lock: '!inline f/connectors/alerts/alerts_twilio.script.lock'
+lock: "!inline f/connectors/alerts/alerts_twilio.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
     - alerts_statistics
@@ -15,7 +15,7 @@ schema:
     alerts_statistics:
       type: object
       description: >-
-        An object containing alert statistics: total alerts, month/year, and
+        An object containing alert statistics: total alerts, date, and
         description of alerts.
       default: null
       properties: {}
@@ -24,7 +24,7 @@ schema:
       description: The name of the database table where alerts are stored.
       default: null
       originalType: string
-      pattern: '^.{1,53}$'
+      pattern: "^.{1,53}$"
     instance_slug:
       type: string
       description: >-
