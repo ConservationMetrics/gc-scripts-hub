@@ -42,7 +42,8 @@
         "satellite": "COPERNICUS/S1_GRD",
         "territory_id": 29,
         "territory_name": "imaginary_place",
-        "year_detec": "2023"
+        "year_detec": "2023",
+        "day_detec": "15"
       },
       "type": "Feature"
     }

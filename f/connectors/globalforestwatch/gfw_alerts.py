@@ -219,6 +219,7 @@ def format_alerts_as_geojson(alerts: list, type_of_alert: str):
                 "date_end_t1": date,
                 "year_detec": date.split("-")[0],
                 "month_detec": date.split("-")[1],
+                "day_detec": date.split("-")[2],
                 "data_source": "Global Forest Watch",
             },  # Note: GFW alerts do not have date start and end. So, we set them to the same value.
         }
