@@ -1,8 +1,10 @@
 import psycopg
+import pytest
 
 from f.connectors.localcontexts.localcontexts_pull import (
     main,
     transform_labels_for_db,
+    verify_community_account,
 )
 from f.connectors.localcontexts.tests.assets import server_responses
 
@@ -174,36 +176,11 @@ def test_script_e2e(localcontexts_server, pg_database, tmp_path):
             assert cursor.fetchone()[0] == "Local Contexts"
 
 
-def test_project_with_no_labels(mocked_responses, pg_database, tmp_path):
+def test_project_with_no_labels(empty_project_server, pg_database, tmp_path):
     """Test handling of a project with no labels."""
     asset_storage = tmp_path / "datalake"
 
-    # Mock a project with no labels
-    api_key = "test-api-key"
-    project_id = "empty-project-id"
-    server_url = "https://sandbox.localcontextshub.org"
-
-    empty_project = {
-        "unique_id": project_id,
-        "title": "Empty Project",
-        "bc_labels": [],
-        "tk_labels": [],
-    }
-
-    mocked_responses.get(
-        f"{server_url}/api/v2/projects/{project_id}",
-        json=empty_project,
-        status=200,
-    )
-
-    localcontexts_project_dict = dict(
-        server_url=server_url,
-        api_key=api_key,
-        project_id=project_id,
-    )
-
-    # Should complete without error
-    main(localcontexts_project_dict, pg_database, asset_storage)
+    main(empty_project_server.localcontexts_project, pg_database, asset_storage)
 
     # Project JSON should still be saved
     project_json_path = (
@@ -249,3 +226,15 @@ def test_skipped_attachments(localcontexts_server, pg_database, tmp_path):
     modified_content = bc_provenance_path.read_bytes()
     assert modified_content == b"modified content"
     assert original_content != modified_content
+
+
+def test_verify_community_account_rejects_institution(non_community_server):
+    """200 OK means it's an Institution/Researcher account — should raise."""
+    with pytest.raises(PermissionError, match="Only Community accounts"):
+        verify_community_account(**non_community_server)
+
+
+def test_verify_community_account_rejects_invalid_key(invalid_key_server):
+    """401 Unauthorized means the API key is invalid — should raise."""
+    with pytest.raises(PermissionError, match="Invalid API key"):
+        verify_community_account(**invalid_key_server)

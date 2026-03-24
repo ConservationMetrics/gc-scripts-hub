@@ -27,15 +27,19 @@ The envisioned usage of Local Contexts Labels in Guardian Connector is as follow
 **For more information, see**: https://localcontexts.org/support/getting-started-on-the-hub/
 
 1. Create a Local Contexts Hub user profile.
-2. Create a Local Contexts Hub community account.
+2. Create a Local Contexts Hub Community account.
 3. Get your account [confirmed](https://localcontexts.org/support/getting-started-on-the-hub/#confirmation-step).
 4. Customize the labels that you want to use.
 5. Have another editor or admin user approve your labels.
 6. Create a Local Contexts Hub Project.
   - You probably want to select "Collection" as the Project type, and set visibility to "Private" to keep the labels private to your community.
 7. Apply the TK and BC labels to the project.
-8. Get the **Project ID**, and an **API key** for your community account.
+8. Get the **Project ID**, and an **API key** for your Community account.
 9. In Windmill, create a Local Contexts resource with the Project ID, API key, and server URL.
+
+> [!IMPORTANT]
+>
+> Local Contexts suggests only allowing fetching Labels from a Community account (and not an Institution or Researcher account). Hence, we hit the `GET /notices/open_to_collaborate` endpoint to check if the account is a Community account, and if not, we raise an error.
 
 > [!NOTE]
 >
@@ -80,6 +84,20 @@ The envisioned usage of Local Contexts Labels in Guardian Connector is as follow
   ]
 }
 ```
+
+### `GET /notices/open_to_collaborate`
+
+**200 OK**
+
+Returns a list of notices that are open to collaboration, see [API documentation](https://sandbox.localcontextshub.org/api/v2/docs/#/notices/open_to_collaborate) for more details.
+
+**403 Forbidden**
+
+Returned if the account is a Community account (and not an Institution or Researcher account).
+
+**401 Unauthorized**
+
+Returned if the API key is invalid.
 
 ## 📚 Reference
 
