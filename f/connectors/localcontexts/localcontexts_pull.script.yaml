@@ -1,5 +1,5 @@
 summary: "Local Contexts: Fetch Labels"
-description: Fetch labels from the Local Contexts API
+description: Fetch Labels from the Local Contexts API
 lock: "!inline f/connectors/localcontexts/localcontexts_pull.script.lock"
 concurrency_time_window_s: 0
 kind: script
@@ -14,7 +14,7 @@ schema:
   properties:
     attachment_root:
       type: string
-      description: A path where the label assets will be stored.
+      description: A path where the Label assets will be stored.
       default: /persistent-storage/datalake
       originalType: string
     db:
@@ -25,7 +25,7 @@ schema:
     localcontexts:
       type: object
       description: >-
-        A server URL, API key, and project ID for accessing the Local Contexts
+        A server URL, API key, and Project ID for accessing the Local Contexts
         API.
       default: null
       format: resource-localcontexts

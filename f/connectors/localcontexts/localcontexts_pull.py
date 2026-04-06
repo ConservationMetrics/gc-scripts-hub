@@ -34,6 +34,8 @@ def main(
     api_key = localcontexts["api_key"]
     project_id = localcontexts["project_id"]
 
+    verify_community_account(server_url, api_key)
+
     project_data = fetch_project_data(server_url, api_key, project_id)
 
     project_title = project_data.get("title", "unknown_project")
@@ -72,6 +74,40 @@ def main(
     labels_writer.handle_output(label_rows)
 
     logger.info("Labels saved successfully.")
+
+
+def verify_community_account(server_url: str, api_key: str):
+    """
+    Verify the API key belongs to a Community account by hitting
+    ``GET /notices/open_to_collaborate``.
+
+    A Community account returns **403 Forbidden** on this endpoint,
+    while Institution/Researcher accounts return **200 OK**.
+
+    See README.md for more details.
+    """
+    url = f"{server_url}/api/v2/notices/open_to_collaborate"
+    headers = {"X-Api-Key": api_key}
+
+    logger.info("Verifying API key belongs to a Community account...")
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 403:
+        logger.info("Confirmed: API key belongs to a Community account.")
+        return
+
+    if response.status_code == 401:
+        raise PermissionError(
+            "Invalid API key. Please check your Local Contexts API key."
+        )
+
+    if response.status_code == 200:
+        raise PermissionError(
+            "Only Community accounts may fetch labels. "
+            "The provided API key belongs to an Institution or Researcher account."
+        )
+
+    response.raise_for_status()
 
 
 def fetch_project_data(server_url: str, api_key: str, project_id: str):

@@ -1,6 +1,6 @@
 # Local Contexts: Pull Labels
 
-This script fetches [Traditional Knowledge (TK) Labels](https://localcontexts.org/labels/traditional-knowledge-labels/) and [Biocultural (BC) Labels](https://localcontexts.org/labels/biocultural-labels/) applied to a Local Contexts project from the Local Contexts Hub API and writes them to a PostgreSQL database. The script also downloads the label assets to a specified directory on the volume mount.
+This script fetches [Traditional Knowledge (TK) Labels](https://localcontexts.org/labels/traditional-knowledge-labels/) and [Biocultural (BC) Labels](https://localcontexts.org/labels/biocultural-labels/) applied to a Local Contexts project from the Local Contexts Hub API and writes them to a PostgreSQL database. The script also downloads the Label assets to a specified directory on the volume mount.
 
 ## Why Local Contexts Labels?
 
@@ -8,35 +8,38 @@ Local Contexts provides a structured, community-informed metadata framework that
 
 ## How Guardian Connector uses Local Contexts Labels
 
-The envisioned usage of Local Contexts labels in Guardian Connector is as follows:
+The envisioned usage of Local Contexts Labels in Guardian Connector is as follows:
 
 1. Labels are fetched by the `localcontexts_pull` script from a Local Contexts Hub project and stored locally in Guardian Connector, along with their icons and descriptions.
-2. Applying labels is a deliberate action, done after a dataset exists. 
-   - TODO: a Windmill app will be created to help with this. See https://github.com/ConservationMetrics/gc-scripts-hub/issues/198
+2. Applying labels is a deliberate action, done after a dataset exists, using the [GC Local Contexts Annotations application](../../apps/local_contexts.app/README.md).
 3. The vision is that only selected labels are applied to a dataset; having labels in a Hub project (or downloaded by this script) does not mean they will automatically apply to all datasets.
-4. Labels are stored separately from the data itself, as per-dataset metadata, e.g. `my_dataset__local_contexts_tags`.
+4. Labels are stored separately from the data itself, as per-dataset metadata, e.g. `my_dataset__lc_labels`.
 5. Labels remain stable over time and are only changed when someone intentionally updates them. (This script may be run on an as-needed basis, or scheduled to run periodically.)
 
 > [!NOTE]
 >
 > Although Local Contexts labels are _metadata_ tags to be applied to a dataset, they are also a type of data product in their own right. Consequently, the `localcontexts_pull` script writes the labels to a database table in the same database as where the datasets themselves are stored (usually `warehouse`).
 >
-> Additionally, the vision is that via this script, we store the full set of Local Contexts labels for a given Hub project in a database table; and, then we will later reference this table when applying labels to a dataset. The details of how this will work are still being worked out, but we will likely JOIN based on the unique id of the label.
+> Additionally, the vision is that via this script, we store the full set of Local Contexts labels for a given Hub Project in a database table; and, then we will later reference this table when applying labels to a dataset. The details of how this will work are still being worked out, but we will likely JOIN based on the unique id of the Label.
 
-## How to set up a Local Contexts project with TK and BC labels
+## How to set up a Local Contexts Project with TK and BC labels
 
 **For more information, see**: https://localcontexts.org/support/getting-started-on-the-hub/
 
 1. Create a Local Contexts Hub user profile.
-2. Create a Local Contexts Hub community account.
+2. Create a Local Contexts Hub Community account.
 3. Get your account [confirmed](https://localcontexts.org/support/getting-started-on-the-hub/#confirmation-step).
 4. Customize the labels that you want to use.
 5. Have another editor or admin user approve your labels.
-6. Create a Local Contexts Hub project.
-  - You probably want to select "Collection" as the project type, and set visibility to "Private" to keep the labels private to your community.
+6. Create a Local Contexts Hub Project.
+  - You probably want to select "Collection" as the Project type, and set visibility to "Private" to keep the labels private to your community.
 7. Apply the TK and BC labels to the project.
-8. Get the **project ID**, and an **API key** for your community account.
-9. In Windmill, create a Local Contexts resource with the project ID, API key, and server URL.
+8. Get the **Project ID**, and an **API key** for your Community account.
+9. In Windmill, create a Local Contexts resource with the Project ID, API key, and server URL.
+
+> [!IMPORTANT]
+>
+> Local Contexts suggests only allowing fetching Labels from a Community account (and not an Institution or Researcher account). Hence, we hit the `GET /notices/open_to_collaborate` endpoint to check if the account is a Community account, and if not, we raise an error.
 
 > [!NOTE]
 >
@@ -81,6 +84,20 @@ The envisioned usage of Local Contexts labels in Guardian Connector is as follow
   ]
 }
 ```
+
+### `GET /notices/open_to_collaborate`
+
+**200 OK**
+
+Returns a list of notices that are open to collaboration, see [API documentation](https://sandbox.localcontextshub.org/api/v2/docs/#/notices/open_to_collaborate) for more details.
+
+**403 Forbidden**
+
+Returned if the account is a Community account (and not an Institution or Researcher account).
+
+**401 Unauthorized**
+
+Returned if the API key is invalid.
 
 ## 📚 Reference
 

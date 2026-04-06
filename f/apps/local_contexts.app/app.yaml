@@ -1,0 +1,1339 @@
+summary: GC Local Contexts Annotations
+value:
+  css:
+    buttoncomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    checkboxcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+    containercomponent:
+      container:
+        class: ''
+        style: ''
+    fileinputcomponent:
+      container:
+        class: ''
+        style: ''
+    formcomponent:
+      button:
+        class: ''
+        style: ''
+      container:
+        class: ''
+        style: ''
+    steppercomponent:
+      container:
+        class: ''
+        style: ''
+    textcomponent:
+      container:
+        class: ''
+        style: ''
+      text:
+        class: ''
+        style: ''
+  darkMode: true
+  fullscreen: false
+  grid:
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 1
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 0
+        'y': 0
+      id: pageTitle
+      data:
+        id: pageTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: Guardian Connector Local Contexts Annotations
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Title
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 3
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 1
+        x: 1
+        'y': 6
+      id: formTitle
+      data:
+        id: formTitle
+        type: textcomponent
+        actions: []
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: "\U0001F3F7️ Apply Local Contexts Labels to a dataset"
+          fieldType: template
+        configuration:
+          copyButton:
+            type: static
+            value: false
+          disableNoText:
+            type: static
+            value: false
+          style:
+            type: static
+            value: Subtitle
+          tooltip:
+            type: static
+            value: ''
+        customCss:
+          container:
+            class: ''
+            style: ''
+          text:
+            class: ''
+            style: ''
+        horizontalAlignment: center
+        verticalAlignment: top
+    - '12':
+        fixed: true
+        fullHeight: false
+        h: 15
+        w: 8
+        x: 2
+        'y': 5
+      '3':
+        fixed: true
+        fullHeight: false
+        h: 8
+        w: 2
+        x: 1
+        'y': 7
+      id: formStepper
+      data:
+        id: formStepper
+        type: steppercomponent
+        actions: []
+        componentInput:
+          type: runnable
+          autoRefresh: false
+          fields: {}
+          fieldType: any
+          recomputeOnInputChanged: false
+          runnable:
+            name: 0 Form stepper validations
+            inlineScript:
+              content: '!inline 0_form_stepper_validations.inline_script.frontend.js'
+              language: frontend
+              path: f/apps/local_contexts/0_Form_stepper_validations
+              suggestedRefreshOn:
+                - id: state
+                  key: localContextsTable
+                - id: state
+                  key: tkLabelsAlreadyApplied
+                - id: state
+                  key: bcLabelsAlreadyApplied
+                - id: state
+                  key: datasetName
+                - id: state
+                  key: labelsToApply
+        configuration: {}
+        customCss:
+          container:
+            class: border-2 border-blue-300 border-dashed
+            style: ''
+        numberOfSubgrids: 3
+        onNext:
+          - bg_2
+        onPrevious: []
+        tabs:
+          - Select your dataset
+          - Choose Labels to apply
+          - Finalize
+    - '12':
+        fixed: false
+        fullHeight: false
+        h: 1
+        w: 8
+        x: 2
+        'y': 20
+      '3':
+        fixed: false
+        fullHeight: false
+        h: 2
+        w: 1
+        x: 1
+        'y': 0
+      id: linkToDocumentation
+      data:
+        id: linkToDocumentation
+        type: htmlcomponent
+        componentInput:
+          type: templatev2
+          connections: []
+          eval: >-
+            <center><em>Need help? Visit our <a
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            target="_blank">documentation website</a>.</em></center>
+          fieldType: template
+        configuration: {}
+        customCss:
+          container:
+            class: ''
+            style: ''
+  hiddenInlineScripts:
+    - name: 1 Fetch tables from Postgres
+      autoRefresh: true
+      fields:
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+      inlineScript:
+        content: '!inline 1_fetch_tables_from_postgres.inline_script.py'
+        lock: '!inline 1_fetch_tables_from_postgres.inline_script.lock'
+        language: python3
+        path: f/apps/local_contexts/1_Fetch_tables_from_Postgres
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+          required:
+            - db
+      recomputeIds: []
+      recomputeOnInputChanged: false
+      transformer:
+        content: |-
+          state.tables = Object.values(result)
+            // Remove tables that end with internal suffixes we don’t want to show
+            .filter(name =>
+              !name.endsWith("__columns") &&
+              !name.endsWith("__labels") &&
+              !name.endsWith("__metadata")
+            )
+            // Remove local contexts tables
+            .filter(name =>
+              !name.includes("localcontexts") &&
+              !name.includes("lc_labels")
+            )
+            // Sort remaining table names alphabetically
+            .sort((a, b) => a.localeCompare(b))
+
+            state.localContextsTables = Object.values(result)
+            // Only local contexts tables
+            .filter(name =>
+              name.includes("localcontexts")
+            )
+            // Sort remaining table names alphabetically
+            .sort((a, b) => a.localeCompare(b))
+        language: frontend
+        path: f/apps/local_contexts/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tables
+          - id: state
+            key: localContextsTables
+    - name: 1 Set state.localContextsTable & trigger fetch
+      autoRefresh: false
+      fields: {}
+      inlineScript:
+        content: >-
+          !inline
+          1_set_state.localcontextstable_&_trigger_fetch.inline_script.frontend.js
+        language: frontend
+        path: f/apps/local_contexts/1_Set_state.localContextsTable_&_trigger_fetch
+        refreshOn:
+          - id: selectLocalContextsTable
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: localContextsTable
+      recomputeOnInputChanged: true
+    - name: 1 Fetch LC Labels and existing mappings
+      autoRefresh: false
+      fields:
+        dataset_name:
+          type: evalv2
+          value: null
+          connections:
+            - id: datasetName
+              componentId: state
+          expr: state.datasetName
+          fieldType: ''
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+        lcTableName:
+          type: evalv2
+          value: null
+          connections:
+            - id: localContextsTable
+              componentId: state
+          expr: state.localContextsTable
+          fieldType: ''
+      inlineScript:
+        content: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.py'
+        lock: '!inline 1_fetch_lc_labels_and_existing_mappings.inline_script.lock'
+        language: python3
+        path: f/apps/local_contexts/1_Fetch_LC_labels_and_existing_mappings
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            dataset_name:
+              type: ''
+              description: ''
+              default: null
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+            lcTableName:
+              type: ''
+              description: ''
+              default: null
+          required:
+            - db
+            - lcTableName
+            - dataset_name
+      recomputeIds: []
+      recomputeOnInputChanged: false
+      transformer:
+        content: |-
+          state.tkLabelsAvailable = result.tk_labels_available
+          state.bcLabelsAvailable = result.bc_labels_available
+          state.tkLabelsAlreadyApplied = result.tk_labels_already_applied
+          state.bcLabelsAlreadyApplied = result.bc_labels_already_applied
+          state.canApplyLabels = true
+        language: frontend
+        path: f/apps/local_contexts/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tkLabelsAlreadyApplied
+          - id: state
+            key: bcLabelsAvailable
+          - id: state
+            key: tkLabelsAvailable
+          - id: state
+            key: bcLabelsAlreadyApplied
+          - id: state
+            key: canApplyLabels
+    - name: 1 Set state.datasetName
+      autoRefresh: true
+      fields: {}
+      inlineScript:
+        content: '!inline 1_set_state.datasetname.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/local_contexts/1_Set_state.datasetName
+        refreshOn:
+          - id: selectDatasetTable
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: datasetName
+      recomputeIds: []
+      recomputeOnInputChanged: true
+    - name: 2 Set state.labelsToApply
+      autoRefresh: false
+      fields: {}
+      inlineScript:
+        content: '!inline 2_set_state.labelstoapply.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/local_contexts/2_Set_state.labelsToApply
+        refreshOn:
+          - id: selectBCLabels
+            key: result
+          - id: selectTKLabels
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: labelsToApply
+      recomputeIds: []
+      recomputeOnInputChanged: true
+  hideLegacyTopBar: true
+  mobileViewOnSmallerScreens: false
+  norefreshbar: false
+  subgrids:
+    formStepper-0:
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 3
+          w: 10
+          x: 1
+          'y': 1
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 2
+          'y': 0
+        id: selectDatasetTableTitle
+        data:
+          id: selectDatasetTableTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <h5 class="text-[16px] font-semibold text-gray-900
+              dark:text-gray-100 mb-1">
+                Select a dataset
+              </h5>
+
+
+              <p class="text-sm text-gray-600 dark:text-gray-400
+              leading-relaxed">
+                Select a dataset you wish to annotate using 
+                <a 
+                  href="https://localcontexts.org/" 
+                  target="_blank"
+                  class="text-blue-600 dark:text-blue-400 underline"
+                >
+                  Local Contexts
+                </a> 
+                Labels. 
+                <em class="text-gray-500 dark:text-gray-500">
+                  Note: datasets are tables in your data warehouse.
+                </em>
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 4
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 0
+        id: selectDatasetTable
+        data:
+          id: selectDatasetTable
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: static
+              value: false
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value: []
+              connections:
+                - id: tables
+                  componentId: state
+              expr: state.tables
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select a dataset
+            preselectFirst:
+              type: static
+              value: false
+          customCss:
+            input:
+              class: ''
+              style: ''
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 3
+          w: 10
+          x: 1
+          'y': 6
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 0
+          'y': 1
+        id: selectLocalContextsTableTitle
+        data:
+          id: selectLocalContextsTableTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <h5 class="text-[16px] font-semibold text-gray-900
+              dark:text-gray-100 mb-1">
+                Select Local Contexts Label set to apply
+              </h5>
+
+
+              <p class="text-sm text-gray-600 dark:text-gray-400
+              leading-relaxed">
+                Select the table containing the Local Contexts Labels that you wish to apply.
+                <em class="text-gray-500 dark:text-gray-500">
+                  Note: this application assumes you have already run the "Local Contexts: Fetch Labels" script in Windmill.
+                </em>
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 1
+          'y': 2
+        id: selectLocalContextsTable
+        data:
+          id: selectLocalContextsTable
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: static
+            disabled:
+              type: static
+              value: false
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value: []
+              connections:
+                - id: localContextsTables
+                  componentId: state
+              expr: state.localContextsTables
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select a dataset
+            preselectFirst:
+              type: static
+              value: true
+          customCss:
+            input:
+              class: ''
+              style: ''
+          verticalAlignment: center
+    formStepper-1:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 0
+          'y': 0
+        id: selectTKLabelsTitle
+        data:
+          id: selectTKLabelsTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001FAB6 Select <span class=\"text-amber-700 dark:text-amber-300 font-semibold\">Traditional Knowledge</span> Labels\n</h5>"
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 3
+          w: 10
+          x: 1
+          'y': 2
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 2
+        id: selectTKLabels
+        data:
+          id: selectTKLabels
+          type: multiselectcomponentv2
+          configuration:
+            allowOverflow:
+              type: static
+              value: true
+            create:
+              type: static
+              value: false
+            defaultItems:
+              type: evalv2
+              value: []
+              connections:
+                - id: tkLabelsAlreadyApplied
+                  componentId: state
+              expr: state.tkLabelsAlreadyApplied
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: canApplyLabels
+                  componentId: state
+              expr: '!state.canApplyLabels'
+            items:
+              type: evalv2
+              value:
+                - Foo
+                - Bar
+              connections:
+                - id: tkLabelsAvailable
+                  componentId: state
+              expr: state.tkLabelsAvailable
+            placeholder:
+              type: static
+              value: Select Labels
+              connections: []
+              expr: '"Select Labels"'
+          customCss:
+            multiselect:
+              style: ''
+              tooltip: >-
+                See https://multiselect.janosh.dev/#with-css-variables for the
+                available variables
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 6
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 1
+          'y': 0
+        id: selectBCLabelsTitle
+        data:
+          id: selectBCLabelsTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "<h5 class=\"text-[16px] font-normal text-gray-900 dark:text-gray-100 mb-1\">\n  \U0001F33F Select <span class=\"text-emerald-700 dark:text-emerald-300 font-semibold\">Biocultural</span> Labels<span class=\"text-red-500\"></span>\n</h5>"
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 3
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 4
+        id: selectBCLabels
+        data:
+          id: selectBCLabels
+          type: multiselectcomponentv2
+          configuration:
+            allowOverflow:
+              type: static
+              value: true
+            create:
+              type: static
+              value: false
+            defaultItems:
+              type: evalv2
+              value: []
+              connections:
+                - id: bcLabelsAlreadyApplied
+                  componentId: state
+              expr: state.bcLabelsAlreadyApplied
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: canApplyLabels
+                  componentId: state
+              expr: '!state.canApplyLabels'
+            items:
+              type: evalv2
+              value:
+                - Foo
+                - Bar
+              connections:
+                - id: bcLabelsAvailable
+                  componentId: state
+              expr: state.bcLabelsAvailable
+            placeholder:
+              type: static
+              value: Select Labels
+          customCss:
+            multiselect:
+              style: ''
+              tooltip: >-
+                See https://multiselect.janosh.dev/#with-css-variables for the
+                available variables
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 10
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 2
+          'y': 0
+        id: a
+        data:
+          id: a
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <p><em>Tip: visit the <a
+              href="https://localcontexts.org/labels/traditional-knowledge-labels/"
+              target="_blank">TK Labels</a> and <a
+              href="https://localcontexts.org/labels/biocultural-labels/"
+              target="_blank">BC Labels</a> pages for definitions.
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+    formStepper-2:
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 12
+          x: 0
+          'y': 1
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: finalizeTitle
+        data:
+          id: finalizeTitle
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: "\U0001F4C4 Review summary"
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 2
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 0
+        id: datasetNameLabel
+        data:
+          id: datasetNameLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Dataset name:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 7
+          x: 4
+          'y': 2
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 0
+        id: datasetName
+        data:
+          id: datasetName
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: evalv2
+            connections:
+              - id: datasetName
+                componentId: state
+            eval: '${selectFile.result[0].name}'
+            expr: state.datasetName
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 3
+          x: 1
+          'y': 3
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 1
+        id: labelsToApplyLabel
+        data:
+          id: labelsToApplyLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: 'Labels to apply:'
+            fieldType: template
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: font-bold
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 4
+          w: 7
+          x: 4
+          'y': 3
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 1
+        id: labelsToApply
+        data:
+          id: labelsToApply
+          type: textcomponent
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            connections:
+              - id: labelsToApply
+                componentId: state
+            eval: '${state.labelsToApply}'
+            expr: state.labelsToApply
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              name: 3 Format list comma-appended
+              inlineScript:
+                content: '!inline 3_format_list_comma-appended.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_Format_list_comma-appended
+                refreshOn:
+                  - id: state
+                    key: labelsToApply
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: false
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: 'bg-gray-100 dark:bg-gray-800'
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: left
+          verticalAlignment: top
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 7
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 2
+          'y': 2
+        id: saveLabel
+        data:
+          id: saveLabel
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ✍️ Ready to write this dataset to your warehouse?
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              name: 3 Eval of saveLabel
+              inlineScript:
+                content: '!inline 3_eval_of_savelabel.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_Eval_of_saveLabel
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Body
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: |-
+                italic 
+                text-sm
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 5
+          'y': 8
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 1
+          'y': 2
+        id: saveAndFinishButton
+        data:
+          id: saveAndFinishButton
+          type: buttoncomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: false
+            fields:
+              db:
+                type: static
+                value: '$res:f/connectors/postgresql'
+                fieldType: object
+                format: resource-postgresql
+              labels_to_apply:
+                type: evalv2
+                value: null
+                connections:
+                  - id: labelsToApply
+                    componentId: state
+                expr: state.labelsToApply
+                fieldType: ''
+              table_name:
+                type: evalv2
+                value: null
+                connections:
+                  - id: datasetName
+                    componentId: state
+                expr: state.datasetName
+                fieldType: ''
+            fieldType: any
+            recomputeOnInputChanged: false
+            runnable:
+              name: 3 Write label mapping to database table
+              inlineScript:
+                content: >-
+                  !inline
+                  3_write_label_mapping_to_database_table.inline_script.py
+                lock: >-
+                  !inline
+                  3_write_label_mapping_to_database_table.inline_script.lock
+                language: python3
+                path: f/apps/local_contexts/3_Write_label_mapping_to_database_table
+                schema:
+                  $schema: 'https://json-schema.org/draft/2020-12/schema'
+                  type: object
+                  properties:
+                    db:
+                      type: object
+                      description: ''
+                      default: null
+                      format: resource-postgresql
+                    labels_to_apply:
+                      type: ''
+                      description: ''
+                      default: null
+                    table_name:
+                      type: ''
+                      description: ''
+                      default: null
+                  required:
+                    - db
+                    - table_name
+                    - labels_to_apply
+            transformer:
+              content: |-
+                state.finalizeSuccess = result[0];
+                state.finalizeErrorMessage = result[1];
+              language: frontend
+              path: f/apps/local_contexts/Transformer
+              suggestedRefreshOn: []
+          configuration:
+            afterIcon:
+              type: static
+              value: cloud-upload
+            beforeIcon:
+              type: static
+              value: ''
+            color:
+              type: static
+              value: dark
+            confirmationModal:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: finalizeSuccess
+                  componentId: state
+                - id: labelsToApply
+                  componentId: state
+              expr: state.finalizeSuccess || !state.labelsToApply
+            fillContainer:
+              type: static
+              value: false
+            label:
+              type: static
+              value: Save & Finish
+            onError:
+              type: oneOf
+              configuration:
+                errorOverlay: {}
+              selected: errorOverlay
+            onSubmit:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            onSuccess:
+              type: oneOf
+              configuration:
+                none: {}
+              selected: none
+            runInBackground:
+              type: static
+              value: false
+            size:
+              type: static
+              value: xs
+            tooltip:
+              type: static
+            triggerOnAppLoad:
+              type: static
+              value: false
+          customCss:
+            button:
+              class: ''
+              style: ''
+            container:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          recomputeIds: []
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 9
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 3
+        id: saveResult
+        data:
+          id: saveResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              name: 3 eval of saveResult
+              inlineScript:
+                content: '!inline 3_eval_of_saveresult.inline_script.frontend.js'
+                language: frontend
+                path: f/apps/local_contexts/3_eval_of_saveResult
+                refreshOn:
+                  - id: state
+                    key: finalizeSuccess
+                  - id: state
+                    key: finalizeErrorMessage
+                suggestedRefreshOn:
+                  - id: state
+                    key: datasetName
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
+  theme:
+    type: inlined
+    css: ''
+  unusedInlineScripts: []
