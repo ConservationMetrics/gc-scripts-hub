@@ -11,17 +11,21 @@ if (currentStepIndex === 1 && lastAction === "next" && !state.uploadSuccess) {
 }
 
 // Step 3: Must have both longitude and latitude cols, or neither
-if (currentStepIndex === 2 && (!!longitudeCol.result !== !!latitudeCol.result)) {
-  throw new Error("Please specify both a longitude and latitude column, or erase both.");
+if (currentStepIndex === 2 && !!longitudeCol.result !== !!latitudeCol.result) {
+  throw new Error(
+    "Please specify both a longitude and latitude column, or erase both.",
+  );
+  // TODO: consider validating a sample of the columns' values to ensure they are valid longitude and latitude
 }
 
+// Step 3: Set longitude and latitude columns
 if (currentStepIndex === 2) {
-    if (lonLatToggle.result && longitudeCol.result && latitudeCol.result) {
-      state.longitudeCol = longitudeCol.result;
-      state.latitudeCol = latitudeCol.result;
+  if (lonLatToggle.result && longitudeCol.result && latitudeCol.result) {
+    state.longitudeCol = longitudeCol.result;
+    state.latitudeCol = latitudeCol.result;
   } else {
-      state.longitudeCol = null;
-      state.latitudeCol = null;
+    state.longitudeCol = null;
+    state.latitudeCol = null;
   }
 }
 
