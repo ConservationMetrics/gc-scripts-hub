@@ -9,6 +9,10 @@ fi
 IFS=',' read -ra WORKSPACE_LIST <<< "$WORKSPACES"
 
 for workspace in "${WORKSPACE_LIST[@]}"; do
-  wmill workspace switch "$workspace"
-  wmill sync push --skip-variables <<< "Y"
+  echo "=== Push: ${workspace} ==="
+  if wmill workspace switch "$workspace" && wmill sync push --skip-variables <<< "Y"; then
+    echo "Done: ${workspace}"
+  else
+    echo "Error: push failed for workspace '${workspace}' (skipping, continuing)." >&2
+  fi
 done
