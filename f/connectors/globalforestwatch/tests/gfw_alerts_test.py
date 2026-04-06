@@ -49,6 +49,9 @@ def test_script_e2e(
             cursor.execute("SELECT confidence FROM gfw_alerts LIMIT 1 OFFSET 1")
             assert cursor.fetchone()[0] == "medium"
 
+            cursor.execute("SELECT day_detec FROM gfw_alerts LIMIT 1")
+            assert cursor.fetchone()[0] is not None
+
     # Test metadata tables are created and populated
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:

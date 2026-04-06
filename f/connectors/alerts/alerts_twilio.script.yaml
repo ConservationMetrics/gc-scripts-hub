@@ -15,7 +15,7 @@ schema:
     alerts_statistics:
       type: object
       description: >-
-        An object containing alert statistics: total alerts, month/year, and
+        An object containing alert statistics: total alerts, date, and
         description of alerts.
       default: null
       properties: {}

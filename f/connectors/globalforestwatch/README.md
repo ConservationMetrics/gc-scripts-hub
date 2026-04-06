@@ -11,7 +11,12 @@ Currently, we support fetching the following alerts from GFW:
 * [RADD alerts](https://data.globalforestwatch.org/datasets/gfw::deforestation-alerts-radd/about)
 * [NASA VIIRS fire alerts](https://data.globalforestwatch.org/documents/gfw::viirs-active-fires/about)
 
-You can use these scripts to download data from GFW for your own analytical purposes, or to visualize them in a tool like QGIS or [Guardian Connector Explorer](https://github.com/conservationmetrics/gc-explorer). Please note that if you intend to use GC Explorer's Alert Dashboard view, your dataset should be relatively small (recommended: less than 1000 alerts). Datasets like deforestation alerts can be quite large depending on the area of interest and the time period, and may not be suitable for the Alert Dashboard view which is designed for smaller datasets.
+You can use these scripts to download data from GFW for your own analytical purposes, or to visualize them in a tool like QGIS or [Guardian Connector Explorer](https://github.com/conservationmetrics/gc-explorer). 
+
+> [!IMPORTANT]
+> Please note that if you intend to use GC Explorer's Alert Dashboard view, which renders GeoJSON data constructed from a PostgreSQL table, your dataset should remain relatively small (**recommended: less than 2,500 alerts**). 
+> 
+> Datasets like deforestation alerts can be quite large depending on the area of interest and the time period, and may not be suitable for the Alert Dashboard view which is designed for smaller datasets. You may however want to visualize this data in a different tool, like Superset.
 
 > [!NOTE]
 > This script makes a query request to conduct on-the-fly data analysis. This means that for large areas, it may take a while for the GFW API to return the result. Additionally, there is a **maximum allowed payload size of 6291556 bytes**.

@@ -40,6 +40,7 @@ def send_twilio_message(
     Send a Twilio SMS message with alerts processing completion details.
 
     The message template is defined in the Twilio console, and is structured as follows:
+
     {{1}} new change detection alert(s) have been published on your alerts dashboard for
     the date of {{2}}. The following activities have been detected in your region: {{3}}.
     Visit your alerts dashboard here: {{4}}
@@ -76,7 +77,7 @@ def send_twilio_message(
             content_variables=json.dumps(
                 {
                     "1": alerts_statistics.get("total_alerts"),
-                    "2": alerts_statistics.get("month_year"),
+                    "2": alerts_statistics.get("date"),
                     "3": alerts_statistics.get("description_alerts"),
                     "4": f"https://explorer.{instance_slug}.guardianconnector.net/alerts/{db_table_name}",
                 }
