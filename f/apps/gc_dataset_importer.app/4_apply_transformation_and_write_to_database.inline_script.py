@@ -129,8 +129,9 @@ def main(
             logger.info("Transformed file saved to temp directory")
         else:
             output_filename = f"{uploaded_path.stem}.{final_output_format}"
-            file_path = output_filename
-            logger.info(f"Using original file: {file_path}")
+            # Must be absolute path under tmp_dir so csv_path + attachment_root resolve correctly
+            file_path = uploaded_path
+            logger.info(f"Using parsed file: {file_path}")
             
         # Save to PostgreSQL
         file_path_obj = Path(file_path)
@@ -153,7 +154,7 @@ def main(
 
         # Copy parsed/transformed file to datalake (use did_transform so lon/lat→GeoJSON is saved with correct name)
         datalake_filename = output_filename if did_transform else filename_parsed
-        source_path = Path(file_path) if did_transform else uploaded_path
+        source_path = Path(file_path)
         _copy_to_datalake(source_path, datalake_dir, datalake_filename)
 
         # Save originally uploaded file to the same directory as parsed/transformed files
