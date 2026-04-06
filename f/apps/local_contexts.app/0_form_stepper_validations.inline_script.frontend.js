@@ -1,4 +1,4 @@
-const { currentStepIndex } = formStepper;
+const { currentStepIndex, lastAction } = formStepper;
 
 // Step 1: Dataset must be selected
 if (currentStepIndex === 0) {
@@ -11,7 +11,7 @@ if (currentStepIndex === 0) {
 }
 
 // Step 2: At least one label must be selected AND at least one change made
-if (currentStepIndex === 1) {
+if (currentStepIndex === 1 && lastAction === "next") {
   const selectedLabels = Array.isArray(state.labelsToApply)
     ? state.labelsToApply
     : [];
