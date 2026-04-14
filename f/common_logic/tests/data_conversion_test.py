@@ -1261,12 +1261,12 @@ def test_convert_data__geopackage_geometry_types(geopackage_file):
 
 
 def test_convert_data__geopackage_properties(geopackage_file):
-    """Test that properties from spatial layers are preserved."""
+    """Test that properties from spatial layers are preserved with data_source."""
     result, _ = convert_data([str(geopackage_file)], "geopackage")
 
     # Check an apiary feature (Point layer)
     apiary_features = [
-        f for f in result["features"] if "bee_species" in f["properties"]
+        f for f in result["features"] if f["properties"].get("data_source") == "apiary"
     ]
     assert len(apiary_features) == 36
     first_apiary = apiary_features[0]
@@ -1275,7 +1275,7 @@ def test_convert_data__geopackage_properties(geopackage_file):
 
     # Check an area feature (Polygon layer)
     area_features = [
-        f for f in result["features"] if "plant_species" in f["properties"]
+        f for f in result["features"] if f["properties"].get("data_source") == "area"
     ]
     assert len(area_features) == 18
     first_area = area_features[0]
@@ -1283,21 +1283,32 @@ def test_convert_data__geopackage_properties(geopackage_file):
 
     # Check a track feature (LineString layer)
     track_features = [
-        f for f in result["features"] if f["geometry"]["type"] == "LineString"
+        f
+        for f in result["features"]
+        if f["properties"].get("data_source") == "tracks"
     ]
     assert len(track_features) == 1
     assert track_features[0]["properties"]["name"] == "Munt Sura"
+
+
+def test_convert_data__geopackage_data_source(geopackage_file):
+    """Test that every feature carries the originating layer name."""
+    result, _ = convert_data([str(geopackage_file)], "geopackage")
+
+    sources = {f["properties"]["data_source"] for f in result["features"]}
+    assert sources == {"apiary", "area", "tracks"}
 
 
 def test_convert_data__geopackage_skips_non_spatial(geopackage_file):
     """Test that non-spatial layers (Reviews, Pollen_Consumption) are excluded."""
     result, _ = convert_data([str(geopackage_file)], "geopackage")
 
-    # None of the features should have properties unique to non-spatial layers
     for feature in result["features"]:
         assert feature["geometry"] is not None
-        # 'apiary_id' is unique to the Reviews table
-        assert "apiary_id" not in feature["properties"]
+        assert feature["properties"]["data_source"] not in {
+            "Reviews",
+            "Pollen_Consumption",
+        }
 
 
 def test_convert_data__geopackage_null_properties_stripped(geopackage_file):

@@ -856,7 +856,8 @@ def read_geopackage(path: Path):
 
     Uses Fiona/GDAL for reliable GPKG parsing. Iterates all layers, skipping
     non-spatial tables (e.g. attribute-only relations). Features from every
-    spatial layer are merged into a single FeatureCollection.
+    spatial layer are merged into a single FeatureCollection with a
+    ``data_source`` property recording the originating layer name.
 
     Returns
     -------
@@ -878,6 +879,7 @@ def read_geopackage(path: Path):
                     for k, v in (dict(feature["properties"]) or {}).items()
                     if v is not None
                 }
+                props["data_source"] = layer
                 features.append(
                     {
                         "type": "Feature",
