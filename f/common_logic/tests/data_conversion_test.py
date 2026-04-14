@@ -1,6 +1,11 @@
 import pytest
 
-from f.common_logic.data_conversion import convert_data, to_geojson
+from f.common_logic.data_conversion import (
+    convert_data,
+    detect_structured_data_type,
+    read_geopackage,
+    to_geojson,
+)
 
 
 def _validate_geojson_structure(result, expected_feature_count):
@@ -1217,6 +1222,101 @@ def test_convert_data__shapefile(shapefile_paths):
         assert "id" in feature
         assert isinstance(feature["geometry"], dict)
         assert isinstance(feature["properties"], dict)
+
+
+# --- GeoPackage tests ---
+
+
+def test_detect_structured_data_type__geopackage(geopackage_file):
+    result = detect_structured_data_type([str(geopackage_file)])
+    assert result == "geopackage"
+
+
+def test_convert_data__geopackage(geopackage_file):
+    """Test conversion of a multi-layer GeoPackage to GeoJSON."""
+    result, output_format = convert_data([str(geopackage_file)], "geopackage")
+    assert output_format == "geojson"
+
+    # 36 apiary (Point) + 18 area (Polygon) + 1 track (LineString) = 55 spatial features
+    # Non-spatial layers (Reviews, Pollen_Consumption) are skipped
+    _validate_geojson_structure(result, 55)
+
+    for feature in result["features"]:
+        assert feature["type"] == "Feature"
+        assert "id" in feature
+        assert isinstance(feature["geometry"], dict)
+        assert isinstance(feature["properties"], dict)
+
+
+def test_convert_data__geopackage_geometry_types(geopackage_file):
+    """Test that all spatial layer geometry types are preserved."""
+    result, _ = convert_data([str(geopackage_file)], "geopackage")
+
+    geom_types = {f["geometry"]["type"] for f in result["features"]}
+    assert "Point" in geom_types
+    assert "Polygon" in geom_types
+    assert "LineString" in geom_types
+
+
+def test_convert_data__geopackage_properties(geopackage_file):
+    """Test that properties from spatial layers are preserved."""
+    result, _ = convert_data([str(geopackage_file)], "geopackage")
+
+    # Check an apiary feature (Point layer)
+    apiary_features = [
+        f for f in result["features"] if "bee_species" in f["properties"]
+    ]
+    assert len(apiary_features) == 36
+    first_apiary = apiary_features[0]
+    assert first_apiary["properties"]["bee_species"] == "Apis Mellifera"
+    assert first_apiary["properties"]["beekeeper"] == "Rita Levi Montalcini"
+
+    # Check an area feature (Polygon layer)
+    area_features = [
+        f for f in result["features"] if "plant_species" in f["properties"]
+    ]
+    assert len(area_features) == 18
+    first_area = area_features[0]
+    assert first_area["properties"]["plant_species"] == "lavender"
+
+    # Check a track feature (LineString layer)
+    track_features = [
+        f for f in result["features"] if f["geometry"]["type"] == "LineString"
+    ]
+    assert len(track_features) == 1
+    assert track_features[0]["properties"]["name"] == "Munt Sura"
+
+
+def test_convert_data__geopackage_skips_non_spatial(geopackage_file):
+    """Test that non-spatial layers (Reviews, Pollen_Consumption) are excluded."""
+    result, _ = convert_data([str(geopackage_file)], "geopackage")
+
+    # None of the features should have properties unique to non-spatial layers
+    for feature in result["features"]:
+        assert feature["geometry"] is not None
+        # 'apiary_id' is unique to the Reviews table
+        assert "apiary_id" not in feature["properties"]
+
+
+def test_convert_data__geopackage_null_properties_stripped(geopackage_file):
+    """Test that None-valued properties are excluded from output."""
+    result, _ = convert_data([str(geopackage_file)], "geopackage")
+
+    for feature in result["features"]:
+        for value in feature["properties"].values():
+            assert value is not None
+
+
+def test_read_geopackage__empty(tmp_path):
+    """Test that an empty GeoPackage raises ValueError."""
+    import fiona
+
+    gpkg_path = tmp_path / "empty.gpkg"
+    schema = {"geometry": "Point", "properties": {"name": "str"}}
+    with fiona.open(gpkg_path, "w", driver="GPKG", schema=schema) as _:
+        pass  # create empty layer
+    with pytest.raises(ValueError, match="No valid features found in GeoPackage"):
+        read_geopackage(gpkg_path)
 
 
 # --- Error handling tests ---

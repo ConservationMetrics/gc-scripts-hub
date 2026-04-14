@@ -246,6 +246,11 @@ def smart_patrol_sample_xml_file():
 
 
 @pytest.fixture
+def geopackage_file():
+    return Path(__file__).parent / "assets" / "datasets_bees.gpkg"
+
+
+@pytest.fixture
 def shapefile_paths(tmp_path):
     """Extract my_data.zip shapefile and return list of file path strings."""
     zip_file = Path(__file__).parent / "assets" / "my_shapefile_data.zip"

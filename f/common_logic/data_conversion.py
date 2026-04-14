@@ -33,7 +33,7 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
 
     This function identifies structured datasets used in environmental, geographic, and
     tabular data pipelines. It supports:
-    - Spatial formats: geojson, kml, gpx, shapefile
+    - Spatial formats: geojson, kml, gpx, shapefile, geopackage
     - Tabular formats: csv, xls, xlsx
     - General structured formats: json
 
@@ -137,11 +137,24 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
         except Exception:
             return False
 
+    def _is_valid_geopackage(path: str) -> bool:
+        try:
+            layers = fiona.listlayers(path)
+            return len(layers) > 0
+        except Exception:
+            return False
+
     # Check for shapefile first (multi-file format: .shp + sidecar files)
     shp_path = next((p for p in file_paths if Path(p).suffix.lower() == ".shp"), None)
     if shp_path and _is_valid_shapefile(shp_path):
         logger.info(f"File set detected as shapefile (via {Path(shp_path).name})")
         return "shapefile"
+
+    # Check for GeoPackage (SQLite-based, extension-detected)
+    gpkg_path = next((p for p in file_paths if Path(p).suffix.lower() == ".gpkg"), None)
+    if gpkg_path and _is_valid_geopackage(gpkg_path):
+        logger.info(f"File {Path(gpkg_path).name} detected as geopackage")
+        return "geopackage"
 
     file_path = file_paths[0]
     path = Path(file_path)
@@ -239,7 +252,7 @@ def convert_data(
         For multi-file formats (shapefile), the .shp is located automatically.
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
-        'gpx', 'kml', 'geojson', 'smart', 'shapefile'.
+        'gpx', 'kml', 'geojson', 'smart', 'shapefile', 'geopackage'.
     output_format : str, optional
         Desired output format ('csv' or 'geojson'). When None, inferred from
         file_format.
@@ -283,6 +296,8 @@ def convert_data(
             data, default_output = read_smart_xml(path), "geojson"
         case "shapefile":
             data, default_output = read_shapefile(path), "geojson"
+        case "geopackage":
+            data, default_output = read_geopackage(path), "geojson"
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -823,6 +838,50 @@ def read_smart_xml(path: Path):
     from f.connectors.smart.smart_patrols import parse_smart_patrol_xml
 
     return parse_smart_patrol_xml(path)
+
+
+@handle_file_errors
+def read_geopackage(path: Path):
+    """
+    Reads a GeoPackage file and returns a GeoJSON FeatureCollection.
+
+    Uses Fiona/GDAL for reliable GPKG parsing. Iterates all layers, skipping
+    non-spatial tables (e.g. attribute-only relations). Features from every
+    spatial layer are merged into a single FeatureCollection.
+
+    Returns
+    -------
+    dict
+        GeoJSON FeatureCollection.
+    """
+    features = []
+    feature_idx = 0
+    for layer in fiona.listlayers(path):
+        with fiona.open(path, layer=layer) as src:
+            if src.schema["geometry"] in (None, "None"):
+                continue
+            for feature in src:
+                if feature["geometry"] is None:
+                    continue
+                feature_idx += 1
+                props = {
+                    k: v
+                    for k, v in (dict(feature["properties"]) or {}).items()
+                    if v is not None
+                }
+                features.append(
+                    {
+                        "type": "Feature",
+                        "id": str(feature_idx),
+                        "geometry": dict(feature["geometry"]),
+                        "properties": props,
+                    }
+                )
+
+    if not features:
+        raise ValueError("No valid features found in GeoPackage")
+
+    return {"type": "FeatureCollection", "features": features}
 
 
 @handle_file_errors
