@@ -14,11 +14,11 @@ secrets managements, etc).
 
 Some of the tools available in the Guardian Connector Scripts Hub are:
 
-* Connector scripts to fetch or push data to tools such as ArcGIS, CoMapeo, Global Forest Watch, KoboToolbox, Local Contexts, Locus Map, Mapbox, ODK, SMART, Earth Index, and Timelapse.
+* Connector scripts to fetch or push data to tools such as ArcGIS, CoMapeo, Earth Index, Global Forest Watch, KoboToolbox, Local Contexts, Mapbox, ODK, Timelapse.
 * Modules to write data (tabular and binary files) to a data warehouse (database) and data lake (file storage). 
 * Multi-step flows to chain scripts together, such as one to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server API, and send a message to WhatsApp recipients via Twilio.
 * Scripts to export data from a database into a specific format (i.e., GeoJSON or CSV).
-* An app to import and transform datasets from a variety of file formats and sources into a PostgreSQL database.
+* An app to import and transform datasets from a variety of file formats and sources (including Locus Map, QField, and SMART) into a PostgreSQL database.
 
 ![Available scripts, flows, and apps in gc-scripts-hub](docs/gc-scripts-hub.jpg)
 _A Windmill Workspace populated with some of the tools in this repository._

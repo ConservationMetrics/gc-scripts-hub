@@ -17,7 +17,7 @@ The importer follows a structured 4-step process:
 - Extracts ZIP/KMZ archives and processes contents
 - Converts files to standardized formats:
   - **Tabular data** → CSV (Excel, JSON, CSV) or GeoJSON (if coordinates are provided)
-  - **Spatial data** → GeoJSON (GPX, KML, existing GeoJSON, Shapefile)
+  - **Spatial data** → GeoJSON (GPX, KML, existing GeoJSON, Shapefile, GeoPackage)
 - Saves parsed files to temporary storage for processing
 
 ### Step 3: Data Source Configuration
@@ -82,6 +82,7 @@ flowchart TD
     KML --> GeoJSON
     GPX --> GeoJSON
     Shapefile --> GeoJSON
+    GeoPackage --> GeoJSON
     GeoJSON2 -. already valid .-> GeoJSON
 
  %% Optional transformation
@@ -109,6 +110,7 @@ flowchart TD
     CSV2@{ shape: stored-data}
     GPX@{ shape: stored-data}
     Shapefile@{ shape: stored-data}
+    GeoPackage@{ shape: stored-data}
     Other@{ shape: stored-data}
     BusinessLogic@{ shape: procs}
 
