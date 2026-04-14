@@ -82,7 +82,7 @@ flowchart TD
     KML --> GeoJSON
     GPX --> GeoJSON
     Shapefile --> GeoJSON
-    GeoPackage --> GeoJSON
+    GeoPackage (spatial layers) --> GeoJSON
     GeoJSON2 -. already valid .-> GeoJSON
 
  %% Optional transformation
