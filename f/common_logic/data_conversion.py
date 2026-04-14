@@ -199,6 +199,15 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
     return "unsupported"
 
 
+def _fiona_geometry_to_dict(geometry) -> dict:
+    """Convert a fiona Geometry to a clean GeoJSON dict via __geo_interface__.
+
+    ``dict(geometry)`` leaks an internal ``geometries`` key that is always
+    ``null`` for non-GeometryCollection types, producing invalid GeoJSON.
+    """
+    return dict(geometry.__geo_interface__)
+
+
 def handle_file_errors(func):
     """
     Decorator to handle file-related errors for functions that process files.
@@ -689,7 +698,7 @@ def read_gpx(path: Path):
                     {
                         "type": "Feature",
                         "id": feature_id,
-                        "geometry": dict(feature["geometry"]),
+                        "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                         "properties": final_properties,
                     }
                 )
@@ -808,7 +817,7 @@ def read_kml(path: Path):
                 {
                     "type": "Feature",
                     "id": feature_id,
-                    "geometry": dict(feature["geometry"]),
+                    "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                     "properties": final_properties,
                 }
             )
@@ -873,7 +882,7 @@ def read_geopackage(path: Path):
                     {
                         "type": "Feature",
                         "id": str(feature_idx),
-                        "geometry": dict(feature["geometry"]),
+                        "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                         "properties": props,
                     }
                 )
@@ -909,7 +918,7 @@ def read_shapefile(path: Path):
                 {
                     "type": "Feature",
                     "id": str(i + 1),
-                    "geometry": dict(feature["geometry"]),
+                    "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                     "properties": props,
                 }
             )

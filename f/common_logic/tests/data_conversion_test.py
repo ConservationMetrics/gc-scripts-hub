@@ -1246,6 +1246,8 @@ def test_convert_data__geopackage(geopackage_file):
         assert "id" in feature
         assert isinstance(feature["geometry"], dict)
         assert isinstance(feature["properties"], dict)
+        # Must not contain fiona's internal 'geometries' key
+        assert "geometries" not in feature["geometry"]
 
 
 def test_convert_data__geopackage_geometry_types(geopackage_file):
