@@ -585,9 +585,9 @@ value:
             type: templatev2
             connections: []
             eval: >-
-              <p style="font-size: medium; text-align: center;"><strong>Accepted
-              formats:</strong> CSV, GeoJSON, GPX, JSON, KML, Shapefile, XLS,
-              XLSX, XML (<em>SMART only</em>)<br>
+              <p class="text-xs text-center"><strong>Accepted formats:</strong>
+              CSV, GeoJSON, GPX, GeoPackage, JSON, KML, Shapefile, XLS, XLSX,
+              XML (<em>SMART only</em>)<br>
 
               <strong>Note:</strong> To upload media attachments (like photos),
               please use Filebrowser. See <a
@@ -631,6 +631,7 @@ value:
                 - application/vnd.ms-excel
                 - application/json
                 - application/xml
+                - application/geopackage+vnd.sqlite3
               connections:
                 - id: result
                   componentId: selectFile
