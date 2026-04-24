@@ -123,7 +123,7 @@ def main(
         # even when we fail the run due to missing attachments.
         error_msg_with_report = (
             f"{error_msg}\n"
-            f"per_project_stats={json.dumps(per_project_stats, ensure_ascii=False, sort_keys=True)}"
+            f"per_project_stats={json.dumps(per_project_stats, ensure_ascii=False)}"
         )
         raise CoMapeoPullError(
             error_msg_with_report,
