@@ -29,6 +29,17 @@ class comapeo_server(TypedDict):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class CoMapeoPullError(RuntimeError):
+    """Raised when the run produces partial output plus an error.
+
+    The per-project report is always available on `.per_project_stats`, so callers
+    (and Windmill logs) can still access the full metrics even when the run fails.
+    """
+
+    def __init__(self, message: str, *, per_project_stats: dict):
+        super().__init__(message)
+        self.per_project_stats = per_project_stats
+
 
 def main(
     comapeo: comapeo_server,
@@ -52,11 +63,11 @@ def main(
         logger.info(
             "No projects fetched. Skipping data processing and database writing."
         )
-        return
+        return {}
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_projects_geojson, stats, total_failed_observations_count = (
+    comapeo_projects_geojson, stats, total_failed_observations_count, per_project_stats = (
         download_and_transform_comapeo_data(
             server_url,
             session,
@@ -108,7 +119,18 @@ def main(
             f"{total_failed_observations_count} observation(s) affected. "
             f"See *_missing_attachments.geojson files for details."
         )
-        raise RuntimeError(error_msg)
+        # Include the full report in the exception so callers still get metrics
+        # even when we fail the run due to missing attachments.
+        error_msg_with_report = (
+            f"{error_msg}\n"
+            f"per_project_stats={json.dumps(per_project_stats, ensure_ascii=False, sort_keys=True)}"
+        )
+        raise CoMapeoPullError(
+            error_msg_with_report,
+            per_project_stats=per_project_stats,
+        )
+
+    return per_project_stats
 
 
 def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
@@ -342,6 +364,7 @@ def download_project_observations(server_url, session, project_id, project_dir):
 
             for attachment in observation["attachments"]:
                 if "url" in attachment:
+                    stats["attachment_attempted"] += 1
                     file_name, skipped, failed = download_file(
                         attachment["url"],
                         session,
@@ -968,6 +991,7 @@ def download_and_transform_comapeo_data(
     comapeo_data = {}
     stats = Counter()
     total_failed_observations_count = 0
+    per_project_stats = {}
 
     for index, project in enumerate(comapeo_projects):
         project_id = project["project_id"]
@@ -1050,6 +1074,11 @@ def download_and_transform_comapeo_data(
         }
 
         # Aggregate statistics
+        per_project_stats[sanitized_project_name] = {
+            "observations_fetched": len(observations),
+            "attachments_failed": attachment_stats["attachment_failed"],
+        }
+
         stats["skipped_attachments"] += attachment_stats["skipped_attachments"]
         stats["attachment_failed"] += attachment_stats["attachment_failed"]
         stats["skipped_icons"] += icon_stats["skipped_icons"]
@@ -1069,4 +1098,4 @@ def download_and_transform_comapeo_data(
         logger.info(
             f"Project {index + 1} (ID: {project_id}, name: {project_name}): Processed {len(observations)} observation(s) and {len(tracks)} track(s)."
         )
-    return comapeo_data, stats, total_failed_observations_count
+    return comapeo_data, stats, total_failed_observations_count, per_project_stats
