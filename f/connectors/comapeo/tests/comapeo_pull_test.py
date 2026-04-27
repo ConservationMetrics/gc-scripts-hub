@@ -416,6 +416,7 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
     )
 
     assert len(observations) == 2
+    assert stats["attachment_attempted"] == 3
     assert stats["attachment_failed"] == 2  # Two attachments failed
     assert stats["skipped_attachments"] == 0
 
@@ -484,6 +485,7 @@ def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
     )
 
     assert len(observations) == 1
+    assert stats["attachment_attempted"] == 1
     assert stats["skipped_attachments"] == 1  # Attachment was skipped (already exists)
     assert stats["attachment_failed"] == 0
     assert len(failed_observations_info) == 0  # No failures
@@ -787,13 +789,20 @@ def test_download_file(mocked_responses, tmp_path):
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
-    main(
+    run_metrics = main(
         comapeoserver_observations.comapeo_server,
         comapeoserver_observations.comapeo_project_blocklist,
         pg_database,
         "comapeo",
         asset_storage,
     )
+
+    assert run_metrics == {
+        "forest_expedition": {
+            "observations_fetched": 3,
+            "attachments_failed": 0,
+        }
+    }
 
     # Attachments are saved to disk
     assert (
@@ -1037,6 +1046,8 @@ def test_missing_attachments_geojson_created(
         assert "1 attachment(s) failed to download" in error_msg
         assert "1 observation(s) affected" in error_msg
         assert "missing_attachments.geojson" in error_msg
+        assert "per_project_stats=" in error_msg
+        assert '"attachments_failed": 1' in error_msg
 
     # Check that the missing attachments GeoJSON file was created despite the error
     missing_attachments_path = (
@@ -1073,13 +1084,20 @@ def test_no_missing_attachments_geojson_when_all_succeed(
     asset_storage = tmp_path / "datalake"
 
     # Run the main script (all attachments should succeed based on fixture mocks)
-    main(
+    run_metrics = main(
         comapeoserver_observations.comapeo_server,
         comapeoserver_observations.comapeo_project_blocklist,
         pg_database,
         "comapeo",
         asset_storage,
     )
+
+    assert run_metrics == {
+        "forest_expedition": {
+            "observations_fetched": 3,
+            "attachments_failed": 0,
+        }
+    }
 
     # Check that no missing attachments GeoJSON file was created
     missing_attachments_path = (
