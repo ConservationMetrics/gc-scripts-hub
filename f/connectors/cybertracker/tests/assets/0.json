@@ -1,0 +1,269 @@
+﻿[
+  {
+    "createTime": "2026-04-30T09:51:59.418-04:00",
+    "db": {
+      "attachments": ["FILE_20260430_095159.db", "FILE_20260430_095159.kmz"],
+      "flags": 129,
+      "stateSpace": "",
+      "uid": "3cb38199e6174d17a11e864b438cd9e8",
+      "x": 0,
+      "y": 0
+    },
+    "deviceId": "6e94db170223de920000000000000000",
+    "globals": {},
+    "iconHashes": {},
+    "note": "",
+    "records": [
+      {
+        "fieldStates": {
+          "trackFile": 3735553
+        },
+        "fieldUid": "",
+        "fieldValues": {
+          "trackFile": "FILE_20260430_095159.kmz"
+        },
+        "nameElementUid": "",
+        "parentUid": "",
+        "uid": "3cb38199e6174d17a11e864b438cd9e8"
+      }
+    ],
+    "schemaHash": "e2a39ad04799f0fdd50f355ed096d9bd.qml",
+    "sessionId": "2532f7a9f2e94263abcc02b0b71664f8",
+    "trackFile": "FILE_20260430_095159.db",
+    "trackOnly": true,
+    "updateTime": "2026-04-30T09:51:59.418-04:00",
+    "username": "CMI",
+    "variables": {},
+    "version": 1
+  },
+  {
+    "createTime": "2026-04-30T09:56:27.000-04:00",
+    "db": {
+      "flags": 1,
+      "stateSpace": "",
+      "uid": "cb5e04cf13124dca9f1f1665ef059642",
+      "x": -77,
+      "y": 38
+    },
+    "deviceId": "6e94db170223de920000000000000000",
+    "globals": {},
+    "iconHashes": {},
+    "note": "",
+    "records": [
+      {
+        "fieldStates": {
+          "location": 3735553
+        },
+        "fieldUid": "",
+        "fieldValues": {
+          "location": {
+            "a": 3.7900924682617188,
+            "accuracyFilter": 0,
+            "c": -1,
+            "d": 0,
+            "deviceId": "",
+            "distanceFilter": 0,
+            "interval": 0,
+            "s": 24.940000534057617,
+            "ts": "2026-04-30T09:56:27.000-04:00",
+            "x": -77,
+            "y": 38,
+            "z": 66
+          }
+        },
+        "nameElementUid": "",
+        "parentUid": "",
+        "uid": "cb5e04cf13124dca9f1f1665ef059642"
+      }
+    ],
+    "schemaHash": "e2a39ad04799f0fdd50f355ed096d9bd.qml",
+    "sessionId": "ad036563e7c64a0ab647ed9ae826e71c",
+    "trackFile": "",
+    "trackOnly": false,
+    "updateTime": "2026-04-30T09:56:27.000-04:00",
+    "username": "CMI",
+    "variables": {},
+    "version": 1
+  },
+  {
+    "createTime": "2026-04-30T11:41:02.531-04:00",
+    "db": {
+      "attachments": [
+        "PHOTO_20260430_114040.jpg",
+        "e234a9b27a4a494a9800a918b1d034ce.wav"
+      ],
+      "flags": 169,
+      "stateSpace": "",
+      "uid": "8bc8d8c38801469bb09a0e82d4724eb2",
+      "x": -77,
+      "y": 38
+    },
+    "deviceId": "6e94db170223de920000000000000000",
+    "globals": {},
+    "iconHashes": {},
+    "note": "",
+    "records": [
+      {
+        "fieldStates": {
+          "cto_deviceid": 3735553,
+          "cto_end": 3735555,
+          "cto_location": 3735554,
+          "cto_session_id": 3735555,
+          "cto_start": 3735555,
+          "cto_username": 3735555,
+          "repeat_s20260430153715926_take_photo": 4063234,
+          "s20260430153623050_collect_data": 3670018,
+          "s20260430153732436_record_audio": 3670018,
+          "s20260430153756179_write_note": 3670018,
+          "s20260430153822152_write_numbers": 3670018
+        },
+        "fieldUid": "",
+        "fieldValues": {
+          "cto_deviceid": "ct:6e94db170223de920000000000000000",
+          "cto_end": "2026-04-30T11:41:02.531-04:00",
+          "cto_location": {
+            "a": 3.7900924682617188,
+            "accuracyFilter": 80,
+            "c": -1,
+            "d": null,
+            "deviceId": "6e94db170223de920000000000000000",
+            "distanceFilter": 0,
+            "interval": 0,
+            "s": 0,
+            "ts": "2026-04-30T11:41:02.014-04:00",
+            "x": -77,
+            "y": 38,
+            "z": 29
+          },
+          "cto_session_id": "90056d9b51644094bb0ebceb1554bcc2",
+          "cto_start": "2026-04-30T11:41:02.531-04:00",
+          "cto_username": "CMI",
+          "repeat_s20260430153715926_take_photo": [
+            "bcd9f6c79f414466bef9cae764297de5"
+          ],
+          "s20260430153623050_collect_data": [
+            "s20260430153623050_collect_data/i20260430153647038_sacred_sites",
+            "s20260430153623050_collect_data/i20260430153657095_other"
+          ],
+          "s20260430153732436_record_audio": {
+            "duration": 2000,
+            "filename": "e234a9b27a4a494a9800a918b1d034ce.wav"
+          },
+          "s20260430153756179_write_note": "Testing",
+          "s20260430153822152_write_numbers": 25
+        },
+        "nameElementUid": "",
+        "parentUid": "",
+        "uid": "8bc8d8c38801469bb09a0e82d4724eb2"
+      },
+      {
+        "fieldStates": {
+          "repeat_s20260430153715926_take_photo/s20260430153715926_take_photo": 3670018
+        },
+        "fieldUid": "repeat_s20260430153715926_take_photo",
+        "fieldValues": {
+          "repeat_s20260430153715926_take_photo/s20260430153715926_take_photo": [
+            "PHOTO_20260430_114040.jpg"
+          ]
+        },
+        "nameElementUid": "",
+        "parentUid": "8bc8d8c38801469bb09a0e82d4724eb2",
+        "uid": "bcd9f6c79f414466bef9cae764297de5"
+      }
+    ],
+    "schemaHash": "e91c0824a66413925b131f491108218f.qml",
+    "sessionId": "90056d9b51644094bb0ebceb1554bcc2",
+    "trackFile": "",
+    "trackOnly": false,
+    "updateTime": "2026-04-30T11:41:02.531-04:00",
+    "username": "CMI",
+    "variables": {},
+    "version": 1
+  },
+  {
+    "createTime": "2026-04-30T14:42:40.445-04:00",
+    "db": {
+      "attachments": [
+        "FILE_20260430_144240.db",
+        "FILE_20260430_144240.zip",
+        "PHOTO_20260430_144233.jpg"
+      ],
+      "flags": 169,
+      "stateSpace": "",
+      "uid": "80a1241f033a4562a83c82bff8f52716",
+      "x": -77,
+      "y": 38
+    },
+    "deviceId": "6e94db170223de920000000000000000",
+    "globals": {},
+    "iconHashes": {},
+    "note": "",
+    "records": [
+      {
+        "fieldStates": {
+          "cto_deviceid": 3735553,
+          "cto_end": 3735555,
+          "cto_location": 3735554,
+          "cto_session_id": 3735555,
+          "cto_start": 3735555,
+          "cto_track_file": 3735553,
+          "cto_username": 3735555,
+          "repeat_s20260430184110405_picture": 3801090,
+          "s20260430184052729_what_are_you_mapping": 3670018
+        },
+        "fieldUid": "",
+        "fieldValues": {
+          "cto_deviceid": "ct:6e94db170223de920000000000000000",
+          "cto_end": "2026-04-30T14:42:40.445-04:00",
+          "cto_location": {
+            "a": 3.7900924682617188,
+            "accuracyFilter": 80,
+            "c": -1,
+            "d": null,
+            "deviceId": "6e94db170223de920000000000000000",
+            "distanceFilter": 0,
+            "interval": 0,
+            "s": 0,
+            "ts": "2026-04-30T14:42:39.910-04:00",
+            "x": -77,
+            "y": 38,
+            "z": 32
+          },
+          "cto_session_id": "b0b0985705574591a099648346be25e0",
+          "cto_start": "2026-04-30T14:42:40.445-04:00",
+          "cto_track_file": "FILE_20260430_144240.zip",
+          "cto_username": "CMI",
+          "repeat_s20260430184110405_picture": [
+            "59df17bed7514ccd98f151854e6119c6"
+          ],
+          "s20260430184052729_what_are_you_mapping": "Important place"
+        },
+        "nameElementUid": "",
+        "parentUid": "",
+        "uid": "80a1241f033a4562a83c82bff8f52716"
+      },
+      {
+        "fieldStates": {
+          "repeat_s20260430184110405_picture/s20260430184110405_picture": 3670018
+        },
+        "fieldUid": "repeat_s20260430184110405_picture",
+        "fieldValues": {
+          "repeat_s20260430184110405_picture/s20260430184110405_picture": [
+            "PHOTO_20260430_144233.jpg"
+          ]
+        },
+        "nameElementUid": "",
+        "parentUid": "80a1241f033a4562a83c82bff8f52716",
+        "uid": "59df17bed7514ccd98f151854e6119c6"
+      }
+    ],
+    "schemaHash": "c274e92cddef4f663064ddff07349077.qml",
+    "sessionId": "b0b0985705574591a099648346be25e0",
+    "trackFile": "FILE_20260430_144240.db",
+    "trackOnly": false,
+    "updateTime": "2026-04-30T14:42:40.445-04:00",
+    "username": "CMI",
+    "variables": {},
+    "version": 1
+  }
+]
