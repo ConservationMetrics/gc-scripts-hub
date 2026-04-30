@@ -95,24 +95,6 @@ def mapeo_geojson_file():
 
 
 @pytest.fixture
-def cybertracker_bom_json_file():
-    """CyberTracker export saved as UTF-8 with BOM.
-
-    Lives under the cybertracker connector tests since it is real
-    cybertracker data; referenced here as a regression fixture for
-    BOM-tolerant JSON parsing in data_conversion.
-    """
-    return (
-        Path(__file__).parents[2]
-        / "connectors"
-        / "cybertracker"
-        / "tests"
-        / "assets"
-        / "0.json"
-    )
-
-
-@pytest.fixture
 def empty_geojson_file(tmp_path):
     path = tmp_path / "empty.geojson"
     path.write_text(json.dumps({"type": "FeatureCollection", "features": []}))
