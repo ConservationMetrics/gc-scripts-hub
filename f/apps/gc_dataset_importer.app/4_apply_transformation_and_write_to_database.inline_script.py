@@ -11,6 +11,9 @@ from f.common_logic.file_operations import (
     save_uploaded_file_to_temp,
 )
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
+from f.connectors.cybertracker.cybertracker_observations import (
+    transform_cybertracker_data,
+)
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
     transform_kobotoolbox_form_data,
@@ -132,7 +135,7 @@ def main(
             # Must be absolute path under tmp_dir so csv_path + attachment_root resolve correctly
             file_path = uploaded_path
             logger.info(f"Using parsed file: {file_path}")
-            
+
         # Save to PostgreSQL
         file_path_obj = Path(file_path)
         if final_output_format == "geojson":
@@ -349,6 +352,10 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
         ("geojson", "SMART"): (
             transform_smart_patrol_data,
             "SMART transformation applied",
+        ),
+        ("geojson", "CyberTracker"): (
+            transform_cybertracker_data,
+            "CyberTracker transformation applied",
         ),
     }
 
