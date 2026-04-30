@@ -86,7 +86,7 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
         # For .json files, check content to detect GeoJSON
         if path.suffix.lower() == ".json":
             try:
-                with path.open(encoding="utf-8") as f:
+                with path.open(encoding="utf-8-sig") as f:
                     data = json.load(f)
 
                 if isinstance(data, dict) and data.get("type") == "FeatureCollection":
@@ -497,7 +497,7 @@ def read_geojson(path: Path):
     dict
         The parsed GeoJSON data as a dictionary.
     """
-    with path.open(encoding="utf-8") as f:
+    with path.open(encoding="utf-8-sig") as f:
         data = json.load(f)
 
     if not isinstance(data, dict) or data.get("type") != "FeatureCollection":
@@ -543,7 +543,7 @@ def read_json(path: Path):
     list[list[str]]
         The content of the JSON file as a list of lists.
     """
-    with path.open(encoding="utf-8") as f:
+    with path.open(encoding="utf-8-sig") as f:
         data = json.load(f)
 
     if not isinstance(data, list):

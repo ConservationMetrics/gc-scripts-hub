@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from f.common_logic.data_conversion import (
@@ -1125,6 +1127,62 @@ def test_convert_data__json_empty(tmp_path):
     file.write_text("[]")
     with pytest.raises(ValueError, match="JSON file contains no records"):
         convert_data([str(file)], "json")
+
+
+def test_convert_data__cybertracker_json_with_utf8_bom(cybertracker_bom_json_file):
+    """Regression: JSON exports saved as UTF-8 with BOM (e.g. CyberTracker)
+    must parse without raising 'Unexpected UTF-8 BOM'."""
+    result, output_format = convert_data([str(cybertracker_bom_json_file)], "json")
+    assert output_format == "csv"
+
+    headers, *rows = result
+    assert len(rows) == 3
+
+    # Header is the sorted union of top-level keys across all records.
+    assert {
+        "createTime",
+        "deviceId",
+        "schemaHash",
+        "sessionId",
+        "trackOnly",
+        "username",
+        "version",
+    }.issubset(headers)
+
+    # Sanity-check the first record round-tripped (no BOM artifacts in values).
+    by_header = dict(zip(headers, rows[0]))
+    assert by_header["username"] == "CMI"
+    assert by_header["schemaHash"] == "e2a39ad04799f0fdd50f355ed096d9bd.qml"
+
+
+def test_detect_structured_data_type__json_with_utf8_bom(cybertracker_bom_json_file):
+    """A BOM-prefixed .json file should still be classified as 'json'."""
+    assert detect_structured_data_type([str(cybertracker_bom_json_file)]) == "json"
+
+
+def test_convert_data__geojson_with_utf8_bom(tmp_path):
+    """Regression: GeoJSON saved as UTF-8 with BOM must also parse cleanly,
+    and content sniffing should still recognise it as geojson."""
+    path = tmp_path / "with_bom.json"
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "id": "1",
+                "geometry": {"type": "Point", "coordinates": [1.0, 2.0]},
+                "properties": {"name": "bom_point"},
+            }
+        ],
+    }
+    path.write_text("\ufeff" + json.dumps(geojson), encoding="utf-8")
+
+    assert detect_structured_data_type([str(path)]) == "geojson"
+
+    result, output_format = convert_data([str(path)], "geojson")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 1)
+    assert result["features"][0]["properties"]["name"] == "bom_point"
 
 
 # --- Integrated tests ---
