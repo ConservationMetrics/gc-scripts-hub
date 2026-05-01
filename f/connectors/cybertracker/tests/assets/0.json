@@ -12,7 +12,7 @@
     "deviceId": "6e94db170223de920000000000000000",
     "globals": {},
     "iconHashes": {},
-    "note": "",
+    "note": "River bend loop — GPS trace only (KMZ not imported as observations).",
     "records": [
       {
         "fieldStates": {
@@ -48,14 +48,16 @@
     "deviceId": "6e94db170223de920000000000000000",
     "globals": {},
     "iconHashes": {},
-    "note": "",
+    "note": "Quick waypoint: heard howlers off-trail to the ENE.",
     "records": [
       {
         "fieldStates": {
-          "location": 3735553
+          "location": 3735553,
+          "s20260430155627000_field_note": 3670018
         },
         "fieldUid": "",
         "fieldValues": {
+          "s20260430155627000_field_note": "Dropped pin after call-and-response with patrol lead.",
           "location": {
             "a": 3.7900924682617188,
             "accuracyFilter": 0,
@@ -81,7 +83,7 @@
     "trackFile": "",
     "trackOnly": false,
     "updateTime": "2026-04-30T09:56:27.000-04:00",
-    "username": "CMI",
+    "username": "patrol_lead",
     "variables": {},
     "version": 1
   },
@@ -101,7 +103,7 @@
     "deviceId": "6e94db170223de920000000000000000",
     "globals": {},
     "iconHashes": {},
-    "note": "",
+    "note": "Forest expedition — rapid assessment plot.",
     "records": [
       {
         "fieldStates": {
@@ -111,11 +113,11 @@
           "cto_session_id": 3735555,
           "cto_start": 3735555,
           "cto_username": 3735555,
-          "repeat_s20260430153715926_take_photo": 4063234,
+          "repeat_s20260430153715926_photo_of_site": 4063234,
           "s20260430153623050_collect_data": 3670018,
-          "s20260430153732436_record_audio": 3670018,
-          "s20260430153756179_write_note": 3670018,
-          "s20260430153822152_write_numbers": 3670018
+          "s20260430153732436_audio_recording": 3670018,
+          "s20260430153756179_additional_note": 3670018,
+          "s20260430153822152_number_of_species": 3670018
         },
         "fieldUid": "",
         "fieldValues": {
@@ -137,20 +139,20 @@
           },
           "cto_session_id": "90056d9b51644094bb0ebceb1554bcc2",
           "cto_start": "2026-04-30T11:41:02.531-04:00",
-          "cto_username": "CMI",
-          "repeat_s20260430153715926_take_photo": [
+          "cto_username": "field_team_alpha",
+          "repeat_s20260430153715926_photo_of_site": [
             "bcd9f6c79f414466bef9cae764297de5"
           ],
           "s20260430153623050_collect_data": [
-            "s20260430153623050_collect_data/i20260430153647038_sacred_sites",
-            "s20260430153623050_collect_data/i20260430153657095_other"
+            "s20260430153623050_collect_data/i20260430153647038_ceiba_canopy",
+            "s20260430153623050_collect_data/i20260430153657095_fire_scar_history"
           ],
-          "s20260430153732436_record_audio": {
+          "s20260430153732436_audio_recording": {
             "duration": 2000,
             "filename": "e234a9b27a4a494a9800a918b1d034ce.wav"
           },
-          "s20260430153756179_write_note": "Testing",
-          "s20260430153822152_write_numbers": 25
+          "s20260430153756179_additional_note": "Double-checked hornbill against field guide; humidity spiking after noon.",
+          "s20260430153822152_number_of_species": 7
         },
         "nameElementUid": "",
         "parentUid": "",
@@ -158,11 +160,11 @@
       },
       {
         "fieldStates": {
-          "repeat_s20260430153715926_take_photo/s20260430153715926_take_photo": 3670018
+          "repeat_s20260430153715926_photo_of_site/s20260430153715926_photo_of_site": 3670018
         },
-        "fieldUid": "repeat_s20260430153715926_take_photo",
+        "fieldUid": "repeat_s20260430153715926_photo_of_site",
         "fieldValues": {
-          "repeat_s20260430153715926_take_photo/s20260430153715926_take_photo": [
+          "repeat_s20260430153715926_photo_of_site/s20260430153715926_photo_of_site": [
             "PHOTO_20260430_114040.jpg"
           ]
         },
@@ -176,7 +178,7 @@
     "trackFile": "",
     "trackOnly": false,
     "updateTime": "2026-04-30T11:41:02.531-04:00",
-    "username": "CMI",
+    "username": "field_team_alpha",
     "variables": {},
     "version": 1
   },
@@ -197,7 +199,7 @@
     "deviceId": "6e94db170223de920000000000000000",
     "globals": {},
     "iconHashes": {},
-    "note": "",
+    "note": "Community mapping — culturally sensitive point + photo.",
     "records": [
       {
         "fieldStates": {
@@ -208,8 +210,8 @@
           "cto_start": 3735555,
           "cto_track_file": 3735553,
           "cto_username": 3735555,
-          "repeat_s20260430184110405_picture": 3801090,
-          "s20260430184052729_what_are_you_mapping": 3670018
+          "repeat_s20260430184110405_photo_of_site": 3801090,
+          "s20260430184052729_type_of_sighting": 3670018
         },
         "fieldUid": "",
         "fieldValues": {
@@ -232,11 +234,11 @@
           "cto_session_id": "b0b0985705574591a099648346be25e0",
           "cto_start": "2026-04-30T14:42:40.445-04:00",
           "cto_track_file": "FILE_20260430_144240.zip",
-          "cto_username": "CMI",
-          "repeat_s20260430184110405_picture": [
+          "cto_username": "field_team_alpha",
+          "repeat_s20260430184110405_photo_of_site": [
             "59df17bed7514ccd98f151854e6119c6"
           ],
-          "s20260430184052729_what_are_you_mapping": "Important place"
+          "s20260430184052729_type_of_sighting": "Headwater spring — community taboo zone (no harvest)"
         },
         "nameElementUid": "",
         "parentUid": "",
@@ -244,11 +246,11 @@
       },
       {
         "fieldStates": {
-          "repeat_s20260430184110405_picture/s20260430184110405_picture": 3670018
+          "repeat_s20260430184110405_photo_of_site/s20260430184110405_photo_of_site": 3670018
         },
-        "fieldUid": "repeat_s20260430184110405_picture",
+        "fieldUid": "repeat_s20260430184110405_photo_of_site",
         "fieldValues": {
-          "repeat_s20260430184110405_picture/s20260430184110405_picture": [
+          "repeat_s20260430184110405_photo_of_site/s20260430184110405_photo_of_site": [
             "PHOTO_20260430_144233.jpg"
           ]
         },
@@ -262,7 +264,7 @@
     "trackFile": "FILE_20260430_144240.db",
     "trackOnly": false,
     "updateTime": "2026-04-30T14:42:40.445-04:00",
-    "username": "CMI",
+    "username": "field_team_alpha",
     "variables": {},
     "version": 1
   }
