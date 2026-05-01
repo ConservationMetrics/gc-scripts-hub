@@ -1,6 +1,6 @@
 import pytest
 
-from f.connectors.cybertracker.cybertracker_observations import (
+from f.connectors.cybertracker.cybertracker_observations_from_backup import (
     _looks_like_uid,
     parse_cybertracker_json,
 )
@@ -83,7 +83,9 @@ def test_parse_cybertracker_json__field_mapping_and_geometry(cybertracker_json_p
     assert feat["geometry"]["coordinates"] == [-77.0, 38.0]
 
 
-def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(cybertracker_json_path):
+def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(
+    cybertracker_json_path,
+):
     geojson = parse_cybertracker_json(cybertracker_json_path)
     features = geojson["features"]
 

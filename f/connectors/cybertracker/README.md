@@ -27,7 +27,7 @@ In `data/0.json`:
 - **`cto_` in `fieldValues` keys** means the field is part of the **CyberTracker Online** capture envelope (device id, session start/end, location snapshot, username, etc.). This connector maps those keys to GeoJSON properties with a leading underscore (e.g. `cto_location` → `_location`).
 - **CyberTracker Classic** data in the same backup format often uses unprefixed keys for similar ideas — for example a GPS ping may appear as `location` rather than `cto_location`.
 
-## `cybertracker_observations.py`
+## `cybertracker_observations_from_backup.py`
 
 This script imports observations from a CyberTracker backup.
 

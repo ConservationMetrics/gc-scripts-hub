@@ -1,6 +1,6 @@
-summary: "CyberTracker: Import Observations"
+summary: "CyberTracker: Import Observations From Backup"
 description: ""
-lock: "!inline f/connectors/cybertracker/cybertracker_observations.script.lock"
+lock: "!inline f/connectors/cybertracker/cybertracker_observations_from_backup.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
