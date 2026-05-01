@@ -2,9 +2,9 @@
 
 [**CyberTracker**](https://www.cybertracker.org/) is a mobile-first data collection platform used for wildlife sightings, patrol observations, and other field monitoring. It comes in two flavors: the long-running **CyberTracker Classic** (a Windows desktop form designer paired with a fully-offline Android/iOS mobile app), and **CyberTracker Online** (a newer web-based form designer, data store, and reporting UI; the mobile app is still used for data capture).
 
-CyberTracker Online allows you to download data as CSV, but it currently does not have an open API.
+CyberTracker Online allows you to download data as CSV, but it currently does not have an open API. Within the CyberTracker community, custom tooling has been built to get data out of CyberTracker like [this WordPress plugin](https://json4wp.dachspfad.de/) which uses [CyberTracker's webhook functionality](https://cybertrackerwiki.org/webhooks/).
 
-On CyberTracker Mobile, it is possible to produce a **Backup** archive for both Classic and Online projects. Backup archives are ZIPs containing the form schema, observation records, and any attached photos / audio / tracks. The flow described below ingests backup data into Guardian Connector regardless of which product produced it.
+On CyberTracker Mobile, it is possible to produce a **Backup** archive for both Classic and Online projects. Backup archives are ZIPs containing the form schema, observation records, and any attached photos / audio / tracks. The flow described below ingests backup data into Guardian Connector regardless of what flavor of CyberTracker project it is.
 
 ## Backup archive contents
 
@@ -37,9 +37,6 @@ The script parses `data/0.json` and writes the observations to a PostgreSQL data
 > **Tracks vs observations.** Some sessions are **track-only** captures: `trackOnly: true` and/or `fieldValues.trackFile` pointing at a `.kmz` (plus companion `.db` under `attachments/`). Those rows have **no** point coordinates in `fieldValues` in the form this connector uses for a Point (`cto_location` / `_location` from **Online**, or plain `location` from **Classic**, each with numeric `x` / `y`).
 > 
 > These are **not** written to the observations GeoJSON: track geometry import is out of scope for now. To keep KMZ / DB / other track files, upload them with [Filebrowser](https://docs.guardianconnector.net/reference/gc-toolkit/filebrowser/).
-
-> [!TIP]
-> The same `data/0.json` can also be imported through the [GC Dataset Importer](../../apps/gc_dataset_importer.app/) for ad-hoc uploads, without running this connector.
 
 ## 📚 Reference
 
