@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -7,6 +8,11 @@ from f.common_logic.data_conversion import (
     detect_structured_data_type,
     read_geopackage,
     to_geojson,
+)
+
+_CYBERTRACKER_FIXTURE = (
+    Path(__file__).resolve().parent.parent.parent
+    / "connectors/cybertracker/tests/assets/0.json"
 )
 
 
@@ -1181,6 +1187,23 @@ def test_convert_data__geojson_with_utf8_bom(tmp_path):
     assert output_format == "geojson"
     _validate_geojson_structure(result, 1)
     assert result["features"][0]["properties"]["name"] == "bom_point"
+
+
+def test_convert_data__cybertracker_json_fixture():
+    assert _CYBERTRACKER_FIXTURE.is_file()
+    assert detect_structured_data_type([str(_CYBERTRACKER_FIXTURE)]) == "cybertracker"
+
+    result, output_format = convert_data(
+        [str(_CYBERTRACKER_FIXTURE)], "cybertracker"
+    )
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 3)
+
+    by_id = {f["id"]: f for f in result["features"]}
+    howler_wp = by_id["cb5e04cf13124dca9f1f1665ef059642"]
+    assert howler_wp["geometry"]["type"] == "Point"
+    assert howler_wp["geometry"]["coordinates"][0] == -77.0
+    assert howler_wp["geometry"]["coordinates"][1] == 38.0
 
 
 # --- Integrated tests ---
