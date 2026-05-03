@@ -42,9 +42,6 @@ The script parses `data/0.json` and writes the observations to a PostgreSQL data
 > 
 > These are **not** written to the observations GeoJSON: track geometry import is out of scope for now. To keep KMZ / DB / other track files, upload them with [Filebrowser](https://docs.guardianconnector.net/reference/gc-toolkit/filebrowser/).
 
-> [!TIP]
-> The same `data/0.json` can also be imported through the [GC Dataset Importer](../../apps/gc_dataset_importer.app/) for ad-hoc uploads, without running this connector.
-
 ## 📚 Reference
 
 * CyberTracker website: <https://www.cybertracker.org/>
