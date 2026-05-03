@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from f.common_logic.data_conversion import (
@@ -1127,6 +1129,60 @@ def test_convert_data__json_empty(tmp_path):
         convert_data([str(file)], "json")
 
 
+def test_convert_data__json_with_utf8_bom(tmp_path):
+    """JSON saved as UTF-8 with BOM must parse without raising
+    'Unexpected UTF-8 BOM', content sniffing must still classify it
+    as 'json', and no BOM artifacts must leak into values."""
+    path = tmp_path / "with_bom.json"
+    path.write_text(
+        "\ufeff"
+        + json.dumps(
+            [
+                {"id": "1", "name": "Alpha"},
+                {"id": "2", "name": "Bravo", "extra": "data"},
+                {"id": "3", "name": "Charlie"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert detect_structured_data_type([str(path)]) == "json"
+
+    result, output_format = convert_data([str(path)], "json")
+    assert output_format == "csv"
+    assert result == [
+        ["extra", "id", "name"],
+        ["", "1", "Alpha"],
+        ["data", "2", "Bravo"],
+        ["", "3", "Charlie"],
+    ]
+
+
+def test_convert_data__geojson_with_utf8_bom(tmp_path):
+    """GeoJSON saved as UTF-8 with BOM must also parse cleanly,
+    and content sniffing should still recognise it as geojson."""
+    path = tmp_path / "with_bom.json"
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "id": "1",
+                "geometry": {"type": "Point", "coordinates": [1.0, 2.0]},
+                "properties": {"name": "bom_point"},
+            }
+        ],
+    }
+    path.write_text("\ufeff" + json.dumps(geojson), encoding="utf-8")
+
+    assert detect_structured_data_type([str(path)]) == "geojson"
+
+    result, output_format = convert_data([str(path)], "geojson")
+    assert output_format == "geojson"
+    _validate_geojson_structure(result, 1)
+    assert result["features"][0]["properties"]["name"] == "bom_point"
+
+
 # --- Integrated tests ---
 
 
@@ -1266,7 +1322,9 @@ def test_convert_data__geopackage_properties(geopackage_file):
 
     # Check an apiary feature (Point layer)
     apiary_features = [
-        f for f in result["features"] if f["properties"].get("__geopackage_layer") == "apiary"
+        f
+        for f in result["features"]
+        if f["properties"].get("__geopackage_layer") == "apiary"
     ]
     assert len(apiary_features) == 36
     first_apiary = apiary_features[0]
@@ -1275,7 +1333,9 @@ def test_convert_data__geopackage_properties(geopackage_file):
 
     # Check an area feature (Polygon layer)
     area_features = [
-        f for f in result["features"] if f["properties"].get("__geopackage_layer") == "area"
+        f
+        for f in result["features"]
+        if f["properties"].get("__geopackage_layer") == "area"
     ]
     assert len(area_features) == 18
     first_area = area_features[0]
