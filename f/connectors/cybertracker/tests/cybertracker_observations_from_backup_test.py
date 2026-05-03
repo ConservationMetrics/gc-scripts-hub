@@ -2,6 +2,7 @@ import pytest
 
 from f.connectors.cybertracker.cybertracker_observations_from_backup import (
     _looks_like_uid,
+    _normalize_field_value,
     parse_cybertracker_json,
 )
 
@@ -20,6 +21,17 @@ from f.connectors.cybertracker.cybertracker_observations_from_backup import (
 )
 def test_looks_like_uid(value, expected):
     assert _looks_like_uid(value) is expected
+
+
+def test_normalize_field_value_skips_list_of_dashed_uuids_like_hex32():
+    """Repeat-parent uid lists normalize to ``None`` when every element is an id shape,
+    including dashed RFC-4122 spelling (not present in the checked-in fixture)."""
+    key = "repeat_s20260430153715926_photo_of_site"
+    child_ids = [
+        "90056d9b-5164-4094-bb0e-bceb1554bcc2",
+        "bcd9f6c7-9f41-4466-bef9-cae764297de5",
+    ]
+    assert _normalize_field_value(key, child_ids) is None
 
 
 def test_parse_cybertracker_json__feature_collection(cybertracker_json_path):

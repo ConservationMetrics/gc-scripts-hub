@@ -10,8 +10,11 @@ from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_pos
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# CT row ids in repeat parent ``fieldValues`` are usually 32 nybbles of hex
-# (no separators); some builds may emit canonical dashed UUIDs instead.
+# Repeat-parent ``fieldValues`` child-row references use the same opaque ids as
+# ``records[*].uid``: 32 hex digits, no separators, in ``data/0.json`` backups
+# (repo fixture and larger on-disk samples). ``_CT_ROW_ID_UUID`` matches dashed
+# RFC-4122 UUID text—the alternate spelling of that 128-bit value—so id lists are
+# still detected if input carries that serialization.
 _CT_ROW_ID_HEX32 = re.compile(r"^[0-9a-f]{32}$", re.IGNORECASE)
 _CT_ROW_ID_UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -129,9 +132,9 @@ def _looks_like_uid(value: object) -> bool:
     Parent repeat fields store lists of these ids so the app can resolve child rows
     (e.g. the row that holds the real photo filename). We skip persisting those lists
     only when every element matches this heuristic. False negatives (missing a
-    real id shape) leave noisy uid lists in ``properties``; the patterns are
-    intentionally tight: 32 nybbles of hex, or a dashed RFC-4122 UUID, after ASCII
-    ``strip()``.
+    real id shape) leave noisy uid lists in ``properties``. After ASCII ``strip()``,
+    we accept 32 contiguous hex digits (the form in ``data/0.json`` backups) or dashed
+    RFC-4122 UUID text for the same 128-bit value; both patterns stay intentionally tight.
     """
     if not isinstance(value, str):
         return False
