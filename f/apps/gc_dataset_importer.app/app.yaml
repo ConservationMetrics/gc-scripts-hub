@@ -586,8 +586,8 @@ value:
             connections: []
             eval: >-
               <p class="text-xs text-center"><strong>Accepted formats:</strong>
-              CSV, GeoJSON, GPX, GeoPackage, JSON (i.e. for CyberTracker), KML,
-              Shapefile, XLS, XLSX, XML (<em>SMART only</em>)<br>
+              CSV, GeoJSON, GPX, GeoPackage, JSON, KML, Shapefile, XLS, XLSX,
+              XML (<em>SMART only</em>)<br>
 
               <strong>Note:</strong> To upload media attachments (like photos),
               please use Filebrowser. See <a
@@ -768,48 +768,39 @@ value:
                     - table_name
                     - db
             transformer:
-              content: |+
+              content: |-
                 state.uploadSuccess = result[0];
                 state.uploadErrorMessage = result[1];
                 state.fileNameOriginal = selectFile.result[0].name;
                 state.fileNameParsed = result[2];
                 state.outputFormat = result[3];
-                state.fileFormat = result[4];
-                if (result[4] === "cybertracker") {
-                  state.dataSource = "CyberTracker"
-                }
-                state.newRows = result[5];
-                state.updatedRows = result[6];
-                state.newColumns = result[7];
-                state.columnNames= result[8];
-
+                state.newRows = result[4];
+                state.updatedRows = result[5];
+                state.newColumns = result[6];
+                state.columnNames= result[7];
               language: frontend
               path: f/apps/gc_dataset_importer/Transformer
               suggestedRefreshOn:
                 - id: state
-                  key: newRows
-                - id: state
-                  key: fileNameParsed
-                - id: state
-                  key: uploadErrorMessage
-                - id: state
                   key: outputFormat
-                - id: selectFile
-                  key: result
-                - id: state
-                  key: updatedRows
-                - id: state
-                  key: fileFormat
-                - id: state
-                  key: columnNames
-                - id: state
-                  key: fileNameOriginal
-                - id: state
-                  key: dataSource
                 - id: state
                   key: newColumns
                 - id: state
+                  key: columnNames
+                - id: state
+                  key: newRows
+                - id: state
+                  key: updatedRows
+                - id: state
                   key: uploadSuccess
+                - id: state
+                  key: fileNameOriginal
+                - id: state
+                  key: uploadErrorMessage
+                - id: selectFile
+                  key: result
+                - id: state
+                  key: fileNameParsed
           configuration:
             afterIcon:
               type: static
@@ -1073,11 +1064,7 @@ value:
               type: static
               value: false
             defaultValue:
-              type: evalv2
-              connections:
-                - id: dataSource
-                  componentId: state
-              expr: state.dataSource
+              type: static
             disabled:
               type: evalv2
               value: false
@@ -1093,8 +1080,6 @@ value:
               value:
                 - value: CoMapeo
                   label: CoMapeo
-                - value: CyberTracker
-                  label: CyberTracker
                 - value: KoboToolbox
                   label: KoboToolbox
                 - value: Mapeo

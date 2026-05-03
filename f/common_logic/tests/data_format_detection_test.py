@@ -4,11 +4,6 @@ import pandas as pd
 
 from f.common_logic.data_conversion import detect_structured_data_type
 
-_CYBERTRACKER_FIXTURE = (
-    Path(__file__).resolve().parent.parent.parent
-    / "connectors/cybertracker/tests/assets/0.json"
-)
-
 
 def test_structured_data_type__gpx_format(tmp_path: Path):
     file_path = tmp_path / "test.gpx"
@@ -75,18 +70,6 @@ def test_structured_data_type__regular_json_with_json_extension(tmp_path: Path):
     file_path = tmp_path / "regular.json"
     file_path.write_text('{"name": "John", "age": 30, "city": "New York"}')
     assert detect_structured_data_type([str(file_path)]) == "json"
-
-
-def test_structured_data_type__cybertracker_json_fixture():
-    assert _CYBERTRACKER_FIXTURE.is_file()
-    assert detect_structured_data_type([str(_CYBERTRACKER_FIXTURE)]) == "cybertracker"
-
-
-def test_structured_data_type__json_array_not_cybertracker(tmp_path: Path):
-    """Generic JSON arrays must not be classified as CyberTracker exports."""
-    path = tmp_path / "rows.json"
-    path.write_text('[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]')
-    assert detect_structured_data_type([str(path)]) == "json"
 
 
 def test_structured_data_type__excel_format(tmp_path: Path):

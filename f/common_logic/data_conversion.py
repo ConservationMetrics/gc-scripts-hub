@@ -25,25 +25,6 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# CyberTracker mobile backup export: top-level JSON array of session objects.
-_CYBERTRACKER_SESSION_KEYS = frozenset(
-    {"sessionId", "schemaHash", "records", "deviceId", "db"}
-)
-
-
-def _is_cybertracker_backup_json(data: object) -> bool:
-    """True if ``data`` matches CyberTracker ``data/0.json`` session-export shape."""
-    if not isinstance(data, list) or not data:
-        return False
-    first = data[0]
-    if not isinstance(first, dict):
-        return False
-    if not _CYBERTRACKER_SESSION_KEYS.issubset(first.keys()):
-        return False
-    return isinstance(first.get("records"), list) and isinstance(
-        first.get("db"), dict
-    )
-
 
 def detect_structured_data_type(file_paths: list[str]) -> str:
     """
@@ -54,7 +35,7 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
     tabular data pipelines. It supports:
     - Spatial formats: geojson, kml, gpx, shapefile, geopackage
     - Tabular formats: csv, xls, xlsx
-    - General structured formats: json, cybertracker (CyberTracker session backup JSON)
+    - General structured formats: json
 
     Accepts a list of file paths (as i.e. returned by save_uploaded_file_to_temp) to
     support multi-file formats like ESRI shapefiles. For single-file
@@ -97,7 +78,7 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
         return detected_type
 
     def _detect_json_subtype(path: Path) -> str:
-        """Distinguish between JSON, GeoJSON, and CyberTracker JSON using extension and content sniffing."""
+        """Distinguish between JSON and GeoJSON using extension and content sniffing."""
         if path.suffix.lower() == ".geojson":
             logger.info(f"File {path.name} detected as geojson (by extension)")
             return "geojson"
@@ -111,12 +92,6 @@ def detect_structured_data_type(file_paths: list[str]) -> str:
                 if isinstance(data, dict) and data.get("type") == "FeatureCollection":
                     logger.info(f"File {path.name} detected as geojson (by content)")
                     return "geojson"
-
-                if _is_cybertracker_backup_json(data):
-                    logger.info(
-                        f"File {path.name} detected as cybertracker JSON (by content)"
-                    )
-                    return "cybertracker"
             except (json.JSONDecodeError, UnicodeDecodeError, OSError):
                 # If we can't parse it, fall back to json
                 pass
@@ -270,8 +245,7 @@ def convert_data(
 
     When output_format is None (default), the implicit mapping is used:
     - Tabular inputs (csv, xlsx, xls, json) → 'csv'
-    - Spatial inputs (gpx, kml, geojson, smart, cybertracker, shapefile,
-      geopackage) → 'geojson'
+    - Spatial inputs (gpx, kml, geojson, smart, shapefile) → 'geojson'
 
     When output_format is explicitly set, cross-format conversion is attempted.
     Currently supported: tabular → 'geojson' (requires latitude_col and longitude_col).
@@ -287,7 +261,7 @@ def convert_data(
         For multi-file formats (shapefile), the .shp is located automatically.
     file_format : str
         Validated file format: one of 'csv', 'xlsx', 'xls', 'json',
-        'gpx', 'kml', 'geojson', 'cybertracker', 'smart', 'shapefile', 'geopackage'.
+        'gpx', 'kml', 'geojson', 'smart', 'shapefile', 'geopackage'.
     output_format : str, optional
         Desired output format ('csv' or 'geojson'). When None, inferred from
         file_format.
@@ -327,8 +301,6 @@ def convert_data(
             data, default_output = read_gpx(path), "geojson"
         case "kml":
             data, default_output = read_kml(path), "geojson"
-        case "cybertracker":
-            data, default_output = read_cybertracker(path), "geojson"
         case "smart":
             data, default_output = read_smart_xml(path), "geojson"
         case "shapefile":
@@ -854,29 +826,6 @@ def read_kml(path: Path):
         raise ValueError("No valid features found in input file")
 
     return {"type": "FeatureCollection", "features": features}
-
-
-@handle_file_errors
-def read_cybertracker(path: Path):
-    """
-    Reads a CyberTracker JSON file and returns a GeoJSON FeatureCollection.
-
-    Parameters
-    ----------
-    path : Path
-        Path to the CyberTracker JSON file.
-
-    Returns
-    -------
-    dict
-        GeoJSON FeatureCollection with observation features.
-    """
-    # Lazy import to avoid forcing CyberTracker dependencies on all users of data_conversion.py
-    from f.connectors.cybertracker.cybertracker_observations_from_backup import (
-        parse_cybertracker_json,
-    )
-
-    return parse_cybertracker_json(path)
 
 
 @handle_file_errors
