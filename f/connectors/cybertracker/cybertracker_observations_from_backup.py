@@ -175,21 +175,29 @@ def _normalize_field_key(raw_key: str) -> str:
 
 
 def _normalize_field_value(raw_key: str, value):
+    """Normalize a CT ``fieldValues`` entry without collapsing list shape.
+
+    Multi-value fields (attachments, repeats) stay as lists even when only one
+    element is present so the downstream column type is stable across rows —
+    otherwise a survey that captured one photo serializes as TEXT ``"a.jpg"``
+    while a survey that captured two serializes as TEXT ``'["a.jpg","b.jpg"]'``
+    in the same column, breaking any consumer that tries to parse it.
+
+    Attachment dicts (``{"filename": ...}``) are surfaced as the bare filename,
+    whether they appear as the top-level value or inside a list.
+    """
     if isinstance(value, dict) and "filename" in value:
         return value.get("filename")
 
-    if (
-        isinstance(value, list)
-        and "/" not in raw_key
-        and value
-        and all(_looks_like_uid(v) for v in value)
-    ):
+    if isinstance(value, list):
         # Parent repeat fields contain child uids; prefer the child rows which
         # include the actual filenames under a ".../..." key.
-        return None
-
-    if isinstance(value, list):
-        return value[0] if len(value) == 1 else value
+        if "/" not in raw_key and value and all(_looks_like_uid(v) for v in value):
+            return None
+        return [
+            v["filename"] if isinstance(v, dict) and "filename" in v else v
+            for v in value
+        ]
 
     return value
 

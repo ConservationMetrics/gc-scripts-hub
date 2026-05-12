@@ -82,7 +82,7 @@ def test_parse_cybertracker_json__field_mapping_and_geometry(cybertracker_json_p
 
     assert props["number_of_species"] == 7
     assert props["audio_recording"] == "e234a9b27a4a494a9800a918b1d034ce.wav"
-    assert props["photo_of_site"] == "PHOTO_20260430_114040.jpg"
+    assert props["photo_of_site"] == ["PHOTO_20260430_114040.jpg"]
     assert props["collect_data"] == [
         "s20260430153623050_collect_data/i20260430153647038_ceiba_canopy",
         "s20260430153623050_collect_data/i20260430153657095_fire_scar_history",
@@ -107,4 +107,4 @@ def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(
         for f in features
         if "headwater spring" in f["properties"].get("type_of_sighting", "").lower()
     )
-    assert feat["properties"]["photo_of_site"] == "PHOTO_20260430_144233.jpg"
+    assert feat["properties"]["photo_of_site"] == ["PHOTO_20260430_144233.jpg"]
