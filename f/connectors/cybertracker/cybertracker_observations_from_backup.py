@@ -60,7 +60,7 @@ def main(
     project_dir = Path(attachment_root) / db_table_name
     project_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save raw JSON file to datalake
+    # Copy raw JSON content to datalake with utf-8 encoding
     json_save_path = project_dir / json_path.name
     json_save_path.write_text(
         json_path.read_text(encoding="utf-8-sig"), encoding="utf-8"
