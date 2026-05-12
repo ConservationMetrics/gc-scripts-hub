@@ -98,7 +98,7 @@ def main(
         logger.warning("No observations found in CyberTracker JSON")
 
 
-def transform_cybertracker_data(data: dict, dataset_name: str = None) -> dict:
+def transform_cybertracker_data(data: dict) -> dict:
     """
     Apply CT-specific transformations to observations data.
 
@@ -109,9 +109,6 @@ def transform_cybertracker_data(data: dict, dataset_name: str = None) -> dict:
     ----------
     data : dict
         GeoJSON FeatureCollection with CT observations.
-    dataset_name : str, optional
-        Human-readable name of the dataset (currently unused, included for
-        consistency with other transformation functions).
 
     Returns
     -------
