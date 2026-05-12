@@ -1,13 +1,13 @@
-summary: "SMART: Import Patrol Data"
+summary: "CyberTracker: Import Observations From Backup"
 description: ""
-lock: "!inline f/connectors/smart/smart_patrols.script.lock"
+lock: "!inline f/connectors/cybertracker/cybertracker_observations_from_backup.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
   $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
-    - smart_patrols_path
+    - cybertracker_observations_path
     - db
     - db_table_name
     - attachment_root
@@ -29,15 +29,16 @@ schema:
       default: null
       originalType: string
       pattern: "^.{1,54}$"
-    smart_patrols_path:
+    cybertracker_observations_path:
       type: string
       description: >-
-        The path (in attachment root) to the SMART patrols XML file to import,
-        e.g. "SMART_000006_001.xml".
+        The path (in attachment root) to the CyberTracker observations JSON file to import,
+        e.g. "my_cybertracker_backup/data/0.json".
       default: null
       originalType: string
-      pattern: ^SMART_.+\.xml$
+      pattern: \.json$
+
   required:
-    - smart_patrols_path
+    - cybertracker_observations_path
     - db
     - db_table_name
