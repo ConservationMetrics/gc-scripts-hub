@@ -167,6 +167,7 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
             None,
             output_filename,
             output_format,
+            file_format,
             new_rows,
             updates,
             new_columns,
@@ -176,4 +177,4 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
     except Exception as e:
         error_msg = f"Error during file upload and conversion: {e}"
         logger.error(error_msg)
-        return False, error_msg, None, None, None, None, None, None
+        return False, error_msg, None, None, None, None, None, None, None
