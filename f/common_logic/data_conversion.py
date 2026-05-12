@@ -871,7 +871,7 @@ def read_cybertracker(path: Path):
     dict
         GeoJSON FeatureCollection with observation features.
     """
-    # Lazy import to avoid forcing CyberTracker dependencies on all users of data_conversion.py
+    # Lazy import to avoid forcing this script dependencies on all users of data_conversion.py
     from f.connectors.cybertracker.cybertracker_observations_from_backup import (
         parse_cybertracker_json,
     )
