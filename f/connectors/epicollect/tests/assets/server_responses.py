@@ -80,6 +80,91 @@ def project_metadata() -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Public-project fixture — photo field is a full URL, not a bare filename
+# ---------------------------------------------------------------------------
+
+PUBLIC_PROJECT_SLUG = "ec5-public-demo"
+PUBLIC_PHOTO_FILENAME = "abc123def4-0000-0000-0000-000000000001_1493304122.jpg"
+PUBLIC_ENTRY_UUID = "ee000000-0000-0000-0000-000000000001"
+_PUBLIC_FORM_REF = "aabbccdd00001111222233334444555_pub_form_ref"
+_PUBLIC_PHOTO_REF = f"{_PUBLIC_FORM_REF}_photo_ref"
+_PUBLIC_TEXT_REF = f"{_PUBLIC_FORM_REF}_text_ref"
+
+
+def public_project_metadata() -> dict:
+    """Minimal metadata for a public project whose photo field is a full URL."""
+    return {
+        "meta": {
+            "project_mapping": [
+                {
+                    "name": "EC5_AUTO",
+                    "is_default": True,
+                    "map_index": 0,
+                    "forms": {
+                        _PUBLIC_FORM_REF: {
+                            _PUBLIC_TEXT_REF: {"map_to": "1_Name"},
+                            _PUBLIC_PHOTO_REF: {"map_to": "2_Photo"},
+                        }
+                    },
+                }
+            ],
+        },
+        "data": {
+            "project": {
+                "slug": PUBLIC_PROJECT_SLUG,
+                "logo_url": "",
+                "forms": [
+                    {
+                        "name": "Public Demo Form",
+                        "inputs": [
+                            {"ref": _PUBLIC_TEXT_REF, "type": "text"},
+                            {"ref": _PUBLIC_PHOTO_REF, "type": "photo"},
+                        ],
+                    }
+                ],
+            }
+        },
+    }
+
+
+def public_entries_page() -> dict:
+    """Single entry whose photo value is a full media URL (public project behaviour)."""
+    photo_url = (
+        f"https://five.epicollect.net/api/media/{PUBLIC_PROJECT_SLUG}"
+        f"?type=photo&format=entry_original&name={PUBLIC_PHOTO_FILENAME}"
+    )
+    return {
+        "meta": {
+            "total": 1,
+            "per_page": 250,
+            "current_page": 1,
+            "last_page": 1,
+            "from": 1,
+            "to": 1,
+            "newest": "2026-05-15T00:00:00.000Z",
+            "oldest": "2026-05-15T00:00:00.000Z",
+        },
+        "data": {
+            "id": PUBLIC_PROJECT_SLUG,
+            "type": "entries",
+            "entries": [
+                {
+                    "ec5_uuid": PUBLIC_ENTRY_UUID,
+                    "created_at": "2026-05-15T00:00:00.000Z",
+                    "uploaded_at": "2026-05-15T00:00:05.000Z",
+                    "created_by": "collector@example.com",
+                    "title": "Test Person",
+                    "1_Name": "Test Person",
+                    "2_Photo": photo_url,
+                }
+            ],
+            "mapping": {"map_name": "EC5_AUTO", "map_index": 0},
+        },
+        "links": {"self": "", "first": "", "prev": None, "next": None, "last": ""},
+    }
+
+
 def _build_entries_page(
     entries: list[dict], current_page: int, last_page: int, per_page: int
 ) -> dict:

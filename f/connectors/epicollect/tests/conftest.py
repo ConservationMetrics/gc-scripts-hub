@@ -81,8 +81,8 @@ def _register_media_mock(rsps):
 @dataclass
 class EpiCollectServer:
     project_slug: str
-    client_id: int
-    client_secret: str
+    client_id: int | None
+    client_secret: str | None
 
 
 @pytest.fixture
@@ -122,6 +122,37 @@ def epicollect_server_paginated(mocked_responses):
         project_slug=PROJECT_SLUG,
         client_id=_CLIENT_ID,
         client_secret=_CLIENT_SECRET,
+    )
+
+
+@pytest.fixture
+def epicollect_public_server(mocked_responses):
+    """Mock a public EpiCollect5 project whose photo field is a full media URL."""
+    public_slug = server_responses.PUBLIC_PROJECT_SLUG
+
+    mocked_responses.get(
+        f"{_BASE_URL}/api/export/project/{public_slug}",
+        json=server_responses.public_project_metadata(),
+        status=200,
+    )
+    mocked_responses.add_callback(
+        responses.GET,
+        re.compile(rf"{re.escape(_BASE_URL)}/api/export/entries/{re.escape(public_slug)}"),
+        callback=lambda _req: (200, {}, json.dumps(server_responses.public_entries_page())),
+        content_type="application/json",
+    )
+    # Public photo URLs use /api/media/ (no "export" segment) — mock that path
+    mocked_responses.add_callback(
+        responses.GET,
+        re.compile(rf"{re.escape(_BASE_URL)}/api/media/{re.escape(public_slug)}"),
+        callback=lambda _req: (200, {}, (_ASSETS / "mock_photo.jpg").read_bytes()),
+    )
+    # No logo mock needed — logo_url is empty so the download is skipped
+
+    return EpiCollectServer(
+        project_slug=public_slug,
+        client_id=None,
+        client_secret=None,
     )
 
 

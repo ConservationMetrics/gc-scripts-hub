@@ -5,6 +5,7 @@
 import logging
 import time
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -24,14 +25,17 @@ logger = logging.getLogger(__name__)
 
 def main(
     project_slug: str,
-    client_id: int,
-    client_secret: str,
     db: postgresql,
     db_table_name: str,
+    client_id: int | None = None,
+    client_secret: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    token = _get_access_token(client_id, client_secret)
-    headers = {"Authorization": f"Bearer {token}"}
+    if client_id is not None and client_secret is not None:
+        token = _get_access_token(client_id, client_secret)
+        headers = {"Authorization": f"Bearer {token}"}
+    else:
+        headers = {}
 
     project_metadata = download_project_metadata(
         project_slug, headers, db_table_name, attachment_root
@@ -39,7 +43,8 @@ def main(
     form_name = _extract_form_name(project_metadata)
     media_fields = _extract_media_fields(project_metadata)
 
-    _download_project_logo(project_slug, headers, db_table_name, attachment_root)
+    logo_url = project_metadata.get("data", {}).get("project", {}).get("logo_url", "")
+    _download_project_logo(project_slug, logo_url, headers, db_table_name, attachment_root)
 
     entries = download_entries(
         project_slug, headers, db_table_name, attachment_root, media_fields
@@ -155,9 +160,20 @@ def _extract_media_fields(project_metadata: dict) -> dict[str, str]:
 
 
 def _download_project_logo(
-    project_slug: str, headers: dict, db_table_name: str, attachment_root: str
+    project_slug: str,
+    logo_url: str,
+    headers: dict,
+    db_table_name: str,
+    attachment_root: str,
 ) -> None:
-    """Download the project logo thumbnail if available."""
+    """Download the project logo thumbnail if available.
+
+    ``logo_url`` comes from ``data.project.logo_url`` in the project metadata.
+    An empty string means no logo has been set — skip silently.
+    """
+    if not logo_url:
+        return
+
     save_path = Path(attachment_root) / db_table_name / "logo.jpg"
     if save_path.exists():
         logger.debug(f"Project logo already exists, skipping: {save_path}")
@@ -210,27 +226,42 @@ def _download_entry_media(
     """
     skipped = 0
     for field_name, media_type in media_fields.items():
-        filename = entry.get(field_name)
-        if not filename or not isinstance(filename, str):
+        value = entry.get(field_name)
+        if not value or not isinstance(value, str):
             continue
 
-        save_path = (
-            Path(attachment_root) / db_table_name / "attachments" / filename
-        )
+        # Public projects return the full media URL as the field value
+        # (e.g. "https://five.epicollect.net/api/media/project?type=photo&...&name=uuid_ts.jpg").
+        # Private projects return just the bare filename (e.g. "uuid_ts.jpg").
+        # In the full-URL case we download directly and extract the filename
+        # from the `name` query parameter for the local save path.
+        if value.startswith("http"):
+            qs = parse_qs(urlparse(value).query)
+            filename = qs.get("name", [value])[0]
+            # Normalise the entry field to the bare filename so the DB stores
+            # just the name rather than the full URL that public projects return.
+            entry[field_name] = filename
+            download_kwargs: dict = {"url": value, "headers": headers}
+        else:
+            filename = value
+            download_url = f"{BASE_URL}/api/export/media/{project_slug}"
+            download_kwargs = {
+                "url": download_url,
+                "headers": headers,
+                "params": {
+                    "type": media_type,
+                    "format": _MEDIA_FORMAT[media_type],
+                    "name": filename,
+                },
+            }
+
+        save_path = Path(attachment_root) / db_table_name / "attachments" / filename
         if save_path.exists():
             logger.debug(f"File already exists, skipping: {save_path}")
             skipped += 1
             continue
 
-        resp = requests.get(
-            f"{BASE_URL}/api/export/media/{project_slug}",
-            headers=headers,
-            params={
-                "type": media_type,
-                "format": _MEDIA_FORMAT[media_type],
-                "name": filename,
-            },
-        )
+        resp = requests.get(**download_kwargs)
         if resp.status_code == 200:
             save_path.parent.mkdir(parents=True, exist_ok=True)
             save_path.write_bytes(resp.content)

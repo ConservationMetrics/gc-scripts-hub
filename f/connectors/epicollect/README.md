@@ -6,9 +6,11 @@
 
 This script fetches project metadata and survey entries from the [EpiCollect5 API](https://developers.epicollect.net/). Project metadata and a project logo are saved to disk. Survey entries are written to a PostgreSQL table. Media attachments (photo, audio, video) are downloaded and saved to a specified directory.
 
-## EpiCollect5 project parameters
+## Parameters
 
-EpiCollect5 uses OAuth2 client credentials. Create a project App from your project's **Apps** page to obtain a **Client ID** and **Client Secret**. The script exchanges these for a Bearer token (valid 2 hours) before each run.
+To access private projects, create a project App from your project's **Apps** page to obtain a **Client ID** and **Client Secret**. The script exchanges these for a Bearer token (valid 2 hours) before each run.
+
+Client ID and Secret are not required for public projects.
 
 The **project slug** appears in the project URL: `https://five.epicollect.net/project/{slug}`. It can also be found on the project's **API** tab in the web application.
 

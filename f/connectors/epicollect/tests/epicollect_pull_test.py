@@ -19,11 +19,11 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
 
     main(
         epicollect_server.project_slug,
-        epicollect_server.client_id,
-        epicollect_server.client_secret,
         pg_database,
         table_name,
-        asset_storage,
+        client_id=epicollect_server.client_id,
+        client_secret=epicollect_server.client_secret,
+        attachment_root=asset_storage,
     )
 
     # Project logo saved to disk (logo_url is non-empty in fixture)
@@ -95,11 +95,11 @@ def test_pagination(epicollect_server_paginated, pg_database, tmp_path):
 
     main(
         epicollect_server_paginated.project_slug,
-        epicollect_server_paginated.client_id,
-        epicollect_server_paginated.client_secret,
         pg_database,
         table_name,
-        asset_storage,
+        client_id=epicollect_server_paginated.client_id,
+        client_secret=epicollect_server_paginated.client_secret,
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -167,6 +167,41 @@ def test_transform_with_location():
 
     assert result[0]["g__type"] == "Point"
     assert result[0]["g__coordinates"] == [-77.197741, 38.760781]
+
+
+def test_public_project_photo_url_normalized(
+    epicollect_public_server, pg_database, tmp_path
+):
+    """Public projects return full media URLs as field values.
+    The photo field stored in the DB should be the bare filename, not the URL.
+    The file should also be downloaded to the attachments directory.
+    """
+    from f.connectors.epicollect.tests.assets.server_responses import (
+        PUBLIC_ENTRY_UUID,
+        PUBLIC_PHOTO_FILENAME,
+    )
+
+    asset_storage = tmp_path / "datalake"
+    table_name = "ec5_public"
+
+    main(
+        epicollect_public_server.project_slug,
+        pg_database,
+        table_name,
+        attachment_root=asset_storage,
+    )
+
+    # Photo downloaded to attachments dir using the bare filename
+    assert (asset_storage / table_name / "attachments" / PUBLIC_PHOTO_FILENAME).exists()
+
+    # DB field contains the bare filename, not the full URL
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f'SELECT "2_Photo" FROM {table_name} WHERE _id = %s',
+                (PUBLIC_ENTRY_UUID,),
+            )
+            assert cur.fetchone()[0] == PUBLIC_PHOTO_FILENAME
 
 
 def test_transform_ec5_uuid_renamed():

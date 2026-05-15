@@ -26,15 +26,16 @@ schema:
     client_id:
       type: integer
       description: >-
-        OAuth2 Client ID. Create a project App in the Apps tab of your project
-        to obtain this. See https://developers.epicollect.net/api-authentication/create-client-app
+        Client ID for a project App. Only required for private projects.
+        Create a project App in the Apps tab to obtain this.
+        See https://developers.epicollect.net/api-authentication/create-client-app
       default: null
       originalType: integer
     client_secret:
       type: string
       description: >-
-        OAuth2 Client Secret. Create a project App in the Apps tab of your
-        project to obtain this.
+        Client Secret for a project App. Only required for private projects.
+        Create a project App in the Apps tab to obtain this.
       default: null
       originalType: string
     attachment_root:
@@ -57,7 +58,5 @@ schema:
       pattern: '^.{1,54}$'
   required:
     - project_slug
-    - client_id
-    - client_secret
     - db
     - db_table_name
