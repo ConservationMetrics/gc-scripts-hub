@@ -16,19 +16,19 @@ schema:
     - db_table_name
     - attachment_root
   properties:
-    project_slug:
+    attachment_root:
       type: string
       description: >-
-        The project slug, found in the project URL
-        (https://five.epicollect.net/project/{slug}) or on the project's API tab.
-      default: null
+        A path where EpiCollect5 attachments will be stored. Files will be
+        stored as: `{attachment_root}/{db_table_name}/attachments/{filename}`
+      default: /persistent-storage/datalake
       originalType: string
     client_id:
       type: integer
       description: >-
-        Client ID for a project App. Only required for private projects.
-        Create a project App in the Apps tab to obtain this.
-        See https://developers.epicollect.net/api-authentication/create-client-app
+        Client ID for a project App. Only required for private projects. Create
+        a project App in the Apps tab to obtain this. See
+        https://developers.epicollect.net/api-authentication/create-client-app
       default: null
       originalType: integer
     client_secret:
@@ -37,13 +37,6 @@ schema:
         Client Secret for a project App. Only required for private projects.
         Create a project App in the Apps tab to obtain this.
       default: null
-      originalType: string
-    attachment_root:
-      type: string
-      description: >-
-        A path where EpiCollect5 attachments will be stored. Files will be
-        stored as: `{attachment_root}/{db_table_name}/attachments/{filename}`
-      default: /persistent-storage/datalake
       originalType: string
     db:
       type: object
@@ -56,6 +49,14 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
+    project_slug:
+      type: string
+      description: >-
+        The project slug, found in the project URL
+        (https://five.epicollect.net/project/{slug}) or on the project's API
+        tab.
+      default: null
+      originalType: string
   required:
     - project_slug
     - db
