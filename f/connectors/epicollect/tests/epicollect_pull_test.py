@@ -41,7 +41,7 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
             assert cur.fetchone()[0] == 3
 
-            # Geometry: lat=38.760781, lon=-77.197741 → GeoJSON [lon, lat]
+            # Geometry: lat=4.711, lon=-74.072 → GeoJSON [lon, lat]
             cur.execute(
                 f"SELECT g__type, g__coordinates FROM {table_name} "
                 f"WHERE _id = %s",
@@ -50,7 +50,7 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
             row = cur.fetchone()
             assert row is not None
             assert row[0] == "Point"
-            assert row[1] == "[-77.197741, 38.760781]"
+            assert row[1] == "[-74.072, 4.711]"
 
             # dataset_name comes from the first form's name in project metadata
             cur.execute(
@@ -122,7 +122,7 @@ def test_pagination(epicollect_server_paginated, pg_database, tmp_path):
             )
             row = cur.fetchone()
             assert row[0] == "Point"
-            assert row[1] == "[45.67, 1.23]"
+            assert row[1] == "[-62.216, -3.465]"
 
 
 def test_transform_no_location():
@@ -157,8 +157,8 @@ def test_transform_with_location():
             "ec5_uuid": "abc-002",
             "created_at": "2026-05-15T00:00:00.000Z",
             "survey_location": {
-                "latitude": 38.760781,
-                "longitude": -77.197741,
+                "latitude": 4.711,
+                "longitude": -74.072,
                 "accuracy": 30,
             },
         }
@@ -166,7 +166,7 @@ def test_transform_with_location():
     result = transform_epicollect_entries(entries)
 
     assert result[0]["g__type"] == "Point"
-    assert result[0]["g__coordinates"] == [-77.197741, 38.760781]
+    assert result[0]["g__coordinates"] == [-74.072, 4.711]
 
 
 def test_public_project_photo_url_normalized(
