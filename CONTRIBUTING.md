@@ -78,6 +78,11 @@ Merging branches and PRs to `main`:
 
 # Tests
 
+## Dependency cooldown policy (Python)
+
+New Python package versions must be at least 7 days old before they can be introduced.
+If dependency resolution fails due to package age, wait and retry, or use an older version.
+
 ## Testing Strategy
 
 Keep the test suite
