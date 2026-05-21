@@ -345,10 +345,13 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
         #     "Comapeo transformation applied",
         # ),
         ("csv", "KoboToolbox"): (
-            transform_kobotoolbox_form_data,
+            lambda d: transform_kobotoolbox_form_data(d, dataset_name),
             "Kobotoolbox transformation applied",
         ),
-        ("csv", "ODK"): (transform_odk_form_data, "ODK transformation applied"),
+        ("csv", "ODK"): (
+            lambda d: transform_odk_form_data(d, dataset_name),
+            "ODK transformation applied",
+        ),
         ("geojson", "SMART"): (
             transform_smart_patrol_data,
             "SMART transformation applied",
@@ -360,9 +363,10 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
     }
 
     transform_key = (output_format, data_source)
+
     if transform_key in transformations:
         transform_func, log_msg = transformations[transform_key]
-        transformed_data = transform_func(data, dataset_name)
+        transformed_data = transform_func(data)
         logger.info(log_msg)
         return transformed_data, True
     elif data_source:  # Apply generic data_source transformation if data_source is set

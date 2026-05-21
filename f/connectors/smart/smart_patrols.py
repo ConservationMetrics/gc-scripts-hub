@@ -90,7 +90,7 @@ def main(
         logger.warning("No observations found in SMART patrol XML")
 
 
-def transform_smart_patrol_data(data: dict, dataset_name: str = None) -> dict:
+def transform_smart_patrol_data(data: dict) -> dict:
     """
     Apply SMART-specific transformations to patrol data.
 
@@ -101,9 +101,6 @@ def transform_smart_patrol_data(data: dict, dataset_name: str = None) -> dict:
     ----------
     data : dict
         GeoJSON FeatureCollection with SMART patrol observations.
-    dataset_name : str, optional
-        Human-readable name of the dataset (currently unused, included for
-        consistency with other transformation functions).
 
     Returns
     -------
