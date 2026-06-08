@@ -31,6 +31,9 @@ def main(
     client_secret: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
 ):
+    """
+    API auth is optional, as public EpiCollect5 projects work without credentials.
+    """
     if client_id is not None and client_secret is not None:
         token = _get_access_token(client_id, client_secret)
         headers = {"Authorization": f"Bearer {token}"}
