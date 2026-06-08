@@ -17,7 +17,7 @@ BASE_URL = "https://five.epicollect.net"
 _MEDIA_TYPES = frozenset({"photo", "audio", "video"})
 _MEDIA_FORMAT = {"photo": "entry_original", "audio": "audio", "video": "video"}
 _PAGE_SIZE = 250
-_PAGE_DELAY_S = 1.0
+_PAGE_DELAY_S = 1.0  # between paginated requests; try to be a nice neighbor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
