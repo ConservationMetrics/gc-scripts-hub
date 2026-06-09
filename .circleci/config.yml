@@ -52,5 +52,6 @@ jobs:
             PIP_UPLOADED_PRIOR_TO: P7D
             # Skip tox-docker's NetworkSettings.Gateway lookup (broken on newer
             # Docker in ubuntu-2404:current). machine-executor reaches containers
-            # via localhost anyway.
+            # via localhost anyway. Workaround until https://github.com/tox-dev/tox-docker/pull/196
+            # is merged and released.
             TOX_DOCKER_GATEWAY: localhost
