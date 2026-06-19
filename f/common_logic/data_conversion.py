@@ -40,9 +40,7 @@ def _is_cybertracker_backup_json(data: object) -> bool:
         return False
     if not _CYBERTRACKER_SESSION_KEYS.issubset(first.keys()):
         return False
-    return isinstance(first.get("records"), list) and isinstance(
-        first.get("db"), dict
-    )
+    return isinstance(first.get("records"), list) and isinstance(first.get("db"), dict)
 
 
 def detect_structured_data_type(file_paths: list[str]) -> str:
@@ -717,15 +715,11 @@ def read_gpx(path: Path):
                     if v not in (None, "", "None")
                 }
 
-                # Generate unique ID for the feature
-                feature_id = final_properties.get(
-                    "name", f"waypoint_{waypoint_index + 1}"
-                )
-
+                # Use running index for feature id
                 features.append(
                     {
                         "type": "Feature",
-                        "id": feature_id,
+                        "id": str(waypoint_index + 1),
                         "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                         "properties": final_properties,
                     }
@@ -838,13 +832,11 @@ def read_kml(path: Path):
                 k: v for k, v in final_properties.items() if v not in (None, "", "None")
             }
 
-            # Generate unique ID for the feature
-            feature_id = final_properties.get("name", f"placemark_{i + 1}")
-
+            # Use running index for feature id
             features.append(
                 {
                     "type": "Feature",
-                    "id": feature_id,
+                    "id": str(i + 1),
                     "geometry": _fiona_geometry_to_dict(feature["geometry"]),
                     "properties": final_properties,
                 }

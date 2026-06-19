@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="EasyGPS using Garmin GPSMAP"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3"
+     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+<metadata>
+<bounds minlat="0.00000000" minlon="0.00000000" maxlat="0.00100000" maxlon="0.00100000"/>
+</metadata>
+<wpt lat="0.00010000" lon="0.00010000">
+<ele>10.000</ele>
+<time>2025-01-01T10:00:00Z</time>
+<name>Camp</name>
+<sym>Flag, Red</sym>
+<type>Red Flag</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Camp</label_text>
+</label>
+</extensions>
+</wpt>
+<wpt lat="0.00020000" lon="0.00020000">
+<ele>11.000</ele>
+<time>2025-01-01T10:15:00Z</time>
+<name>Boundary marker</name>
+<sym>Flag, Red</sym>
+<type>Red Flag</type>
+</wpt>
+<wpt lat="0.00030000" lon="0.00030000">
+<ele>12.000</ele>
+<time>2025-01-01T10:30:00Z</time>
+<name>Camp</name>
+<sym>Flag, Red</sym>
+<type>Red Flag</type>
+</wpt>
+<wpt lat="0.00040000" lon="0.00040000">
+<ele>13.000</ele>
+<time>2025-01-01T10:45:00Z</time>
+<name>Lookout</name>
+<sym>Pin, Blue</sym>
+<type>Civil</type>
+</wpt>
+<wpt lat="0.00050000" lon="0.00050000">
+<ele>14.000</ele>
+<time>2025-01-01T11:00:00Z</time>
+<name>Boundary marker</name>
+<sym>Flag, Red</sym>
+<type>Red Flag</type>
+</wpt>
+<wpt lat="0.00060000" lon="0.00060000">
+<ele>15.000</ele>
+<time>2025-01-01T11:15:00Z</time>
+<name>Camp</name>
+<sym>Flag, Red</sym>
+<type>Red Flag</type>
+</wpt>
+</gpx>

@@ -64,6 +64,11 @@ def garmin_sample_gpx_file():
 
 
 @pytest.fixture
+def gpx_with_duplicate_names_file():
+    return Path(__file__).parent / "assets" / "gpx_with_duplicate_names.gpx"
+
+
+@pytest.fixture
 def kobotoolbox_csv_file():
     return Path(__file__).parent / "assets" / "kobotoolbox_submissions.csv"
 

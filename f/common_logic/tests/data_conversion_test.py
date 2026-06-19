@@ -439,6 +439,24 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
         assert len(coords) >= 2
 
 
+def test_convert_data__gpx_with_duplicate_names(gpx_with_duplicate_names_file):
+    """Waypoints sharing a <name> must still receive distinct feature ids."""
+    result, output_format = convert_data([str(gpx_with_duplicate_names_file)], "gpx")
+    assert output_format == "geojson"
+
+    features = result["features"]
+    _validate_geojson_structure(result, 6)
+
+    names = [f["properties"]["name"] for f in features]
+    assert names.count("Camp") == 3
+    assert names.count("Boundary marker") == 2
+
+    ids = [f["id"] for f in features]
+    assert len(set(ids)) == len(features), (
+        f"Duplicate feature ids would collide as _id primary keys: {ids}"
+    )
+
+
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     """Test conversion of OSM Overpass GPX data with waypoints."""
     result, output_format = convert_data([str(osm_overpass_gpx_file)], "gpx")
@@ -1193,9 +1211,7 @@ def test_convert_data__cybertracker_json_fixture():
     assert _CYBERTRACKER_FIXTURE.is_file()
     assert detect_structured_data_type([str(_CYBERTRACKER_FIXTURE)]) == "cybertracker"
 
-    result, output_format = convert_data(
-        [str(_CYBERTRACKER_FIXTURE)], "cybertracker"
-    )
+    result, output_format = convert_data([str(_CYBERTRACKER_FIXTURE)], "cybertracker")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
