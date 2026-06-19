@@ -21,6 +21,24 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
     # Attachments are saved to disk
     assert (asset_storage / table_name / "attachments" / "1739327186781.m4a").exists()
 
+    # CSV artifact is also saved to disk, mirroring the GeoJSON-to-Postgres flow
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+    with csv_file.open(newline="", encoding="utf-8") as f:
+        csv_rows = list(csv.DictReader(f))
+    assert len(csv_rows) == 3
+    assert "_id" in csv_rows[0]
+    assert {r["_id"] for r in csv_rows} >= {
+        "uuid:cb7955d8-dc7c-480f-9699-20555a155c92"
+    }
+    # Coordinates are JSON-encoded in the CSV cell so they round-trip into DB
+    geo_row = next(
+        r
+        for r in csv_rows
+        if r["_id"] == "uuid:cb7955d8-dc7c-480f-9699-20555a155c92"
+    )
+    assert geo_row["g__coordinates"] == "[-77.9867385, 40.322394]"
+
     # Survey responses are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:

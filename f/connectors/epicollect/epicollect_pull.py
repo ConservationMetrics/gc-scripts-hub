@@ -9,8 +9,9 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
+from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 
 BASE_URL = "https://five.epicollect.net"
@@ -55,13 +56,24 @@ def main(
 
     transformed = transform_epicollect_entries(entries, form_name=form_name)
 
-    writer = StructuredDBWriter(
-        conninfo(db),
+    save_path = Path(attachment_root) / db_table_name
+    save_data_to_file(
+        transformed,
         db_table_name,
+        save_path,
+        file_type="csv",
+    )
+
+    save_csv_to_postgres(
+        db,
+        db_table_name,
+        str(Path(db_table_name) / f"{db_table_name}.csv"),
+        attachment_root,
+        delete_csv_file=False,
+        id_column="_id",
         use_mapping_table=True,
         reverse_properties_separated_by="/",
     )
-    writer.handle_output(transformed)
     logger.info(
         f"EpiCollect5 entries written to database table: [{db_table_name}]"
     )

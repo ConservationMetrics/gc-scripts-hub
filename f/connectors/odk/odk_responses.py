@@ -10,7 +10,9 @@ from typing import TypedDict
 
 from pyodk.client import Client
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import postgresql
+from f.common_logic.file_operations import save_data_to_file
+from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 
 # https://hub.windmill.dev/resource_types/272/odk_config
@@ -76,13 +78,24 @@ def main(
 
         transformed_form_data = transform_odk_form_data(form_data, form_name=form_id)
 
-        db_writer = StructuredDBWriter(
-            conninfo(db),
+        save_path = Path(attachment_root) / db_table_name
+        save_data_to_file(
+            transformed_form_data,
             db_table_name,
+            save_path,
+            file_type="csv",
+        )
+
+        save_csv_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.csv"),
+            attachment_root,
+            delete_csv_file=False,
+            id_column="_id",
             use_mapping_table=True,
             reverse_properties_separated_by="/",
         )
-        db_writer.handle_output(transformed_form_data)
 
         logger.info(
             f"ODK responses successfully written to database table: [{db_table_name}]"

@@ -18,6 +18,8 @@ def main(
     attachment_root: str = "/persistent-storage/datalake/",
     delete_csv_file: bool = False,
     id_column: str = None,
+    use_mapping_table: bool = False,
+    reverse_properties_separated_by: str | None = None,
 ):
     """
     Import CSV data into PostgreSQL table.
@@ -36,6 +38,15 @@ def main(
         Whether to delete the CSV file after processing.
     id_column : str, optional
         Name of column to use as primary key. If None, auto-generates _id.
+    use_mapping_table : bool
+        Forwarded to ``StructuredDBWriter``. Enables the ``__columns`` mapping
+        table for form-style data where original column names can exceed
+        Postgres' 63-char identifier limit. Defaults to False to preserve the
+        behavior of standalone CSV uploads.
+    reverse_properties_separated_by : str, optional
+        Forwarded to ``StructuredDBWriter``. When set (e.g. ``"/"``), nested
+        keys like ``meta/instanceID`` are reversed/rejoined into SQL-safe
+        column names. Defaults to None.
     """
     csv_path = Path(attachment_root) / Path(csv_path)
     transformed_csv_data = transform_csv_data(csv_path, id_column)
@@ -43,8 +54,8 @@ def main(
     db_writer = StructuredDBWriter(
         conninfo(db),
         db_table_name,
-        use_mapping_table=False,
-        reverse_properties_separated_by=None,
+        use_mapping_table=use_mapping_table,
+        reverse_properties_separated_by=reverse_properties_separated_by,
     )
     db_writer.handle_output(transformed_csv_data)
 
@@ -55,6 +66,12 @@ def main(
 def transform_csv_data(csv_path, id_column=None):
     """
     Transform CSV data into a list of dictionaries suitable for database insertion.
+
+    Empty string cells are converted to ``None`` so that missing values land in
+    the database as ``NULL`` rather than empty TEXT. This matches the typical
+    CSV convention of "empty cell = no value" and preserves round-trip
+    semantics when a CSV is produced via ``save_data_to_file`` (which writes
+    ``None`` as an empty cell).
 
     Parameters
     ----------
@@ -71,12 +88,12 @@ def transform_csv_data(csv_path, id_column=None):
     """
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        rows = list(reader)
+        rows = [{k: (v if v != "" else None) for k, v in row.items()} for row in reader]
 
     transformed_csv_data = []
     for idx, row in enumerate(rows, 1):
         # Use specified column as _id, or generate auto-incrementing _id
-        if id_column and id_column in row:
+        if id_column and id_column in row and row[id_column] is not None:
             row_id = row[id_column]
             # Remove the original id column since we're using it as _id
             if id_column != "_id":

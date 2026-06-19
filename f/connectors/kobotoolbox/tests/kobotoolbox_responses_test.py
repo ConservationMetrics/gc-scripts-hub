@@ -32,6 +32,20 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
         key in metadata for key in ["name", "uid", "owner__username", "data", "content"]
     )
 
+    # CSV artifact is also saved to disk, mirroring the GeoJSON-to-Postgres flow
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+    with csv_file.open(newline="", encoding="utf-8") as f:
+        csv_rows = list(csv.DictReader(f))
+    assert len(csv_rows) == 3
+    assert {r["_id"] for r in csv_rows} >= {"124961136"}
+    # Coordinates are JSON-encoded so they round-trip through csv_to_postgres
+    geo_row = next(r for r in csv_rows if r["_id"] == "124961136")
+    assert geo_row["g__coordinates"] == "[-122.0109429, 36.97012]"
+    # Nested keys preserved verbatim in the CSV header; the / -> __ reversal
+    # only happens during csv_to_postgres -> DB insertion.
+    assert "meta/instanceID" in csv_rows[0]
+
     # Survey responses are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:

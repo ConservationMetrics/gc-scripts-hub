@@ -1,3 +1,5 @@
+import csv
+
 import psycopg
 
 from f.connectors.epicollect.epicollect_pull import (
@@ -34,6 +36,17 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
     assert (attachments / PHOTO_FILENAME).exists()
     assert (attachments / AUDIO_FILENAME).exists()
     assert (attachments / VIDEO_FILENAME).exists()
+
+    # CSV artifact is also saved to disk, mirroring the GeoJSON-to-Postgres flow
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+    with csv_file.open(newline="", encoding="utf-8") as f:
+        csv_rows = list(csv.DictReader(f))
+    assert len(csv_rows) == 3
+    assert {r["_id"] for r in csv_rows} >= {PRIMARY_UUID}
+    geo_row = next(r for r in csv_rows if r["_id"] == PRIMARY_UUID)
+    assert geo_row["g__coordinates"] == "[-74.072, 4.711]"
+    assert geo_row["dataset_name"] == FORM_NAME
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
