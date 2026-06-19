@@ -9,6 +9,7 @@
 import csv
 import json
 import logging
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -229,6 +230,23 @@ def _fiona_geometry_to_dict(geometry) -> dict:
     ``null`` for non-GeometryCollection types, producing invalid GeoJSON.
     """
     return dict(geometry.__geo_interface__)
+
+
+_XML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_inner_xml(value):
+    """Strip XML tags from a Fiona-extracted property value.
+
+    GDAL's GPX driver serializes unknown extension elements with nested
+    children as raw inner XML (e.g. ``<label><label_text>X</label_text></label>``
+    becomes the string ``"<label_text>X</label_text>"``). This leaks markup
+    into downstream tabular outputs, so we strip tags and collapse whitespace
+    while leaving non-string values untouched.
+    """
+    if not isinstance(value, str) or "<" not in value:
+        return value
+    return " ".join(_XML_TAG_RE.sub("", value).split())
 
 
 def handle_file_errors(func):
@@ -660,10 +678,16 @@ def read_gpx(path: Path):
                 # Normalize Fiona property names for consistency
                 normalized_fiona_props = {}
                 for key, value in fiona_props.items():
-                    if value not in (None, "", "None"):
-                        # Skip OsmAnd extensions that Fiona might have captured
-                        if not key.startswith("osmand"):
-                            normalized_fiona_props[key.lower()] = value
+                    if value in (None, "", "None"):
+                        continue
+                    # Skip OsmAnd extensions that Fiona might have captured;
+                    # those are handled via the dedicated XML pass above.
+                    if key.startswith("osmand"):
+                        continue
+                    cleaned = _strip_inner_xml(value)
+                    if cleaned in (None, "", "None"):
+                        continue
+                    normalized_fiona_props[key.lower()] = cleaned
 
                 # Merge properties (XML takes precedence for comprehensive data)
                 if waypoint_index < len(waypoint_properties):

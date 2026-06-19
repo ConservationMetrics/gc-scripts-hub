@@ -24,6 +24,11 @@
 <name>Boundary marker</name>
 <sym>Flag, Red</sym>
 <type>Red Flag</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Boundary marker</label_text>
+</label>
+</extensions>
 </wpt>
 <wpt lat="0.00030000" lon="0.00030000">
 <ele>12.000</ele>
@@ -31,6 +36,11 @@
 <name>Camp</name>
 <sym>Flag, Red</sym>
 <type>Red Flag</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Camp</label_text>
+</label>
+</extensions>
 </wpt>
 <wpt lat="0.00040000" lon="0.00040000">
 <ele>13.000</ele>
@@ -38,6 +48,11 @@
 <name>Lookout</name>
 <sym>Pin, Blue</sym>
 <type>Civil</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Lookout</label_text>
+</label>
+</extensions>
 </wpt>
 <wpt lat="0.00050000" lon="0.00050000">
 <ele>14.000</ele>
@@ -45,6 +60,11 @@
 <name>Boundary marker</name>
 <sym>Flag, Red</sym>
 <type>Red Flag</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Boundary marker</label_text>
+</label>
+</extensions>
 </wpt>
 <wpt lat="0.00060000" lon="0.00060000">
 <ele>15.000</ele>
@@ -52,5 +72,10 @@
 <name>Camp</name>
 <sym>Flag, Red</sym>
 <type>Red Flag</type>
+<extensions>
+<label xmlns="http://www.topografix.com/GPX/gpx_overlay/0/4">
+<label_text>Camp</label_text>
+</label>
+</extensions>
 </wpt>
 </gpx>

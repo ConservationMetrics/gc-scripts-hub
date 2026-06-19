@@ -456,6 +456,14 @@ def test_convert_data__gpx_with_duplicate_names(gpx_with_duplicate_names_file):
         f"Duplicate feature ids would collide as _id primary keys: {ids}"
     )
 
+    # Garmin-style <extensions><label><label_text>X</label_text></label></extensions>
+    # must be stripped to plain text that mirrors the <name>, with no markup leaking through.
+    for feat in features:
+        props = feat["properties"]
+        assert props["label"] == props["name"], (
+            f"label not stripped to plain text: {props['label']!r}"
+        )
+
 
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     """Test conversion of OSM Overpass GPX data with waypoints."""
