@@ -4,6 +4,7 @@ from pathlib import Path
 import psycopg
 
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    flatten_kobotoolbox_submission,
     main,
     transform_kobotoolbox_form_data,
 )
@@ -70,6 +71,12 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
                 f"SELECT COUNT(*) FROM {table_name}__columns WHERE original_column = 'meta/instanceID' AND sql_column = 'instanceID__meta'"
             )
             assert cursor.fetchone()[0] == 1
+
+            # Kobo system fields keep their underscores in SQL column names
+            cursor.execute(
+                f'SELECT "_status", "__version__" FROM {table_name} WHERE _id = \'124961136\''
+            )
+            assert cursor.fetchone() == ("submitted_via_web", "vLnrnT6Pvzgeh4DVfj6eDz")
 
     # Form labels are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -216,3 +223,101 @@ def test_pagination(koboserver_with_pagination, pg_database, tmp_path):
             assert "124961136" in ids
             assert "125283733" in ids
             assert "125340283" in ids
+
+
+def test_flatten_kobotoolbox_submission__repeat_group():
+    submission = {
+        "household_members": [
+            {
+                "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person One",
+                "household_members/group_fixture_member_1/group_fixture_member_1_age": "25",
+            },
+            {
+                "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person Two",
+                "household_members/group_fixture_member_1/group_fixture_member_1_age": "30",
+            },
+        ],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "household_members" not in result
+    assert result["household_members/1/group_fixture_member_1_name"] == "Person One"
+    assert result["household_members/1/group_fixture_member_1_age"] == "25"
+    assert result["household_members/2/group_fixture_member_1_name"] == "Person Two"
+    assert result["household_members/2/group_fixture_member_1_age"] == "30"
+
+
+def test_flatten_kobotoolbox_submission__field_list_dict():
+    submission = {
+        "dwelling_counts": {
+            "dwelling_counts/group_fixture_house/group_fixture_house_adults": "2",
+            "dwelling_counts/group_fixture_house/group_fixture_house_children": "1",
+        },
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "dwelling_counts" not in result
+    assert result["dwelling_counts/1/group_fixture_house_adults"] == "2"
+    assert result["dwelling_counts/1/group_fixture_house_children"] == "1"
+
+
+def test_flatten_kobotoolbox_submission__preserves_system_fields():
+    submission = {
+        "_id": 1,
+        "_geolocation": [10.0, 20.0],
+        "_attachments": [{"download_url": "http://example.org/file.jpg", "filename": "file.jpg"}],
+        "_validation_status": {},
+        "_tags": [],
+        "summary_counts/adults": "2",
+        "household_members": [],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert result["_id"] == 1
+    assert result["_geolocation"] == [10.0, 20.0]
+    assert result["_attachments"] == submission["_attachments"]
+    assert result["_validation_status"] == {}
+    assert result["_tags"] == []
+    assert result["summary_counts/adults"] == "2"
+    assert result["household_members"] == []
+
+
+def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_nested_repeats"
+
+    main(
+        koboserver_nested.account,
+        koboserver_nested.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+    with csv_file.open(newline="", encoding="utf-8") as f:
+        csv_rows = list(csv.DictReader(f))
+
+    assert len(csv_rows) == 2
+    assert "household_members" not in csv_rows[0]
+    assert csv_rows[0]["household_members/1/group_fixture_member_1_name"] == "Person One"
+    assert csv_rows[0]["household_members/2/group_fixture_member_1_age"] == "30"
+    assert csv_rows[1]["dwelling_counts/1/group_fixture_house_adults"] == "2"
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cursor.fetchone()[0] == 2
+
+            cursor.execute(
+                f'SELECT "group_fixture_member_1_name__1__household_members" '
+                f"FROM {table_name} WHERE _id = '900001'"
+            )
+            assert cursor.fetchone()[0] == "Person One"
+
+            cursor.execute(
+                f'SELECT "group_fixture_house_adults__1__dwelling_counts" '
+                f"FROM {table_name} WHERE _id = '900002'"
+            )
+            assert cursor.fetchone()[0] == "2"

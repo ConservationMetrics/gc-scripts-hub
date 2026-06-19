@@ -1,6 +1,8 @@
 import posixpath
 from urllib.parse import urlencode
 
+nested_form_id = "fixture_nested_household"
+
 
 def kobo_form(uri, form_id, form_name):
     return {
@@ -213,6 +215,186 @@ def _get_all_submissions(uri, form_id):
         ]
 
 
+def kobo_form_nested(uri, form_id, form_name="Household Survey Fixture"):
+  """Form metadata with repeat groups and field-list groups for flattening tests."""
+  return {
+    "name": form_name,
+    "uid": form_id,
+    "owner__username": "fixture_user",
+    "data": posixpath.join(uri, "api/v2/assets", form_id, "data/"),
+    "content": {
+      "schema": "1",
+      "survey": [
+        {
+          "name": "village_name",
+          "type": "text",
+          "label": ["Village name"],
+          "$qpath": "village_name",
+          "$xpath": "village_name",
+          "$autoname": "village_name",
+        },
+        {
+          "name": "interviewer_name",
+          "type": "text",
+          "label": ["Interviewer name"],
+          "$qpath": "interviewer_name",
+          "$xpath": "interviewer_name",
+          "$autoname": "interviewer_name",
+        },
+        {
+          "name": "household_members",
+          "type": "begin_repeat",
+          "label": ["Household members"],
+          "$qpath": "household_members",
+          "$xpath": "household_members",
+          "$autoname": "household_members",
+        },
+        {
+          "name": "group_fixture_member_1",
+          "type": "begin_group",
+          "label": ["Member"],
+          "$qpath": "household_members/group_fixture_member_1",
+          "$xpath": "household_members/group_fixture_member_1",
+          "$autoname": "group_fixture_member_1",
+        },
+        {
+          "name": "group_fixture_member_1_name",
+          "type": "text",
+          "label": ["Member name"],
+          "$qpath": "household_members/group_fixture_member_1/group_fixture_member_1_name",
+          "$xpath": "household_members/group_fixture_member_1/group_fixture_member_1_name",
+          "$autoname": "group_fixture_member_1_name",
+        },
+        {
+          "name": "group_fixture_member_1_age",
+          "type": "integer",
+          "label": ["Member age"],
+          "$qpath": "household_members/group_fixture_member_1/group_fixture_member_1_age",
+          "$xpath": "household_members/group_fixture_member_1/group_fixture_member_1_age",
+          "$autoname": "group_fixture_member_1_age",
+        },
+        {"type": "end_group"},
+        {"type": "end_repeat"},
+        {
+          "name": "dwelling_counts",
+          "type": "begin_group",
+          "label": ["Dwelling counts"],
+          "$qpath": "dwelling_counts",
+          "$xpath": "dwelling_counts",
+          "$autoname": "dwelling_counts",
+        },
+        {
+          "name": "group_fixture_house_adults",
+          "type": "integer",
+          "label": ["Adults"],
+          "$qpath": "dwelling_counts/group_fixture_house/group_fixture_house_adults",
+          "$xpath": "dwelling_counts/group_fixture_house/group_fixture_house_adults",
+          "$autoname": "group_fixture_house_adults",
+        },
+        {
+          "name": "group_fixture_house_children",
+          "type": "integer",
+          "label": ["Children"],
+          "$qpath": "dwelling_counts/group_fixture_house/group_fixture_house_children",
+          "$xpath": "dwelling_counts/group_fixture_house/group_fixture_house_children",
+          "$autoname": "group_fixture_house_children",
+        },
+        {"type": "end_group"},
+      ],
+      "choices": [],
+      "settings": {"version": "1", "default_language": "English (en)"},
+      "translated": ["label"],
+      "translations": [None],
+    },
+  }
+
+
+def _get_nested_submissions(uri, form_id):
+  """Return synthetic submissions with repeat groups and field-list dicts."""
+  return [
+    {
+      "_id": 900001,
+      "formhub/uuid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "village_name": "Village Alpha",
+      "interviewer_name": "Interviewer A",
+      "household_members": [
+        {
+          "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person One",
+          "household_members/group_fixture_member_1/group_fixture_member_1_age": "25",
+        },
+        {
+          "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person Two",
+          "household_members/group_fixture_member_1/group_fixture_member_1_age": "30",
+        },
+      ],
+      "summary_counts/adults": "2",
+      "__version__": "fixtureVersion01",
+      "meta/instanceID": "uuid:11111111-1111-1111-1111-111111111111",
+      "_xform_id_string": form_id,
+      "_uuid": "11111111-1111-1111-1111-111111111111",
+      "_attachments": [],
+      "_status": "submitted_via_web",
+      "_geolocation": [10.0, 20.0],
+      "_submission_time": "2026-01-15T10:00:00",
+      "_tags": [],
+      "_notes": [],
+      "_validation_status": {},
+      "_submitted_by": "fixture_user",
+    },
+    {
+      "_id": 900002,
+      "formhub/uuid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "village_name": "Village Beta",
+      "interviewer_name": "Interviewer B",
+      "household_members": [
+        {
+          "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person Three",
+          "household_members/group_fixture_member_1/group_fixture_member_1_age": "40",
+        },
+      ],
+      "dwelling_counts": {
+        "dwelling_counts/group_fixture_house/group_fixture_house_adults": "2",
+        "dwelling_counts/group_fixture_house/group_fixture_house_children": "1",
+      },
+      "__version__": "fixtureVersion01",
+      "meta/instanceID": "uuid:22222222-2222-2222-2222-222222222222",
+      "_xform_id_string": form_id,
+      "_uuid": "22222222-2222-2222-2222-222222222222",
+      "_attachments": [],
+      "_status": "submitted_via_web",
+      "_submission_time": "2026-01-15T11:00:00",
+      "_tags": [],
+      "_notes": [],
+      "_validation_status": {},
+      "_submitted_by": "fixture_user",
+    },
+  ]
+
+
+def _paginate_submissions(uri, form_id, all_submissions, limit=100, start=0):
+  total_count = len(all_submissions)
+  end = start + limit
+  results = all_submissions[start:end]
+
+  next_url = None
+  if end < total_count:
+    next_params = {"limit": limit, "start": end}
+    next_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(next_params)}"
+
+  previous_url = None
+  if start > 0:
+    prev_start = max(0, start - limit)
+    prev_params = {"limit": limit, "start": prev_start}
+    previous_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(prev_params)}"
+
+  return {
+    "count": total_count,
+    "next": next_url,
+    "previous": previous_url,
+    "results": results,
+  }
+
+
 def kobo_form_submissions(uri, form_id, limit=100, start=0):
     """
     Return paginated form submissions for testing.
@@ -233,29 +415,13 @@ def kobo_form_submissions(uri, form_id, limit=100, start=0):
     dict
         A paginated response with count, next, previous, and results
     """
-    all_submissions = _get_all_submissions(uri, form_id)
-    total_count = len(all_submissions)
-    
-    # Paginate results
-    end = start + limit
-    results = all_submissions[start:end]
-    
-    # Build next URL if there are more results
-    next_url = None
-    if end < total_count:
-        next_params = {"limit": limit, "start": end}
-        next_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(next_params)}"
-    
-    # Build previous URL if we're not on the first page
-    previous_url = None
-    if start > 0:
-        prev_start = max(0, start - limit)
-        prev_params = {"limit": limit, "start": prev_start}
-        previous_url = f"{uri}/api/v2/assets/{form_id}/data/?{urlencode(prev_params)}"
-    
-    return {
-        "count": total_count,
-        "next": next_url,
-        "previous": previous_url,
-        "results": results,
-    }
+    return _paginate_submissions(
+        uri, form_id, _get_all_submissions(uri, form_id), limit, start
+    )
+
+
+def kobo_nested_form_submissions(uri, form_id, limit=100, start=0):
+  """Return paginated nested-form submissions for flattening tests."""
+  return _paginate_submissions(
+    uri, form_id, _get_nested_submissions(uri, form_id), limit, start
+  )

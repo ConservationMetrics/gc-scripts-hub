@@ -55,6 +55,7 @@ def main(
         form_responses,
         form_name=form_name,
         form_languages=form_languages,
+        form_metadata=form_metadata,
     )
 
     save_path = Path(attachment_root) / db_table_name
@@ -342,7 +343,71 @@ def download_form_responses_and_attachments(
     return form_submissions, form_name, form_languages
 
 
-def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=None):
+def _leaf_key(slash_key: str) -> str:
+    return slash_key.rsplit("/", 1)[-1]
+
+
+def _is_kobo_repeat_list(value) -> bool:
+    return (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, dict) for item in value)
+        and all(any(isinstance(k, str) and "/" in k for k in item) for item in value)
+    )
+
+
+def _is_kobo_field_list_dict(value) -> bool:
+    return (
+        isinstance(value, dict)
+        and value
+        and all(isinstance(k, str) and "/" in k for k in value)
+        and not any(k.startswith("_") for k in value)
+    )
+
+
+def _flatten_group_items(parent_key: str, items: list[dict]) -> dict:
+    flat = {}
+    for index, item in enumerate(items, start=1):
+        for slash_key, field_value in item.items():
+            flat[f"{parent_key}/{index}/{_leaf_key(slash_key)}"] = field_value
+    return flat
+
+
+def flatten_kobotoolbox_submission(submission, form_metadata=None):
+    """Flatten Kobo repeat-group and field-list payloads into wide slash-separated keys.
+
+    Repeat groups and matrix questions arrive as ``list[dict]`` values with long
+    slash-separated keys. Field-list groups may arrive as a lone ``dict`` with
+    slash keys. Both are expanded to ``{group}/{index}/{leaf_key}`` (1-based index).
+
+    Parameters
+    ----------
+    submission : dict
+        A single KoboToolbox submission record.
+    form_metadata : dict, optional
+        Form metadata from the Kobo API. Reserved for future use to strip redundant
+        internal group segments via ``content.survey`` (begin_repeat / matrix types).
+
+    Returns
+    -------
+    dict
+        A flattened copy of the submission with repeat/field-list blobs expanded.
+    """
+    _ = form_metadata  # TODO: use content.survey to refine leaf_key / group segments
+    flat = {}
+    for key, value in submission.items():
+        if _is_kobo_repeat_list(value):
+            flat.update(_flatten_group_items(key, value))
+        elif _is_kobo_field_list_dict(value):
+            flat.update(_flatten_group_items(key, [value]))
+        else:
+            flat[key] = value
+    return flat
+
+
+def transform_kobotoolbox_form_data(
+    form_data, form_name=None, form_languages=None, form_metadata=None
+):
     """Transform KoboToolbox form data by adding metadata fields and formatting geometry for SQL database insertion.
 
     Parameters
@@ -353,13 +418,18 @@ def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=No
         The name of the form from metadata. If provided, adds 'dataset_name' field to each submission.
     form_languages : str, optional
         Comma-separated list of form languages. If provided, adds 'form_translations' field to each submission.
+    form_metadata : dict, optional
+        Form metadata from the Kobo API, passed to repeat-group flattening.
 
     Returns
     -------
     list
         A list of transformed form submissions with added metadata fields and formatted geometry.
     """
-    for submission in form_data:
+    for i, submission in enumerate(form_data):
+        submission = flatten_kobotoolbox_submission(submission, form_metadata)
+        form_data[i] = submission
+
         # Add metadata fields if provided
         if form_name:
             submission["dataset_name"] = form_name

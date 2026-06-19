@@ -254,6 +254,8 @@ def _extract_coordinates_from_submission(submission):
 def transform_odk_form_data(form_data, form_name=None):
     """Transform ODK form data by adding metadata fields and formatting geometry for SQL database insertion.
 
+    # TODO: flatten ODK repeat groups / matrix payloads (sister issue to Kobo flattening)
+
     Note that ODK also stores altitude in the coordinates array, but we are only interested in extracting lat/long.
     The location object is preserved in the transformed data in case it is needed.
 
