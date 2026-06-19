@@ -41,6 +41,8 @@ Lastly, for operator users to have access to all of the Folders containing the w
 
 ![Windmill Folders](docs/folders.jpg)
 
+You should also ensure that the group has write permissions to the folders.
+
 ## Deploying the code to Windmill workspaces
 
 [Install the Windmill CLI](https://www.windmill.dev/docs/advanced/cli), and
