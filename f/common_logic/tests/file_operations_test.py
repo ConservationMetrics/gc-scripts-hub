@@ -47,6 +47,43 @@ def test_save_data_to_file__csv_empty(tmp_path: Path):
     assert not file_path.exists()
 
 
+def test_save_data_to_file__csv_list_of_dicts(tmp_path: Path):
+    """list[dict] CSV mode: _id first, sorted rest; lists/dicts JSON-encoded;
+    None becomes an empty cell (so csv_to_postgres can round-trip to NULL)."""
+    data = [
+        {
+            "_id": "a",
+            "name": "Alpha",
+            "tags": ["x", "y"],
+            "geo": {"type": "Point", "coordinates": [1, 2]},
+        },
+        {"_id": "b", "name": "Bravo"},
+    ]
+    save_data_to_file(data, "test", tmp_path, "csv")
+
+    rows = list(read_csv_to_list(tmp_path / "test.csv"))
+    assert [r["_id"] for r in rows] == ["a", "b"]
+    # _id first, remaining keys sorted alphabetically
+    assert list(rows[0].keys()) == ["_id", "geo", "name", "tags"]
+    # Complex values land as JSON strings
+    assert rows[0]["tags"] == '["x", "y"]'
+    assert rows[0]["geo"] == '{"type": "Point", "coordinates": [1, 2]}'
+    # Missing key in the second row is written as empty cell
+    assert rows[1]["tags"] == ""
+    assert rows[1]["geo"] == ""
+
+
+def test_save_data_to_file__csv_list_of_dicts_no_id(tmp_path: Path):
+    """When no row has an _id key, header is just the sorted union of keys."""
+    data = [{"name": "Alpha"}, {"name": "Bravo", "extra": "data"}]
+    save_data_to_file(data, "test", tmp_path, "csv")
+
+    rows = list(read_csv_to_list(tmp_path / "test.csv"))
+    assert list(rows[0].keys()) == ["extra", "name"]
+    assert rows[0]["extra"] == ""
+    assert rows[1]["extra"] == "data"
+
+
 def test_save_uploaded_file_to_temp__single_file(tmp_path: Path):
     input_path = tmp_path / "sample.csv"
     input_path.write_text("col1,col2\nval1,val2")
