@@ -1,3 +1,5 @@
+from pytest import raises as pytest_raises
+
 from f.common_logic.identifier_utils import (
     camel_to_snake,
     normalize_and_snakecase_keys,
@@ -201,7 +203,7 @@ def test_normalize_identifier_maxlen_param():
     assert normalize_identifier("a", maxlen=1) == "a"
 
     # Test maxlen=0 edge case
-    assert normalize_identifier("test", maxlen=0) == ""
+    pytest_raises(ValueError, normalize_identifier, "test", maxlen=0)
 
 
 def test_normalize_identifier_make_snake_param():
