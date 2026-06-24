@@ -37,6 +37,22 @@ def test_sanitize_sql_message():
     }
 
 
+def test_sanitize_sql_message__kobo_metadata_columns():
+    """System fields keep their leading/trailing underscores in SQL column names."""
+    message = {
+        "_status": "submitted_via_web",
+        "__version__": "abc123",
+        "_uuid": "11111111-1111-1111-1111-111111111111",
+    }
+    sql_message, mapping = sanitize_sql_message(message, {})
+    assert sql_message == message
+    assert mapping == {
+        "_status": "_status",
+        "__version__": "__version__",
+        "_uuid": "_uuid",
+    }
+
+
 def test_sanitize_sql_message__same_letters():
     message = {"foo[bar]test": 1, "foo{bar}test": 2}
 
@@ -146,15 +162,15 @@ def test_normalize_and_snakecase_keys():
 
 def test_normalize_identifier_default_params():
     """Test default parameters and core functionality."""
-    # Test special case: _id preservation
-    assert normalize_identifier("_id") == "_id"
 
-    # Test basic transformations
     assert normalize_identifier("kebab-case") == "kebab_case"
     assert normalize_identifier("123project") == "_123project"
     assert normalize_identifier("") == "_"
     assert normalize_identifier("!@#$%") == "_"
-    assert normalize_identifier("___name___") == "name"
+    assert normalize_identifier("___name___") == "___name___"
+    assert normalize_identifier("_id") == "_id"
+    assert normalize_identifier("_status", make_snake=False) == "_status"
+    assert normalize_identifier("__version__", make_snake=False) == "__version__"
     assert normalize_identifier("This is my dataset, ok?") == "this_is_my_dataset_ok"
     assert normalize_identifier("Foo bar baz") == "foo_bar_baz"
     assert normalize_identifier("Summary of results (Q1)") == "summary_of_results_q1"
@@ -220,7 +236,7 @@ def test_normalize_identifier_ensure_leading_alpha_param():
 
     # Test strings that already start with alpha - should be unchanged
     assert normalize_identifier("valid_name") == "valid_name"
-    assert normalize_identifier("_underscore") == "underscore"
+    assert normalize_identifier("_underscore") == "_underscore"
 
 
 def test_normalize_identifier_sep_policy_param():
@@ -303,7 +319,7 @@ def test_normalize_identifier_edge_cases():
 
     # Only underscores
     assert normalize_identifier("___") == "_"
-    assert normalize_identifier("___name___") == "name"
+    assert normalize_identifier("___name___") == "___name___"
 
     # Very short maxlen
     assert normalize_identifier("test", maxlen=1) == "t"
