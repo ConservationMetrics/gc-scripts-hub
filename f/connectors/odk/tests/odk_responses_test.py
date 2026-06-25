@@ -21,6 +21,10 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
     # Attachments are saved to disk
     assert (asset_storage / table_name / "attachments" / "1739327186781.m4a").exists()
 
+    # CSV artifact is also saved to disk
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+
     # Survey responses are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:

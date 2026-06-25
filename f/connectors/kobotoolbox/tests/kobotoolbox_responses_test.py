@@ -32,6 +32,10 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
         key in metadata for key in ["name", "uid", "owner__username", "data", "content"]
     )
 
+    # CSV artifact is also saved to disk
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+
     # Survey responses are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:

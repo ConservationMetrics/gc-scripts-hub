@@ -35,6 +35,10 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
     assert (attachments / AUDIO_FILENAME).exists()
     assert (attachments / VIDEO_FILENAME).exists()
 
+    # CSV artifact is also saved to disk
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             # Three entries returned by the single-page fixture
@@ -43,8 +47,7 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
 
             # Geometry: lat=4.711, lon=-74.072 → GeoJSON [lon, lat]
             cur.execute(
-                f"SELECT g__type, g__coordinates FROM {table_name} "
-                f"WHERE _id = %s",
+                f"SELECT g__type, g__coordinates FROM {table_name} WHERE _id = %s",
                 (PRIMARY_UUID,),
             )
             row = cur.fetchone()
