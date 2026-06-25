@@ -39,14 +39,9 @@ def main(
     id_column : str, optional
         Name of column to use as primary key. If None, auto-generates _id.
     use_mapping_table : bool
-        Forwarded to ``StructuredDBWriter``. Enables the ``__columns`` mapping
-        table for form-style data where original column names can exceed
-        Postgres' 63-char identifier limit. Defaults to False to preserve the
-        behavior of standalone CSV uploads.
+        Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
     reverse_properties_separated_by : str, optional
-        Forwarded to ``StructuredDBWriter``. When set (e.g. ``"/"``), nested
-        keys like ``meta/instanceID`` are reversed/rejoined into SQL-safe
-        column names. Defaults to None.
+        Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
     """
     csv_path = Path(attachment_root) / Path(csv_path)
     transformed_csv_data = transform_csv_data(csv_path, id_column)
