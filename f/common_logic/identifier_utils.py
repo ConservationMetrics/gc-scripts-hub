@@ -103,11 +103,17 @@ def normalize_identifier(
     'my_project_name'
     >>> normalize_identifier("123weird$name", ensure_leading_alpha=True)
     '_123weirdname'
+    >>> normalize_identifier("___name___")
+    '___name___'
     See tests for more examples.
     """
-    # Special case: preserve '_id' as-is (primary key field)
-    if name == "_id":
-        return "_id"
+    if maxlen < 1:
+        raise ValueError("maxlen must be at least 1")
+
+    if sep_policy not in {"underscore", "remove"}:
+        raise ValueError("sep_policy must be 'underscore' or 'remove'")
+
+    original_name = name
 
     normalized = unicodedata.normalize("NFD", name)
     name = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
@@ -119,12 +125,20 @@ def normalize_identifier(
         name = re.sub(r"[ \-./]", "", name)
     else:
         name = re.sub(r"[ \-./]", "_", name)
-    name = re.sub(r"[^a-zA-Z0-9_]", "", name).strip("_")
+
+    name = re.sub(r"[^a-zA-Z0-9_]", "", name)
+
+    if not original_name.startswith("_"):
+        name = name.lstrip("_")
+    if not original_name.endswith("_"):
+        name = name.rstrip("_")
+
+    name = name if name.strip("_") else "_"
 
     if ensure_leading_alpha and not re.match(r"^[a-zA-Z_]", name or ""):
         name = "_" + (name or "")
 
-    return (name or "_")[:maxlen]
+    return name[:maxlen]
 
 
 def sanitize_sql_message(
