@@ -269,6 +269,9 @@ def transform_odk_form_data(form_data, form_name=None):
     list
         A list of transformed form submissions with added metadata fields and formatted geometry.
     """
+    # TODO: ODK repeat groups / matrix payloads are not flattened yet (see Kobo
+    # flatten_kobotoolbox_submission). Extract to f/common_logic/submission_flatten.py
+    # when implementing — YAGNI until then.
     for submission in form_data:
         # Add metadata fields
         # Handle both API format (__id) and CSV format (KEY)
