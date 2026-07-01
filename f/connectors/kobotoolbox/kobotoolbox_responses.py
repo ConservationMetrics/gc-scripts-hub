@@ -342,6 +342,71 @@ def download_form_responses_and_attachments(
     return form_submissions, form_name, form_languages
 
 
+# TODO -YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK repeat/matrix
+# flattening lands; not worth a common module until then.
+def _slash_keyed_rows(value):
+    """Return the repeat/field-list rows to flatten, or ``None`` to keep as-is.
+
+    Kobo emits repeat groups and matrices as a ``list[dict]`` (each row carrying
+    at least one slash-separated key) and field-list groups as a lone ``dict``
+    whose keys are all slash-separated. Scalars, ``_geolocation``,
+    ``_attachments`` and empty containers return ``None`` and pass through.
+    """
+    # Repeat group / matrix: list of row dicts, e.g.
+    #   household_members: [{ "household_members/member/name": "Ada", ... }, ...]
+    # Require every row to be a dict with at least one slash key so we do not
+    # mis-treat plain lists (_tags, _attachments metadata, empty repeats).
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, dict) for item in value)
+        and all(any(isinstance(k, str) and "/" in k for k in item) for item in value)
+    ):
+        return value
+
+    # Field-list group: single dict of slash keys, no repeat index in the payload.
+    # Wrap as a one-row list so the same flatten loop handles both shapes.
+    # Requiring "/" on every key excludes system dicts (_validation_status, etc.).
+    if (
+        isinstance(value, dict)
+        and value
+        and all(isinstance(k, str) and "/" in k for k in value)
+    ):
+        return [value]
+
+    # Scalars, empty containers, geolocation, attachments, and anything else.
+    return None
+
+
+def flatten_kobotoolbox_submission(submission):
+    """Flatten Kobo repeat-group and field-list payloads into wide slash-separated keys.
+
+    Repeat groups and matrix questions arrive as ``list[dict]`` values with long
+    slash-separated keys. Field-list groups may arrive as a lone ``dict`` with
+    slash keys. Both are expanded to ``{group}/{index}/{leaf_key}`` (1-based index).
+
+    Parameters
+    ----------
+    submission : dict
+        A single KoboToolbox submission record.
+
+    Returns
+    -------
+    dict
+        A flattened copy of the submission with repeat/field-list blobs expanded.
+    """
+    flat = {}
+    for key, value in submission.items():
+        rows = _slash_keyed_rows(value)
+        if rows is None:
+            flat[key] = value
+            continue
+        for index, item in enumerate(rows, start=1):
+            for slash_key, field_value in item.items():
+                flat[f"{key}/{index}/{slash_key.rsplit('/', 1)[-1]}"] = field_value
+    return flat
+
+
 def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=None):
     """Transform KoboToolbox form data by adding metadata fields and formatting geometry for SQL database insertion.
 
@@ -359,7 +424,9 @@ def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=No
     list
         A list of transformed form submissions with added metadata fields and formatted geometry.
     """
-    for submission in form_data:
+    for i, submission in enumerate(form_data):
+        submission = flatten_kobotoolbox_submission(submission)
+        form_data[i] = submission
         # Add metadata fields if provided
         if form_name:
             submission["dataset_name"] = form_name
