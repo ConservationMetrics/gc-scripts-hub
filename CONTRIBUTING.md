@@ -36,30 +36,33 @@ Prefer short lived features branches.
 
 ## PR Review & Committing code
 
-Keep scope in-check: limit PRs to the goal at hand.  No extra code beyond what is absolutely
-necessary to solve the problem the user provides.  We encourage multiple commits or PRs for an
-Issue. e.g. each implementation step might get its own PR.
-
 Code review is encouraged as a powerful tool for learning.  Benefits include
 - Spread knowledge of the code base throughout the team: reviewing code is a remarkably effective way to learn the codebase.
 - Expose everyone to different approaches.
 - Ensure code is readable (and therefore maintainable).
 - Yield better software.
 
+The ideal PR is **cohesive**, and most cohesive PRs are quite small (< 200 new lines).
+* Prefer eliminating scope over splitting a cohesive changeset arbitrarily. Extraneous or unrelated changes may be moved to their own (also small) PR.
+* Sometimes a large refactor is best reviewed as one cohesive PR (i.e. where all changes depend on each other, or there is no incremental value of a partial deploy). In this case, a commit-by-commit review pattern can help: see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md).
+
 As code author:
+- Keep scope in-check. Limit PRs to the goal at hand: no extra code beyond what is absolutely necessary to solve the problem.
+- When you anticipate a PR will necessarily be large, loop in your reviewer early: they may have ideas that reduce scope, or they may want to agree in advance on a review approach.
 - The first reviewer of the code or documentation that you submit should be YOU!  (More at https://blog.beanbaginc.com/2014/12/01/practicing-effective-self-review/)
 - Ultimately the responsibility for bug-free code is on the code author, not the reviewer.
 - Code review is not limited to approval/rejection of PRs. Consider involving a collaborator
 earlier in the process, before the code is finished. Ask them for a narrower review—e.g., a
-design review or to focus on a specific part of the code change.
+design review or to focus on a specific part of the code change.  Use Draft PRs, or prose documents outside of Github.
 
 As a reviewer:
 - [This Code Review Checklist](http://web.archive.org/web/20180219163514/https://blog.fogcreek.com/increase-defect-detection-with-our-code-review-checklist-example/)
   gives concrete examples of what reviewers should look for.
-- Be kind & helpful, but do not be "nice" for the sake of avoiding conflict.
+- Be kind & helpful, but do not ignore problems for the sake of avoiding conflict.
 - "I find this very hard to follow" is valid feedback, even if the code's behavior is technically correct.
 - Ability for code review to find defects diminishes with longer PRs: Feel free to reject any
-  review that adds more than 400 lines of new code. (no upper limit on deletions!)
+  review that adds more than 400 lines of new code
+  unless you believe it's as cohesive as it can be. (no upper limit on deletions!)
 - Feel free to use code review as an instructional forum (for example suggesting
   clearer ways of solving the problem at hand), but do not comment only because
   the author did something differently than you would have. Use "FYI" in your
