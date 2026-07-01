@@ -52,7 +52,7 @@ dwelling_counts/1/house_children = "1"
 
 The existing `reverse_properties_separated_by="/"` logic then reverses each key into a SQL column, e.g. `household_members/1/member_name` → `member_name__1__household_members`.
 
-> **Note:** The ODK connector (`f/connectors/odk/odk_responses.py`) shares this plumbing but does **not** yet flatten nested payloads. See the `TODO` there.
+> **Note:** The ODK connector (`f/connectors/odk/odk_responses.py`) shares this XLSForm-style plumbing but does not (yet) flatten nested payloads. See the `TODO` there.
 
 ## 📚 Reference
 

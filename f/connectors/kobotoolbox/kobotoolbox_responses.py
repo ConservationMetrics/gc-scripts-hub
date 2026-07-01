@@ -342,8 +342,8 @@ def download_form_responses_and_attachments(
     return form_submissions, form_name, form_languages
 
 
-# TODO - YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK repeat/matrix
-# flattening lands; not worth a common module until then.
+# TODO - YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK
+# flattening is required; not worth a common module until then.
 def _slash_keyed_rows(value):
     """Return the repeat/field-list rows to flatten, or ``None`` to keep as-is.
 
