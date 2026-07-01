@@ -342,15 +342,14 @@ def download_form_responses_and_attachments(
     return form_submissions, form_name, form_languages
 
 
-# TODO -YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK repeat/matrix
+# TODO - YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK repeat/matrix
 # flattening lands; not worth a common module until then.
 def _slash_keyed_rows(value):
     """Return the repeat/field-list rows to flatten, or ``None`` to keep as-is.
 
     Kobo emits repeat groups and matrices as a ``list[dict]`` (each row carrying
     at least one slash-separated key) and field-list groups as a lone ``dict``
-    whose keys are all slash-separated. Scalars, ``_geolocation``,
-    ``_attachments`` and empty containers return ``None`` and pass through.
+    whose keys are all slash-separated.
     """
     # Repeat group / matrix: list of row dicts, e.g.
     #   household_members: [{ "household_members/member/name": "Ada", ... }, ...]
