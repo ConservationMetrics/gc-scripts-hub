@@ -51,9 +51,11 @@ As code author:
 - When you anticipate a PR will necessarily be large, loop in your reviewer early: they may have ideas that reduce scope, or they may want to agree in advance on a review approach.
 - The first reviewer of the code or documentation that you submit should be YOU!  (More at https://blog.beanbaginc.com/2014/12/01/practicing-effective-self-review/)
 - Ultimately the responsibility for bug-free code is on the code author, not the reviewer.
+- Orient your reviewer. Use direct outreach or the PR description to convey scope, flag what's
+  boilerplate or auto-generated, and highlight where you want focused attention.
 - Code review is not limited to approval/rejection of PRs. Consider involving a collaborator
-earlier in the process, before the code is finished. Ask them for a narrower review—e.g., a
-design review or to focus on a specific part of the code change.  Use Draft PRs, or prose documents outside of Github.
+  earlier in the process, before the code is finished. Ask them to review your design or
+  implementation plan before coding. Use Draft PRs or circulate a prose document outside of Github.
 
 As a reviewer:
 - [This Code Review Checklist](http://web.archive.org/web/20180219163514/https://blog.fogcreek.com/increase-defect-detection-with-our-code-review-checklist-example/)
