@@ -44,7 +44,7 @@ Code review is encouraged as a powerful tool for learning.  Benefits include
 
 The ideal PR is **cohesive**, and most cohesive PRs are quite small (< 200 new lines).
 * Prefer eliminating scope over splitting a cohesive changeset arbitrarily. Extraneous or unrelated changes may be moved to their own (also small) PR.
-* Sometimes a large refactor is best reviewed as one cohesive PR (i.e. where all changes depend on each other, or there is no incremental value of a partial deploy). In this case, a commit-by-commit review pattern can help: see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md).
+* Sometimes a large refactor is best reviewed as one cohesive PR (i.e. where all changes depend on each other, or there is no incremental value of a partial deploy). In this case, a commit-by-commit review pattern can help: see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md#example-commit-by-commit-review-for-large-cohesive-prs).
 
 As code author:
 - Keep scope in-check. Limit PRs to the goal at hand: no extra code beyond what is absolutely necessary to solve the problem.
