@@ -1,8 +1,11 @@
 const { currentStepIndex, lastAction } = formStepper;
 
-// Step 1: Dataset name must be valid
-if (currentStepIndex === 0 && !state.validSqlName) {
-  throw new Error("Please enter a valid dataset name to proceed.");
+// Step 1: Existing dataset selected or new name entered
+const newName = enterNewDatasetName.values?.["Dataset name"]?.trim();
+if (currentStepIndex === 0 && !selectExistingDataset.result && !newName) {
+  throw new Error(
+    "Please select an existing dataset or enter a new dataset name.",
+  );
 }
 
 // Step 2: File must be uploaded

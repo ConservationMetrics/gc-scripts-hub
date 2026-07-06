@@ -1,2 +1,3 @@
 state.uploadSuccess = false;
-state.uploadButtonEnabled = selectFile?.result ? true : false;
+state.uploadButtonEnabled =
+  !!selectFile?.result && !!state.validSqlName;
