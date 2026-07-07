@@ -21,7 +21,7 @@ Create new Github Issues using the templates wherever possible.
 
 **We release from the `main` branch, so code merged here should always be stable.**
 
-Prefer short lived features branches.
+Prefer short-lived feature branches.
 - Piecemeal progress towards broad code changes should merge to long-running branches until
   everything there is stable and deployable, at which point the long-running branch gets merged
   to `main`.
@@ -37,7 +37,7 @@ Prefer short lived features branches.
 ## PR Review & Committing code
 
 Code review is encouraged as a powerful tool for learning.  Benefits include
-- Spread knowledge of the code base throughout the team: reviewing code is a remarkably effective way to learn the codebase.
+- Spread knowledge of the code base throughout the team: reviewing code is a remarkably effective way to learn the codebase, and ensures at least one other person besides the author can maintain it.
 - Expose everyone to different approaches.
 - Ensure code is readable (and therefore maintainable).
 - Yield better software.
@@ -58,10 +58,8 @@ As code author:
   implementation plan before coding. Use Draft PRs or circulate a prose document outside of Github.
 
 As a reviewer:
-- [This Code Review Checklist](http://web.archive.org/web/20180219163514/https://blog.fogcreek.com/increase-defect-detection-with-our-code-review-checklist-example/)
-  gives concrete examples of what reviewers should look for.
+- The reviewer's core job is to understand what the code does and how. If they can't, the code will be hard to maintain; that should be fixed now, while the author still remembers why they wrote it this way. "I find this very hard to follow" is important feedback, even if the code's behavior is technically correct.
 - Be kind & helpful, but do not ignore problems for the sake of avoiding conflict.
-- "I find this very hard to follow" is valid feedback, even if the code's behavior is technically correct.
 - Ability for code review to find defects diminishes with longer PRs: Feel free to reject any
   review that adds more than 400 lines of new code
   unless you believe it's as cohesive as it can be. (no upper limit on deletions!)
@@ -69,6 +67,8 @@ As a reviewer:
   clearer ways of solving the problem at hand), but do not comment only because
   the author did something differently than you would have. Use "FYI" in your
   comment to distinguish comments that do not require action by the author.
+- [This Code Review Checklist](http://web.archive.org/web/20180219163514/https://blog.fogcreek.com/increase-defect-detection-with-our-code-review-checklist-example/)
+  gives concrete examples of what reviewers should look for.
 
 > [!TIP]
 > If you're unsure how to break up a large PR, see [CONTRIBUTING_EXAMPLES.md](./CONTRIBUTING_EXAMPLES.md)
