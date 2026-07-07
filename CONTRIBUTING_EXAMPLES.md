@@ -2,10 +2,32 @@ These examples illustrate practical workflows that support [our contributing gui
 
 They are not new rules, but you may find them helpful in staying consistent with the guidelines.
 
+## Example: Commit-by-Commit Review for Large Cohesive PRs
+
+Some changes are necessarily large, even when every change is in direct service of the goal at hand: maybe every line depends on every other line, or partial deployment would deliver no incremental value. Examples include adding the same feature to many scripts, changing an ORM, or restructuring a database migration strategy. Stacked PRs don't serve these well because the split the context a reviewer needs.
+
+For these, structure a single PR to guide the reviewer through it commit-by-commit:
+* Organize commits as a narrative. Each commit should represent one logical step in the refactor, in the order a reviewer should read them.
+* Write a commit index in the PR description. List each commit with a brief prose summary of what's happening and why. This is the reviewer's map. Example PR description structure:
+
+    This PR makes all ETL scripts idempotent.
+
+    | SHA     | Commit                             | Comment       |
+    |---------|------------------------------------|---------------|
+    | abc1234 | Extract shared helpers             | Centralizes upsert logic. No behavior change |
+    | def5678 | Make ingest_orders.py idempotent   | Adds unique constraint on (order_id, source) so duplicate runs produce no duplicate rows. |
+    | ghi9012 | Make ingest_products.py idempotent | Same pattern as orders. |
+    | jkl3456 | Drop cleanup from run_all.py       | Now redundant |
+
+As author: Keep each commit self-contained enough to narrate. It helps to draft the index first before changing code, and this is your implementation plan.
+
+As reviewer: review commit-by-commit using the index as your map, rather than the unified diff.
 
 ## Example: Stacked or Dependent PRs Workflow
 
-When multiple PRs build upon each other -- for example `main ← PR1 ← PR2 ← PR3`:
+When work can be broken into **independently deployable** and **independently reviewable** pieces, prefer multiple small PRs over one larger one. The smaller PRs get earlier review turnaround, and with and no single controversial change blocking delivery of everything else, smaller PRs merge faster and so value ships sooner.
+
+Ideally this can be done even without the different PRs depending on each other, i.e. all target `main`. However when multiple PRs must build upon each other -- for example `main ← PR1 ← PR2 ← PR3` -- the pattern is as follows:
 
 1. **Start a long-running branch other than `main`.** Many repos deploy straight from `main`, so this branch prevents features landing in `main` until they are complete.
     - Example: `git checkout -b 191 main` becomes the integration point for a feature family.
@@ -22,7 +44,7 @@ When multiple PRs build upon each other -- for example `main ← PR1 ← PR2 ←
         - PR2: "Author wants to merge _n_ commits into [**`191`**] from `191b-types`"
         - Actually I think Github sometimes does this for you.
     - From the reviewers point of view, the patchset between this PR and its target never changes (it's always the same diff to review), nor does the PR scope or description need to change.
-5. **Use merge commits.**  As code author, when merging a branch, choosing the "Merge Commit" method will simplify future meregs to of other branches.
+5. **Use merge commits.**  As code author, when merging a branch, choosing the "Merge Commit" method will simplify future merges to of other branches.
     - Bring other open PRs up-to-date by running, on their branches, `git merge 191`.
     - When doing a Dependent PR Workflow like this I almost never `git rebase` or `squash` commits that exist in a different branch. Those operations will just introduce conflicts that are tedious to clean up. `git merge` is the answer for both the upstream branch and the downstream branch.
 6. **Iterate and stabilize the long-running branch.** Keep merging small PRs until `191` is stable and deployable.
