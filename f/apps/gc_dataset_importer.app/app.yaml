@@ -30,6 +30,10 @@ value:
       container:
         class: ''
         style: ''
+    selectcomponent:
+      input:
+        class: ''
+        style: ''
     steppercomponent:
       container:
         class: ''
@@ -167,20 +171,22 @@ value:
               language: frontend
               path: f/apps/gc_dataset_importer/0_Form_stepper_validations
               suggestedRefreshOn:
-                - id: lonLatToggle
+                - id: state
+                  key: latitudeCol
+                - id: state
+                  key: longitudeCol
+                - id: selectExistingDataset
                   key: result
                 - id: longitudeCol
                   key: result
-                - id: state
-                  key: uploadSuccess
                 - id: latitudeCol
                   key: result
                 - id: state
-                  key: validSqlName
-                - id: selectExistingDataset
-                  key: result
+                  key: uploadSuccess
                 - id: enterNewDatasetName
                   key: values
+                - id: lonLatToggle
+                  key: result
         configuration: {}
         customCss:
           container:
@@ -1293,9 +1299,21 @@ value:
           customCss:
             container:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: ''
             text:
-              class: font-bold
+              class: ''
+              evalClass:
+                type: evalv2
+                connections: []
+                expr: ''
+                fieldType: text
               style: ''
           horizontalAlignment: center
           recomputeIds: []
@@ -1348,6 +1366,13 @@ value:
               style: ''
             text:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: 'font-weight: normal;'
           horizontalAlignment: center
           verticalAlignment: center
@@ -1393,6 +1418,13 @@ value:
               style: ''
             text:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: ''
           horizontalAlignment: left
           verticalAlignment: top
@@ -1438,6 +1470,13 @@ value:
               style: ''
             text:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: ''
           horizontalAlignment: left
           verticalAlignment: top
@@ -1505,6 +1544,13 @@ value:
           customCss:
             input:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: ''
           onSelect:
             - bg_6
@@ -1574,6 +1620,13 @@ value:
           customCss:
             input:
               class: ''
+              evalClass:
+                type: evalv2
+                connections:
+                  - id: outputFormat
+                    componentId: state
+                expr: 'state.outputFormat !== "csv" ? "hidden" : ""'
+                fieldType: text
               style: ''
           onSelect:
             - bg_4
