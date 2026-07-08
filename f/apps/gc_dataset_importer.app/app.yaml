@@ -179,8 +179,8 @@ value:
                   key: validSqlName
                 - id: selectExistingDataset
                   key: result
-                - id: values
-                  componentId: enterNewDatasetName
+                - id: enterNewDatasetName
+                  key: values
         configuration: {}
         customCss:
           container:
@@ -266,27 +266,34 @@ value:
         suggestedRefreshOn:
           - id: state
             key: tables
-    - name: 1 Set state.datasetName
+    - name: 1 Clear dropdown on new name
       autoRefresh: true
       fields: {}
       inlineScript:
-        content: '!inline 1_set_state.datasetname.inline_script.frontend.js'
+        content: '!inline 1_clear_dropdown_on_new_name.inline_script.frontend.js'
         language: frontend
-        path: f/apps/gc_dataset_importer/1_Set_state.datasetName
+        path: f/apps/gc_dataset_importer/1_Clear_dropdown_on_new_name
+        refreshOn:
+          - id: enterNewDatasetName
+            key: values
+        suggestedRefreshOn:
+          - id: state
+            key: existingDatasetSelection
+      recomputeIds: []
+      recomputeOnInputChanged: true
+    - name: 1 Clear name on select
+      autoRefresh: true
+      fields: {}
+      inlineScript:
+        content: '!inline 1_clear_name_on_select.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/1_Clear_name_on_select
         refreshOn:
           - id: selectExistingDataset
             key: result
-          - id: values
-            componentId: enterNewDatasetName
         suggestedRefreshOn:
           - id: state
-            key: datasetName
-          - id: state
-            key: validSqlName
-          - id: state
-            key: tableExists
-          - id: state
-            key: existingDatasetSelection
+            key: newNameDefault
       recomputeIds: []
       recomputeOnInputChanged: true
     - name: 1 Resolve dataset name
@@ -301,9 +308,8 @@ value:
             - id: values
               componentId: enterNewDatasetName
           expr: >-
-            selectExistingDataset.result ||
             enterNewDatasetName.values?.["Dataset name"]?.trim() ||
-            null
+            selectExistingDataset.result || null
           fieldType: string
         db:
           type: static
@@ -311,15 +317,15 @@ value:
           fieldType: object
           format: resource-postgresql
       inlineScript:
-        content: '!inline 1_check_if_database_table_exists.inline_script.py'
-        lock: '!inline 1_check_if_database_table_exists.inline_script.lock'
+        content: '!inline 1_resolve_dataset_name.inline_script.py'
+        lock: '!inline 1_resolve_dataset_name.inline_script.lock'
         language: python3
         path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
         refreshOn:
-          - id: result
-            componentId: selectExistingDataset
-          - id: values
-            componentId: enterNewDatasetName
+          - id: selectExistingDataset
+            key: result
+          - id: enterNewDatasetName
+            key: values
         schema:
           $schema: 'https://json-schema.org/draft/2020-12/schema'
           type: object
@@ -374,10 +380,10 @@ value:
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
         refreshOn:
-          - id: result
-            componentId: selectFile
-          - id: validSqlName
-            componentId: state
+          - id: selectFile
+            key: result
+          - id: state
+            key: validSqlName
         suggestedRefreshOn:
           - id: state
             key: uploadSuccess
@@ -546,7 +552,7 @@ value:
           componentInput:
             type: templatev2
             connections: []
-            eval: >-
+            eval: |-
               <p class="text-sm text-center text-gray-500 dark:text-gray-400">
                 — or create a new dataset —
               </p>
@@ -559,7 +565,7 @@ value:
       - '12':
           fixed: true
           fullHeight: false
-          h: 5
+          h: 4
           w: 10
           x: 1
           'y': 6
@@ -598,10 +604,12 @@ value:
             fieldType: schema
           configuration:
             defaultValues:
-              type: static
+              type: evalv2
               value: {}
-              connections: []
-              expr: '{}'
+              connections:
+                - id: newNameDefault
+                  componentId: state
+              expr: 'state.newNameDefault ?? {}'
             displayType:
               type: static
               value: false
@@ -621,6 +629,75 @@ value:
             label:
               class: ''
               style: ''
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 2
+          w: 10
+          x: 1
+          'y': 10
+        '3':
+          fixed: true
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 0
+        id: datasetNameResult
+        data:
+          id: datasetNameResult
+          type: textcomponent
+          actions: []
+          componentInput:
+            type: runnable
+            autoRefresh: true
+            connections: []
+            eval: ''
+            expr: ''
+            fields: {}
+            fieldType: template
+            hideRefreshButton: true
+            recomputeOnInputChanged: true
+            runnable:
+              name: 1 Eval of enterDatasetNameResult
+              inlineScript:
+                content: >-
+                  !inline
+                  1_eval_of_enterdatasetnameresult.inline_script.frontend.js
+                language: frontend
+                path: f/apps/gc_dataset_importer/1_Eval_of_enterDatasetNameResult
+                refreshOn:
+                  - id: state
+                    key: tableExists
+                  - id: state
+                    key: validSqlName
+                  - id: state
+                    key: datasetName
+                  - id: enterNewDatasetName
+                    key: values
+                suggestedRefreshOn: []
+          configuration:
+            copyButton:
+              type: static
+              value: false
+            disableNoText:
+              type: static
+              value: true
+            style:
+              type: static
+              value: Label
+            tooltip:
+              type: static
+              value: ''
+          customCss:
+            container:
+              class: ''
+              style: ''
+            text:
+              class: ''
+              style: ''
+          horizontalAlignment: center
+          verticalAlignment: center
     formStepper-1:
       - '12':
           fixed: false
@@ -725,7 +802,7 @@ value:
               class: ''
               style: ''
           onFileChange:
-            - bg_4
+            - bg_5
       - '12':
           fixed: true
           fullHeight: false
@@ -1178,7 +1255,7 @@ value:
               tooltip: >-
                 https://github.com/rob-balfre/svelte-select/blob/master/docs/theming_variables.md
           onSelect:
-            - bg_6
+            - bg_7
           recomputeIds: []
           verticalAlignment: center
       - '12':
@@ -1430,7 +1507,7 @@ value:
               class: ''
               style: ''
           onSelect:
-            - bg_5
+            - bg_6
           recomputeIds: []
           verticalAlignment: center
       - '12':
@@ -1499,7 +1576,7 @@ value:
               class: ''
               style: ''
           onSelect:
-            - bg_3
+            - bg_4
           recomputeIds: []
           verticalAlignment: center
     formStepper-3:
