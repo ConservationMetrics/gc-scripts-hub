@@ -3,6 +3,13 @@ from f.common_logic.identifier_utils import normalize_identifier
 
 
 def main(db: postgresql, dataset_name: str):
+    if not dataset_name:
+        return {
+            "tableExists": None,
+            "datasetName": None,
+            "validSqlName": None,
+        }
+
     valid_sql_name = normalize_identifier(dataset_name)
 
     table_exists = check_if_table_exists(conninfo(db), valid_sql_name)

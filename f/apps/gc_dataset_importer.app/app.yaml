@@ -177,6 +177,10 @@ value:
                   key: result
                 - id: state
                   key: validSqlName
+                - id: selectExistingDataset
+                  key: result
+                - id: enterNewDatasetName
+                  key: values
         configuration: {}
         customCss:
           container:
@@ -186,7 +190,7 @@ value:
         onNext: []
         onPrevious: []
         tabs:
-          - Name your dataset
+          - Choose your dataset
           - Upload your file
           - Choose data source
           - Finalize
@@ -222,6 +226,138 @@ value:
             class: ''
             style: ''
   hiddenInlineScripts:
+    - name: 1 Fetch tables from Postgres
+      autoRefresh: true
+      fields:
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+      inlineScript:
+        content: '!inline 1_fetch_tables_from_postgres.inline_script.py'
+        lock: '!inline 1_fetch_tables_from_postgres.inline_script.lock'
+        language: python3
+        path: f/apps/gc_dataset_importer/1_Fetch_tables_from_Postgres
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+          required:
+            - db
+      recomputeIds: []
+      recomputeOnInputChanged: false
+      transformer:
+        content: |-
+          state.tables = Object.values(result)
+            .filter(name =>
+              !name.endsWith("__columns") &&
+              !name.endsWith("__labels") &&
+              !name.endsWith("__metadata")
+            )
+            .sort((a, b) => a.localeCompare(b))
+        language: frontend
+        path: f/apps/gc_dataset_importer/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tables
+    - name: 1 Clear dropdown on new name
+      autoRefresh: true
+      fields: {}
+      inlineScript:
+        content: '!inline 1_clear_dropdown_on_new_name.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/1_Clear_dropdown_on_new_name
+        refreshOn:
+          - id: enterNewDatasetName
+            key: values
+        suggestedRefreshOn:
+          - id: state
+            key: existingDatasetSelection
+      recomputeIds: []
+      recomputeOnInputChanged: true
+    - name: 1 Clear name on select
+      autoRefresh: true
+      fields: {}
+      inlineScript:
+        content: '!inline 1_clear_name_on_select.inline_script.frontend.js'
+        language: frontend
+        path: f/apps/gc_dataset_importer/1_Clear_name_on_select
+        refreshOn:
+          - id: selectExistingDataset
+            key: result
+        suggestedRefreshOn:
+          - id: state
+            key: newNameDefault
+      recomputeIds: []
+      recomputeOnInputChanged: true
+    - name: 1 Resolve dataset name
+      autoRefresh: false
+      fields:
+        dataset_name:
+          type: evalv2
+          value: null
+          connections:
+            - id: result
+              componentId: selectExistingDataset
+            - id: values
+              componentId: enterNewDatasetName
+          expr: >-
+            enterNewDatasetName.values?.["Dataset name"]?.trim() ||
+            selectExistingDataset.result || null
+          fieldType: string
+        db:
+          type: static
+          value: '$res:f/connectors/postgresql'
+          fieldType: object
+          format: resource-postgresql
+      inlineScript:
+        content: '!inline 1_resolve_dataset_name.inline_script.py'
+        lock: '!inline 1_resolve_dataset_name.inline_script.lock'
+        language: python3
+        path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
+        refreshOn:
+          - id: selectExistingDataset
+            key: result
+          - id: enterNewDatasetName
+            key: values
+        schema:
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          type: object
+          properties:
+            dataset_name:
+              type: string
+              description: ''
+              default: null
+              originalType: string
+            db:
+              type: object
+              description: ''
+              default: null
+              format: resource-postgresql
+          required:
+            - db
+      recomputeIds: []
+      recomputeOnInputChanged: true
+      transformer:
+        content: |-
+          state.tableExists = result.tableExists;
+          state.datasetName = result.datasetName;
+          state.validSqlName = result.validSqlName;
+        language: frontend
+        path: f/apps/gc_dataset_importer/Transformer
+        suggestedRefreshOn:
+          - id: state
+            key: tableExists
+          - id: state
+            key: datasetName
+          - id: state
+            key: validSqlName
     - name: 3 Set latitude state
       autoRefresh: true
       fields: {}
@@ -237,12 +373,17 @@ value:
       recomputeIds: []
       recomputeOnInputChanged: true
     - name: 2 File has been selected
-      autoRefresh: false
+      autoRefresh: true
       fields: {}
       inlineScript:
         content: '!inline 2_file_has_been_selected.inline_script.frontend.js'
         language: frontend
         path: f/apps/gc_dataset_importer/2_File_has_been_selected
+        refreshOn:
+          - id: selectFile
+            key: result
+          - id: state
+            key: validSqlName
         suggestedRefreshOn:
           - id: state
             key: uploadSuccess
@@ -250,6 +391,8 @@ value:
             key: result
           - id: state
             key: uploadButtonEnabled
+          - id: state
+            key: validSqlName
       recomputeIds: []
       recomputeOnInputChanged: true
     - name: 3 Set longitude state
@@ -289,12 +432,143 @@ value:
   subgrids:
     formStepper-0:
       - '12':
-          fixed: true
+          fixed: false
           fullHeight: false
-          h: 5
+          h: 3
           w: 10
           x: 1
-          'y': 2
+          'y': 1
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 2
+          w: 1
+          x: 2
+          'y': 0
+        id: selectDatasetTitle
+        data:
+          id: selectDatasetTitle
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: >-
+              <h5 class="text-[16px] font-semibold text-gray-900
+              dark:text-gray-100 mb-1">
+                Choose a dataset
+              </h5>
+
+
+              <p class="text-sm text-gray-600 dark:text-gray-400
+              leading-relaxed">
+                Select an existing dataset to append data, or create a new one below.
+                <em class="text-gray-500 dark:text-gray-500">
+                  Note: datasets are tables in your data warehouse.
+                </em>
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 4
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 2
+          x: 0
+          'y': 0
+        id: selectExistingDataset
+        data:
+          id: selectExistingDataset
+          type: selectcomponent
+          configuration:
+            create:
+              type: static
+              value: false
+            defaultValue:
+              type: evalv2
+              connections:
+                - id: existingDatasetSelection
+                  componentId: state
+              expr: state.existingDatasetSelection
+            disabled:
+              type: evalv2
+              value: false
+              connections:
+                - id: values
+                  componentId: enterNewDatasetName
+              expr: '!!enterNewDatasetName.values?.["Dataset name"]?.trim()'
+            fullWidth:
+              type: static
+              value: true
+            items:
+              type: evalv2
+              value: []
+              connections:
+                - id: tables
+                  componentId: state
+              expr: state.tables
+            nativeHtmlSelect:
+              type: static
+              value: false
+            placeholder:
+              type: static
+              value: Select an existing dataset
+            preselectFirst:
+              type: static
+              value: false
+          customCss:
+            input:
+              class: ''
+              style: ''
+          verticalAlignment: center
+      - '12':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 10
+          x: 1
+          'y': 5
+        '3':
+          fixed: false
+          fullHeight: false
+          h: 1
+          w: 1
+          x: 0
+          'y': 1
+        id: orCreateNewLabel
+        data:
+          id: orCreateNewLabel
+          type: htmlcomponent
+          componentInput:
+            type: templatev2
+            connections: []
+            eval: |-
+              <p class="text-sm text-center text-gray-500 dark:text-gray-400">
+                — or create a new dataset —
+              </p>
+            fieldType: template
+          configuration: {}
+          customCss:
+            container:
+              class: ''
+              style: ''
+      - '12':
+          fixed: true
+          fullHeight: false
+          h: 4
+          w: 10
+          x: 1
+          'y': 6
         '3':
           fixed: true
           fullHeight: false
@@ -302,9 +576,9 @@ value:
           w: 3
           x: 0
           'y': 1
-        id: enterDatasetName
+        id: enterNewDatasetName
         data:
-          id: enterDatasetName
+          id: enterNewDatasetName
           type: schemaformcomponent
           actions: []
           componentInput:
@@ -321,20 +595,21 @@ value:
                     line breaks.
                   default: ''
                   disableVariablePicker: true
-                  nullable: false
-                  pattern: '^.{1,61}$'
+                  nullable: true
+                  pattern: '^.{0,61}$'
                   placeholder: ''
-              required:
-                - Dataset name
+              required: []
             connections: []
             expr: ''
             fieldType: schema
           configuration:
             defaultValues:
-              type: static
+              type: evalv2
               value: {}
-              connections: []
-              expr: '{}'
+              connections:
+                - id: newNameDefault
+                  componentId: state
+              expr: 'state.newNameDefault ?? {}'
             displayType:
               type: static
               value: false
@@ -357,151 +632,10 @@ value:
       - '12':
           fixed: true
           fullHeight: false
-          h: 1
-          w: 2
-          x: 5
-          'y': 7
-        '3':
-          fixed: true
-          fullHeight: false
-          h: 1
-          w: 1
-          x: 10
-          'y': 5
-        id: checkAvailability
-        data:
-          id: checkAvailability
-          type: buttoncomponent
-          actions: []
-          componentInput:
-            type: runnable
-            autoRefresh: false
-            fields:
-              dataset_name:
-                type: evalv2
-                value: null
-                connections:
-                  - id: values
-                    componentId: enterDatasetName
-                expr: 'enterDatasetName.values["Dataset name"]'
-                fieldType: string
-              db:
-                type: static
-                value: '$res:f/connectors/postgresql'
-                fieldType: object
-                format: resource-postgresql
-            fieldType: any
-            recomputeOnInputChanged: false
-            runnable:
-              name: 1 Check if database table exists
-              inlineScript:
-                content: '!inline 1_check_if_database_table_exists.inline_script.py'
-                lock: '!inline 1_check_if_database_table_exists.inline_script.lock'
-                language: python3
-                path: f/apps/gc_dataset_importer/1_Check_if_database_table_exists
-                schema:
-                  $schema: 'https://json-schema.org/draft/2020-12/schema'
-                  type: object
-                  properties:
-                    dataset_name:
-                      type: string
-                      description: ''
-                      default: null
-                      originalType: string
-                    db:
-                      type: object
-                      description: ''
-                      default: null
-                      format: resource-postgresql
-                  required:
-                    - db
-                    - dataset_name
-            transformer:
-              content: |-
-                state.tableExists = result.tableExists;
-                state.datasetName = result.datasetName;
-                state.validSqlName = result.validSqlName;
-              language: frontend
-              path: f/apps/gc_dataset_importer/Transformer
-              suggestedRefreshOn:
-                - id: state
-                  key: tableExists
-                - id: state
-                  key: datasetName
-                - id: state
-                  key: validSqlName
-          configuration:
-            afterIcon:
-              type: static
-              value: search
-            beforeIcon:
-              type: static
-              value: ''
-            color:
-              type: static
-              value: dark
-            confirmationModal:
-              type: oneOf
-              configuration:
-                none: {}
-              selected: none
-            disabled:
-              type: evalv2
-              value: true
-              connections:
-                - id: valid
-                  componentId: enterDatasetName
-              expr: '!enterDatasetName.valid'
-            fillContainer:
-              type: static
-              value: false
-            label:
-              type: static
-              value: Check Availability
-            onError:
-              type: oneOf
-              configuration:
-                errorOverlay: {}
-              selected: errorOverlay
-            onSubmit:
-              type: oneOf
-              configuration:
-                none: {}
-              selected: none
-            onSuccess:
-              type: oneOf
-              configuration:
-                none: {}
-              selected: none
-            runInBackground:
-              type: static
-              value: false
-            size:
-              type: static
-              value: xs
-            tooltip:
-              type: static
-            triggerOnAppLoad:
-              type: static
-              value: false
-          customCss:
-            button:
-              class: ''
-              style: ''
-            container:
-              class: ''
-              style: ''
-          horizontalAlignment: center
-          recomputeIds:
-            - bg_0
-          verticalAlignment: center
-      - '12':
-          fixed: true
-          fullHeight: false
           h: 2
           w: 10
           x: 1
-          'y': 8
+          'y': 10
         '3':
           fixed: true
           fullHeight: false
@@ -517,11 +651,9 @@ value:
           componentInput:
             type: runnable
             autoRefresh: true
-            connections:
-              - id: result
-                componentId: submitDatasetName
+            connections: []
             eval: ''
-            expr: submitDatasetName.result
+            expr: ''
             fields: {}
             fieldType: template
             hideRefreshButton: true
@@ -539,6 +671,10 @@ value:
                     key: tableExists
                   - id: state
                     key: validSqlName
+                  - id: state
+                    key: datasetName
+                  - id: enterNewDatasetName
+                    key: values
                 suggestedRefreshOn: []
           configuration:
             copyButton:
@@ -666,7 +802,7 @@ value:
               class: ''
               style: ''
           onFileChange:
-            - bg_1
+            - bg_5
       - '12':
           fixed: true
           fullHeight: false
@@ -1119,7 +1255,7 @@ value:
               tooltip: >-
                 https://github.com/rob-balfre/svelte-select/blob/master/docs/theming_variables.md
           onSelect:
-            - bg_3
+            - bg_7
           recomputeIds: []
           verticalAlignment: center
       - '12':
@@ -1371,7 +1507,7 @@ value:
               class: ''
               style: ''
           onSelect:
-            - bg_2
+            - bg_6
           recomputeIds: []
           verticalAlignment: center
       - '12':
@@ -1440,7 +1576,7 @@ value:
               class: ''
               style: ''
           onSelect:
-            - bg_0
+            - bg_4
           recomputeIds: []
           verticalAlignment: center
     formStepper-3:
