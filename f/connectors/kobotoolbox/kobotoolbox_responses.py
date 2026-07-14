@@ -344,17 +344,29 @@ def download_form_responses_and_attachments(
 
 # TODO - YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK
 # flattening is required; not worth a common module until then.
-def _slash_keyed_rows(value):
-    """Return the repeat/field-list rows to flatten, or ``None`` to keep as-is.
+def _get_flattenable_kobo_rows(value):
+    """Return a Kobo field value as a list of rows to flatten, or ``None`` to leave it alone.
 
-    Kobo emits repeat groups and matrices as a ``list[dict]`` (each row carrying
-    at least one slash-separated key) and field-list groups as a lone ``dict``
-    whose keys are all slash-separated.
+    We only flatten values that look like a group of fields with slash-separated
+    keys. There are two such shapes:
+
+    A list of row dicts (repeat group / matrix), e.g.::
+
+        [
+            {"household_members/name": "Ada", ...},
+            {"household_members/name": "Bo",  ...},
+        ]
+
+    A single dict of slash keys (field-list group), e.g.::
+
+        {"location/lat": 1.0, "location/lng": 2.0}
+
+    Both are returned as a list of rows. Everything else (scalars, empty
+    containers, geolocation, attachments, and system lists/dicts like ``_tags``
+    or ``_validation_status``) returns ``None`` and is kept as-is.
     """
-    # Repeat group / matrix: list of row dicts, e.g.
-    #   household_members: [{ "household_members/member/name": "Ada", ... }, ...]
-    # Require every row to be a dict with at least one slash key so we do not
-    # mis-treat plain lists (_tags, _attachments metadata, empty repeats).
+    # Every row must be a dict with at least one slash key. This excludes plain
+    # lists such as _tags, _attachments metadata, and empty repeats.
     if (
         isinstance(value, list)
         and value
@@ -363,9 +375,9 @@ def _slash_keyed_rows(value):
     ):
         return value
 
-    # Field-list group: single dict of slash keys, no repeat index in the payload.
-    # Wrap as a one-row list so the same flatten loop handles both shapes.
-    # Requiring "/" on every key excludes system dicts (_validation_status, etc.).
+    # A lone group dict has no repeat index, so wrap it as one row and let the
+    # same flatten loop handle it. Requiring "/" on every key excludes system
+    # dicts such as _validation_status.
     if (
         isinstance(value, dict)
         and value
@@ -373,7 +385,6 @@ def _slash_keyed_rows(value):
     ):
         return [value]
 
-    # Scalars, empty containers, geolocation, attachments, and anything else.
     return None
 
 
@@ -396,7 +407,7 @@ def flatten_kobotoolbox_submission(submission):
     """
     flat = {}
     for key, value in submission.items():
-        rows = _slash_keyed_rows(value)
+        rows = _get_flattenable_kobo_rows(value)
         if rows is None:
             flat[key] = value
             continue
