@@ -368,6 +368,38 @@ def _get_nested_submissions(uri, form_id):
             "_validation_status": {},
             "_submitted_by": "fixture_user",
         },
+        {
+            "_id": 900003,
+            "formhub/uuid": "cccccccccccccccccccccccccccccccc",
+            "village_name": "Village Gamma",
+            "interviewer_name": "Interviewer C",
+            # Repeat group nested inside another repeat group.
+            "first_group": [
+                {
+                    "first_group/second_group": [
+                        {
+                            "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "John",
+                            "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                        },
+                        {
+                            "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "Jane",
+                            "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                        },
+                    ]
+                },
+            ],
+            "__version__": "fixtureVersion01",
+            "meta/instanceID": "uuid:33333333-3333-3333-3333-333333333333",
+            "_xform_id_string": form_id,
+            "_uuid": "33333333-3333-3333-3333-333333333333",
+            "_attachments": [],
+            "_status": "submitted_via_web",
+            "_submission_time": "2026-01-15T12:00:00",
+            "_tags": [],
+            "_notes": [],
+            "_validation_status": {},
+            "_submitted_by": "fixture_user",
+        },
     ]
 
 

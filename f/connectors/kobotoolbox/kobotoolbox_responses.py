@@ -395,6 +395,9 @@ def flatten_kobotoolbox_submission(submission):
     slash-separated keys. Field-list groups may arrive as a lone ``dict`` with
     slash keys. Both are expanded to ``{group}/{index}/{leaf_key}`` (1-based index).
 
+    Repeat groups can be nested (a repeat inside a repeat), so flattening recurses
+    until no slash-keyed rows remain, e.g. ``{outer}/{i}/{inner}/{j}/{leaf_key}``.
+
     Parameters
     ----------
     submission : dict
@@ -410,11 +413,21 @@ def flatten_kobotoolbox_submission(submission):
         rows = _get_flattenable_kobo_rows(value)
         if rows is None:
             flat[key] = value
-            continue
-        for index, item in enumerate(rows, start=1):
-            for slash_key, field_value in item.items():
-                flat[f"{key}/{index}/{slash_key.rsplit('/', 1)[-1]}"] = field_value
+        else:
+            _flatten_kobo_rows(key, rows, flat)
     return flat
+
+
+def _flatten_kobo_rows(prefix, rows, flat):
+    """Expand ``rows`` under ``prefix`` into ``flat``, recursing into nested repeats."""
+    for index, row in enumerate(rows, start=1):
+        for slash_key, value in row.items():
+            key = f"{prefix}/{index}/{slash_key.rsplit('/', 1)[-1]}"
+            nested = _get_flattenable_kobo_rows(value)
+            if nested is None:
+                flat[key] = value
+            else:
+                _flatten_kobo_rows(key, nested, flat)
 
 
 def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=None):

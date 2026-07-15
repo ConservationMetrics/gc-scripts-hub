@@ -268,6 +268,53 @@ def test_flatten_kobotoolbox_submission__preserves_system_fields():
     assert result["household_members"] == []
 
 
+def test_flatten_kobotoolbox_submission__deeply_nested_repeat():
+    """A repeat group nested inside another repeat group must flatten all the way down.
+
+    Kobo emits the inner repeat as a slash-keyed ``list[dict]`` under each outer
+    row, so the flattener has to recurse instead of leaving the inner list as a
+    JSON blob under ``first_group/{i}/second_group``.
+    """
+    submission = {
+        "first_group": [
+            {
+                "first_group/second_group": [
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "John",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                    },
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "Jane",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                    },
+                ]
+            },
+            {
+                "first_group/second_group": [
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "Foo",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Bar",
+                    },
+                ]
+            },
+        ],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "first_group" not in result
+    # Nothing should remain as a nested container once fully flattened.
+    assert not any(isinstance(v, (list, dict)) for v in result.values())
+    assert result["first_group/1/second_group/1/group_er3uf83_row_column"] == "John"
+    assert result["first_group/1/second_group/2/group_er3uf83_row_column"] == "Jane"
+    assert (
+        result["first_group/1/second_group/2/group_er3uf83_row_second_column"] == "Doe"
+    )
+    assert result["first_group/2/second_group/1/group_er3uf83_row_column"] == "Foo"
+    assert (
+        result["first_group/2/second_group/1/group_er3uf83_row_second_column"] == "Bar"
+    )
+
+
 def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "kobo_nested_repeats"
@@ -283,7 +330,7 @@ def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cursor.fetchone()[0] == 2
+            assert cursor.fetchone()[0] == 3
 
             cursor.execute(
                 f'SELECT "group_fixture_member_1_name__1__household_members" '
@@ -296,3 +343,11 @@ def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
                 f"FROM {table_name} WHERE _id = '900002'"
             )
             assert cursor.fetchone()[0] == "2"
+
+            # A repeat nested inside a repeat is flattened all the way down, so
+            # even the innermost leaf lands in its own reversed/underscored column.
+            cursor.execute(
+                f'SELECT "group_er3uf83_row_column__2__second_group__1__first_group" '
+                f"FROM {table_name} WHERE _id = '900003'"
+            )
+            assert cursor.fetchone()[0] == "Jane"
