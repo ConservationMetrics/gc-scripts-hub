@@ -58,26 +58,31 @@ def main(
     )
 
     save_path = Path(attachment_root) / db_table_name
-    save_data_to_file(
-        transformed_form_responses,
-        db_table_name,
-        save_path,
-        file_type="csv",
-    )
+    if transformed_form_responses:
+        save_data_to_file(
+            transformed_form_responses,
+            db_table_name,
+            save_path,
+            file_type="csv",
+        )
 
-    save_csv_to_postgres(
-        db,
-        db_table_name,
-        str(Path(db_table_name) / f"{db_table_name}.csv"),
-        attachment_root,
-        delete_csv_file=False,
-        id_column="_id",
-        use_mapping_table=True,
-        reverse_properties_separated_by="/",
-    )
-    logger.info(
-        f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
-    )
+        save_csv_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.csv"),
+            attachment_root,
+            delete_csv_file=False,
+            id_column="_id",
+            use_mapping_table=True,
+            reverse_properties_separated_by="/",
+        )
+        logger.info(
+            f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
+        )
+    else:
+        logger.warning(
+            f"No submissions returned; skipping database write for table: [{db_table_name}]"
+        )
 
     # If form_labels is empty, there were no translatable labels found in metadata
     if form_labels:

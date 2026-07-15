@@ -87,6 +87,26 @@ def koboserver_no_translations(mocked_responses):
 
 
 @pytest.fixture
+def koboserver_no_submissions(mocked_responses):
+    """Fixture whose form has valid metadata but zero submissions."""
+    metadata = server_responses.kobo_form(server_url, form_id, form_name)
+
+    mocked_responses.get(
+        f"{server_url}/api/v2/assets/{form_id}/",
+        json=metadata,
+        status=200,
+    )
+    mocked_responses.add(
+        responses.GET,
+        re.compile(rf"{server_url}/api/v2/assets/{form_id}/data/"),
+        json={"count": 0, "next": None, "previous": None, "results": []},
+        status=200,
+    )
+
+    return _build_koboserver_fixture(metadata)
+
+
+@pytest.fixture
 def koboserver_with_pagination(mocked_responses):
     """Fixture with many submissions to test pagination (3 pages with limit=1)."""
     metadata = server_responses.kobo_form(server_url, form_id, form_name)

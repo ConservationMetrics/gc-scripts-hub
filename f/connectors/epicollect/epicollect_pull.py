@@ -58,25 +58,30 @@ def main(
     transformed = transform_epicollect_entries(entries, form_name=form_name)
 
     save_path = Path(attachment_root) / db_table_name
-    save_data_to_file(
-        transformed,
-        db_table_name,
-        save_path,
-        file_type="csv",
-    )
+    if transformed:
+        save_data_to_file(
+            transformed,
+            db_table_name,
+            save_path,
+            file_type="csv",
+        )
 
-    save_csv_to_postgres(
-        db,
-        db_table_name,
-        str(Path(db_table_name) / f"{db_table_name}.csv"),
-        attachment_root,
-        delete_csv_file=False,
-        id_column="_id",
-        use_mapping_table=True,
-        reverse_properties_separated_by="/",
-    )
+        save_csv_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.csv"),
+            attachment_root,
+            delete_csv_file=False,
+            id_column="_id",
+            use_mapping_table=True,
+            reverse_properties_separated_by="/",
+        )
 
-    logger.info(f"EpiCollect5 entries written to database table: [{db_table_name}]")
+        logger.info(f"EpiCollect5 entries written to database table: [{db_table_name}]")
+    else:
+        logger.warning(
+            f"No entries returned; skipping database write for table: [{db_table_name}]"
+        )
 
 
 def _get_access_token(client_id: int, client_secret: str) -> str:

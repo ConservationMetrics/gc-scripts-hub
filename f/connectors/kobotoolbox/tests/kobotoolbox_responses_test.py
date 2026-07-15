@@ -161,6 +161,33 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
             assert cursor.fetchone() == ("Record your current location",)
 
 
+def test_script_e2e__no_submissions(koboserver_no_submissions, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_no_submissions"
+
+    # A zero-submission pull must not raise
+    main(
+        koboserver_no_submissions.account,
+        koboserver_no_submissions.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    # No CSV artifact is written when there are no submissions
+    assert not (asset_storage / table_name / f"{table_name}.csv").exists()
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cursor:
+            # No response table is created
+            cursor.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
+            assert cursor.fetchone()[0] is None
+
+            # Labels are still written even when there are no submissions
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
+            assert cursor.fetchone()[0] == 24
+
+
 def test_transform_kobotoolbox_form_data_from_csv():
     csv_path = Path(__file__).parent / "assets" / "kobotoolbox_submissions.csv"
     with csv_path.open(newline="", encoding="utf-8") as f:

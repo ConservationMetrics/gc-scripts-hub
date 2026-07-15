@@ -81,6 +81,41 @@ def odkserver(mocked_responses):
 
 
 @pytest.fixture
+def odkserver_no_submissions(mocked_responses):
+    """A mock ODK Server whose form returns zero submissions."""
+
+    @dataclass
+    class OdkServer:
+        config: dict
+        form_id: str
+
+    base_url = "http://odk.example.org"
+    default_project_id = "1"
+    form_id = "My_monitoring_form"
+
+    mocked_responses.post(
+        f"{base_url}/v1/sessions",
+        json={"token": "mocked_token"},
+        status=200,
+    )
+    mocked_responses.get(
+        f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}.svc/Submissions",
+        json={"value": []},
+        status=200,
+    )
+
+    return OdkServer(
+        dict(
+            base_url=base_url,
+            username="collector",
+            password="GathererOfData",
+            default_project_id=default_project_id,
+        ),
+        form_id,
+    )
+
+
+@pytest.fixture
 def pg_database():
     """A dsn that may be used to connect to a live (local for test) postgresql server"""
     db = testing.postgresql.Postgresql(port=7654)

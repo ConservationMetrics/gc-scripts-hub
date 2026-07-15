@@ -128,6 +128,30 @@ def test_pagination(epicollect_server_paginated, pg_database, tmp_path):
             assert row[1] == "[-62.216, -3.465]"
 
 
+def test_script_e2e__no_entries(epicollect_server_empty, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "ec5_no_entries"
+
+    # A zero-entry pull must not raise
+    main(
+        epicollect_server_empty.project_slug,
+        pg_database,
+        table_name,
+        client_id=epicollect_server_empty.client_id,
+        client_secret=epicollect_server_empty.client_secret,
+        attachment_root=asset_storage,
+    )
+
+    # No CSV artifact is written when there are no entries
+    assert not (asset_storage / table_name / f"{table_name}.csv").exists()
+
+    # No response table is created
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
+            assert cur.fetchone()[0] is None
+
+
 def test_transform_no_location():
     """Entries missing a GPS fix produce no geometry fields."""
     entries = [

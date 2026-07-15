@@ -126,6 +126,26 @@ def epicollect_server_paginated(mocked_responses):
 
 
 @pytest.fixture
+def epicollect_server_empty(mocked_responses):
+    """Mock EpiCollect5 server returning a single page with zero entries."""
+    _register_token_mock(mocked_responses)
+    _register_project_mock(mocked_responses)
+    mocked_responses.add_callback(
+        responses.GET,
+        re.compile(rf"{re.escape(_BASE_URL)}/api/export/entries/{re.escape(PROJECT_SLUG)}"),
+        callback=lambda _req: (200, {}, json.dumps(server_responses.entries_empty())),
+        content_type="application/json",
+    )
+    _register_media_mock(mocked_responses)
+
+    return EpiCollectServer(
+        project_slug=PROJECT_SLUG,
+        client_id=_CLIENT_ID,
+        client_secret=_CLIENT_SECRET,
+    )
+
+
+@pytest.fixture
 def epicollect_public_server(mocked_responses):
     """Mock a public EpiCollect5 project whose photo field is a full media URL."""
     public_slug = server_responses.PUBLIC_PROJECT_SLUG
