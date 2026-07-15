@@ -71,6 +71,22 @@ def get_safe_file_path(storage_path: str, db_table_name: str, file_type: str):
     return file_path
 
 
+def _serialize_csv_cell(value):
+    """Serialize a Python value for a CSV cell.
+
+    Lists and dicts are JSON-encoded so they round-trip with how
+    ``StructuredDBWriter`` persists complex values to TEXT columns. ``None``
+    becomes an empty string (which downstream readers like
+    ``csv_to_postgres.transform_csv_data`` translate back to ``None``).
+    Other values are written as-is.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, (list, dict)):
+        return json.dumps(value)
+    return value
+
+
 def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "json"):
     """
     Saves the provided data to a file in the specified format and storage path.
@@ -78,7 +94,9 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
     Parameters
     ----------
     data : list or dict
-        The data to be saved. For CSV, should be a list of rows including a header.
+        The data to be saved. For CSV, may be either a list of rows (each row a
+        list of cells, with the first row being the header) or a list of dicts
+        (header is the union of keys with ``_id`` first when present).
     filename : str
         The name of the file to save the data to, without extension.
     storage_path : str
@@ -103,8 +121,21 @@ def save_data_to_file(data, filename: str, storage_path: str, file_type: str = "
             json.dump(data, f)
     elif file_type == "csv":
         with file_path.open("w", newline="") as f:
-            writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
-            writer.writerows(data)
+            if isinstance(data[0], dict):
+                other_keys = sorted({k for row in data for k in row if k != "_id"})
+                has_id = any("_id" in row for row in data)
+                fieldnames = (["_id"] + other_keys) if has_id else other_keys
+                writer = csv.DictWriter(
+                    f, fieldnames=fieldnames, quoting=csv.QUOTE_NONNUMERIC
+                )
+                writer.writeheader()
+                for row in data:
+                    writer.writerow(
+                        {k: _serialize_csv_cell(row.get(k)) for k in fieldnames}
+                    )
+            else:
+                writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
+                writer.writerows(data)
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 

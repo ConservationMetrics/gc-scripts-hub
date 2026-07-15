@@ -10,7 +10,9 @@ from typing import TypedDict
 
 from pyodk.client import Client
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import postgresql
+from f.common_logic.file_operations import save_data_to_file
+from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 
 # https://hub.windmill.dev/resource_types/272/odk_config
@@ -76,17 +78,33 @@ def main(
 
         transformed_form_data = transform_odk_form_data(form_data, form_name=form_id)
 
-        db_writer = StructuredDBWriter(
-            conninfo(db),
-            db_table_name,
-            use_mapping_table=True,
-            reverse_properties_separated_by="/",
-        )
-        db_writer.handle_output(transformed_form_data)
+        save_path = Path(attachment_root) / db_table_name
+        if transformed_form_data:
+            save_data_to_file(
+                transformed_form_data,
+                db_table_name,
+                save_path,
+                file_type="csv",
+            )
 
-        logger.info(
-            f"ODK responses successfully written to database table: [{db_table_name}]"
-        )
+            save_csv_to_postgres(
+                db,
+                db_table_name,
+                str(Path(db_table_name) / f"{db_table_name}.csv"),
+                attachment_root,
+                delete_csv_file=False,
+                id_column="_id",
+                use_mapping_table=True,
+                reverse_properties_separated_by="/",
+            )
+
+            logger.info(
+                f"ODK responses successfully written to database table: [{db_table_name}]"
+            )
+        else:
+            logger.warning(
+                f"No submissions returned; skipping database write for table: [{db_table_name}]"
+            )
 
     finally:
         config_path.unlink(missing_ok=True)
@@ -256,6 +274,8 @@ def transform_odk_form_data(form_data, form_name=None):
     list
         A list of transformed form submissions with added metadata fields and formatted geometry.
     """
+    # TODO: ODK repeat groups / matrix payloads are not flattened yet. See the
+    # KoboToolbox connector and README.md for details on how it is handled there.
     for submission in form_data:
         # Add metadata fields
         # Handle both API format (__id) and CSV format (KEY)

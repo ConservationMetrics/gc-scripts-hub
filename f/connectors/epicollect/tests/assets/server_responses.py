@@ -318,6 +318,11 @@ def entries_page(page: int = 1, per_page: int = 250) -> dict:
     )
 
 
+def entries_empty(page: int = 1, per_page: int = 250) -> dict:
+    """Single-page response with zero entries."""
+    return _build_entries_page([], current_page=1, last_page=1, per_page=per_page)
+
+
 def entries_paginated(page: int = 1, per_page: int = 2) -> dict:
     """Two-page response — 2 entries per page, 4 entries total."""
     all_e = _all_entries()

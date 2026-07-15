@@ -35,6 +35,10 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
     assert (attachments / AUDIO_FILENAME).exists()
     assert (attachments / VIDEO_FILENAME).exists()
 
+    # CSV artifact is also saved to disk
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             # Three entries returned by the single-page fixture
@@ -43,8 +47,7 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
 
             # Geometry: lat=4.711, lon=-74.072 → GeoJSON [lon, lat]
             cur.execute(
-                f"SELECT g__type, g__coordinates FROM {table_name} "
-                f"WHERE _id = %s",
+                f"SELECT g__type, g__coordinates FROM {table_name} WHERE _id = %s",
                 (PRIMARY_UUID,),
             )
             row = cur.fetchone()
@@ -123,6 +126,30 @@ def test_pagination(epicollect_server_paginated, pg_database, tmp_path):
             row = cur.fetchone()
             assert row[0] == "Point"
             assert row[1] == "[-62.216, -3.465]"
+
+
+def test_script_e2e__no_entries(epicollect_server_empty, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "ec5_no_entries"
+
+    # A zero-entry pull must not raise
+    main(
+        epicollect_server_empty.project_slug,
+        pg_database,
+        table_name,
+        client_id=epicollect_server_empty.client_id,
+        client_secret=epicollect_server_empty.client_secret,
+        attachment_root=asset_storage,
+    )
+
+    # No CSV artifact is written when there are no entries
+    assert not (asset_storage / table_name / f"{table_name}.csv").exists()
+
+    # No response table is created
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
+            assert cur.fetchone()[0] is None
 
 
 def test_transform_no_location():

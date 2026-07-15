@@ -13,6 +13,7 @@ import requests
 
 from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
 from f.common_logic.file_operations import save_data_to_file
+from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 
 # https://hub.windmill.dev/resource_types/193/kobotoolbox_account
@@ -56,16 +57,32 @@ def main(
         form_languages=form_languages,
     )
 
-    kobo_response_writer = StructuredDBWriter(
-        conninfo(db),
-        db_table_name,
-        use_mapping_table=True,
-        reverse_properties_separated_by="/",
-    )
-    kobo_response_writer.handle_output(transformed_form_responses)
-    logger.info(
-        f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
-    )
+    save_path = Path(attachment_root) / db_table_name
+    if transformed_form_responses:
+        save_data_to_file(
+            transformed_form_responses,
+            db_table_name,
+            save_path,
+            file_type="csv",
+        )
+
+        save_csv_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.csv"),
+            attachment_root,
+            delete_csv_file=False,
+            id_column="_id",
+            use_mapping_table=True,
+            reverse_properties_separated_by="/",
+        )
+        logger.info(
+            f"KoboToolbox responses successfully written to database table: [{db_table_name}]"
+        )
+    else:
+        logger.warning(
+            f"No submissions returned; skipping database write for table: [{db_table_name}]"
+        )
 
     # If form_labels is empty, there were no translatable labels found in metadata
     if form_labels:
@@ -330,6 +347,94 @@ def download_form_responses_and_attachments(
     return form_submissions, form_name, form_languages
 
 
+# TODO - YAGNI: Extract to f/common_logic/submission_flatten.py if/when ODK
+# flattening is required; not worth a common module until then.
+def _get_flattenable_kobo_rows(value):
+    """Return a Kobo field value as a list of rows to flatten, or ``None`` to leave it alone.
+
+    We only flatten values that look like a group of fields with slash-separated
+    keys. There are two such shapes:
+
+    A list of row dicts (repeat group / matrix), e.g.::
+
+        [
+            {"household_members/name": "Ada", ...},
+            {"household_members/name": "Bo",  ...},
+        ]
+
+    A single dict of slash keys (field-list group), e.g.::
+
+        {"location/lat": 1.0, "location/lng": 2.0}
+
+    Both are returned as a list of rows. Everything else (scalars, empty
+    containers, geolocation, attachments, and system lists/dicts like ``_tags``
+    or ``_validation_status``) returns ``None`` and is kept as-is.
+    """
+    # Every row must be a dict with at least one slash key. This excludes plain
+    # lists such as _tags, _attachments metadata, and empty repeats.
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, dict) for item in value)
+        and all(any(isinstance(k, str) and "/" in k for k in item) for item in value)
+    ):
+        return value
+
+    # A lone group dict has no repeat index, so wrap it as one row and let the
+    # same flatten loop handle it. Requiring "/" on every key excludes system
+    # dicts such as _validation_status.
+    if (
+        isinstance(value, dict)
+        and value
+        and all(isinstance(k, str) and "/" in k for k in value)
+    ):
+        return [value]
+
+    return None
+
+
+def flatten_kobotoolbox_submission(submission):
+    """Flatten Kobo repeat-group and field-list payloads into wide slash-separated keys.
+
+    Repeat groups and matrix questions arrive as ``list[dict]`` values with long
+    slash-separated keys. Field-list groups may arrive as a lone ``dict`` with
+    slash keys. Both are expanded to ``{group}/{index}/{leaf_key}`` (1-based index).
+
+    Repeat groups can be nested (a repeat inside a repeat), so flattening recurses
+    until no slash-keyed rows remain, e.g. ``{outer}/{i}/{inner}/{j}/{leaf_key}``.
+
+    Parameters
+    ----------
+    submission : dict
+        A single KoboToolbox submission record.
+
+    Returns
+    -------
+    dict
+        A flattened copy of the submission with repeat/field-list blobs expanded.
+    """
+    flat = {}
+    for key, value in submission.items():
+        rows = _get_flattenable_kobo_rows(value)
+        if rows is None:
+            flat[key] = value
+        else:
+            _flatten_kobo_rows(key, rows, flat)
+    return flat
+
+
+def _flatten_kobo_rows(prefix, rows, flat):
+    """Expand ``rows`` under ``prefix`` into ``flat``, recursing into nested repeats."""
+    for index, row in enumerate(rows, start=1):
+        for slash_key, value in row.items():
+            key = f"{prefix}/{index}/{slash_key.rsplit('/', 1)[-1]}"
+            nested = _get_flattenable_kobo_rows(value)
+            if nested is None:
+                flat[key] = value
+            else:
+                _flatten_kobo_rows(key, nested, flat)
+
+
 def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=None):
     """Transform KoboToolbox form data by adding metadata fields and formatting geometry for SQL database insertion.
 
@@ -347,7 +452,9 @@ def transform_kobotoolbox_form_data(form_data, form_name=None, form_languages=No
     list
         A list of transformed form submissions with added metadata fields and formatted geometry.
     """
-    for submission in form_data:
+    for i, submission in enumerate(form_data):
+        submission = flatten_kobotoolbox_submission(submission)
+        form_data[i] = submission
         # Add metadata fields if provided
         if form_name:
             submission["dataset_name"] = form_name

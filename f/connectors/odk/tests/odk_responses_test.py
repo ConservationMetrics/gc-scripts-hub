@@ -21,6 +21,10 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
     # Attachments are saved to disk
     assert (asset_storage / table_name / "attachments" / "1739327186781.m4a").exists()
 
+    # CSV artifact is also saved to disk
+    csv_file = asset_storage / table_name / f"{table_name}.csv"
+    assert csv_file.exists()
+
     # Survey responses are written to a SQL Table
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
@@ -38,6 +42,29 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
                 "SELECT * FROM information_schema.tables WHERE table_name = 'odk_responses__columns'"
             )
             assert cursor.fetchone() is not None
+
+
+def test_script_e2e__no_submissions(odkserver_no_submissions, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "odk_no_submissions"
+
+    # A zero-submission pull must not raise
+    main(
+        odkserver_no_submissions.config,
+        odkserver_no_submissions.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    # No CSV artifact is written when there are no submissions
+    assert not (asset_storage / table_name / f"{table_name}.csv").exists()
+
+    # No response table is created
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
+            assert cursor.fetchone()[0] is None
 
 
 def test_transform_odk_form_data_from_csv():

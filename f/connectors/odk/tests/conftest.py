@@ -8,6 +8,18 @@ import responses
 import testing.postgresql
 
 
+@pytest.fixture(autouse=True)
+def _isolate_pyodk_cache(monkeypatch, tmp_path):
+    """Give each test its own empty pyODK token cache.
+
+    By default pyODK caches its session token in ~/.pyodk_cache.toml, so a token
+    written by one test leaks into the next and triggers a token-verification
+    request (GET /v1/users/current) that the mock server doesn't expect. Pointing
+    the cache at a fresh temp file per test keeps every test on the login path.
+    """
+    monkeypatch.setenv("PYODK_CACHE_FILE", str(tmp_path / "pyodk_cache.toml"))
+
+
 @pytest.fixture
 def mocked_responses():
     """responses.RequestsMock context, for testing code that makes HTTP requests."""
@@ -67,6 +79,41 @@ def odkserver(mocked_responses):
         ),
         body=open("f/connectors/odk/tests/assets/1739327186781.m4a", "rb").read(),
         content_type="audio/m4a",
+    )
+
+    return OdkServer(
+        dict(
+            base_url=base_url,
+            username="collector",
+            password="GathererOfData",
+            default_project_id=default_project_id,
+        ),
+        form_id,
+    )
+
+
+@pytest.fixture
+def odkserver_no_submissions(mocked_responses):
+    """A mock ODK Server whose form returns zero submissions."""
+
+    @dataclass
+    class OdkServer:
+        config: dict
+        form_id: str
+
+    base_url = "http://odk.example.org"
+    default_project_id = "1"
+    form_id = "My_monitoring_form"
+
+    mocked_responses.post(
+        f"{base_url}/v1/sessions",
+        json={"token": "mocked_token"},
+        status=200,
+    )
+    mocked_responses.get(
+        f"{base_url}/v1/projects/{default_project_id}/forms/{form_id}.svc/Submissions",
+        json={"value": []},
+        status=200,
     )
 
     return OdkServer(
