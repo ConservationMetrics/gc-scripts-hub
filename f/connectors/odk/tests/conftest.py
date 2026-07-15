@@ -8,6 +8,18 @@ import responses
 import testing.postgresql
 
 
+@pytest.fixture(autouse=True)
+def _isolate_pyodk_cache(monkeypatch, tmp_path):
+    """Give each test its own empty pyODK token cache.
+
+    By default pyODK caches its session token in ~/.pyodk_cache.toml, so a token
+    written by one test leaks into the next and triggers a token-verification
+    request (GET /v1/users/current) that the mock server doesn't expect. Pointing
+    the cache at a fresh temp file per test keeps every test on the login path.
+    """
+    monkeypatch.setenv("PYODK_CACHE_FILE", str(tmp_path / "pyodk_cache.toml"))
+
+
 @pytest.fixture
 def mocked_responses():
     """responses.RequestsMock context, for testing code that makes HTTP requests."""
