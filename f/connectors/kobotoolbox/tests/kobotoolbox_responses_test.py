@@ -4,6 +4,7 @@ from pathlib import Path
 import psycopg
 
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    flatten_kobotoolbox_submission,
     main,
     transform_kobotoolbox_form_data,
 )
@@ -233,3 +234,147 @@ def test_pagination(koboserver_with_pagination, pg_database, tmp_path):
             assert "124961136" in ids
             assert "125283733" in ids
             assert "125340283" in ids
+
+
+def test_flatten_kobotoolbox_submission__repeat_group():
+    submission = {
+        "household_members": [
+            {
+                "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person One",
+                "household_members/group_fixture_member_1/group_fixture_member_1_age": "25",
+            },
+            {
+                "household_members/group_fixture_member_1/group_fixture_member_1_name": "Person Two",
+                "household_members/group_fixture_member_1/group_fixture_member_1_age": "30",
+            },
+        ],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "household_members" not in result
+    assert result["household_members/1/group_fixture_member_1_name"] == "Person One"
+    assert result["household_members/1/group_fixture_member_1_age"] == "25"
+    assert result["household_members/2/group_fixture_member_1_name"] == "Person Two"
+    assert result["household_members/2/group_fixture_member_1_age"] == "30"
+
+
+def test_flatten_kobotoolbox_submission__field_list_dict():
+    submission = {
+        "dwelling_counts": {
+            "dwelling_counts/group_fixture_house/group_fixture_house_adults": "2",
+            "dwelling_counts/group_fixture_house/group_fixture_house_children": "1",
+        },
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "dwelling_counts" not in result
+    assert result["dwelling_counts/1/group_fixture_house_adults"] == "2"
+    assert result["dwelling_counts/1/group_fixture_house_children"] == "1"
+
+
+def test_flatten_kobotoolbox_submission__preserves_system_fields():
+    submission = {
+        "_id": 1,
+        "_geolocation": [10.0, 20.0],
+        "_attachments": [
+            {"download_url": "http://example.org/file.jpg", "filename": "file.jpg"}
+        ],
+        "_validation_status": {},
+        "_tags": [],
+        "summary_counts/adults": "2",
+        "household_members": [],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert result["_id"] == 1
+    assert result["_geolocation"] == [10.0, 20.0]
+    assert result["_attachments"] == submission["_attachments"]
+    assert result["_validation_status"] == {}
+    assert result["_tags"] == []
+    assert result["summary_counts/adults"] == "2"
+    assert result["household_members"] == []
+
+
+def test_flatten_kobotoolbox_submission__deeply_nested_repeat():
+    """A repeat group nested inside another repeat group must flatten all the way down.
+
+    Kobo emits the inner repeat as a slash-keyed ``list[dict]`` under each outer
+    row, so the flattener has to recurse instead of leaving the inner list as a
+    JSON blob under ``first_group/{i}/second_group``.
+    """
+    submission = {
+        "first_group": [
+            {
+                "first_group/second_group": [
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "John",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                    },
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "Jane",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Doe",
+                    },
+                ]
+            },
+            {
+                "first_group/second_group": [
+                    {
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_column": "Foo",
+                        "first_group/second_group/group_er3uf83_row/group_er3uf83_row_second_column": "Bar",
+                    },
+                ]
+            },
+        ],
+    }
+    result = flatten_kobotoolbox_submission(submission)
+
+    assert "first_group" not in result
+    # Nothing should remain as a nested container once fully flattened.
+    assert not any(isinstance(v, (list, dict)) for v in result.values())
+    assert result["first_group/1/second_group/1/group_er3uf83_row_column"] == "John"
+    assert result["first_group/1/second_group/2/group_er3uf83_row_column"] == "Jane"
+    assert (
+        result["first_group/1/second_group/2/group_er3uf83_row_second_column"] == "Doe"
+    )
+    assert result["first_group/2/second_group/1/group_er3uf83_row_column"] == "Foo"
+    assert (
+        result["first_group/2/second_group/1/group_er3uf83_row_second_column"] == "Bar"
+    )
+
+
+def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "kobo_nested_repeats"
+
+    main(
+        koboserver_nested.account,
+        koboserver_nested.form_id,
+        pg_database,
+        table_name,
+        asset_storage,
+    )
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cursor.fetchone()[0] == 3
+
+            cursor.execute(
+                f'SELECT "group_fixture_member_1_name__1__household_members" '
+                f"FROM {table_name} WHERE _id = '900001'"
+            )
+            assert cursor.fetchone()[0] == "Person One"
+
+            cursor.execute(
+                f'SELECT "group_fixture_house_adults__1__dwelling_counts" '
+                f"FROM {table_name} WHERE _id = '900002'"
+            )
+            assert cursor.fetchone()[0] == "2"
+
+            # A repeat nested inside a repeat is flattened all the way down, so
+            # even the innermost leaf lands in its own reversed/underscored column.
+            cursor.execute(
+                f'SELECT "group_er3uf83_row_column__2__second_group__1__first_group" '
+                f"FROM {table_name} WHERE _id = '900003'"
+            )
+            assert cursor.fetchone()[0] == "Jane"
