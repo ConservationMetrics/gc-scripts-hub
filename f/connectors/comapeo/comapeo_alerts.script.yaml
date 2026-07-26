@@ -12,7 +12,7 @@ schema:
     - db
     - db_table_name
     - comapeo
-    - comapeo_project
+    - comapeo_projects
   properties:
     comapeo:
       type: object
@@ -21,11 +21,14 @@ schema:
         server.
       default: null
       format: resource-comapeo_server
-    comapeo_project:
-      type: string
-      description: A project ID on the CoMapeo server where the alerts will be posted.
+    comapeo_projects:
+      type: array
+      description: >-
+        Project IDs on the CoMapeo server where the alerts will be posted.
       default: null
-      originalType: string
+      items:
+        type: string
+      originalType: string[]
     db:
       type: object
       description: A database connection for fetching alerts data.
@@ -40,4 +43,4 @@ schema:
   required:
     - db
     - comapeo
-    - comapeo_project
+    - comapeo_projects

@@ -41,9 +41,9 @@ value:
           comapeo:
             type: javascript
             expr: flow_input.comapeo
-          comapeo_project:
+          comapeo_projects:
             type: javascript
-            expr: flow_input.comapeo_project
+            expr: flow_input.comapeo_projects
           db:
             type: javascript
             expr: flow_input.db
@@ -54,7 +54,7 @@ value:
         path: f/connectors/comapeo/comapeo_alerts
       continue_on_error: false
       skip_if:
-        expr: '!flow_input.comapeo || !flow_input.comapeo_project'
+        expr: '!flow_input.comapeo || !flow_input.comapeo_projects || flow_input.comapeo_projects.length === 0'
     - id: d
       value:
         type: script
@@ -89,7 +89,7 @@ schema:
     - db_table_name
     - destination_path
     - comapeo
-    - comapeo_project
+    - comapeo_projects
     - instance_slug
     - twilio_message_template
   properties:
@@ -118,10 +118,13 @@ schema:
         server.
       format: resource-comapeo_server
       nullable: false
-    comapeo_project:
-      type: string
-      description: A project ID on the CoMapeo server where the alerts will be posted.
-      default: ''
+    comapeo_projects:
+      type: array
+      description: Project IDs on the CoMapeo server where the alerts will be posted.
+      default: null
+      items:
+        type: string
+      originalType: string[]
       nullable: false
     instance_slug:
       type: string

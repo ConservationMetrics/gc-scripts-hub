@@ -68,7 +68,7 @@ def test_script_e2e(comapeoserver_alerts, pg_database, fake_alerts_table):
     main(
         pg_database,
         comapeoserver_alerts.comapeo_server,
-        "forest_expedition",
+        ["forest_expedition", "river_mapping"],
         "fake_alerts",
     )
 
@@ -77,3 +77,43 @@ def test_script_e2e(comapeoserver_alerts, pg_database, fake_alerts_table):
         "def456",
         "abc123",
     }  # abc123 already exists on the CoMapeo server
+
+
+def test_continues_on_project_failure_then_raises(
+    mocked_responses, pg_database, fake_alerts_table
+):
+    """One project failing should not block others; the run still fails at the end."""
+    server_url = "http://comapeo.example.org"
+    access_token = "MapYourWorldTogether!"
+    failing_project = "broken_project"
+    succeeding_project = "forest_expedition"
+
+    mocked_responses.get(
+        f"{server_url}/projects/{failing_project}/remoteDetectionAlerts",
+        status=500,
+    )
+    mocked_responses.get(
+        f"{server_url}/projects/{succeeding_project}/remoteDetectionAlerts",
+        json={"data": []},
+        status=200,
+    )
+    mocked_responses.post(
+        f"{server_url}/projects/{succeeding_project}/remoteDetectionAlerts",
+        status=201,
+    )
+
+    with pytest.raises(RuntimeError, match="broken_project"):
+        main(
+            pg_database,
+            {"server_url": server_url, "access_token": access_token},
+            [failing_project, succeeding_project],
+            "fake_alerts",
+        )
+
+    posts_to_succeeding = [
+        call
+        for call in mocked_responses.calls
+        if call.request.method == "POST"
+        and succeeding_project in call.request.url
+    ]
+    assert len(posts_to_succeeding) == 2  # both alerts posted to the succeeding project

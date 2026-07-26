@@ -136,22 +136,28 @@ def comapeoserver_alerts(mocked_responses):
     """A mock CoMapeo Server that you can use to get and post alerts"""
 
     server_url = "http://comapeo.example.org"
-    project_id = "forest_expedition"
-    comapeo_alerts_endpoint = (
-        f"{server_url}/projects/{project_id}/remoteDetectionAlerts"
-    )
+    project_ids = ["forest_expedition", "river_mapping"]
     access_token = "MapYourWorldTogether!"
 
-    mocked_responses.get(
-        comapeo_alerts_endpoint,
-        json=server_responses.comapeo_alerts(),
-        status=200,
-    )
-
-    mocked_responses.post(
-        comapeo_alerts_endpoint,
-        status=201,
-    )
+    for project_id in project_ids:
+        comapeo_alerts_endpoint = (
+            f"{server_url}/projects/{project_id}/remoteDetectionAlerts"
+        )
+        # forest_expedition already has abc123; river_mapping starts empty
+        alerts_json = (
+            server_responses.comapeo_alerts()
+            if project_id == "forest_expedition"
+            else {"data": []}
+        )
+        mocked_responses.get(
+            comapeo_alerts_endpoint,
+            json=alerts_json,
+            status=200,
+        )
+        mocked_responses.post(
+            comapeo_alerts_endpoint,
+            status=201,
+        )
 
     server: comapeo_server = dict(server_url=server_url, access_token=access_token)
 

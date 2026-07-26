@@ -26,14 +26,10 @@ logger = logging.getLogger(__name__)
 def main(
     db: postgresql,
     comapeo: comapeo_server,
-    comapeo_project: str,
+    comapeo_projects: list,
     db_table_name: str = "alerts",
 ):
     comapeo_server_url = comapeo["server_url"]
-    comapeo_alerts_endpoint = (
-        f"{comapeo_server_url}/projects/{comapeo_project}/remoteDetectionAlerts"
-    )
-
     comapeo_access_token = comapeo["access_token"]
     comapeo_headers = {
         "Authorization": f"Bearer {comapeo_access_token}",
@@ -42,20 +38,38 @@ def main(
 
     alerts = get_alerts_from_db(conninfo(db), db_table_name)
 
-    unposted_alerts = filter_alerts(comapeo_alerts_endpoint, comapeo_headers, alerts)
+    failed_projects = []
 
-    if not unposted_alerts:
-        logger.info("No new alerts to post!")
-        return
+    for project_id in comapeo_projects:
+        comapeo_alerts_endpoint = (
+            f"{comapeo_server_url}/projects/{project_id}/remoteDetectionAlerts"
+        )
+        try:
+            logger.info(f"Processing alerts for project {project_id}...")
+            unposted_alerts = filter_alerts(
+                comapeo_alerts_endpoint, comapeo_headers, alerts
+            )
 
-    transformed_unposted_alerts = transform_alerts(unposted_alerts)
+            if not unposted_alerts:
+                logger.info(f"No new alerts to post for project {project_id}!")
+                continue
 
-    alerts_failed = post_alerts(
-        comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts
-    )
+            transformed_unposted_alerts = transform_alerts(unposted_alerts)
 
-    if alerts_failed:
-        raise RuntimeError("Some alerts failed to post.")
+            alerts_failed = post_alerts(
+                comapeo_alerts_endpoint, comapeo_headers, transformed_unposted_alerts
+            )
+
+            if alerts_failed:
+                failed_projects.append(project_id)
+        except Exception as e:
+            logger.error(f"Failed to post alerts to project {project_id}: {e}")
+            failed_projects.append(project_id)
+
+    if failed_projects:
+        raise RuntimeError(
+            f"Some alerts failed to post for project(s): {', '.join(failed_projects)}"
+        )
 
 
 def get_alerts_from_db(db_connection_string, db_table_name: str):
