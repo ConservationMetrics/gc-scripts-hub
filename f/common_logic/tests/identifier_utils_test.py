@@ -55,6 +55,32 @@ def test_sanitize_sql_message__kobo_metadata_columns():
     }
 
 
+def test_sanitize_sql_message__dollar_prefixed_comapeo_metadata():
+    """CoMapeo $metadata keys become __metadata, not colliding with user fields."""
+    message = {
+        "$id": "abc",
+        "$categoryId": "hash123",
+        "categoryId": "camera_trap_deployment",
+        "$createdAt": "2026-05-13",
+        "notes": "hello",
+    }
+    sql_message, mapping = sanitize_sql_message(message, {})
+    assert sql_message == {
+        "__id": "abc",
+        "__categoryId": "hash123",
+        "categoryId": "camera_trap_deployment",
+        "__createdAt": "2026-05-13",
+        "notes": "hello",
+    }
+    assert mapping == {
+        "$id": "__id",
+        "$categoryId": "__categoryId",
+        "categoryId": "categoryId",
+        "$createdAt": "__createdAt",
+        "notes": "notes",
+    }
+
+
 def test_sanitize_sql_message__same_letters():
     message = {"foo[bar]test": 1, "foo{bar}test": 2}
 

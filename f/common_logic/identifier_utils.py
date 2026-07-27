@@ -152,7 +152,9 @@ def sanitize_sql_message(
 
     This function processes a message dictionary, converting lists and dictionaries
     to JSON strings, renaming columns based on provided mappings, and ensuring
-    SQL compatibility of keys.
+    SQL compatibility of keys. Dollar signs (e.g. CoMapeo ``$categoryId``) are
+    replaced with ``__`` so metadata keys do not collide with similarly named
+    user fields.
 
     Parameters
     ----------
@@ -188,6 +190,10 @@ def sanitize_sql_message(
         key = original_key
         if reverse_properties_separated_by:
             key = _reverse_parts(original_key, reverse_properties_separated_by)
+        # CoMapeo (and similar) metadata keys use a "$" prefix (e.g. $categoryId).
+        # Replace with "__" before stripping invalid chars so they don't collide with
+        # user fields of the same name (e.g. categoryId) and get a _001 suffix instead.
+        key = key.replace("$", "__")
         for args in str_replace:
             key = key.replace(*args)
         key = normalize_identifier(

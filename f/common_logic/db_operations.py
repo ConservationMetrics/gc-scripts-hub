@@ -254,7 +254,7 @@ def summarize_new_rows_updates_and_columns(
         Column name to use as primary key for identifying updates (default: "_id").
     str_replace : list of tuple, optional
         List of (old, new) strings to apply during column name sanitization.
-        Must match the StructuredDBWriter settings. Defaults to [("/", "__")].
+        Must match the StructuredDBWriter settings. Defaults to [("/", "__"), ("$", "__")].
     reverse_properties_separated_by : str or None, optional
         If provided, splits keys on this character, reverses segments, and rejoins.
         Must match the StructuredDBWriter settings. Defaults to None.
@@ -269,7 +269,7 @@ def summarize_new_rows_updates_and_columns(
     """
     # Apply same defaults as StructuredDBWriter to ensure consistency
     if str_replace is None:
-        str_replace = [("/", "__")]
+        str_replace = [("/", "__"), ("$", "__")]
     if not new_data:
         return 0, 0, 0
 
@@ -455,7 +455,7 @@ class StructuredDBWriter:
         suffix=None,
         use_mapping_table=False,
         reverse_properties_separated_by=None,
-        str_replace=[("/", "__")],
+        str_replace=[("/", "__"), ("$", "__")],
         predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string

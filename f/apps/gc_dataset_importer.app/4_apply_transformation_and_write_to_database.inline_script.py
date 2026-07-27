@@ -339,11 +339,6 @@ def _apply_transformation(data, data_source, dataset_name, output_format):
             Whether any transformation was applied.
     """
     transformations = {
-        # TODO: add CoMapeo transformation back in when we have fixtures
-        # ("geojson", "CoMapeo"): (
-        #     transform_comapeo_observations,
-        #     "Comapeo transformation applied",
-        # ),
         ("csv", "KoboToolbox"): (
             lambda d: transform_kobotoolbox_form_data(d, dataset_name),
             "Kobotoolbox transformation applied",
