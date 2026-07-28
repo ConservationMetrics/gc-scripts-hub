@@ -155,6 +155,10 @@ def extract_form_labels(form_metadata):
 
     If no labels are found in the metadata, returns an empty list.
 
+    Choice rows are expanded once per survey question that references their
+    ``list_name`` via ``select_from_list_name``, so reused choice values remain
+    unambiguous when joined on ``question_name``.
+
     Parameters
     ----------
     form_metadata : dict
@@ -166,52 +170,90 @@ def extract_form_labels(form_metadata):
         A list of dictionaries, each representing a label for a form item with the following keys:
         - '_id': A unique identifier for the item-language tuple, generated using an MD5 hash.
         - 'type': The type of the item, either 'survey' or 'choices'.
+        - 'question_name': For choices, the survey question that uses this choice list;
+          ``None`` for survey rows (and orphan choices with no referencing question).
         - 'name': The name of the form item.
         - 'language': The language code of the label (e.g., 'en', 'es').
         - 'label': The label text in the specified language.
     """
     content = form_metadata.get("content", {})
     translations = content.get("translations", [])
+    survey_items = content.get("survey", [])
+    choice_items = content.get("choices", [])
+
+    list_to_questions = {}
+    for item in survey_items:
+        list_name = item.get("select_from_list_name")
+        if not list_name:
+            continue
+        question_name = item.get("name", item.get("$autoname"))
+        list_to_questions.setdefault(list_name, []).append(question_name)
+
+    def _append_row(rows, *, type_, question_name, name, language, label):
+        row = {
+            "type": type_,
+            "question_name": question_name,
+            "name": name,
+            "language": language,
+            "label": label,
+        }
+        hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
+        row["_id"] = hashlib.md5(hash_input).hexdigest()
+        rows.append(row)
+
+    def _emit_item_labels(rows, *, section, item, language, label):
+        name = item.get("name", item.get("$autoname"))
+        if section == "survey":
+            _append_row(
+                rows,
+                type_=section,
+                question_name=None,
+                name=name,
+                language=language,
+                label=label,
+            )
+            return
+
+        question_names = list_to_questions.get(item.get("list_name"), [None])
+        for question_name in question_names:
+            _append_row(
+                rows,
+                type_=section,
+                question_name=question_name,
+                name=name,
+                language=language,
+                label=label,
+            )
 
     rows = []
 
     if not translations or translations == [None]:
-        # Single-language form, only one label per item
-        for section in ["survey", "choices"]:
-            for item in content.get(section, []):
+        for section, items in (("survey", survey_items), ("choices", choice_items)):
+            for item in items:
                 label = item.get("label", [None])[0]
-                row = {
-                    "type": section,
-                    "name": item.get("name", item.get("$autoname")),
-                    "language": None,
-                    "label": label,
-                }
-                hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
-                row["_id"] = hashlib.md5(hash_input).hexdigest()
-                rows.append(row)
+                _emit_item_labels(
+                    rows, section=section, item=item, language=None, label=label
+                )
         return rows
 
-    # Parse language codes from translations (assumes format "Name (xx)")
     lang_codes = [
         lang[lang.find("(") + 1 : lang.find(")")]
         for lang in translations
         if isinstance(lang, str) and "(" in lang and ")" in lang
     ]
 
-    for section in ["survey", "choices"]:
-        for item in content.get(section, []):
+    for section, items in (("survey", survey_items), ("choices", choice_items)):
+        for item in items:
             labels = item.get("label", [])
             for i, code in enumerate(lang_codes):
                 if i < len(labels):
-                    row = {
-                        "type": section,
-                        "name": item.get("name", item.get("$autoname")),
-                        "language": code,
-                        "label": labels[i],
-                    }
-                    hash_input = json.dumps(row, sort_keys=True).encode("utf-8")
-                    row["_id"] = hashlib.md5(hash_input).hexdigest()
-                    rows.append(row)
+                    _emit_item_labels(
+                        rows,
+                        section=section,
+                        item=item,
+                        language=code,
+                        label=labels[i],
+                    )
 
     return rows
 
