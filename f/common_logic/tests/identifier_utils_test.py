@@ -308,11 +308,38 @@ def test_normalize_identifier_sep_policy_param():
 
 def test_normalize_identifier_unicode_handling():
     """Test Unicode character handling and accent removal."""
-    # Test various accent types
+    # Latin accents strip to ASCII
     assert normalize_identifier("Vigilância Ambiental") == "vigilancia_ambiental"
     assert normalize_identifier("naïve café") == "naive_cafe"
     assert normalize_identifier("résumé") == "resume"
     assert normalize_identifier("Müller") == "muller"
+
+    # Non-Latin scripts are preserved (not collapsed to "_")
+    assert normalize_identifier("สำรวจใหม่") == "สำรวจใหม่"
+    assert normalize_identifier("อีเห็น") == "อีเห็น"
+    assert normalize_identifier("野外调查") == "野外调查"
+    assert normalize_identifier("สำรวจ ใหม่!") == "สำรวจ_ใหม่"
+
+
+def test_sanitize_sql_message__non_latin_column_names():
+    """CoMapeo Thai (and other non-Latin) field names must stay distinct SQL columns."""
+    message = {
+        "_id": "obs-1",
+        "อีเห็น": "sighting",
+        "สำรวจใหม่": "new survey",
+        "notes": "ok",
+    }
+    sql_message, mapping = sanitize_sql_message(message, {})
+    assert sql_message == {
+        "_id": "obs-1",
+        "อีเห็น": "sighting",
+        "สำรวจใหม่": "new survey",
+        "notes": "ok",
+    }
+    assert mapping["อีเห็น"] == "อีเห็น"
+    assert mapping["สำรวจใหม่"] == "สำรวจใหม่"
+    # Must not collapse all non-Latin keys onto "_"
+    assert set(sql_message) == {"_id", "อีเห็น", "สำรวจใหม่", "notes"}
 
 
 def test_normalize_identifier_complex_combinations():

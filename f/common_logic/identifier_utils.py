@@ -76,6 +76,11 @@ def normalize_identifier(
     names or file identifiers. It can optionally convert CamelCase into snake_case
     and force the identifier to start with a letter or underscore.
 
+    Latin-script accents are stripped to ASCII (e.g. ``ç`` → ``c``). Non-Latin
+    scripts (e.g. Thai, Chinese) are preserved — including combining marks such as
+    Thai tone/vowel signs — since PostgreSQL accepts them when identifiers are
+    properly quoted.
+
     Parameters
     ----------
     name : str
@@ -105,6 +110,8 @@ def normalize_identifier(
     '_123weirdname'
     >>> normalize_identifier("___name___")
     '___name___'
+    >>> normalize_identifier("สำรวจใหม่")
+    'สำรวจใหม่'
     See tests for more examples.
     """
     if maxlen < 1:
@@ -115,8 +122,16 @@ def normalize_identifier(
 
     original_name = name
 
+    # Strip Latin diacritics (é → e) via NFD, but keep non-Latin combining marks
+    # (Thai tone/vowel marks, Indic matras, etc.) which are also category Mn/Mc.
     normalized = unicodedata.normalize("NFD", name)
-    name = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    name = "".join(
+        ch
+        for ch in normalized
+        if not (
+            unicodedata.category(ch) == "Mn" and 0x0300 <= ord(ch) <= 0x036F
+        )
+    )
 
     if make_snake:
         name = camel_to_snake(name)
@@ -126,7 +141,14 @@ def normalize_identifier(
     else:
         name = re.sub(r"[ \-./]", "_", name)
 
-    name = re.sub(r"[^a-zA-Z0-9_]", "", name)
+    # Keep Unicode letters/digits, underscore, and remaining combining marks.
+    # ASCII-only filtering would collapse Thai/Chinese/etc. names to "_".
+    name = "".join(
+        ch
+        for ch in name
+        if ch.isalnum() or ch == "_" or unicodedata.category(ch) in {"Mn", "Mc", "Me"}
+    )
+    name = unicodedata.normalize("NFC", name)
 
     if not original_name.startswith("_"):
         name = name.lstrip("_")
@@ -135,7 +157,7 @@ def normalize_identifier(
 
     name = name if name.strip("_") else "_"
 
-    if ensure_leading_alpha and not re.match(r"^[a-zA-Z_]", name or ""):
+    if ensure_leading_alpha and not (name and (name[0].isalpha() or name[0] == "_")):
         name = "_" + (name or "")
 
     return name[:maxlen]
