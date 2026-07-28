@@ -392,10 +392,6 @@ def fetch_layer_data(
     filename = storage_path / f"{layer_name}.{output_format}"
     relative_output = Path(storage_path.name) / f"{layer_name}.{output_format}"
 
-    if filename.exists():
-        logger.info("File %s already exists. Skipping download.", filename)
-        return relative_output
-
     base_feature_url = f"https://{subdomain}.arcgis.com/{service_id}/arcgis/rest/services/{feature_id}/FeatureServer"
 
     records = fetch_features(session, base_feature_url, layer_index)

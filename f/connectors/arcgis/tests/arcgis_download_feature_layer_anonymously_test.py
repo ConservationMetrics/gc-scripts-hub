@@ -273,3 +273,32 @@ def test_fetch_layer_data(arcgis_anonymous_server, tmp_path, mocked_responses):
             data = json.load(f)
         assert data["type"] == "FeatureCollection"
         assert len(data["features"]) >= 1
+
+
+def test_layer_overwrites_existing_file(arcgis_anonymous_server, tmp_path):
+    """Existing layer files are overwritten on re-fetch."""
+    asset_storage = tmp_path / "datalake"
+    folder_name = "arcgis_overwrite"
+    expected_file = asset_storage / folder_name / "test-anonymous-layer.geojson"
+    expected_file.parent.mkdir(parents=True)
+    expected_file.write_text('{"type":"FeatureCollection","features":[],"stale":true}')
+
+    main(
+        subdomain=arcgis_anonymous_server.subdomain,
+        service_id=arcgis_anonymous_server.service_id,
+        feature_id=arcgis_anonymous_server.feature_id,
+        layer_index_list=[0],
+        download_attachments=False,
+        output_format="geojson",
+        folder_name=folder_name,
+        attachment_root=str(asset_storage),
+    )
+
+    with open(expected_file) as f:
+        geojson_data = json.load(f)
+
+    assert "stale" not in geojson_data
+    assert len(geojson_data["features"]) == 1
+    assert geojson_data["features"][0]["properties"]["what_is_your_name"] == (
+        "Community mapper"
+    )
