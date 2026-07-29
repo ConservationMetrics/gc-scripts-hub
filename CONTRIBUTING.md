@@ -96,13 +96,12 @@ Keep the test suite
 * **stable**: tests should be deterministic and fully repeatable.
 * **fast**: no sleeps, no time-based tests.
 
-## CircleCI
+## GitHub Actions
 
-All tests in the repo should be executed by CircleCI (see `.circleci/config.yml`)
-automatically upon push to any branch.  (This can be disabled on a per-commit basis
-by appending a **`[ci skip]`** line to the commit message.)
+All tests in the repo are executed by GitHub Actions (see
+`.github/workflows/tests.yml`) automatically upon push to any branch.
 
-Do not merge branches if CircleCI is not green.
+Do not merge branches if GitHub Actions is not green.
 
 
 # Coding & Documentation Style
