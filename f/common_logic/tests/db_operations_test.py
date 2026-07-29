@@ -8,6 +8,7 @@ from f.common_logic.db_operations import (
     fetch_tables_from_postgres,
     summarize_new_rows_updates_and_columns,
 )
+from f.common_logic.identifier_utils import normalize_identifier
 
 
 def test_fetch_tables_from_postgres(mock_db_connection):
@@ -544,3 +545,35 @@ def test_summarize_actual_kobotoolbox_csv_reupload(mock_db_dict):
     assert new_rows == 2  # Frederick and Occoquan
     assert updates == 0  # First 3 rows unchanged
     assert new_columns == 0  # NO new columns - CRITICAL TEST!
+
+
+def test_non_latin_table_and_column_names(mock_db_connection):
+    """Thai (and other non-Latin) dataset/column names must round-trip via StructuredDBWriter."""
+    table_name = normalize_identifier("สำรวจใหม่")
+    assert table_name == "สำรวจใหม่"
+
+    writer = StructuredDBWriter(mock_db_connection, table_name)
+    submissions = [
+        {"_id": "1", "อีเห็น": "sighting-a", "notes": "ok"},
+        {"_id": "2", "อีเห็น": "sighting-b", "notes": "ok"},
+    ]
+    writer.handle_output(submissions)
+
+    assert writer.table_name == "สำรวจใหม่"
+
+    with writer._get_conn() as pgconn:
+        columns = writer._inspect_schema(pgconn, writer.table_name)
+        assert "อีเห็น" in columns
+        assert "notes" in columns
+        assert "_" not in columns  # must not collapse Thai columns to "_"
+
+        with pgconn.cursor() as cursor:
+            cursor.execute(
+                'SELECT "_id", "อีเห็น", "notes" FROM "สำรวจใหม่" ORDER BY "_id"'
+            )
+            rows = cursor.fetchall()
+
+    assert rows == [
+        ("1", "sighting-a", "ok"),
+        ("2", "sighting-b", "ok"),
+    ]
