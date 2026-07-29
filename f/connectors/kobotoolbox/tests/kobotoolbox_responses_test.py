@@ -4,10 +4,188 @@ from pathlib import Path
 import psycopg
 
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
+    extract_form_labels,
     flatten_kobotoolbox_submission,
     main,
     transform_kobotoolbox_form_data,
 )
+
+
+def _label_rows_by(*, rows, **filters):
+    return [
+        row
+        for row in rows
+        if all(row.get(key) == value for key, value in filters.items())
+    ]
+
+
+def test_extract_form_labels__survey_question_name_is_none():
+    metadata = {
+        "content": {
+            "survey": [
+                {
+                    "name": "tree_height",
+                    "type": "integer",
+                    "label": ["Tree height"],
+                }
+            ],
+            "choices": [],
+            "translations": [None],
+        }
+    }
+
+    rows = extract_form_labels(metadata)
+    survey = _label_rows_by(rows=rows, type="survey", name="tree_height")
+    assert len(survey) == 1
+    assert survey[0]["question_name"] is None
+    assert survey[0]["label"] == "Tree height"
+
+
+def test_extract_form_labels__choice_scoped_to_question():
+    metadata = {
+        "content": {
+            "survey": [
+                {
+                    "name": "I_like_this_tree_because",
+                    "type": "select_multiple",
+                    "select_from_list_name": "tree_reasons",
+                    "label": ["Why do you like this tree?"],
+                }
+            ],
+            "choices": [
+                {
+                    "list_name": "tree_reasons",
+                    "name": "shade",
+                    "label": ["Shade"],
+                }
+            ],
+            "translations": [None],
+        }
+    }
+
+    rows = extract_form_labels(metadata)
+    choices = _label_rows_by(rows=rows, type="choices", name="shade")
+    assert len(choices) == 1
+    assert choices[0]["question_name"] == "I_like_this_tree_because"
+    assert choices[0]["label"] == "Shade"
+
+
+def test_extract_form_labels__disambiguates_reused_choice_names():
+    metadata = {
+        "content": {
+            "survey": [
+                {
+                    "name": "Traditional_knowledge",
+                    "type": "select_one",
+                    "select_from_list_name": "knowledge_scale",
+                    "label": ["Traditional knowledge"],
+                },
+                {
+                    "name": "Frequency",
+                    "type": "select_one",
+                    "select_from_list_name": "frequency_scale",
+                    "label": ["Frequency"],
+                },
+            ],
+            "choices": [
+                {
+                    "list_name": "knowledge_scale",
+                    "name": "2",
+                    "label": ["In the past"],
+                },
+                {
+                    "list_name": "frequency_scale",
+                    "name": "2",
+                    "label": ["Frequently"],
+                },
+            ],
+            "translations": [None],
+        }
+    }
+
+    rows = extract_form_labels(metadata)
+    knowledge = _label_rows_by(
+        rows=rows, type="choices", name="2", question_name="Traditional_knowledge"
+    )
+    frequency = _label_rows_by(
+        rows=rows, type="choices", name="2", question_name="Frequency"
+    )
+    assert len(knowledge) == 1
+    assert knowledge[0]["label"] == "In the past"
+    assert len(frequency) == 1
+    assert frequency[0]["label"] == "Frequently"
+    assert knowledge[0]["_id"] != frequency[0]["_id"]
+
+
+def test_extract_form_labels__shared_list_duplicates_per_question():
+    metadata = {
+        "content": {
+            "survey": [
+                {
+                    "name": "condition_a",
+                    "type": "select_one",
+                    "select_from_list_name": "yes_no",
+                    "label": ["Condition A"],
+                },
+                {
+                    "name": "condition_b",
+                    "type": "select_one",
+                    "select_from_list_name": "yes_no",
+                    "label": ["Condition B"],
+                },
+            ],
+            "choices": [
+                {"list_name": "yes_no", "name": "yes", "label": ["Yes"]},
+            ],
+            "translations": [None],
+        }
+    }
+
+    rows = extract_form_labels(metadata)
+    choices = _label_rows_by(rows=rows, type="choices", name="yes")
+    assert {row["question_name"] for row in choices} == {
+        "condition_a",
+        "condition_b",
+    }
+    assert all(row["label"] == "Yes" for row in choices)
+    assert len({row["_id"] for row in choices}) == 2
+
+
+def test_extract_form_labels__multilang_includes_question_name():
+    metadata = {
+        "content": {
+            "survey": [
+                {
+                    "name": "I_like_this_tree_because",
+                    "type": "select_multiple",
+                    "select_from_list_name": "tree_reasons",
+                    "label": ["Why?", "¿Por qué?"],
+                }
+            ],
+            "choices": [
+                {
+                    "list_name": "tree_reasons",
+                    "name": "shade",
+                    "label": ["Shade", "Sombra"],
+                }
+            ],
+            "translations": ["English (en)", "Spanish (es)"],
+        }
+    }
+
+    rows = extract_form_labels(metadata)
+    en = _label_rows_by(
+        rows=rows, type="choices", name="shade", language="en"
+    )
+    es = _label_rows_by(
+        rows=rows, type="choices", name="shade", language="es"
+    )
+    assert len(en) == 1
+    assert en[0]["question_name"] == "I_like_this_tree_because"
+    assert en[0]["label"] == "Shade"
+    assert len(es) == 1
+    assert es[0]["question_name"] == "I_like_this_tree_because"
+    assert es[0]["label"] == "Sombra"
 
 
 def test_script_e2e(koboserver, pg_database, tmp_path):
@@ -72,11 +250,11 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
             # Verify specific translations for survey items
             cursor.execute(
                 f"""
-                SELECT label FROM {table_name}__labels 
+                SELECT label, question_name FROM {table_name}__labels 
                 WHERE name = 'Record_your_current_location' AND language = 'en'
                 """
             )
-            assert cursor.fetchone()[0] == "Record your current location"
+            assert cursor.fetchone() == ("Record your current location", None)
 
             cursor.execute(
                 f"""
@@ -107,19 +285,22 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
             # Verify specific translations for choice items
             cursor.execute(
                 f"""
-                SELECT label FROM {table_name}__labels 
+                SELECT label, question_name FROM {table_name}__labels 
                 WHERE name = 'shade' AND language = 'es'
                 """
             )
-            assert cursor.fetchone()[0] == "Sombra"
+            assert cursor.fetchone() == ("Sombra", "I_like_this_tree_because")
 
             cursor.execute(
                 f"""
-                SELECT label FROM {table_name}__labels 
+                SELECT label, question_name FROM {table_name}__labels 
                 WHERE name = 'wildlife_habitat' AND language = 'pt'
                 """
             )
-            assert cursor.fetchone()[0] == "Habitat da vida selvagem"
+            assert cursor.fetchone() == (
+                "Habitat da vida selvagem",
+                "I_like_this_tree_because",
+            )
 
             # Check that the type is set for survey / choice items
             cursor.execute(
@@ -157,9 +338,19 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
             cursor.execute(f"SELECT COUNT(*) FROM {table_name}__labels")
             assert cursor.fetchone()[0] == 8
             cursor.execute(
-                f"SELECT label FROM {table_name}__labels WHERE name = 'Record_your_current_location'"
+                f"""
+                SELECT label, question_name FROM {table_name}__labels
+                WHERE name = 'Record_your_current_location'
+                """
             )
-            assert cursor.fetchone() == ("Record your current location",)
+            assert cursor.fetchone() == ("Record your current location", None)
+            cursor.execute(
+                f"""
+                SELECT label, question_name FROM {table_name}__labels
+                WHERE name = 'shade'
+                """
+            )
+            assert cursor.fetchone() == ("Shade", "I_like_this_tree_because")
 
 
 def test_script_e2e__no_submissions(koboserver_no_submissions, pg_database, tmp_path):

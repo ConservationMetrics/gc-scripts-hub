@@ -8,15 +8,16 @@ The script creates a secondary table named `<table_name>__labels` to store quest
 
 Each row represents one label for a form element (from either the `survey` or `choices` section), with the following structure: 
 
-| Column     | Type    | Description                                                                 |
-|------------|---------|-----------------------------------------------------------------------------|
-| `type`     | TEXT    | Either `"survey"` or `"choices"` indicating the form section               |
-| `name`     | TEXT    | The name of the form element (question or choice)                          |
-| `language` | TEXT    | The language of the label (e.g., `"en"`, `"es"`, `"pt"`)                    |
-| `label`    | TEXT    | The label text in the specified language                                   |
-| `_id`      | TEXT    | Deterministic hash based on the row content (used as a unique key)         |
+| Column          | Type    | Description                                                                 |
+|-----------------|---------|-----------------------------------------------------------------------------|
+| `type`          | TEXT    | Either `"survey"` or `"choices"` indicating the form section               |
+| `question_name` | TEXT    | For choices: the survey question that uses this choice list. `NULL` for survey rows (and orphan choices with no referencing question). When multiple questions share a list, choice rows are duplicated once per question. |
+| `name`          | TEXT    | The name of the form element (question or choice)                          |
+| `language`      | TEXT    | The language of the label (e.g., `"en"`, `"es"`, `"pt"`)                    |
+| `label`         | TEXT    | The label text in the specified language                                   |
+| `_id`           | TEXT    | Deterministic hash based on the row content (used as a unique key)         |
 
-This table can be used for rendering field translations in downstream clients, selecting the appropriate label by language, or falling back gracefully when a translation is missing.
+This table can be used for rendering field translations in downstream clients, selecting the appropriate label by language, or falling back gracefully when a translation is missing. Choice value lookups should join on both `question_name` and `name` so reused raw values (e.g. shared numeric scales) resolve to the correct label.
 
 ## Nested Data Flattening (repeat groups & matrices)
 
