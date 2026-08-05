@@ -2,7 +2,7 @@ import json
 
 import psycopg
 
-from f.connectors.inaturalist.inaturalist_pull import (
+from f.connectors.inaturalist.inaturalist_pull_project import (
     main,
     transform_observations_to_geojson,
 )
@@ -12,12 +12,12 @@ from f.connectors.inaturalist.tests.assets.server_responses import (
 )
 
 
-def test_script_e2e(inaturalist_server, pg_database, tmp_path):
+def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "inat_observations"
 
     main(
-        inaturalist_server.project_id,
+        inaturalist_project_server.project_id,
         pg_database,
         table_name,
         attachment_root=asset_storage,
@@ -48,7 +48,7 @@ def test_script_e2e(inaturalist_server, pg_database, tmp_path):
 
             cur.execute(
                 f"SELECT g__type, g__coordinates, data_source, scientific_name, "
-                f"photo_url FROM {table_name} WHERE _id = %s",
+                f"photo_url, project_id FROM {table_name} WHERE _id = %s",
                 (str(PRIMARY_OBSERVATION_ID),),
             )
             row = cur.fetchone()
@@ -60,15 +60,16 @@ def test_script_e2e(inaturalist_server, pg_database, tmp_path):
             assert row[4] == (
                 "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/medium.jpg"
             )
+            assert row[5] == PROJECT_ID
 
 
-def test_pagination(inaturalist_server_paginated, pg_database, tmp_path):
+def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path):
     """All fixture observations are fetched across id_above pages of 2."""
     asset_storage = tmp_path / "datalake"
     table_name = "inat_paginated"
 
     main(
-        inaturalist_server_paginated.project_id,
+        inaturalist_project_server_paginated.project_id,
         pg_database,
         table_name,
         attachment_root=asset_storage,
@@ -85,12 +86,14 @@ def test_pagination(inaturalist_server_paginated, pg_database, tmp_path):
             assert "7288932" in ids
 
 
-def test_script_e2e__no_observations(inaturalist_server_empty, pg_database, tmp_path):
+def test_script_e2e__no_observations(
+    inaturalist_project_server_empty, pg_database, tmp_path
+):
     asset_storage = tmp_path / "datalake"
     table_name = "inat_no_obs"
 
     main(
-        inaturalist_server_empty.project_id,
+        inaturalist_project_server_empty.project_id,
         pg_database,
         table_name,
         attachment_root=asset_storage,
@@ -127,7 +130,7 @@ def test_transform_with_location():
             ],
         }
     ]
-    result = transform_observations_to_geojson(observations, PROJECT_ID)
+    result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
 
     assert result["type"] == "FeatureCollection"
     feature = result["features"][0]
@@ -136,6 +139,7 @@ def test_transform_with_location():
     props = feature["properties"]
     assert props["data_source"] == "iNaturalist"
     assert props["project_id"] == PROJECT_ID
+    assert "user_id" not in props
     assert props["scientific_name"] == "Lithobates sylvaticus"
     assert props["common_name"] == "Wood Frog"
     assert props["observer"] == "observer1"
@@ -157,7 +161,7 @@ def test_transform_no_location():
             "photos": [],
         }
     ]
-    result = transform_observations_to_geojson(observations, PROJECT_ID)
+    result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
 
     feature = result["features"][0]
     assert feature["id"] == 202

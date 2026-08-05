@@ -42,8 +42,6 @@ def main(
     attachment_root : str
         Root directory for persisted files.
     """
-    save_path = Path(attachment_root) / db_table_name
-
     project = download_project_metadata(project_id, db_table_name, attachment_root)
     if project:
         logger.info(
@@ -52,34 +50,14 @@ def main(
             project.get("id", project_id),
         )
 
-    observations = download_observations(project_id)
-    save_data_to_file(
+    observations = download_observations({"project_id": project_id})
+    write_observations(
         observations,
-        f"{db_table_name}_observations",
-        save_path,
-        file_type="json",
+        db,
+        db_table_name,
+        attachment_root,
+        project_id=project_id,
     )
-
-    geojson = transform_observations_to_geojson(observations, project_id)
-
-    if geojson["features"]:
-        save_data_to_file(geojson, db_table_name, save_path, file_type="geojson")
-        save_geojson_to_postgres(
-            db,
-            db_table_name,
-            str(Path(db_table_name) / f"{db_table_name}.geojson"),
-            attachment_root,
-            delete_geojson_file=False,
-        )
-        logger.info(
-            "iNaturalist observations written to database table: [%s]",
-            db_table_name,
-        )
-    else:
-        logger.warning(
-            "No observations returned; skipping database write for table: [%s]",
-            db_table_name,
-        )
 
 
 def download_project_metadata(
@@ -118,16 +96,16 @@ def download_project_metadata(
     return project
 
 
-def download_observations(project_id: str) -> list[dict[str, Any]]:
-    """Fetch all publicly accessible observations for a project.
+def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]:
+    """Fetch publicly accessible observations with cursor pagination.
 
     Uses observation IDs as a pagination cursor (``id_above``) instead of page
     numbers, per iNaturalist API guidance for large result sets.
 
     Parameters
     ----------
-    project_id : str
-        Project numeric ID or slug.
+    filter_params : dict
+        Extra query parameters such as ``project_id`` or ``user_id``.
 
     Returns
     -------
@@ -137,11 +115,16 @@ def download_observations(project_id: str) -> list[dict[str, Any]]:
     observations: list[dict[str, Any]] = []
     last_id: int | None = None
     params: dict[str, Any] = {
-        "project_id": project_id,
+        **filter_params,
         "per_page": _PAGE_SIZE,
         "order_by": "id",
         "order": "asc",
     }
+    label = (
+        filter_params.get("project_id")
+        or filter_params.get("user_id")
+        or "observations"
+    )
 
     with requests.Session() as session:
         while True:
@@ -167,7 +150,7 @@ def download_observations(project_id: str) -> list[dict[str, Any]]:
             last_id = new_last_id
             logger.info(
                 "[%s] Fetched %s of %s observations",
-                project_id,
+                label,
                 len(observations),
                 payload.get("total_results", "unknown"),
             )
@@ -177,8 +160,50 @@ def download_observations(project_id: str) -> list[dict[str, Any]]:
 
             time.sleep(_PAGE_DELAY_S)
 
-    logger.info("[%s] Downloaded %s total observations.", project_id, len(observations))
+    logger.info("[%s] Downloaded %s total observations.", label, len(observations))
     return observations
+
+
+def write_observations(
+    observations: list[dict],
+    db: postgresql,
+    db_table_name: str,
+    attachment_root: str,
+    *,
+    project_id: str | None = None,
+    user_id: str | None = None,
+) -> None:
+    """Save raw JSON + GeoJSON to the datalake and write features to PostgreSQL."""
+    save_path = Path(attachment_root) / db_table_name
+    save_data_to_file(
+        observations,
+        f"{db_table_name}_observations",
+        save_path,
+        file_type="json",
+    )
+
+    geojson = transform_observations_to_geojson(
+        observations, project_id=project_id, user_id=user_id
+    )
+
+    if geojson["features"]:
+        save_data_to_file(geojson, db_table_name, save_path, file_type="geojson")
+        save_geojson_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.geojson"),
+            attachment_root,
+            delete_geojson_file=False,
+        )
+        logger.info(
+            "iNaturalist observations written to database table: [%s]",
+            db_table_name,
+        )
+    else:
+        logger.warning(
+            "No observations returned; skipping database write for table: [%s]",
+            db_table_name,
+        )
 
 
 def _photo_url(observation: dict) -> str | None:
@@ -193,7 +218,10 @@ def _photo_url(observation: dict) -> str | None:
 
 
 def transform_observations_to_geojson(
-    observations: list[dict], project_id: str
+    observations: list[dict],
+    *,
+    project_id: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     """Convert raw observation dicts into a GeoJSON FeatureCollection.
 
@@ -201,8 +229,10 @@ def transform_observations_to_geojson(
     ----------
     observations : list of dict
         Raw observation dicts from the iNaturalist API.
-    project_id : str
+    project_id : str, optional
         Project numeric ID or slug used for the pull.
+    user_id : str, optional
+        Username used for the pull.
 
     Returns
     -------
@@ -213,26 +243,31 @@ def transform_observations_to_geojson(
     for observation in observations:
         taxon = observation.get("taxon") or {}
         user = observation.get("user") or {}
+        properties = {
+            "observation_id": observation["id"],
+            "observed_on": observation.get("observed_on"),
+            "quality_grade": observation.get("quality_grade"),
+            "species_guess": observation.get("species_guess"),
+            "taxon_id": taxon.get("id"),
+            "scientific_name": taxon.get("name"),
+            "common_name": taxon.get("preferred_common_name"),
+            "observer": user.get("login"),
+            "uri": observation.get("uri"),
+            "license_code": observation.get("license_code"),
+            "photo_url": _photo_url(observation),
+            "data_source": "iNaturalist",
+        }
+        if project_id is not None:
+            properties["project_id"] = project_id
+        if user_id is not None:
+            properties["user_id"] = user_id
+
         features.append(
             {
                 "type": "Feature",
                 "id": observation["id"],
                 "geometry": observation.get("geojson"),
-                "properties": {
-                    "observation_id": observation["id"],
-                    "observed_on": observation.get("observed_on"),
-                    "quality_grade": observation.get("quality_grade"),
-                    "species_guess": observation.get("species_guess"),
-                    "taxon_id": taxon.get("id"),
-                    "scientific_name": taxon.get("name"),
-                    "common_name": taxon.get("preferred_common_name"),
-                    "observer": user.get("login"),
-                    "uri": observation.get("uri"),
-                    "license_code": observation.get("license_code"),
-                    "photo_url": _photo_url(observation),
-                    "data_source": "iNaturalist",
-                    "project_id": project_id,
-                },
+                "properties": properties,
             }
         )
 

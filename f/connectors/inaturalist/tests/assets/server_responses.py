@@ -11,6 +11,7 @@ _ASSETS = Path(__file__).parent
 PROJECT_ID = "13795"
 PROJECT_SLUG = "lake-accotink-park"
 PROJECT_TITLE = "Lake Accotink Park"
+USERNAME = "lagin6489"
 
 # First observation in the ascending-id fixture (has geometry + photo)
 PRIMARY_OBSERVATION_ID = 7276418

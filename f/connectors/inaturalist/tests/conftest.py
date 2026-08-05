@@ -7,10 +7,11 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.connectors.inaturalist.inaturalist_pull import BASE_URL
+from f.connectors.inaturalist.inaturalist_pull_project import BASE_URL
 from f.connectors.inaturalist.tests.assets import server_responses
 
 PROJECT_ID = server_responses.PROJECT_ID
+USERNAME = server_responses.USERNAME
 
 
 @pytest.fixture
@@ -51,34 +52,42 @@ def _register_observations_mock(rsps, callback):
 
 
 @dataclass
-class INaturalistServer:
+class INaturalistProjectServer:
     project_id: str
 
 
+@dataclass
+class INaturalistUserServer:
+    username: str
+
+
 @pytest.fixture
-def inaturalist_server(mocked_responses):
+def inaturalist_project_server(mocked_responses):
     """Mock iNaturalist API returning the full 10-observation fixture in one page."""
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_callback)
-    return INaturalistServer(project_id=PROJECT_ID)
+    return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
 @pytest.fixture
-def inaturalist_server_paginated(mocked_responses, monkeypatch):
+def inaturalist_project_server_paginated(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning pages of 2 observations via id_above."""
     monkeypatch.setattr(
-        "f.connectors.inaturalist.inaturalist_pull.time.sleep", lambda _s: None
+        "f.connectors.inaturalist.inaturalist_pull_project.time.sleep",
+        lambda _s: None,
     )
     # Align client page size with the mock so pagination continues across pages.
-    monkeypatch.setattr("f.connectors.inaturalist.inaturalist_pull._PAGE_SIZE", 2)
+    monkeypatch.setattr(
+        "f.connectors.inaturalist.inaturalist_pull_project._PAGE_SIZE", 2
+    )
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_paginated_callback)
-    return INaturalistServer(project_id=PROJECT_ID)
+    return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
 @pytest.fixture
-def inaturalist_server_empty(mocked_responses):
-    """Mock iNaturalist API returning zero observations."""
+def inaturalist_project_server_empty(mocked_responses):
+    """Mock iNaturalist API returning zero project observations."""
     _register_project_mock(mocked_responses)
     mocked_responses.add_callback(
         responses.GET,
@@ -90,7 +99,30 @@ def inaturalist_server_empty(mocked_responses):
         ),
         content_type="application/json",
     )
-    return INaturalistServer(project_id=PROJECT_ID)
+    return INaturalistProjectServer(project_id=PROJECT_ID)
+
+
+@pytest.fixture
+def inaturalist_user_server(mocked_responses):
+    """Mock iNaturalist API returning fixture observations for a username."""
+    _register_observations_mock(mocked_responses, _observations_callback)
+    return INaturalistUserServer(username=USERNAME)
+
+
+@pytest.fixture
+def inaturalist_user_server_empty(mocked_responses):
+    """Mock iNaturalist API returning zero user observations."""
+    mocked_responses.add_callback(
+        responses.GET,
+        re.compile(rf"{re.escape(BASE_URL)}/observations"),
+        callback=lambda _req: (
+            200,
+            {},
+            json.dumps(server_responses.observations_empty()),
+        ),
+        content_type="application/json",
+    )
+    return INaturalistUserServer(username=USERNAME)
 
 
 @pytest.fixture
