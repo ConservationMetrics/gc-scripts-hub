@@ -153,9 +153,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
             if last_id is not None:
                 params["id_above"] = last_id
 
-            resp = session.get(
-                f"{BASE_URL}/observations", params=params, timeout=60
-            )
+            resp = session.get(f"{BASE_URL}/observations", params=params, timeout=60)
             resp.raise_for_status()
             payload = resp.json()
             batch = payload.get("results") or []
@@ -297,9 +295,7 @@ def download_observation_photos(
             if not url or not filename:
                 continue
 
-            save_path = (
-                Path(attachment_root) / db_table_name / "attachments" / filename
-            )
+            save_path = Path(attachment_root) / db_table_name / "attachments" / filename
             if save_path.exists():
                 logger.debug("Photo already exists, skipping: %s", save_path)
                 skipped += 1
