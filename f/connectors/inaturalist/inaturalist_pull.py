@@ -16,8 +16,10 @@ from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_pos
 
 BASE_URL = "https://api.inaturalist.org/v1"
 _PAGE_SIZE = 200
-_PAGE_DELAY_S = 1.1  # stay at or below iNaturalist's requested 60 req/min
-_PHOTO_DELAY_S = 0.2  # be polite to the photo CDN between downloads
+# https://www.inaturalist.org/pages/developers — max 100 req/min; please stay ≤60
+# https://www.inaturalist.org/pages/api+recommended+practices — ~1 req/sec
+_PAGE_DELAY_S = 1.1
+_PHOTO_DELAY_S = 0.2
 _VALID_SOURCES = frozenset({"project", "user"})
 
 logging.basicConfig(level=logging.INFO)
