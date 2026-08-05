@@ -276,8 +276,19 @@ def download_observation_photos(
 
     Uses the original-size CDN URL. Files already on disk are skipped.
     """
+    photo_count = sum(len(obs.get("photos") or []) for obs in observations)
+    logger.info(
+        "Starting photo downloads: %s photo(s) across %s observation(s).",
+        photo_count,
+        len(observations),
+    )
+    if photo_count == 0:
+        logger.info("No photos to download.")
+        return
+
     skipped = 0
     downloaded = 0
+    failed = 0
 
     for observation in observations:
         for photo in observation.get("photos") or []:
@@ -302,6 +313,7 @@ def download_observation_photos(
                 downloaded += 1
                 logger.debug("Downloaded photo: %s", filename)
             else:
+                failed += 1
                 logger.error(
                     "Failed to download photo '%s' (HTTP %s)",
                     filename,
@@ -310,12 +322,13 @@ def download_observation_photos(
 
             time.sleep(_PHOTO_DELAY_S)
 
-    if downloaded or skipped:
-        logger.info(
-            "Photos: downloaded %s, skipped %s already on disk.",
-            downloaded,
-            skipped,
-        )
+    logger.info(
+        "Finished photo downloads: %s downloaded, %s skipped (already on disk), "
+        "%s failed.",
+        downloaded,
+        skipped,
+        failed,
+    )
 
 
 def transform_observations_to_geojson(
