@@ -8,6 +8,7 @@ from f.connectors.inaturalist.inaturalist_pull_project import (
 )
 from f.connectors.inaturalist.tests.assets.server_responses import (
     PRIMARY_OBSERVATION_ID,
+    PRIMARY_PHOTO_FILENAME,
     USERNAME,
 )
 
@@ -33,6 +34,9 @@ def test_script_e2e(inaturalist_user_server, pg_database, tmp_path):
 
     geojson_path = asset_storage / table_name / f"{table_name}.geojson"
     assert geojson_path.exists()
+    assert (
+        asset_storage / table_name / "attachments" / PRIMARY_PHOTO_FILENAME
+    ).exists()
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:

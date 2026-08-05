@@ -2,7 +2,7 @@
 
 [**iNaturalist**](https://www.inaturalist.org/) is a citizen-science platform for recording and identifying biodiversity observations. Communities and projects use it to document species sightings with photos, taxonomy, and location data.
 
-These scripts fetch public observations via the [iNaturalist API](https://api.inaturalist.org/v1/docs/), save raw JSON and GeoJSON to the datalake, and write features to PostgreSQL. Photo URLs are stored as properties; photo binaries are not downloaded.
+These scripts fetch public observations via the [iNaturalist API](https://api.inaturalist.org/v1/docs/), save raw JSON and GeoJSON to the datalake, write features to PostgreSQL, and download photo attachments to `{attachment_root}/{db_table_name}/attachments/` (original size; files already on disk are skipped).
 
 > [!IMPORTANT]
 > These scripts currently only import **publicly visible** observations. Private locations,
@@ -39,7 +39,8 @@ Example: `https://www.inaturalist.org/people/field_observer` → `field_observer
 ## Shared notes
 
 * Pagination uses observation ID cursors (`id_above`) rather than page numbers, as recommended by iNaturalist for large result sets.
-* The scripts stay at or below ~60 requests per minute between paginated calls.
+* The scripts stay at or below ~60 requests per minute between paginated API calls, and pause briefly between photo downloads.
+* Photos are saved as `{photo_id}.{ext}` under `attachments/`. The first photo's local name is also stored as `photo_filename` on each feature.
 * Observations without visible coordinates are still stored with null geometry.
 
 ## Future work: supporting private or obscured coordinates

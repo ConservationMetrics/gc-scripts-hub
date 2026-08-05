@@ -6,6 +6,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -16,6 +17,7 @@ from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_pos
 BASE_URL = "https://api.inaturalist.org/v1"
 _PAGE_SIZE = 200
 _PAGE_DELAY_S = 1.1  # stay at or below iNaturalist's requested 60 req/min
+_PHOTO_DELAY_S = 0.2  # be polite to the photo CDN between downloads
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -182,6 +184,8 @@ def write_observations(
         file_type="json",
     )
 
+    download_observation_photos(observations, db_table_name, attachment_root)
+
     geojson = transform_observations_to_geojson(
         observations, project_id=project_id, user_id=user_id
     )
@@ -206,15 +210,92 @@ def write_observations(
         )
 
 
+def _sized_photo_url(url: str, size: str) -> str:
+    """Rewrite an iNaturalist square thumbnail URL to another size variant."""
+    return url.replace("/square.", f"/{size}.")
+
+
+def _photo_filename(photo: dict) -> str | None:
+    """Return a stable local filename ``{photo_id}{ext}`` for a photo dict."""
+    photo_id = photo.get("id")
+    url = photo.get("url")
+    if photo_id is None or not url:
+        return None
+    ext = Path(urlparse(url).path).suffix or ".jpg"
+    return f"{photo_id}{ext}"
+
+
+def _first_photo(observation: dict) -> dict | None:
+    photos = observation.get("photos") or []
+    return photos[0] if photos else None
+
+
 def _photo_url(observation: dict) -> str | None:
     """Return the first photo URL, preferring medium over square size."""
-    photos = observation.get("photos") or []
-    if not photos:
+    photo = _first_photo(observation)
+    if not photo:
         return None
-    url = photos[0].get("url")
+    url = photo.get("url")
     if not url:
         return None
-    return url.replace("/square.", "/medium.")
+    return _sized_photo_url(url, "medium")
+
+
+def _photo_filename_for_observation(observation: dict) -> str | None:
+    """Return the local filename for the observation's first photo, if any."""
+    photo = _first_photo(observation)
+    return _photo_filename(photo) if photo else None
+
+
+def download_observation_photos(
+    observations: list[dict],
+    db_table_name: str,
+    attachment_root: str,
+) -> None:
+    """Download observation photos to ``{attachment_root}/{db_table_name}/attachments/``.
+
+    Uses the original-size CDN URL. Files already on disk are skipped.
+    """
+    skipped = 0
+    downloaded = 0
+
+    for observation in observations:
+        for photo in observation.get("photos") or []:
+            url = photo.get("url")
+            filename = _photo_filename(photo)
+            if not url or not filename:
+                continue
+
+            save_path = (
+                Path(attachment_root) / db_table_name / "attachments" / filename
+            )
+            if save_path.exists():
+                logger.debug("Photo already exists, skipping: %s", save_path)
+                skipped += 1
+                continue
+
+            download_url = _sized_photo_url(url, "original")
+            resp = requests.get(download_url, timeout=60)
+            if resp.status_code == 200:
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                save_path.write_bytes(resp.content)
+                downloaded += 1
+                logger.debug("Downloaded photo: %s", filename)
+            else:
+                logger.error(
+                    "Failed to download photo '%s' (HTTP %s)",
+                    filename,
+                    resp.status_code,
+                )
+
+            time.sleep(_PHOTO_DELAY_S)
+
+    if downloaded or skipped:
+        logger.info(
+            "Photos: downloaded %s, skipped %s already on disk.",
+            downloaded,
+            skipped,
+        )
 
 
 def transform_observations_to_geojson(
@@ -255,6 +336,7 @@ def transform_observations_to_geojson(
             "uri": observation.get("uri"),
             "license_code": observation.get("license_code"),
             "photo_url": _photo_url(observation),
+            "photo_filename": _photo_filename_for_observation(observation),
             "data_source": "iNaturalist",
         }
         if project_id is not None:

@@ -15,6 +15,8 @@ USERNAME = "lagin6489"
 
 # First observation in the ascending-id fixture (has geometry + photo)
 PRIMARY_OBSERVATION_ID = 7276418
+PRIMARY_PHOTO_ID = 9408078
+PRIMARY_PHOTO_FILENAME = f"{PRIMARY_PHOTO_ID}.jpg"
 
 
 def _load_observations() -> dict:

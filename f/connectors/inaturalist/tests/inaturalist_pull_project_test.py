@@ -8,6 +8,7 @@ from f.connectors.inaturalist.inaturalist_pull_project import (
 )
 from f.connectors.inaturalist.tests.assets.server_responses import (
     PRIMARY_OBSERVATION_ID,
+    PRIMARY_PHOTO_FILENAME,
     PROJECT_ID,
 )
 
@@ -41,6 +42,10 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
         assert geojson_data["type"] == "FeatureCollection"
         assert len(geojson_data["features"]) == 10
 
+    attachments = asset_storage / table_name / "attachments"
+    assert (attachments / PRIMARY_PHOTO_FILENAME).exists()
+    assert len(list(attachments.iterdir())) >= 1
+
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
@@ -48,7 +53,8 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
 
             cur.execute(
                 f"SELECT g__type, g__coordinates, data_source, scientific_name, "
-                f"photo_url, project_id FROM {table_name} WHERE _id = %s",
+                f"photo_url, photo_filename, project_id FROM {table_name} "
+                f"WHERE _id = %s",
                 (str(PRIMARY_OBSERVATION_ID),),
             )
             row = cur.fetchone()
@@ -60,7 +66,8 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
             assert row[4] == (
                 "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/medium.jpg"
             )
-            assert row[5] == PROJECT_ID
+            assert row[5] == PRIMARY_PHOTO_FILENAME
+            assert row[6] == PROJECT_ID
 
 
 def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path):
@@ -125,6 +132,7 @@ def test_transform_with_location():
             "license_code": "cc-by-nc",
             "photos": [
                 {
+                    "id": 1,
                     "url": "https://example.com/photos/1/square.jpg",
                 }
             ],
@@ -144,6 +152,7 @@ def test_transform_with_location():
     assert props["common_name"] == "Wood Frog"
     assert props["observer"] == "observer1"
     assert props["photo_url"] == "https://example.com/photos/1/medium.jpg"
+    assert props["photo_filename"] == "1.jpg"
 
 
 def test_transform_no_location():
@@ -167,5 +176,6 @@ def test_transform_no_location():
     assert feature["id"] == 202
     assert feature["geometry"] is None
     assert feature["properties"]["photo_url"] is None
+    assert feature["properties"]["photo_filename"] is None
     assert feature["properties"]["taxon_id"] is None
     assert feature["properties"]["scientific_name"] is None

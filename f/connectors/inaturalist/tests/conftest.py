@@ -13,6 +13,8 @@ from f.connectors.inaturalist.tests.assets import server_responses
 PROJECT_ID = server_responses.PROJECT_ID
 USERNAME = server_responses.USERNAME
 
+_MOCK_PHOTO_BYTES = b"fake-inaturalist-photo"
+
 
 @pytest.fixture
 def mocked_responses():
@@ -25,6 +27,14 @@ def _register_project_mock(rsps, project_id: str = PROJECT_ID):
         f"{BASE_URL}/projects/{project_id}",
         json=server_responses.project_metadata(),
         status=200,
+    )
+
+
+def _register_photo_mock(rsps):
+    rsps.add_callback(
+        responses.GET,
+        re.compile(r"https://inaturalist-open-data\.s3\.amazonaws\.com/photos/"),
+        callback=lambda _req: (200, {"Content-Type": "image/jpeg"}, _MOCK_PHOTO_BYTES),
     )
 
 
@@ -51,6 +61,13 @@ def _register_observations_mock(rsps, callback):
     )
 
 
+def _disable_photo_delay(monkeypatch):
+    monkeypatch.setattr(
+        "f.connectors.inaturalist.inaturalist_pull_project.time.sleep",
+        lambda _s: None,
+    )
+
+
 @dataclass
 class INaturalistProjectServer:
     project_id: str
@@ -62,26 +79,26 @@ class INaturalistUserServer:
 
 
 @pytest.fixture
-def inaturalist_project_server(mocked_responses):
+def inaturalist_project_server(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning the full 10-observation fixture in one page."""
+    _disable_photo_delay(monkeypatch)
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_callback)
+    _register_photo_mock(mocked_responses)
     return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
 @pytest.fixture
 def inaturalist_project_server_paginated(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning pages of 2 observations via id_above."""
-    monkeypatch.setattr(
-        "f.connectors.inaturalist.inaturalist_pull_project.time.sleep",
-        lambda _s: None,
-    )
+    _disable_photo_delay(monkeypatch)
     # Align client page size with the mock so pagination continues across pages.
     monkeypatch.setattr(
         "f.connectors.inaturalist.inaturalist_pull_project._PAGE_SIZE", 2
     )
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_paginated_callback)
+    _register_photo_mock(mocked_responses)
     return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
@@ -103,9 +120,11 @@ def inaturalist_project_server_empty(mocked_responses):
 
 
 @pytest.fixture
-def inaturalist_user_server(mocked_responses):
+def inaturalist_user_server(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning fixture observations for a username."""
+    _disable_photo_delay(monkeypatch)
     _register_observations_mock(mocked_responses, _observations_callback)
+    _register_photo_mock(mocked_responses)
     return INaturalistUserServer(username=USERNAME)
 
 
