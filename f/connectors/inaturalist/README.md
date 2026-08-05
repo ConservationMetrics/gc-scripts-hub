@@ -2,44 +2,39 @@
 
 [**iNaturalist**](https://www.inaturalist.org/) is a citizen-science platform for recording and identifying biodiversity observations. Communities and projects use it to document species sightings with photos, taxonomy, and location data.
 
-These scripts fetch public observations via the [iNaturalist API](https://api.inaturalist.org/v1/docs/), save raw JSON and GeoJSON to the datalake, write features to PostgreSQL, and download photo attachments to `{attachment_root}/{db_table_name}/attachments/` (original size; files already on disk are skipped).
+## `inaturalist_pull.py`
+
+Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v1/docs/) for either a **project** or a **user**. Saves raw JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo attachments to `{attachment_root}/{db_table_name}/attachments/` (original size; files already on disk are skipped).
 
 > [!IMPORTANT]
-> These scripts currently only import **publicly visible** observations. Private locations,
+> This script only imports **publicly visible** observations. Private locations,
 > obscured true coordinates, and other non-public fields are not available without
 > authentication.
 
-## `inaturalist_pull_project.py`
-
-Fetches observations associated with an iNaturalist **project**, plus project metadata.
-
 ### Parameters
 
-The **project ID** may be either the numeric project ID or the project slug. Both appear in the project URL:
+* **source** — `"project"` or `"user"`.
+* **slug** — when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+
+Project URLs:
 
 * `https://www.inaturalist.org/projects/{slug}`
 * `https://www.inaturalist.org/projects/{id}`
 
-Example: for [Lake Accotink Park](https://www.inaturalist.org/projects/lake-accotink-park), use `lake-accotink-park` or `13795`.
+Example: [Lake Accotink Park](https://www.inaturalist.org/projects/lake-accotink-park) → slug `lake-accotink-park` or `13795`, source `project`.
 
-This connector uses `project_id` (observations associated with the project), not `apply_project_rules_for`.
-
-## `inaturalist_pull_my_observations.py`
-
-Fetches observations for a given iNaturalist **username**. No authentication is required for publicly visible observations belonging to that account—filtering by username does not prove you are that user.
-
-### Parameters
-
-The **username** is the profile slug from the people URL:
+User profile URLs:
 
 * `https://www.inaturalist.org/people/{username}`
 
-Example: `https://www.inaturalist.org/people/field_observer` → `field_observer`.
+Example: `https://www.inaturalist.org/people/field_observer` → slug `field_observer`, source `user`.
 
-## Shared notes
+For projects, this connector uses `project_id` (observations associated with the project), not `apply_project_rules_for`. Filtering by username does not require authentication and does not prove you are that user.
+
+### Notes
 
 * Pagination uses observation ID cursors (`id_above`) rather than page numbers, as recommended by iNaturalist for large result sets.
-* The scripts stay at or below ~60 requests per minute between paginated API calls, and pause briefly between photo downloads.
+* The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between photo downloads.
 * Photos are saved as `{photo_id}.{ext}` under `attachments/`. The first photo's local name is also stored as `photo_filename` on each feature.
 * Observations without visible coordinates are still stored with null geometry.
 

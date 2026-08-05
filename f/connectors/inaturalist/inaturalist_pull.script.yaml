@@ -1,15 +1,16 @@
-summary: 'iNaturalist: Fetch My Observations'
+summary: 'iNaturalist: Fetch Observations'
 description: >-
-  Uses the iNaturalist REST API to download public observations for a given
-  username, saving results as GeoJSON to the datalake and PostgreSQL.
-lock: '!inline f/connectors/inaturalist/inaturalist_pull_my_observations.script.lock'
+  Uses the iNaturalist REST API to download public observations for a project
+  or user, saving GeoJSON and photo attachments to the datalake and PostgreSQL.
+lock: '!inline f/connectors/inaturalist/inaturalist_pull.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - username
+    - source
+    - slug
     - db
     - db_table_name
     - attachment_root
@@ -32,14 +33,25 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    username:
+    slug:
       type: string
       description: >-
-        The iNaturalist username (profile slug), found in the profile URL
-        (https://www.inaturalist.org/people/{username}).
+        When source is "project": the project numeric ID or slug
+        (https://www.inaturalist.org/projects/{slug}). When source is "user":
+        the username (https://www.inaturalist.org/people/{username}).
       default: null
       originalType: string
+    source:
+      type: string
+      description: >-
+        Whether `slug` identifies a project ("project") or a username ("user").
+      default: project
+      originalType: string
+      enum:
+        - project
+        - user
   required:
-    - username
+    - source
+    - slug
     - db
     - db_table_name

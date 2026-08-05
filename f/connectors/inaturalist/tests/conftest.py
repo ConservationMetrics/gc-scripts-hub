@@ -7,7 +7,7 @@ import pytest
 import responses
 import testing.postgresql
 
-from f.connectors.inaturalist.inaturalist_pull_project import BASE_URL
+from f.connectors.inaturalist.inaturalist_pull import BASE_URL
 from f.connectors.inaturalist.tests.assets import server_responses
 
 PROJECT_ID = server_responses.PROJECT_ID
@@ -61,9 +61,9 @@ def _register_observations_mock(rsps, callback):
     )
 
 
-def _disable_photo_delay(monkeypatch):
+def _disable_delays(monkeypatch):
     monkeypatch.setattr(
-        "f.connectors.inaturalist.inaturalist_pull_project.time.sleep",
+        "f.connectors.inaturalist.inaturalist_pull.time.sleep",
         lambda _s: None,
     )
 
@@ -81,7 +81,7 @@ class INaturalistUserServer:
 @pytest.fixture
 def inaturalist_project_server(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning the full 10-observation fixture in one page."""
-    _disable_photo_delay(monkeypatch)
+    _disable_delays(monkeypatch)
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_callback)
     _register_photo_mock(mocked_responses)
@@ -91,11 +91,8 @@ def inaturalist_project_server(mocked_responses, monkeypatch):
 @pytest.fixture
 def inaturalist_project_server_paginated(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning pages of 2 observations via id_above."""
-    _disable_photo_delay(monkeypatch)
-    # Align client page size with the mock so pagination continues across pages.
-    monkeypatch.setattr(
-        "f.connectors.inaturalist.inaturalist_pull_project._PAGE_SIZE", 2
-    )
+    _disable_delays(monkeypatch)
+    monkeypatch.setattr("f.connectors.inaturalist.inaturalist_pull._PAGE_SIZE", 2)
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_paginated_callback)
     _register_photo_mock(mocked_responses)
@@ -122,7 +119,7 @@ def inaturalist_project_server_empty(mocked_responses):
 @pytest.fixture
 def inaturalist_user_server(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning fixture observations for a username."""
-    _disable_photo_delay(monkeypatch)
+    _disable_delays(monkeypatch)
     _register_observations_mock(mocked_responses, _observations_callback)
     _register_photo_mock(mocked_responses)
     return INaturalistUserServer(username=USERNAME)

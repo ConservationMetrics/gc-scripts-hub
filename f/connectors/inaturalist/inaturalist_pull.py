@@ -18,25 +18,30 @@ BASE_URL = "https://api.inaturalist.org/v1"
 _PAGE_SIZE = 200
 _PAGE_DELAY_S = 1.1  # stay at or below iNaturalist's requested 60 req/min
 _PHOTO_DELAY_S = 0.2  # be polite to the photo CDN between downloads
+_VALID_SOURCES = frozenset({"project", "user"})
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    project_id: str,
+    source: str,
+    slug: str,
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
 ):
     """
-    Fetch public iNaturalist project observations and write them to the datalake
-    and PostgreSQL.
+    Fetch public iNaturalist observations for a project or user and write them
+    to the datalake and PostgreSQL.
 
     Parameters
     ----------
-    project_id : str
-        Project numeric ID or slug.
+    source : str
+        ``"project"`` or ``"user"``.
+    slug : str
+        Project numeric ID/slug when ``source`` is ``"project"``, or username
+        when ``source`` is ``"user"``.
     db : postgresql
         Database connection configuration.
     db_table_name : str
@@ -44,21 +49,36 @@ def main(
     attachment_root : str
         Root directory for persisted files.
     """
-    project = download_project_metadata(project_id, db_table_name, attachment_root)
-    if project:
-        logger.info(
-            "Fetched project metadata for '%s' (id=%s)",
-            project.get("title") or project_id,
-            project.get("id", project_id),
+    if source not in _VALID_SOURCES:
+        raise ValueError(
+            f"Invalid source '{source}'. Expected one of: {sorted(_VALID_SOURCES)}"
         )
 
-    observations = download_observations({"project_id": project_id})
+    project_id = None
+    user_id = None
+
+    if source == "project":
+        project_id = slug
+        project = download_project_metadata(slug, db_table_name, attachment_root)
+        if project:
+            logger.info(
+                "Fetched project metadata for '%s' (id=%s)",
+                project.get("title") or slug,
+                project.get("id", slug),
+            )
+        filter_params = {"project_id": slug}
+    else:
+        user_id = slug
+        filter_params = {"user_id": slug}
+
+    observations = download_observations(filter_params)
     write_observations(
         observations,
         db,
         db_table_name,
         attachment_root,
         project_id=project_id,
+        user_id=user_id,
     )
 
 

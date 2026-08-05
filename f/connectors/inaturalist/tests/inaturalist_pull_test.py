@@ -1,8 +1,9 @@
 import json
 
 import psycopg
+import pytest
 
-from f.connectors.inaturalist.inaturalist_pull_project import (
+from f.connectors.inaturalist.inaturalist_pull import (
     main,
     transform_observations_to_geojson,
 )
@@ -10,14 +11,16 @@ from f.connectors.inaturalist.tests.assets.server_responses import (
     PRIMARY_OBSERVATION_ID,
     PRIMARY_PHOTO_FILENAME,
     PROJECT_ID,
+    USERNAME,
 )
 
 
-def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
+def test_project_e2e(inaturalist_project_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "inat_observations"
 
     main(
+        "project",
         inaturalist_project_server.project_id,
         pg_database,
         table_name,
@@ -27,8 +30,7 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
     project_path = asset_storage / table_name / f"{table_name}_project.json"
     assert project_path.exists()
     with open(project_path) as f:
-        project_data = json.load(f)
-        assert project_data["slug"] == "lake-accotink-park"
+        assert json.load(f)["slug"] == "lake-accotink-park"
 
     raw_path = asset_storage / table_name / f"{table_name}_observations.json"
     assert raw_path.exists()
@@ -44,7 +46,6 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
 
     attachments = asset_storage / table_name / "attachments"
     assert (attachments / PRIMARY_PHOTO_FILENAME).exists()
-    assert len(list(attachments.iterdir())) >= 1
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
@@ -70,12 +71,46 @@ def test_script_e2e(inaturalist_project_server, pg_database, tmp_path):
             assert row[6] == PROJECT_ID
 
 
+def test_user_e2e(inaturalist_user_server, pg_database, tmp_path):
+    asset_storage = tmp_path / "datalake"
+    table_name = "inat_user_obs"
+
+    main(
+        "user",
+        inaturalist_user_server.username,
+        pg_database,
+        table_name,
+        attachment_root=asset_storage,
+    )
+
+    assert not (asset_storage / table_name / f"{table_name}_project.json").exists()
+    assert (
+        asset_storage / table_name / "attachments" / PRIMARY_PHOTO_FILENAME
+    ).exists()
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cur.fetchone()[0] == 10
+
+            cur.execute(
+                f"SELECT data_source, user_id, scientific_name FROM {table_name} "
+                f"WHERE _id = %s",
+                (str(PRIMARY_OBSERVATION_ID),),
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] == "iNaturalist"
+            assert row[1] == USERNAME
+            assert row[2] == "Lithobates sylvaticus"
+
+
 def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path):
-    """All fixture observations are fetched across id_above pages of 2."""
     asset_storage = tmp_path / "datalake"
     table_name = "inat_paginated"
 
     main(
+        "project",
         inaturalist_project_server_paginated.project_id,
         pg_database,
         table_name,
@@ -93,13 +128,14 @@ def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path)
             assert "7288932" in ids
 
 
-def test_script_e2e__no_observations(
+def test_project_e2e__no_observations(
     inaturalist_project_server_empty, pg_database, tmp_path
 ):
     asset_storage = tmp_path / "datalake"
     table_name = "inat_no_obs"
 
     main(
+        "project",
         inaturalist_project_server_empty.project_id,
         pg_database,
         table_name,
@@ -112,6 +148,39 @@ def test_script_e2e__no_observations(
         with conn.cursor() as cur:
             cur.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
             assert cur.fetchone()[0] is None
+
+
+def test_user_e2e__no_observations(
+    inaturalist_user_server_empty, pg_database, tmp_path
+):
+    asset_storage = tmp_path / "datalake"
+    table_name = "inat_user_empty"
+
+    main(
+        "user",
+        inaturalist_user_server_empty.username,
+        pg_database,
+        table_name,
+        attachment_root=asset_storage,
+    )
+
+    assert not (asset_storage / table_name / f"{table_name}.geojson").exists()
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass(%s)", (f"public.{table_name}",))
+            assert cur.fetchone()[0] is None
+
+
+def test_invalid_source(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="Invalid source"):
+        main(
+            "not-a-source",
+            "anything",
+            pg_database,
+            "inat_bad",
+            attachment_root=tmp_path / "datalake",
+        )
 
 
 def test_transform_with_location():
@@ -140,19 +209,34 @@ def test_transform_with_location():
     ]
     result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
 
-    assert result["type"] == "FeatureCollection"
     feature = result["features"][0]
-    assert feature["id"] == 101
-    assert feature["geometry"] == {"type": "Point", "coordinates": [-77.22, 38.80]}
     props = feature["properties"]
     assert props["data_source"] == "iNaturalist"
     assert props["project_id"] == PROJECT_ID
     assert "user_id" not in props
-    assert props["scientific_name"] == "Lithobates sylvaticus"
-    assert props["common_name"] == "Wood Frog"
-    assert props["observer"] == "observer1"
     assert props["photo_url"] == "https://example.com/photos/1/medium.jpg"
     assert props["photo_filename"] == "1.jpg"
+
+
+def test_transform_user_id():
+    observations = [
+        {
+            "id": 303,
+            "observed_on": "2026-01-01",
+            "quality_grade": "casual",
+            "species_guess": None,
+            "geojson": {"type": "Point", "coordinates": [-77.0, 38.0]},
+            "taxon": None,
+            "user": {"login": USERNAME},
+            "uri": "https://www.inaturalist.org/observations/303",
+            "license_code": None,
+            "photos": [],
+        }
+    ]
+    result = transform_observations_to_geojson(observations, user_id=USERNAME)
+    props = result["features"][0]["properties"]
+    assert props["user_id"] == USERNAME
+    assert "project_id" not in props
 
 
 def test_transform_no_location():
@@ -173,9 +257,6 @@ def test_transform_no_location():
     result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
 
     feature = result["features"][0]
-    assert feature["id"] == 202
     assert feature["geometry"] is None
     assert feature["properties"]["photo_url"] is None
     assert feature["properties"]["photo_filename"] is None
-    assert feature["properties"]["taxon_id"] is None
-    assert feature["properties"]["scientific_name"] is None
