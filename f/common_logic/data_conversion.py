@@ -474,18 +474,14 @@ def read_csv(path: Path):
         The content of the CSV file as a list of lists.
     """
     with path.open(encoding="utf-8", newline="") as f:
-        # Read a sample to detect delimiter and check for emptiness
-        sample = f.read(1024)
-        if not sample.strip():
+        header = f.readline()
+        if not header.strip():
             raise ValueError("CSV file is empty or contains only whitespace")
         f.seek(0)
 
-        # Auto-detect delimiter using csv.Sniffer
-        dialect = csv.Sniffer().sniff(sample)
-        reader = csv.reader(f, dialect)
-
-        # Parse all rows
-        rows = list(reader)
+        # KoboToolbox uses ';'; everything else is usually ',' or tab
+        delimiter = max(",;\t", key=header.count)
+        rows = list(csv.reader(f, delimiter=delimiter))
         if len(rows) <= 1:
             raise ValueError("CSV file contains no data")
         return rows
