@@ -326,6 +326,13 @@ def transform_observations_to_geojson(
 ) -> dict:
     """Convert raw observation dicts into a GeoJSON FeatureCollection.
 
+    Feature ``properties`` are an opinionated subset chosen for mapping and
+    tabular use in Guardian Connector: identity, timing, taxon names, observer,
+    license, photo linkage, and the pull filter (``project_id`` / ``user_id``).
+    Nested API payloads (identifications, annotations, all photos, etc.) are
+    omitted here; the complete observation records are still written to the
+    datalake as ``{db_table_name}_observations.json``.
+
     Parameters
     ----------
     observations : list of dict
