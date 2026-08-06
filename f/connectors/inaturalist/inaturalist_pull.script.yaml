@@ -1,0 +1,56 @@
+summary: "iNaturalist: Fetch Observations"
+description: >-
+  Uses the iNaturalist API to download public observations for a project or
+  user, saving GeoJSON and photo attachments to the datalake and PostgreSQL.
+lock: "!inline f/connectors/inaturalist/inaturalist_pull.script.lock"
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  order:
+    - source
+    - slug
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where iNaturalist data files will be stored. Files will be stored
+        as: `{attachment_root}/{db_table_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where observations will be stored.
+      default: null
+      originalType: string
+      pattern: "^.{1,54}$"
+    slug:
+      type: string
+      description: >-
+        When source is "project": the project numeric ID or slug
+        (https://www.inaturalist.org/projects/{slug}). When source is "user":
+        the username (https://www.inaturalist.org/people/{username}).
+      default: null
+      originalType: string
+    source:
+      type: string
+      description: Whether `slug` identifies a project ("project") or a username ("user").
+      default: null
+      enum:
+        - project
+        - user
+      originalType: string
+  required:
+    - source
+    - slug
+    - db
+    - db_table_name
