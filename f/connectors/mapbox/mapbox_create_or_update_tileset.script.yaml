@@ -39,14 +39,13 @@ schema:
       default: null
       format: resource-mapbox
     max_zoom:
-      type: integer
+      type: string
       description: >-
-        Maximum zoom level for a newly-created tileset. Valid range is 0-16.
-        (Ignored when updating an existing tileset.)
-      default: 11
-      maximum: 16
-      minimum: 0
-      originalType: integer
+        Maximum zoom level for a newly-created tileset (0-16). Ignored when
+        updating an existing tileset.
+      default: '11'
+      originalType: string
+      pattern: '^([0-9]|1[0-6])$'
     tileset_id:
       type: string
       description: The tileset ID (without the username prefix).
