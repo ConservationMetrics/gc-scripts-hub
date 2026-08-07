@@ -4,6 +4,11 @@ if (!newName) {
   return "";
 }
 
+// Pending: this typed name hasn't finished resolving yet
+if (typeof state.tableExists !== "boolean" && newName) {
+  return "Checking if dataset exists...";
+}
+
 // Only show a result once the async check has resolved for THIS typed name.
 // Otherwise the message would flash the previously resolved (e.g. dropdown) value.
 if (state.datasetName !== newName) {
