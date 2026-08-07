@@ -41,7 +41,7 @@ def main(
 
     _assert_secret_access_token(access_token)
     validate_identifier(tileset_id, type="mapbox_tileset_id")
-    max_zoom_level = _parse_max_zoom(max_zoom)
+    max_zoom = int(max_zoom)
 
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
@@ -61,9 +61,7 @@ def main(
     source_result = _create_tileset_source(
         username, access_token, tileset_id, source_path
     )
-    tileset_result = _create_tileset(
-        username, access_token, tileset_id, max_zoom_level
-    )
+    tileset_result = _create_tileset(username, access_token, tileset_id, max_zoom)
     publish_result = _publish_tileset(username, access_token, tileset_id)
     return {
         "action": "create",
@@ -71,33 +69,6 @@ def main(
         "tileset": tileset_result,
         "publish": publish_result,
     }
-
-
-def _parse_max_zoom(raw: str | int) -> int:
-    """Parse and validate a max zoom level in the range 0-16.
-
-    Parameters
-    ----------
-    raw : str or int
-        Max zoom from the Windmill form (string) or tests (int).
-
-    Returns
-    -------
-    int
-        Max zoom between 0 and 16 inclusive.
-
-    Raises
-    ------
-    ValueError
-        If the value is not an integer in 0-16.
-    """
-    try:
-        max_zoom = int(raw)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"max_zoom must be an integer 0-16, got {raw!r}") from e
-    if not 0 <= max_zoom <= 16:
-        raise ValueError(f"max_zoom must be between 0 and 16, got {max_zoom}")
-    return max_zoom
 
 
 def _assert_secret_access_token(access_token: str) -> None:
