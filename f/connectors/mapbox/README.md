@@ -1,3 +1,7 @@
+# Mapbox connectors
+
+Scripts for working with Mapbox tilesets and vector tile data.
+
 # `mapbox_create_or_update_tileset`: Create or Update a Mapbox Tileset
 
 This script uses the Mapbox Tiling Service (MTS) to create **or** update a Mapbox tileset from a GeoJSON file by:
@@ -29,7 +33,7 @@ This script is intended for workflows where a GeoJSON dataset is updated regular
 
 ## Mapbox Secret Access Token
 
-For the scripts to work, you need to provide a Mapbox secret access token with scope to work with tilesets. You can create a new secret access token in Mapbox Studio by:
+For this script to work, you need to provide a Mapbox secret access token with scope to work with tilesets. You can create a new secret access token in Mapbox Studio by:
 
 1. Navigating to **Admin >  Tokens**
 2. Clicking **+ Create a token**
@@ -46,7 +50,7 @@ When creating a tileset, a [tileset recipe](https://docs.mapbox.com/mapbox-tilin
 In this script:
 
 - The minimum zoom level is hard-coded to `0`.
-- The maximum zoom level is configurable via the `max_zoom` parameter (default: `11`, valid range: `0-16`).
+- The maximum zoom level is configurable via the `max_zoom` parameter (default: `11`, string pattern-limited to `0-16`).
 - The `max_zoom` parameter is ignored when updating an existing tileset.
 
 > [!TIP]
@@ -69,3 +73,62 @@ This script uses the following Mapbox Tiling Service API endpoints:
 - **Windmill Flow**: We could consider chaining this script to another connector (like the [ArcGIS Download Feature Layer script](../arcgis/README.md)) to create a flow that:
   - downloads and stores a feature layer from ArcGIS Online
   - publishes the tileset to Mapbox.
+
+# `mapbox_download_vector_tiles`: Download Vector Tiles to GeoJSON
+
+Download Mapbox vector tiles for a bounding box into a local cache, then convert them into a single GeoJSON FeatureCollection.
+
+Flow:
+
+1. Plan the tile grid for the requested bbox and zoom (with a hard zoom cap for quota safety).
+2. If `dry_run` is true, return the plan and stop — no network requests.
+3. Otherwise download uncached tiles, convert cached PBFs to GeoJSON (optionally reconstructing clipped features), and write the result to the datalake.
+
+## Intended use case
+
+Use this when you need vector features from an existing Mapbox tileset (for example `mapbox.mapbox-streets-v8` or a custom tileset) as GeoJSON for analysis, archival, or a downstream workflow:
+
+1. Run with `dry_run=true` to confirm the tile count is within your Mapbox API budget.
+2. Run again with `dry_run=false` to download and convert into GeoJSON under the datalake.
+3. Optionally chain to `mapbox_create_or_update_tileset` if you want to republish a derived tileset.
+
+## Parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `mapbox` | *(required)* | Mapbox credentials resource. Only `access_token` is used. |
+| `bbox` | *(required)* | Bounding box as `minlon,minlat,maxlon,maxlat` (WGS84 degrees). |
+| `tileset` | *(required)* | Mapbox tileset id (e.g. `mapbox.mapbox-streets-v8`). |
+| `zoom` | `12` | Zoom level of the tile grid (string pattern-limited to 0–14). |
+| `reconstruct_column` | `""` | Feature property used to reconstruct features clipped across tile boundaries. Empty disables reconstruction. |
+| `output_filename` | `my_filename` | Base name for the GeoJSON file and tile cache directory. |
+| `attachment_root` | `/persistent-storage/datalake/mapbox_vector_tiles` | Datalake directory for output. |
+| `delete_tiles` | `true` | After a successful GeoJSON write, delete the tile cache so only the GeoJSON remains. Set `false` to keep tiles for faster re-runs. |
+| `dry_run` | `false` | Return the download plan without fetching or writing GeoJSON. |
+
+### Output paths
+
+- Tile cache: `{attachment_root}/{output_filename}/tiles/{z}/{x}/{y}.pbf`
+- GeoJSON: `{attachment_root}/{output_filename}.geojson`
+
+Cached tiles are skipped on re-run (when `delete_tiles` is false). Empty cells are cached as zero-byte markers for both HTTP 204 (blank tile) and HTTP 404 `Tile not found` (sparse coverage / outside the tileset extent). Other failures (auth, rate limit, missing tileset, etc.) are not cached, so re-running retries only those.
+
+## Access token
+
+Unlike `mapbox_create_or_update_tileset`, this script only needs a token that can read vector tiles. A **public** token (`pk.ey...`) with access to the target tilesets is sufficient; a secret token also works. Create or copy a token from **Admin > Tokens** in Mapbox Studio.
+
+## Quota guardrails
+
+Vector tile requests count against Mapbox API quota:
+
+- **Dry-run** — inspect `tile_count` / `to_fetch_count` before spending quota.
+- **Local cache** — already-downloaded tiles are never re-requested.
+- **Zoom limit** — tile count grows ~4× per zoom level; `zoom` is capped at 14 in the Windmill schema.
+
+> [!TIP]
+>
+> Use [OpenStreetMap's Zoom Levels guide](https://wiki.openstreetmap.org/wiki/Zoom_levels) to pick an appropriate zoom. A tileset only contains data up to its own `maxzoom`; higher zooms often mean more requests with no extra detail.
+
+## Endpoints
+
+- [Retrieve vector tiles](https://docs.mapbox.com/api/maps/vector-tiles/)
