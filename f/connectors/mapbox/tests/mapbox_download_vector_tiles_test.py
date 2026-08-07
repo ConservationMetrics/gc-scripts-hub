@@ -86,18 +86,6 @@ def test_empty_tileset_raises(tmp_path):
         )
 
 
-def test_zoom_out_of_range_raises(tmp_path):
-    with pytest.raises(ValueError, match="between 0 and 14"):
-        main(
-            mapbox=_creds(),
-            bbox=BBOX,
-            tileset=TILESET,
-            zoom="15",
-            attachment_root=str(tmp_path),
-            dry_run=True,
-        )
-
-
 def test_download_and_process_writes_geojson(tmp_path, mocked_responses):
     tiles = _tiles()
     assert len(tiles) == 1
@@ -133,7 +121,14 @@ def test_download_and_process_writes_geojson(tmp_path, mocked_responses):
     assert result["tiles_deleted"] is False
     assert result["output_path"].endswith("ecuador_tiles.geojson")
 
-    cache_path = tmp_path / "ecuador_tiles" / "tiles" / str(tile.z) / str(tile.x) / f"{tile.y}.pbf"
+    cache_path = (
+        tmp_path
+        / "ecuador_tiles"
+        / "tiles"
+        / str(tile.z)
+        / str(tile.x)
+        / f"{tile.y}.pbf"
+    )
     assert cache_path.is_file()
     assert cache_path.read_bytes() == b"fake-pbf"
 
@@ -193,7 +188,9 @@ def test_blank_tile_cached_as_empty_marker(tmp_path, mocked_responses):
 
     assert result["tiles_downloaded"] == 1
     assert result["feature_count"] == 0
-    cache_path = tmp_path / "blank" / "tiles" / str(tile.z) / str(tile.x) / f"{tile.y}.pbf"
+    cache_path = (
+        tmp_path / "blank" / "tiles" / str(tile.z) / str(tile.x) / f"{tile.y}.pbf"
+    )
     assert cache_path.is_file()
     assert cache_path.stat().st_size == 0
 
@@ -275,7 +272,9 @@ def test_tile_failure_raises(tmp_path, mocked_responses):
             attachment_root=str(tmp_path),
         )
 
-    cache_path = tmp_path / "fail" / "tiles" / str(tile.z) / str(tile.x) / f"{tile.y}.pbf"
+    cache_path = (
+        tmp_path / "fail" / "tiles" / str(tile.z) / str(tile.x) / f"{tile.y}.pbf"
+    )
     assert not cache_path.exists()
 
 
@@ -314,7 +313,5 @@ def test_reconstruct_features_merges_by_column():
     ]
     assert len(by_id) == 1
     assert by_id[0]["geometry"]["type"] in {"LineString", "MultiLineString"}
-    passthrough = [
-        f for f in reconstructed if "id" not in (f.get("properties") or {})
-    ]
+    passthrough = [f for f in reconstructed if "id" not in (f.get("properties") or {})]
     assert len(passthrough) == 1

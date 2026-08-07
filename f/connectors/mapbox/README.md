@@ -86,11 +86,10 @@ Flow:
 
 ## Intended use case
 
-Use this when you need vector features from an existing Mapbox tileset (for example `mapbox.mapbox-streets-v8` or a custom tileset) as GeoJSON for analysis, archival, or a downstream workflow:
+Use this when you need vector features from a Mapbox tileset as GeoJSON for analysis, archival, or a downstream workflow:
 
 1. Run with `dry_run=true` to confirm the tile count is within your Mapbox API budget.
 2. Run again with `dry_run=false` to download and convert into GeoJSON under the datalake.
-3. Optionally chain to `mapbox_create_or_update_tileset` if you want to republish a derived tileset.
 
 ## Parameters
 
@@ -99,10 +98,10 @@ Use this when you need vector features from an existing Mapbox tileset (for exam
 | `mapbox` | *(required)* | Mapbox credentials resource. Only `access_token` is used. |
 | `bbox` | *(required)* | Bounding box as `minlon,minlat,maxlon,maxlat` (WGS84 degrees). |
 | `tileset` | *(required)* | Mapbox tileset id (e.g. `mapbox.mapbox-streets-v8`). |
-| `zoom` | `12` | Zoom level of the tile grid (string pattern-limited to 0–14). |
+| `zoom` | `12` | Zoom level of the tile grid (string pattern, limited to 0-14). |
 | `reconstruct_column` | `""` | Feature property used to reconstruct features clipped across tile boundaries. Empty disables reconstruction. |
 | `output_filename` | `my_filename` | Base name for the GeoJSON file and tile cache directory. |
-| `attachment_root` | `/persistent-storage/datalake/mapbox_vector_tiles` | Datalake directory for output. |
+| `attachment_root` | `/persistent-storage/datalake/mapbox` | Datalake directory for output. |
 | `delete_tiles` | `true` | After a successful GeoJSON write, delete the tile cache so only the GeoJSON remains. Set `false` to keep tiles for faster re-runs. |
 | `dry_run` | `false` | Return the download plan without fetching or writing GeoJSON. |
 

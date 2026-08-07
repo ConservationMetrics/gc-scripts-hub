@@ -51,7 +51,7 @@ def main(
         Mapbox tileset id (e.g. ``mapbox.mapbox-streets-v8``).
     zoom : str, optional
         Zoom level for the tile grid as a string ``"0"``-``"14"`` (default
-        ``"12"``). Validated by the Windmill script schema pattern.
+        ``"12"``). Validated by the Windmill script schema pattern (which is why it's a string).
     reconstruct_column : str, optional
         Feature property used to reconstruct features clipped across tile
         boundaries. Empty string disables reconstruction.
@@ -76,17 +76,17 @@ def main(
     if not tileset.strip():
         raise ValueError("tileset is required")
 
-    zoom_level = _parse_zoom(zoom)
+    zoom = int(zoom)
     parsed_bbox = _parse_bbox(bbox)
 
     tiles_dir = Path(attachment_root) / output_filename / "tiles"
-    tiles = list(mercantile.tiles(*parsed_bbox, zooms=[zoom_level]))
+    tiles = list(mercantile.tiles(*parsed_bbox, zooms=[zoom]))
     to_fetch = [t for t in tiles if not _tile_path(tiles_dir, t).is_file()]
     cached_count = len(tiles) - len(to_fetch)
 
     plan = {
         "dry_run": dry_run,
-        "zoom": zoom_level,
+        "zoom": zoom,
         "bbox": parsed_bbox,
         "tileset": tileset,
         "tile_count": len(tiles),
@@ -95,7 +95,7 @@ def main(
     }
     logger.info(
         "Bounding box at zoom %s: %s tiles (%s cached, %s to download).",
-        zoom_level,
+        zoom,
         len(tiles),
         cached_count,
         len(to_fetch),
@@ -116,7 +116,7 @@ def main(
             "Re-run to retry failed tiles; cached tiles are skipped."
         )
 
-    features = _process_tiles(tiles_dir, zoom_level, reconstruct_column or None)
+    features = _process_tiles(tiles_dir, zoom, reconstruct_column or None)
     collection = {"type": "FeatureCollection", "features": features}
     save_data_to_file(
         collection,
@@ -154,33 +154,6 @@ def main(
     }
 
 
-def _parse_zoom(raw: str | int) -> int:
-    """Parse and validate a zoom level in the range 0-14.
-
-    Parameters
-    ----------
-    raw : str or int
-        Zoom level from the Windmill form (string) or tests (int).
-
-    Returns
-    -------
-    int
-        Zoom level between 0 and 14 inclusive.
-
-    Raises
-    ------
-    ValueError
-        If the value is not an integer in 0-14.
-    """
-    try:
-        zoom = int(raw)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"zoom must be an integer 0-14, got {raw!r}") from e
-    if not 0 <= zoom <= 14:
-        raise ValueError(f"zoom must be between 0 and 14, got {zoom}")
-    return zoom
-
-
 def _parse_bbox(raw: str) -> tuple[float, float, float, float]:
     """Parse a ``minlon,minlat,maxlon,maxlat`` string into four floats.
 
@@ -202,9 +175,7 @@ def _parse_bbox(raw: str) -> tuple[float, float, float, float]:
     try:
         parts = [float(p) for p in raw.split(",")]
     except ValueError as e:
-        raise ValueError(
-            f"expected four comma-separated numbers, got {raw!r}"
-        ) from e
+        raise ValueError(f"expected four comma-separated numbers, got {raw!r}") from e
     if len(parts) != 4:
         raise ValueError(
             f"expected 4 values (minlon,minlat,maxlon,maxlat), got {len(parts)}: {raw!r}"
