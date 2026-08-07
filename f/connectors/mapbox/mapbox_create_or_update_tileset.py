@@ -25,7 +25,7 @@ def main(
     tileset_id: str,
     file_location: str,
     attachment_root: str = "/persistent-storage/datalake",
-    max_zoom: int = 11,
+    max_zoom: str = "11",
 ) -> dict:
     """
     Create or update a Mapbox tileset from a GeoJSON file.
@@ -41,6 +41,7 @@ def main(
 
     _assert_secret_access_token(access_token)
     validate_identifier(tileset_id, type="mapbox_tileset_id")
+    max_zoom = int(max_zoom)
 
     source_path = Path(attachment_root) / file_location
     if not source_path.is_file():
