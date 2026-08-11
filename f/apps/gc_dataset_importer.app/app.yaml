@@ -691,7 +691,7 @@ value:
               value: true
             style:
               type: static
-              value: Label
+              value: Caption
             tooltip:
               type: static
               value: ''
