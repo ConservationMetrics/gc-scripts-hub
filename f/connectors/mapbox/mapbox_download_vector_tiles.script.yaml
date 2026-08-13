@@ -1,0 +1,96 @@
+summary: "Mapbox: Download Vector Tiles"
+description: >-
+  Download Mapbox vector tiles for a bounding box into a local cache, then
+  convert them into a single GeoJSON FeatureCollection. Tiles already present in
+  the cache are skipped. Use dry_run to inspect the tile count before spending
+  Mapbox API quota. Optionally reconstruct features that were clipped across
+  tile boundaries.
+lock: "!inline f/connectors/mapbox/mapbox_download_vector_tiles.script.lock"
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  order:
+    - mapbox
+    - bbox
+    - tileset
+    - zoom
+    - reconstruct_column
+    - output_filename
+    - attachment_root
+    - delete_tiles
+    - dry_run
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        Base directory for the tile cache and GeoJSON output. The tile cache is
+        stored under `{attachment_root}/{output_filename}/tiles/`, and the
+        GeoJSON is written to `{attachment_root}/{output_filename}.geojson`.
+      default: /persistent-storage/datalake/mapbox
+      originalType: string
+    bbox:
+      type: string
+      description: >-
+        Bounding box in WGS84 degrees as `minlon,minlat,maxlon,maxlat`, e.g.
+        `-77.8,-1.8,-76.0,-0.8`.
+      default: null
+      originalType: string
+    delete_tiles:
+      type: boolean
+      description: >-
+        If true, delete the tile cache after a successful GeoJSON write so only
+        the GeoJSON file remains on the datalake. Set to false to keep tiles for
+        faster re-runs (cached tiles are skipped on download).
+      default: true
+      originalType: boolean
+    dry_run:
+      type: boolean
+      description: >-
+        If true, return the tile download plan (counts and grid size) without
+        making any network requests or writing GeoJSON. Use this to check quota
+        cost before running a real download.
+      default: false
+      originalType: boolean
+    mapbox:
+      type: object
+      description: >-
+        A Mapbox credentials resource. Only the access token is used; a public
+        (`pk.`) or secret (`sk.`) token with Vector Tiles access works.
+      default: null
+      format: resource-mapbox
+    output_filename:
+      type: string
+      description: >-
+        Base name (without extension) for the output GeoJSON file and the tile
+        cache directory under `attachment_root`.
+      default: my_filename
+      originalType: string
+    reconstruct_column:
+      type: string
+      description: >-
+        Optional feature property used to reconstruct features that were
+        clipped across tile boundaries (by merging fragments that share this
+        property). Leave empty to disable reconstruction.
+      default: ""
+      originalType: string
+    tileset:
+      type: string
+      description: >-
+        Mapbox tileset id to download (e.g. `mapbox.mapbox-streets-v8`).
+      default: null
+      originalType: string
+    zoom:
+      type: string
+      description: >-
+        Zoom level of the tile grid to download (0-14). Higher zoom means more
+        detail and exponentially more tiles (~4x per level). Use dry_run to
+        check the tile count before downloading.
+      default: "12"
+      originalType: string
+      pattern: "^([0-9]|1[0-4])$"
+  required:
+    - mapbox
+    - bbox
+    - tileset

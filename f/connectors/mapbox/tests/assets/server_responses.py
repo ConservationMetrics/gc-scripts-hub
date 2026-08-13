@@ -120,3 +120,17 @@ def mapbox_create_tileset_response(
             "Publish your tileset to begin processing your data into tiles."
         ),
     }
+
+
+def mapbox_vector_tile_url(
+    tileset: str,
+    z: int,
+    x: int,
+    y: int,
+    access_token: str,
+) -> str:
+    """Build a Mapbox Vector Tiles API URL for a single tile."""
+    return (
+        f"{BASE_URL}/v4/{tileset}/{z}/{x}/{y}.vector.pbf"
+        f"?access_token={access_token}"
+    )
