@@ -11,12 +11,13 @@ from sensingcluespy.src.helper_functions import make_query
 
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
-from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
+from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 _PAGE_LENGTH = 200
 
-# Core fields set on every transformed row. Observation ``attributes`` that
-# collide with these (e.g. ``fileName``, ``tags``) are skipped.
+# Feature property keys, plus geometry columns written later by
+# geojson_to_postgres. Observation ``attributes`` that collide with these
+# (e.g. ``fileName``, ``tags``) are skipped.
 _CORE_KEYS = frozenset(
     {
         "_id",
@@ -176,16 +177,8 @@ def write_observations(
     db_table_name: str,
     attachment_root: str,
 ) -> None:
-    """Save raw JSON + CSV to the datalake and write rows to PostgreSQL."""
+    """Save raw JSON + GeoJSON to the datalake and write features to PostgreSQL."""
     save_path = Path(attachment_root) / db_table_name
-
-    if not observations:
-        logger.warning(
-            "No observations returned; skipping database write for table: [%s]",
-            db_table_name,
-        )
-        return
-
     save_data_to_file(
         observations,
         f"{db_table_name}_observations",
@@ -193,25 +186,36 @@ def write_observations(
         file_type="json",
     )
 
-    transformed = transform_observations(observations)
-    save_data_to_file(transformed, db_table_name, save_path, file_type="csv")
-    save_csv_to_postgres(
-        db,
-        db_table_name,
-        str(Path(db_table_name) / f"{db_table_name}.csv"),
-        attachment_root,
-        delete_csv_file=False,
-        id_column="_id",
-        use_mapping_table=True,
-    )
-    logger.info(
-        "SensingClues observations written to database table: [%s]",
-        db_table_name,
-    )
+    geojson = transform_observations_to_geojson(observations)
+
+    if geojson["features"]:
+        save_data_to_file(geojson, db_table_name, save_path, file_type="geojson")
+        save_geojson_to_postgres(
+            db,
+            db_table_name,
+            str(Path(db_table_name) / f"{db_table_name}.geojson"),
+            attachment_root,
+            delete_geojson_file=False,
+        )
+        logger.info(
+            "SensingClues observations written to database table: [%s]",
+            db_table_name,
+        )
+    else:
+        logger.warning(
+            "No observations returned; skipping database write for table: [%s]",
+            db_table_name,
+        )
 
 
-def transform_observations(results: list[dict]) -> list[dict]:
-    """Flatten raw Focus search results to one row per observation.
+def transform_observations_to_geojson(results: list[dict]) -> dict:
+    """Convert raw Focus search results into a GeoJSON FeatureCollection.
+
+    Feature ``properties`` flatten headers, observation fields, and form
+    ``attributes``. Ontology concepts collapse into ``conceptLabels`` /
+    ``conceptIds``. Geometry comes from ``Observation.where``. Nested API
+    payloads are omitted here; complete records are still written to the
+    datalake as ``{db_table_name}_observations.json``.
 
     Parameters
     ----------
@@ -220,10 +224,10 @@ def transform_observations(results: list[dict]) -> list[dict]:
 
     Returns
     -------
-    list of dict
-        Rows ready for ``save_data_to_file`` / ``StructuredDBWriter``.
+    dict
+        A GeoJSON FeatureCollection with flattened properties.
     """
-    rows = []
+    features = []
     for result in results:
         content = (result.get("extracted") or {}).get("content") or []
         headers = _content_block(content, "headers")
@@ -231,8 +235,7 @@ def transform_observations(results: list[dict]) -> list[dict]:
         agent = observation.get("agent") or {}
         concepts = observation.get("concepts") or []
 
-        row = {
-            "_id": headers.get("entityId") or result.get("id"),
+        properties = {
             "entityType": headers.get("entityType"),
             "entityClass": headers.get("entityClass"),
             "projectId": headers.get("projectId"),
@@ -252,24 +255,31 @@ def transform_observations(results: list[dict]) -> list[dict]:
             "dataset_name": headers.get("projectName"),
         }
 
+        geometry = None
         where = observation.get("where") or {}
         if where.get("type") and where.get("coordinates") is not None:
-            row["g__type"] = where["type"]
-            row["g__coordinates"] = where["coordinates"]
+            geometry = {"type": where["type"], "coordinates": where["coordinates"]}
 
         for attr in observation.get("attributes") or []:
             key = attr.get("key")
             if not key:
                 continue
-            if key in row or key in _CORE_KEYS:
+            if key in properties or key in _CORE_KEYS:
                 logger.debug("Skipping attribute %r; core field wins", key)
                 continue
-            row[key] = attr.get("value")
+            properties[key] = attr.get("value")
 
-        rows.append(row)
+        features.append(
+            {
+                "type": "Feature",
+                "id": headers.get("entityId") or result.get("id"),
+                "geometry": geometry,
+                "properties": properties,
+            }
+        )
 
-    logger.info("Transformed %s observation(s).", len(rows))
-    return rows
+    logger.info("Formatted %s observation(s) as GeoJSON features.", len(features))
+    return {"type": "FeatureCollection", "features": features}
 
 
 def _content_block(content: list, key: str) -> dict:

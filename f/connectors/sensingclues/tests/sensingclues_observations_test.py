@@ -6,7 +6,7 @@ from sensingcluespy.src.exceptions import SCPermissionDenied
 
 from f.connectors.sensingclues.sensingclues_observations import (
     main,
-    transform_observations,
+    transform_observations_to_geojson,
 )
 from f.connectors.sensingclues.tests.assets.server_responses import (
     AFRICA_ACTION_TAKEN,
@@ -49,8 +49,19 @@ def test_e2e(sensingclues_server, pg_database, tmp_path):
     assert len(raw) == 2
     assert raw[0]["id"] == PRIMARY_ENTITY_ID
 
-    csv_path = asset_storage / table_name / f"{table_name}.csv"
-    assert csv_path.exists()
+    geojson_path = asset_storage / table_name / f"{table_name}.geojson"
+    assert geojson_path.exists()
+    with open(geojson_path) as f:
+        geojson_data = json.load(f)
+        assert geojson_data["type"] == "FeatureCollection"
+        assert len(geojson_data["features"]) == 2
+        primary = next(
+            f for f in geojson_data["features"] if f["id"] == PRIMARY_ENTITY_ID
+        )
+        assert primary["geometry"] == {
+            "type": "Point",
+            "coordinates": PRIMARY_COORDINATES,
+        }
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
@@ -98,7 +109,7 @@ def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
 
     _run(sensingclues_server_empty, pg_database, table_name, asset_storage)
 
-    assert not (asset_storage / table_name / f"{table_name}.csv").exists()
+    assert not (asset_storage / table_name / f"{table_name}.geojson").exists()
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
@@ -129,30 +140,34 @@ def test_invalid_credentials(sensingclues_server_unauthorized, pg_database, tmp_
 
 def test_transform_collapses_concepts_and_flattens_attributes():
     raw = observations_page([CLUEY_GROUP])["results"]
-    rows = transform_observations(raw)
-    primary = next(row for row in rows if row["_id"] == PRIMARY_ENTITY_ID)
+    features = transform_observations_to_geojson(raw)["features"]
+    primary = next(f for f in features if f["id"] == PRIMARY_ENTITY_ID)
+    props = primary["properties"]
 
-    assert primary["conceptLabels"] == PRIMARY_CONCEPT_LABELS
-    assert len(primary["conceptIds"]) == len(PRIMARY_CONCEPT_LABELS)
-    assert primary["beneficiariesTotal"] == PRIMARY_BENEFICIARIES_TOTAL
-    assert primary["g__type"] == "Point"
-    assert primary["g__coordinates"] == PRIMARY_COORDINATES
-    assert primary["data_source"] == "SensingClues"
-    assert primary["dataset_name"] == PRIMARY_PROJECT_NAME
+    assert props["conceptLabels"] == PRIMARY_CONCEPT_LABELS
+    assert len(props["conceptIds"]) == len(PRIMARY_CONCEPT_LABELS)
+    assert props["beneficiariesTotal"] == PRIMARY_BENEFICIARIES_TOTAL
+    assert primary["geometry"] == {
+        "type": "Point",
+        "coordinates": PRIMARY_COORDINATES,
+    }
+    assert props["data_source"] == "SensingClues"
+    assert props["dataset_name"] == PRIMARY_PROJECT_NAME
 
 
 def test_transform_core_fields_win_on_attribute_collision():
     raw = observations_page([AFRICA_GROUP])["results"]
-    rows = transform_observations(raw)
-    primary = next(row for row in rows if row["_id"] == AFRICA_PRIMARY_ENTITY_ID)
+    features = transform_observations_to_geojson(raw)["features"]
+    primary = next(f for f in features if f["id"] == AFRICA_PRIMARY_ENTITY_ID)
+    props = primary["properties"]
 
-    assert primary["fileName"] == AFRICA_FILENAME
-    assert primary["ActionTaken"] == AFRICA_ACTION_TAKEN
-    assert "attributes" not in primary
+    assert props["fileName"] == AFRICA_FILENAME
+    assert props["ActionTaken"] == AFRICA_ACTION_TAKEN
+    assert "attributes" not in props
 
 
 def test_transform_missing_where_omits_geometry():
-    rows = transform_observations(
+    result = transform_observations_to_geojson(
         [
             {
                 "id": "O-no-geo",
@@ -183,5 +198,7 @@ def test_transform_missing_where_omits_geometry():
             }
         ]
     )
-    assert "g__type" not in rows[0]
-    assert "g__coordinates" not in rows[0]
+    feature = result["features"][0]
+    assert feature["geometry"] is None
+    assert "g__type" not in feature["properties"]
+    assert "g__coordinates" not in feature["properties"]

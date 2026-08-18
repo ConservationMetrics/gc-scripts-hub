@@ -4,9 +4,9 @@
 
 ## `sensingclues_observations.py`
 
-Fetches observations for one Focus group via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and CSV to the datalake and writes rows to PostgreSQL.
+Fetches observations for one Focus group via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and GeoJSON to the datalake and writes features to PostgreSQL.
 
-Each observation becomes one row. Ontology concepts collapse into `conceptLabels` / `conceptIds` lists. Form fields in `attributes` flatten into columns (core fields such as `fileName` and `tags` win on collision). Geometry comes from `Observation.where`.
+Each observation becomes one GeoJSON Feature. Ontology concepts collapse into `conceptLabels` / `conceptIds` lists. Form fields in `attributes` flatten into properties (core fields such as `fileName` and `tags` win on collision). Geometry comes from `Observation.where`.
 
 ### Credentials
 

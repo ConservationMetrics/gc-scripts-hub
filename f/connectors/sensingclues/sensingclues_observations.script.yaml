@@ -1,7 +1,7 @@
 summary: 'Sensing Clues: Fetch Observations'
 description: >-
   Uses the SensingClues Focus API (via sensingcluespy) to download observations
-  for one group, saving raw JSON and CSV to the datalake and PostgreSQL.
+  for one group, saving raw JSON and GeoJSON to the datalake and PostgreSQL.
 lock: '!inline f/connectors/sensingclues/sensingclues_observations.script.lock'
 concurrency_time_window_s: 0
 kind: script
