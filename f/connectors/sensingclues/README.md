@@ -4,7 +4,7 @@
 
 ## `sensingclues_observations.py`
 
-Fetches observations for one or more Focus groups via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and CSV to the datalake and writes rows to PostgreSQL.
+Fetches observations for one Focus group via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and CSV to the datalake and writes rows to PostgreSQL.
 
 Each observation becomes one row. Ontology concepts collapse into `conceptLabels` / `conceptIds` lists. Form fields in `attributes` flatten into columns (core fields such as `fileName` and `tags` win on collision). Geometry comes from `Observation.where`.
 
@@ -14,7 +14,7 @@ Create a personal account with the Cluey Data Collector app (Android; see [the S
 
 ### Finding group names
 
-Group names look like `focus-project-<id>`. The script checks requested names against the groups the account can see (`search/all/facets`) and raises if any are missing, listing the available names.
+Group names look like `focus-project-<id>`. The script checks the requested name against the groups the account can see (`search/all/facets`) and raises if it is missing, listing the available names. One group per run; schedule the script again for another group.
 
 ## Future work
 

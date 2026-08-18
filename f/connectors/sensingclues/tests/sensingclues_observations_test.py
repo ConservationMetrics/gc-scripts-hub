@@ -14,7 +14,6 @@ from f.connectors.sensingclues.tests.assets.server_responses import (
     AFRICA_FILENAME,
     AFRICA_GROUP,
     AFRICA_PRIMARY_ENTITY_ID,
-    AFRICA_PROJECT_NAME,
     CLUEY_GROUP,
     PRIMARY_AGENT_NAME,
     PRIMARY_BENEFICIARIES_TOTAL,
@@ -26,11 +25,11 @@ from f.connectors.sensingclues.tests.assets.server_responses import (
 )
 
 
-def _run(server, db, table_name, attachment_root, groups=None):
+def _run(server, db, table_name, attachment_root, group=None):
     main(
         server.username,
         server.password,
-        groups if groups is not None else server.groups,
+        group if group is not None else server.group,
         db,
         table_name,
         attachment_root=attachment_root,
@@ -93,32 +92,6 @@ def test_pagination(sensingclues_server_paginated, pg_database, tmp_path):
             assert ids == set(AFRICA_ENTITY_IDS)
 
 
-def test_multiple_groups(sensingclues_server_both_groups, pg_database, tmp_path):
-    asset_storage = tmp_path / "datalake"
-    table_name = "sc_both"
-
-    _run(
-        sensingclues_server_both_groups, pg_database, table_name, asset_storage
-    )
-
-    with psycopg.connect(autocommit=True, **pg_database) as conn:
-        with conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 5
-
-            cur.execute(
-                f"SELECT dataset_name FROM {table_name} WHERE _id = %s",
-                (PRIMARY_ENTITY_ID,),
-            )
-            assert cur.fetchone()[0] == PRIMARY_PROJECT_NAME
-
-            cur.execute(
-                f"SELECT dataset_name FROM {table_name} WHERE _id = %s",
-                (AFRICA_PRIMARY_ENTITY_ID,),
-            )
-            assert cur.fetchone()[0] == AFRICA_PROJECT_NAME
-
-
 def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "sc_empty"
@@ -140,7 +113,7 @@ def test_invalid_group(sensingclues_server_groups_only, pg_database, tmp_path):
             pg_database,
             "sc_bad_group",
             tmp_path / "datalake",
-            groups=["focus-project-does-not-exist"],
+            group="focus-project-does-not-exist",
         )
 
 

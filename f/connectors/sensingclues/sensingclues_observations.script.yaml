@@ -1,8 +1,7 @@
 summary: 'Sensing Clues: Fetch Observations'
 description: >-
   Uses the SensingClues Focus API (via sensingcluespy) to download observations
-  for one or more groups, saving raw JSON and CSV to the datalake and
-  PostgreSQL.
+  for one group, saving raw JSON and CSV to the datalake and PostgreSQL.
 lock: '!inline f/connectors/sensingclues/sensingclues_observations.script.lock'
 concurrency_time_window_s: 0
 kind: script
@@ -12,7 +11,7 @@ schema:
   order:
     - username
     - password
-    - groups
+    - group
     - date_from
     - date_until
     - db
@@ -49,16 +48,13 @@ schema:
       default: null
       originalType: string
       pattern: '^.{1,54}$'
-    groups:
-      type: array
+    group:
+      type: string
       description: >-
-        Sensing Clues group names to fetch, e.g. `focus-project-1234`. See the
+        Sensing Clues group name to fetch, e.g. `focus-project-1234`. See the
         connector README for how to list groups available to the account.
       default: null
-      items:
-        type: string
-        enum: null
-      originalType: 'string[]'
+      originalType: string
     password:
       type: string
       description: Sensing Clues Focus password.
@@ -72,6 +68,6 @@ schema:
   required:
     - username
     - password
-    - groups
+    - group
     - db
     - db_table_name

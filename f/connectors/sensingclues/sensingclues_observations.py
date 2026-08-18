@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 def main(
     username: str,
     password: str,
-    groups: list,
+    group: str,
     db: postgresql,
     db_table_name: str,
     date_from: str | None = None,
@@ -65,8 +65,8 @@ def main(
         SensingClues Focus username.
     password : str
         SensingClues Focus password.
-    groups : list
-        Group names to query, e.g. ``["focus-project-1234"]``.
+    group : str
+        Group name to query, e.g. ``focus-project-1234``.
     db : postgresql
         Database connection configuration.
     db_table_name : str
@@ -78,14 +78,11 @@ def main(
     attachment_root : str
         Root directory for persisted files.
     """
-    if isinstance(groups, str):
-        groups = [groups]
-
     client = SensingClues(username, password)
-    _validate_groups(client, groups)
+    _validate_group(client, group)
 
     observations = download_observations(
-        client, groups, date_from=date_from, date_until=date_until
+        client, group, date_from=date_from, date_until=date_until
     )
     write_observations(observations, db, db_table_name, attachment_root)
 
@@ -105,19 +102,16 @@ def _list_group_names(client: SensingClues) -> list[str]:
     return [entry["name"] for entry in values if entry.get("name")]
 
 
-def _validate_groups(client: SensingClues, groups: list[str]) -> None:
-    """Raise if any requested group is not in the account's available groups."""
+def _validate_group(client: SensingClues, group: str) -> None:
+    """Raise if the requested group is not in the account's available groups."""
     names = set(_list_group_names(client))
-    missing = [group for group in groups if group not in names]
-    if missing:
-        raise ValueError(
-            f"Unknown group(s): {missing}. Available: {sorted(names)}"
-        )
+    if group not in names:
+        raise ValueError(f"Unknown group: {group}. Available: {sorted(names)}")
 
 
 def download_observations(
     client: SensingClues,
-    groups: list[str],
+    group: str,
     date_from: str | None = None,
     date_until: str | None = None,
 ) -> list[dict]:
@@ -141,7 +135,7 @@ def download_observations(
 
     while True:
         query = make_query(
-            groups=groups,
+            groups=[group],
             data_type=["observation"],
             page_nbr=page,
             page_length=_PAGE_LENGTH,
@@ -151,7 +145,7 @@ def download_observations(
         batch = payload.get("results") or []
         if total is None:
             total = int(payload.get("total") or 0)
-            logger.info("Scope %s contains %s observations.", groups, total)
+            logger.info("Group %s contains %s observations.", group, total)
 
         if not batch:
             break
@@ -159,7 +153,7 @@ def download_observations(
         observations.extend(batch)
         logger.info(
             "[%s] Fetched %s of %s observations",
-            ", ".join(groups),
+            group,
             len(observations),
             total,
         )
@@ -170,7 +164,7 @@ def download_observations(
 
     logger.info(
         "[%s] Downloaded %s total observations.",
-        ", ".join(groups),
+        group,
         len(observations),
     )
     return observations

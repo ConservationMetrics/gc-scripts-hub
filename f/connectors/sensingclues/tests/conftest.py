@@ -56,7 +56,7 @@ def _register_results(rsps, callback=_results_callback):
 class SensingCluesServer:
     username: str
     password: str
-    groups: list[str]
+    group: str
 
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def sensingclues_server(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        groups=[server_responses.CLUEY_GROUP],
+        group=server_responses.CLUEY_GROUP,
     )
 
 
@@ -91,20 +91,7 @@ def sensingclues_server_paginated(mocked_responses, monkeypatch):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        groups=[server_responses.AFRICA_GROUP],
-    )
-
-
-@pytest.fixture
-def sensingclues_server_both_groups(mocked_responses):
-    """Mock Focus returning both demo groups in one query."""
-    _register_login(mocked_responses)
-    _register_facets(mocked_responses)
-    _register_results(mocked_responses)
-    return SensingCluesServer(
-        username=_USERNAME,
-        password=_PASSWORD,
-        groups=[server_responses.CLUEY_GROUP, server_responses.AFRICA_GROUP],
+        group=server_responses.AFRICA_GROUP,
     )
 
 
@@ -126,7 +113,7 @@ def sensingclues_server_empty(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        groups=[server_responses.CLUEY_GROUP],
+        group=server_responses.CLUEY_GROUP,
     )
 
 
@@ -138,7 +125,7 @@ def sensingclues_server_groups_only(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        groups=[server_responses.CLUEY_GROUP],
+        group=server_responses.CLUEY_GROUP,
     )
 
 
@@ -149,7 +136,7 @@ def sensingclues_server_unauthorized(mocked_responses):
     return SensingCluesServer(
         username="bad",
         password="wrong",
-        groups=[server_responses.CLUEY_GROUP],
+        group=server_responses.CLUEY_GROUP,
     )
 
 
