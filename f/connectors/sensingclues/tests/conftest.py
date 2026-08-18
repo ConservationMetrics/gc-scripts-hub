@@ -56,7 +56,7 @@ def _register_results(rsps, callback=_results_callback):
 class SensingCluesServer:
     username: str
     password: str
-    group: str
+    group_identifier: str
 
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def sensingclues_server(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        group=server_responses.CLUEY_GROUP,
+        group_identifier=server_responses.CLUEY_IDENTIFIER,
     )
 
 
@@ -91,7 +91,7 @@ def sensingclues_server_paginated(mocked_responses, monkeypatch):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        group=server_responses.AFRICA_GROUP,
+        group_identifier=server_responses.AFRICA_IDENTIFIER,
     )
 
 
@@ -113,7 +113,7 @@ def sensingclues_server_empty(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        group=server_responses.CLUEY_GROUP,
+        group_identifier=server_responses.CLUEY_IDENTIFIER,
     )
 
 
@@ -125,7 +125,7 @@ def sensingclues_server_groups_only(mocked_responses):
     return SensingCluesServer(
         username=_USERNAME,
         password=_PASSWORD,
-        group=server_responses.CLUEY_GROUP,
+        group_identifier=server_responses.CLUEY_IDENTIFIER,
     )
 
 
@@ -136,7 +136,7 @@ def sensingclues_server_unauthorized(mocked_responses):
     return SensingCluesServer(
         username="bad",
         password="wrong",
-        group=server_responses.CLUEY_GROUP,
+        group_identifier=server_responses.CLUEY_IDENTIFIER,
     )
 
 

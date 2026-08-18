@@ -25,11 +25,11 @@ from f.connectors.sensingclues.tests.assets.server_responses import (
 )
 
 
-def _run(server, db, table_name, attachment_root, group=None):
+def _run(server, db, table_name, attachment_root, group_identifier=None):
     main(
         server.username,
         server.password,
-        group if group is not None else server.group,
+        group_identifier if group_identifier is not None else server.group_identifier,
         db,
         table_name,
         attachment_root=attachment_root,
@@ -118,13 +118,25 @@ def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
 
 
 def test_invalid_group(sensingclues_server_groups_only, pg_database, tmp_path):
-    with pytest.raises(ValueError, match="focus-project-does-not-exist"):
+    with pytest.raises(ValueError, match="999999"):
         _run(
             sensingclues_server_groups_only,
             pg_database,
             "sc_bad_group",
             tmp_path / "datalake",
-            group="focus-project-does-not-exist",
+            group_identifier="999999",
+        )
+
+
+def test_non_numeric_identifier(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="numeric"):
+        main(
+            "demo",
+            "demo",
+            "GFW",
+            pg_database,
+            "sc_bad_ident",
+            attachment_root=tmp_path / "datalake",
         )
 
 

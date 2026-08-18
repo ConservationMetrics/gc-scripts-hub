@@ -1,17 +1,17 @@
-summary: 'Sensing Clues: Fetch Observations'
+summary: "Sensing Clues: Fetch Observations"
 description: >-
   Uses the SensingClues Focus API (via sensingcluespy) to download observations
   for one group, saving raw JSON and GeoJSON to the datalake and PostgreSQL.
-lock: '!inline f/connectors/sensingclues/sensingclues_observations.script.lock'
+lock: "!inline f/connectors/sensingclues/sensingclues_observations.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
     - username
     - password
-    - group
+    - group_identifier
     - date_from
     - date_until
     - db
@@ -34,7 +34,7 @@ schema:
       originalType: string
     date_until:
       type: string
-      description: 'Optional inclusive end date to filter observations, as YYYY-MM-DD (UTC).'
+      description: "Optional inclusive end date to filter observations, as YYYY-MM-DD (UTC)."
       default: null
       originalType: string
     db:
@@ -47,14 +47,14 @@ schema:
       description: The name of the database table where observations will be stored.
       default: null
       originalType: string
-      pattern: '^.{1,54}$'
-    group:
+      pattern: "^.{1,54}$"
+    group_identifier:
       type: string
       description: >-
-        Sensing Clues group name to fetch, e.g. `focus-project-1234`. See the
-        connector README for how to list groups available to the account.
+        Numeric Sensing Clues group identifier, e.g. `1234`. See the connector README for how to find it.
       default: null
       originalType: string
+      pattern: "^[0-9]+$"
     password:
       type: string
       description: Sensing Clues Focus password.
@@ -68,6 +68,6 @@ schema:
   required:
     - username
     - password
-    - group
+    - group_identifier
     - db
     - db_table_name

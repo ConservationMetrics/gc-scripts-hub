@@ -15,6 +15,8 @@ from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 _PAGE_LENGTH = 200
+# Focus API group names are always this prefix plus the Cluey/Central identifier.
+_GROUP_PREFIX = "focus-project-"
 
 # Feature property keys, plus geometry columns written later by
 # geojson_to_postgres. Observation ``attributes`` that collide with these
@@ -52,7 +54,7 @@ logger = logging.getLogger(__name__)
 def main(
     username: str,
     password: str,
-    group: str,
+    group_identifier: str,
     db: postgresql,
     db_table_name: str,
     date_from: str | None = None,
@@ -67,8 +69,10 @@ def main(
         SensingClues Focus username.
     password : str
         SensingClues Focus password.
-    group : str
-        Group name to query, e.g. ``focus-project-1234``.
+    group_identifier : str
+        Numeric group identifier as shown in Cluey and Sensing Clues
+        Central, e.g. ``1234``. The Focus API name
+        ``focus-project-<group_identifier>`` is constructed internally.
     db : postgresql
         Database connection configuration.
     db_table_name : str
@@ -80,6 +84,12 @@ def main(
     attachment_root : str
         Root directory for persisted files.
     """
+    if not group_identifier.isdigit():
+        raise ValueError(
+            f"Group identifier must be numeric, got {group_identifier!r}."
+        )
+
+    group = f"{_GROUP_PREFIX}{group_identifier}"
     client = SensingClues(username, password)
     _validate_group(client, group)
 
@@ -108,7 +118,15 @@ def _validate_group(client: SensingClues, group: str) -> None:
     """Raise if the requested group is not in the account's available groups."""
     names = set(_list_group_names(client))
     if group not in names:
-        raise ValueError(f"Unknown group: {group}. Available: {sorted(names)}")
+        available = sorted(
+            name.removeprefix(_GROUP_PREFIX)
+            for name in names
+            if name.removeprefix(_GROUP_PREFIX).isdigit()
+        )
+        raise ValueError(
+            f"Unknown group identifier: {group.removeprefix(_GROUP_PREFIX)}. "
+            f"Available: {available}"
+        )
 
 
 def download_observations(

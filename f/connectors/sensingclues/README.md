@@ -4,17 +4,20 @@
 
 ## `sensingclues_observations.py`
 
-Fetches observations for one Focus group via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and GeoJSON to the datalake and writes features to PostgreSQL.
+Fetches observations for one "Group" (Sensing Clues' equivalent of a project) via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and GeoJSON to the datalake and writes features to PostgreSQL.
 
 Each observation becomes one GeoJSON Feature. Ontology concepts collapse into `conceptLabels` / `conceptIds` lists. Form fields in `attributes` flatten into properties (core fields such as `fileName` and `tags` win on collision). Geometry comes from `Observation.where`.
 
 ### Credentials
 
-Create a personal account with the Cluey Data Collector app (Android; see [the Sensing Clues portal](https://sensingclues.org/portal)). Sensing Clues also publishes a read-only demo account, `demo` / `demo`, which can reach the public demo groups `focus-project-3494596` (Cluey app) and `focus-project-1234` (CSV upload).
+Create a personal account with the Cluey Data Collector app (Android; see [the Sensing Clues portal](https://sensingclues.org/portal)). Sensing Clues also publishes a read-only demo account, `demo` / `demo`, which can reach the public demo groups `3494596` (Cluey app) and `1234` (CSV upload).
 
-### Finding group names
+### Finding group identifiers
 
-Group names look like `focus-project-<id>`. The script checks the requested name against the groups the account can see (`search/all/facets`) and raises if it is missing, listing the available names. One group per run; schedule the script again for another group.
+Identifiers are numerical (e.g. `1234`) and can easily be found:
+
+- In the **Cluey** data collection app, go to the "Groups" tab and select the group. The Identifier ID is provided on the screen that opens.
+- In **Sensing Clues Central**, go to the "My Groups" tab and select the group. The Identifier ID is provided in the "Group Information" section.
 
 ## Future work
 

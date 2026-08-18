@@ -3,8 +3,8 @@
 Fixtures are captured from the public ``demo`` / ``demo`` account, then trimmed
 to the fields and records the connector actually reads:
 
-* ``focus-project-3494596`` — Demo Cluey Group (2 observations: attributes + images)
-* ``focus-project-1234`` — Demo Africa Upload (3 CSV-ingest observations, for paging)
+* identifier ``3494596`` (``focus-project-3494596``) — Demo Cluey Group (2 observations)
+* identifier ``1234`` (``focus-project-1234``) — Demo Africa Upload (3 CSV-ingest observations)
 * ``facets.json`` — ``search/all/facets`` payload used for group discovery
 """
 
@@ -13,8 +13,10 @@ from pathlib import Path
 
 _ASSETS = Path(__file__).parent
 
-CLUEY_GROUP = "focus-project-3494596"
-AFRICA_GROUP = "focus-project-1234"
+CLUEY_IDENTIFIER = "3494596"
+AFRICA_IDENTIFIER = "1234"
+CLUEY_GROUP = f"focus-project-{CLUEY_IDENTIFIER}"
+AFRICA_GROUP = f"focus-project-{AFRICA_IDENTIFIER}"
 
 # First Cluey observation: community work with flattened attributes + geometry
 PRIMARY_ENTITY_ID = "O3494596-n9e770de501315aa5"
