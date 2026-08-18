@@ -42,7 +42,7 @@ def test_e2e(sensingclues_server, pg_database, tmp_path):
     assert raw_path.exists()
     with open(raw_path) as f:
         raw = json.load(f)
-    assert len(raw) == 4
+    assert len(raw) == 2
     assert raw[0]["id"] == PRIMARY_ENTITY_ID
 
     csv_path = asset_storage / table_name / f"{table_name}.csv"
@@ -51,7 +51,7 @@ def test_e2e(sensingclues_server, pg_database, tmp_path):
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 4
+            assert cur.fetchone()[0] == 2
 
             cur.execute(
                 f'SELECT g__type, g__coordinates, data_source, dataset_name, '
@@ -85,7 +85,7 @@ def test_pagination(sensingclues_server_paginated, pg_database, tmp_path):
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 6
+            assert cur.fetchone()[0] == 3
 
             cur.execute(f"SELECT _id FROM {table_name}")
             ids = {row[0] for row in cur.fetchall()}
@@ -107,7 +107,7 @@ def test_multiple_groups(sensingclues_server_both_groups, pg_database, tmp_path)
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 10
+            assert cur.fetchone()[0] == 5
 
             cur.execute(
                 f"SELECT dataset_name FROM {table_name} WHERE _id = %s",

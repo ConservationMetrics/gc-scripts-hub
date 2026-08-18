@@ -66,7 +66,7 @@ def mocked_responses():
 
 @pytest.fixture
 def sensingclues_server(mocked_responses):
-    """Mock Focus returning Cluey-group observations (4 records, one page)."""
+    """Mock Focus returning Cluey-group observations (2 records, one page)."""
     _register_login(mocked_responses)
     _register_facets(mocked_responses)
     _register_results(mocked_responses)
@@ -78,7 +78,7 @@ def sensingclues_server(mocked_responses):
 
 @pytest.fixture
 def sensingclues_server_paginated(mocked_responses, monkeypatch):
-    """Mock Focus returning the 6-record Africa fixture in pages of 2."""
+    """Mock Focus returning the 3-record Africa fixture in pages of 2."""
     monkeypatch.setattr(
         "f.connectors.sensingclues.sensingclues_observations._PAGE_LENGTH",
         2,

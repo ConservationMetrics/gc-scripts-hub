@@ -1,72 +1,22 @@
 {
-  "total": 6,
+  "total": 3,
   "start": 1,
   "page-length": 6,
   "results": [
     {
-      "index": 1,
-      "uri": "/Observation/O1234-6832068424866241484-18.json",
-      "path": "fn:doc(\"/Observation/O1234-6832068424866241484-18.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-6832068424866241484-18.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-6832068424866241484-18.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
+      "id": "O1234-6832068424866241484-18",
       "extracted": {
-        "kind": "array",
         "content": [
           {
             "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
               "projectId": "1234",
-              "entityName": "Observation",
               "entityType": "poi",
-              "checksum": "1286429740093614918",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/point-of-interest/POI-2025-demo.tsv",
-              "splitId": "0-99",
-              "rowId": "18",
               "fileName": "POI-2025-demo.tsv",
               "entityId": "O1234-6832068424866241484-18",
               "projectName": "Demo Africa Upload",
-              "shortId": 194946458,
               "createdOn": "2026-01-06T11:44:04.144Z",
               "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_303",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/465",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/461",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_296",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/88",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/62",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911"
-              ],
-              "geoRegion": [
-                "-17.60102,25.12555"
-              ],
-              "geoPoints": [
-                "-17.60102,25.12555"
-              ]
+              "entityClass": "note"
             }
           },
           {
@@ -77,7 +27,13 @@
           },
           {
             "Observation": {
-              "agentRef": "sccss-ingest",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.12555,
+                  -17.60102
+                ]
+              },
               "attributes": [
                 {
                   "key": "ID",
@@ -86,14 +42,6 @@
                 {
                   "key": "Date",
                   "value": "2025-12-31"
-                },
-                {
-                  "key": "Lat",
-                  "value": "-17.60102"
-                },
-                {
-                  "key": "Long",
-                  "value": "25.12555"
                 },
                 {
                   "key": "Technical",
@@ -116,121 +64,56 @@
                   "value": "POI-2025-demo.tsv"
                 }
               ],
-              "description": "Observation poi",
-              "groupRef": "1234",
-              "name": "poi #18",
               "observationClass": "note",
-              "observationId": "O1234-6832068424866241484-18",
               "observationType": "point_of_interest",
+              "description": "Observation poi",
               "tags": [],
               "when": "2025-12-31T00:00:00+01:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  25.12555,
-                  -17.60102
-                ]
-              },
               "concepts": [
                 {
-                  "lang": "en",
+                  "label": "Visitor information panel",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_303",
-                  "label": "Visitor information panel"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Pruned",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/465",
-                  "label": "Pruned"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Point of Interest",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/461",
-                  "label": "Point of Interest"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Note",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
+                  "lang": "en"
                 }
               ],
               "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
+                "agentName": "",
+                "agentId": "sccss-ingest"
               }
             }
           }
         ]
-      },
-      "id": "O1234-6832068424866241484-18"
+      }
     },
     {
-      "index": 2,
-      "uri": "/Observation/O1234-3006453294253435466-1500.json",
-      "path": "fn:doc(\"/Observation/O1234-3006453294253435466-1500.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-3006453294253435466-1500.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-3006453294253435466-1500.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
+      "id": "O1234-3006453294253435466-1500",
       "extracted": {
-        "kind": "array",
         "content": [
           {
             "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
               "projectId": "1234",
-              "entityName": "Observation",
               "entityType": "animal",
-              "checksum": "11681843179595342144",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/animal-sightings/AS-2025-demo.tsv",
-              "splitId": "0-500",
-              "rowId": "1500",
               "fileName": "AS-2025-demo.tsv",
               "entityId": "O1234-3006453294253435466-1500",
               "projectName": "Demo Africa Upload",
-              "shortId": 408179336,
               "createdOn": "2026-01-07T19:45:38.734Z",
               "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/312",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/448",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/186",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/255",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/88",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/446",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388"
-              ],
-              "geoRegion": [
-                "-17.78332,25.35625"
-              ],
-              "geoPoints": [
-                "-17.78332,25.35625"
-              ]
+              "entityClass": "note"
             }
           },
           {
@@ -241,7 +124,13 @@
           },
           {
             "Observation": {
-              "agentRef": "sccss-ingest",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.35625,
+                  -17.78332
+                ]
+              },
               "attributes": [
                 {
                   "key": "ID",
@@ -252,22 +141,6 @@
                   "value": "2025-12-30 17:30:00"
                 },
                 {
-                  "key": "Lat",
-                  "value": "-17.78332"
-                },
-                {
-                  "key": "Long",
-                  "value": "25.35625"
-                },
-                {
-                  "key": "Animal",
-                  "value": "Hippo"
-                },
-                {
-                  "key": "Sex",
-                  "value": "Male"
-                },
-                {
                   "key": "ActionTaken",
                   "value": "Report & took records"
                 },
@@ -276,123 +149,56 @@
                   "value": "AS-2025-demo.tsv"
                 }
               ],
-              "description": "Observation animal",
-              "groupRef": "1234",
-              "name": "animal #1500",
               "observationClass": "note",
-              "observationId": "O1234-3006453294253435466-1500",
               "observationType": "animal_sighting",
+              "description": "Observation animal",
               "tags": [],
               "when": "2025-12-30T17:30:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  25.35625,
-                  -17.78332
-                ]
-              },
               "concepts": [
                 {
-                  "lang": "en",
+                  "label": "Hippo",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/312",
-                  "label": "Hippo"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Male",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/448",
-                  "label": "Male"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Animal sighting",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
-                  "label": "Animal sighting"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Note",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
+                  "lang": "en"
                 }
               ],
               "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
+                "agentName": "",
+                "agentId": "sccss-ingest"
               }
             }
           }
         ]
-      },
-      "id": "O1234-3006453294253435466-1500"
+      }
     },
     {
-      "index": 3,
-      "uri": "/Observation/O1234-3006453294253435466-1250.json",
-      "path": "fn:doc(\"/Observation/O1234-3006453294253435466-1250.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-3006453294253435466-1250.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-3006453294253435466-1250.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
+      "id": "O1234-3006453294253435466-1250",
       "extracted": {
-        "kind": "array",
         "content": [
           {
             "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
               "projectId": "1234",
-              "entityName": "Observation",
               "entityType": "animal",
-              "checksum": "17338658924331449050",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/animal-sightings/AS-2025-demo.tsv",
-              "splitId": "0-250",
-              "rowId": "1250",
               "fileName": "AS-2025-demo.tsv",
               "entityId": "O1234-3006453294253435466-1250",
               "projectName": "Demo Africa Upload",
-              "shortId": 102926586,
               "createdOn": "2026-01-07T19:45:35.757Z",
               "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/312",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/448",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/8",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/186",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/255",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/88",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/446",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/62",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388"
-              ],
-              "geoRegion": [
-                "-17.72042,25.43235"
-              ],
-              "geoPoints": [
-                "-17.72042,25.43235"
-              ]
+              "entityClass": "note"
             }
           },
           {
@@ -403,7 +209,13 @@
           },
           {
             "Observation": {
-              "agentRef": "sccss-ingest",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.43235,
+                  -17.72042
+                ]
+              },
               "attributes": [
                 {
                   "key": "ID",
@@ -414,22 +226,6 @@
                   "value": "2025-12-30 01:30:00"
                 },
                 {
-                  "key": "Lat",
-                  "value": "-17.72042"
-                },
-                {
-                  "key": "Long",
-                  "value": "25.43235"
-                },
-                {
-                  "key": "Animal",
-                  "value": "Hippo"
-                },
-                {
-                  "key": "Sex",
-                  "value": "Male"
-                },
-                {
                   "key": "ActionTaken",
                   "value": "reported & took records"
                 },
@@ -438,566 +234,46 @@
                   "value": "AS-2025-demo.tsv"
                 }
               ],
-              "description": "Observation animal",
-              "groupRef": "1234",
-              "name": "animal #1250",
               "observationClass": "note",
-              "observationId": "O1234-3006453294253435466-1250",
               "observationType": "animal_sighting",
+              "description": "Observation animal",
               "tags": [],
               "when": "2025-12-30T01:30:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  25.43235,
-                  -17.72042
-                ]
-              },
               "concepts": [
                 {
-                  "lang": "en",
+                  "label": "Hippo",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/312",
-                  "label": "Hippo"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Male",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/448",
-                  "label": "Male"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Reported",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/8",
-                  "label": "Reported"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Animal sighting",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
-                  "label": "Animal sighting"
+                  "lang": "en"
                 },
                 {
-                  "lang": "en",
+                  "label": "Note",
                   "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
+                  "lang": "en"
                 }
               ],
               "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
+                "agentName": "",
+                "agentId": "sccss-ingest"
               }
             }
           }
         ]
-      },
-      "id": "O1234-3006453294253435466-1250"
-    },
-    {
-      "index": 4,
-      "uri": "/Observation/O1234-15749946466568553384-39.json",
-      "path": "fn:doc(\"/Observation/O1234-15749946466568553384-39.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-15749946466568553384-39.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-15749946466568553384-39.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
-      "extracted": {
-        "kind": "array",
-        "content": [
-          {
-            "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
-              "projectId": "1234",
-              "entityName": "Observation",
-              "entityType": "community work",
-              "checksum": "1817740416335881979",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/community-work/CW-2025-demo.tsv",
-              "splitId": "0-99",
-              "rowId": "39",
-              "fileName": "CW-2025-demo.tsv",
-              "entityId": "O1234-15749946466568553384-39",
-              "projectName": "Demo Africa Upload",
-              "shortId": 3853395,
-              "createdOn": "2026-01-06T11:44:04.023Z",
-              "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6550",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6515",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6539",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911"
-              ],
-              "geoRegion": [
-                "-17.83432,24.80605"
-              ],
-              "geoPoints": [
-                "-17.83432,24.80605"
-              ]
-            }
-          },
-          {
-            "info": {
-              "title": "Observation",
-              "version": "0.0.1"
-            }
-          },
-          {
-            "Observation": {
-              "agentRef": "sccss-ingest",
-              "attributes": [
-                {
-                  "key": "ID",
-                  "value": "39"
-                },
-                {
-                  "key": "Date",
-                  "value": "2025-12-30"
-                },
-                {
-                  "key": "Lat",
-                  "value": "-17.83432"
-                },
-                {
-                  "key": "Long",
-                  "value": "24.80605"
-                },
-                {
-                  "key": "Beneficiaries",
-                  "value": "Midwives"
-                },
-                {
-                  "key": "Activities",
-                  "value": "NA"
-                },
-                {
-                  "key": "Subject",
-                  "value": "Health services"
-                },
-                {
-                  "key": "nBeneficiaries",
-                  "value": "100"
-                },
-                {
-                  "key": "fileName",
-                  "value": "CW-2025-demo.tsv"
-                }
-              ],
-              "description": "Observation community work",
-              "groupRef": "1234",
-              "name": "community work #39",
-              "observationClass": "note",
-              "observationId": "O1234-15749946466568553384-39",
-              "observationType": "community_work",
-              "tags": [],
-              "when": "2025-12-30T00:00:00+01:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  24.80605,
-                  -17.83432
-                ]
-              },
-              "concepts": [
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6550",
-                  "label": "Midwives"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6515",
-                  "label": "Health services"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                  "label": "Community work"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
-                }
-              ],
-              "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
-              }
-            }
-          }
-        ]
-      },
-      "id": "O1234-15749946466568553384-39"
-    },
-    {
-      "index": 5,
-      "uri": "/Observation/O1234-15749946466568553384-1130.json",
-      "path": "fn:doc(\"/Observation/O1234-15749946466568553384-1130.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-15749946466568553384-1130.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-15749946466568553384-1130.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
-      "extracted": {
-        "kind": "array",
-        "content": [
-          {
-            "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
-              "projectId": "1234",
-              "entityName": "Observation",
-              "entityType": "community work",
-              "checksum": "4717260253814923602",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/community-work/CW-2025-demo.tsv",
-              "splitId": "0-100",
-              "rowId": "1130",
-              "fileName": "CW-2025-demo.tsv",
-              "entityId": "O1234-15749946466568553384-1130",
-              "projectName": "Demo Africa Upload",
-              "shortId": 233299153,
-              "createdOn": "2026-01-06T19:45:43.473Z",
-              "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_65",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6539",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6523",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6485",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911"
-              ],
-              "geoRegion": [
-                "-18.13612,24.84655"
-              ],
-              "geoPoints": [
-                "-18.13612,24.84655"
-              ]
-            }
-          },
-          {
-            "info": {
-              "title": "Observation",
-              "version": "0.0.1"
-            }
-          },
-          {
-            "Observation": {
-              "agentRef": "sccss-ingest",
-              "attributes": [
-                {
-                  "key": "ID",
-                  "value": "1130"
-                },
-                {
-                  "key": "Date",
-                  "value": "2025-12-30"
-                },
-                {
-                  "key": "Lat",
-                  "value": "-18.13612"
-                },
-                {
-                  "key": "Long",
-                  "value": "24.84655"
-                },
-                {
-                  "key": "Beneficiaries",
-                  "value": "Village supervisors"
-                },
-                {
-                  "key": "Activities",
-                  "value": "Field visit"
-                },
-                {
-                  "key": "Subject",
-                  "value": "Sustainable agriculture"
-                },
-                {
-                  "key": "nBeneficiaries",
-                  "value": "14"
-                },
-                {
-                  "key": "fileName",
-                  "value": "CW-2025-demo.tsv"
-                }
-              ],
-              "description": "Observation community work",
-              "groupRef": "1234",
-              "name": "community work #1130",
-              "observationClass": "note",
-              "observationId": "O1234-15749946466568553384-1130",
-              "observationType": "community_work",
-              "tags": [],
-              "when": "2025-12-30T00:00:00+01:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  24.84655,
-                  -18.13612
-                ]
-              },
-              "concepts": [
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_65",
-                  "label": "Village supervisors"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
-                  "label": "Field visit"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
-                  "label": "Sustainable agriculture"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                  "label": "Community work"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
-                }
-              ],
-              "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
-              }
-            }
-          }
-        ]
-      },
-      "id": "O1234-15749946466568553384-1130"
-    },
-    {
-      "index": 6,
-      "uri": "/Observation/O1234-15749946466568553384-1100.json",
-      "path": "fn:doc(\"/Observation/O1234-15749946466568553384-1100.json\")",
-      "score": 2560,
-      "confidence": 0.07046405,
-      "fitness": 0.7609627,
-      "href": "/v1/documents?uri=%2FObservation%2FO1234-15749946466568553384-1100.json",
-      "mimetype": "application/json",
-      "format": "json",
-      "matches": [
-        {
-          "path": "fn:doc(\"/Observation/O1234-15749946466568553384-1100.json\")/envelope/headers/text(\"entityName\")",
-          "match-text": [
-            {
-              "highlight": "Observation"
-            }
-          ]
-        }
-      ],
-      "extracted": {
-        "kind": "array",
-        "content": [
-          {
-            "headers": {
-              "sources": [
-                {
-                  "name": "ingestCSVData"
-                },
-                {
-                  "name": "convertCSVToObservation"
-                }
-              ],
-              "projectId": "1234",
-              "entityName": "Observation",
-              "entityType": "community work",
-              "checksum": "1918748641623803149",
-              "originalUri": "/data/docker/nextcloud/data/__groupfolders/17/csv/community-work/CW-2025-demo.tsv",
-              "splitId": "0-100",
-              "rowId": "1100",
-              "fileName": "CW-2025-demo.tsv",
-              "entityId": "O1234-15749946466568553384-1100",
-              "projectName": "Demo Africa Upload",
-              "shortId": 96960593,
-              "createdOn": "2026-01-07T19:45:30.418Z",
-              "createdBy": "flow-operator",
-              "entityClass": "note",
-              "ancestors": [
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_65",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6539",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6523",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6485",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
-                "https://sensingclues.poolparty.biz/SCCSSOntology/1911"
-              ],
-              "geoRegion": [
-                "-18.13612,24.84655"
-              ],
-              "geoPoints": [
-                "-18.13612,24.84655"
-              ]
-            }
-          },
-          {
-            "info": {
-              "title": "Observation",
-              "version": "0.0.1"
-            }
-          },
-          {
-            "Observation": {
-              "agentRef": "sccss-ingest",
-              "attributes": [
-                {
-                  "key": "ID",
-                  "value": "1100"
-                },
-                {
-                  "key": "Date",
-                  "value": "2025-12-30"
-                },
-                {
-                  "key": "Lat",
-                  "value": "-18.13612"
-                },
-                {
-                  "key": "Long",
-                  "value": "24.84655"
-                },
-                {
-                  "key": "Beneficiaries",
-                  "value": "Village supervisors"
-                },
-                {
-                  "key": "Activities",
-                  "value": "Field visit"
-                },
-                {
-                  "key": "Subject",
-                  "value": "Sustainable agriculture"
-                },
-                {
-                  "key": "nBeneficiaries",
-                  "value": "14"
-                },
-                {
-                  "key": "fileName",
-                  "value": "CW-2025-demo.tsv"
-                }
-              ],
-              "description": "Observation community work",
-              "groupRef": "1234",
-              "name": "community work #1100",
-              "observationClass": "note",
-              "observationId": "O1234-15749946466568553384-1100",
-              "observationType": "community_work",
-              "tags": [],
-              "when": "2025-12-30T00:00:00+01:00",
-              "where": {
-                "type": "Point",
-                "coordinates": [
-                  24.84655,
-                  -18.13612
-                ]
-              },
-              "concepts": [
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_65",
-                  "label": "Village supervisors"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
-                  "label": "Field visit"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
-                  "label": "Sustainable agriculture"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
-                  "label": "Community work"
-                },
-                {
-                  "lang": "en",
-                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
-                  "label": "Note"
-                }
-              ],
-              "agent": {
-                "agentId": "sccss-ingest",
-                "agentName": ""
-              },
-              "group": {
-                "groupId": "1234",
-                "groupName": "Demo Africa Upload"
-              }
-            }
-          }
-        ]
-      },
-      "id": "O1234-15749946466568553384-1100"
+      }
     }
   ]
 }

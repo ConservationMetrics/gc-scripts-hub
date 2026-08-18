@@ -1,10 +1,11 @@
 """Mock SensingClues Focus API responses for testing.
 
-Fixtures are captured from the public ``demo`` / ``demo`` account:
+Fixtures are captured from the public ``demo`` / ``demo`` account, then trimmed
+to the fields and records the connector actually reads:
 
-* ``focus-project-3494596`` — Demo Cluey Group (Cluey-app ingest, 4 observations)
-* ``focus-project-1234`` — Demo Africa Upload (CSV ingest, first 6 observations)
-* ``facets.json`` — ``search/all/facets`` payload used by ``get_groups()``
+* ``focus-project-3494596`` — Demo Cluey Group (2 observations: attributes + images)
+* ``focus-project-1234`` — Demo Africa Upload (3 CSV-ingest observations, for paging)
+* ``facets.json`` — ``search/all/facets`` payload used for group discovery
 """
 
 import json
@@ -41,9 +42,6 @@ AFRICA_ENTITY_IDS = [
     "O1234-6832068424866241484-18",
     "O1234-3006453294253435466-1500",
     "O1234-3006453294253435466-1250",
-    "O1234-15749946466568553384-39",
-    "O1234-15749946466568553384-1130",
-    "O1234-15749946466568553384-1100",
 ]
 
 
