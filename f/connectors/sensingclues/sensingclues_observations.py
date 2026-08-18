@@ -61,33 +61,8 @@ def main(
     date_until: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
 ):
-    """Fetch SensingClues observations and write them to the datalake and PostgreSQL.
-
-    Parameters
-    ----------
-    username : str
-        SensingClues Focus username.
-    password : str
-        SensingClues Focus password.
-    group_identifier : str
-        Numeric group identifier as shown in Cluey and Sensing Clues
-        Central, e.g. ``1234``. The Focus API name
-        ``focus-project-<group_identifier>`` is constructed internally.
-    db : postgresql
-        Database connection configuration.
-    db_table_name : str
-        Database table name and datalake subdirectory.
-    date_from : str, optional
-        Inclusive start date (``YYYY-MM-DD``).
-    date_until : str, optional
-        Inclusive end date (``YYYY-MM-DD``).
-    attachment_root : str
-        Root directory for persisted files.
-    """
     if not group_identifier.isdigit():
-        raise ValueError(
-            f"Group identifier must be numeric, got {group_identifier!r}."
-        )
+        raise ValueError(f"Group identifier must be numeric, got {group_identifier!r}.")
 
     group = f"{_GROUP_PREFIX}{group_identifier}"
     client = SensingClues(username, password)
@@ -108,9 +83,7 @@ def _list_group_names(client: SensingClues) -> list[str]:
     """
     query = make_query(data_type=["observation", "track"])
     payload = client._api_call("post", "search/all/facets", query).json()
-    values = (
-        payload.get("facets", {}).get("dataSources", {}).get("facetValues") or []
-    )
+    values = payload.get("facets", {}).get("dataSources", {}).get("facetValues") or []
     return [entry["name"] for entry in values if entry.get("name")]
 
 

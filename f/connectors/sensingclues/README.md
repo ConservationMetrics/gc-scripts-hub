@@ -1,6 +1,6 @@
 # Sensing Clues
 
-[**Sensing Clues**](https://sensingclues.org/) is a wildlife-monitoring platform. Rangers and community members record observations in the [Cluey Data Collector](https://sensingclues.org/portal) app; Focus stores those records (and CSV uploads) as observations tagged with an ontology of species, activities, and other concepts.
+[**Sensing Clues**](https://sensingclues.org/) is a wildlife monitoring platform. Rangers and community members record observations in the [Cluey](https://www.sensingclues.org/data-collection) Data Collection app; these are then synchronized with Sensing Clues, which stores those records as observations tagged with an ontology of species, activities, and other concepts. Users can access these observations via the [Sensing Clues Central](https://central.sensingclues.org/) web application, where they can also upload CSVs.
 
 ## `sensingclues_observations.py`
 
@@ -10,7 +10,7 @@ Each observation becomes one GeoJSON Feature. Ontology concepts collapse into `c
 
 ### Credentials
 
-Create a personal account with the Cluey Data Collector app (Android; see [the Sensing Clues portal](https://sensingclues.org/portal)). Sensing Clues also publishes a read-only demo account, `demo` / `demo`, which can reach the public demo groups `3494596` (Cluey app) and `1234` (CSV upload).
+Create a personal account with the Cluey Data Collector app, which can then be used to login to Sensing Clues Central.
 
 ### Finding group identifiers
 
@@ -31,3 +31,4 @@ Identifiers are numerical (e.g. `1234`) and can easily be found:
 * [sensingcluespy usage](https://sensingcluespy.readthedocs.io/en/latest/source/usage.html)
 * [sensingcluespy tutorial](https://sensingcluespy.readthedocs.io/en/latest/notebooks/sensingclues_tutorial.html)
 * [Cluey API documentation](https://sensingclues.freshdesk.com/support/solutions/articles/48001248536-cluey-api-documentation)
+* For testing, Sensing Clues publishes a read-only demo account, `demo` / `demo`, which can reach the public demo groups `3494596` (Cluey app) and `1234` (CSV upload).
