@@ -2,6 +2,7 @@
 # psycopg[binary]
 # sensingcluespy~=0.2.3
 # setuptools<81
+# numpy<2.5
 
 import logging
 from pathlib import Path
