@@ -1,0 +1,22 @@
+# workspace-dependencies-mode: manual
+# py: 3.12
+certifi==2026.7.22
+charset-normalizer==3.5.1
+geojson==3.3.0
+geopandas==1.1.4
+idna==3.19
+numpy==2.5.2
+packaging==26.3
+pandas==3.0.5
+psycopg==3.3.4
+psycopg-binary==3.3.4
+pyogrio==0.13.0
+pyproj==3.7.2
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
+requests==2.34.2
+sensingcluespy==0.2.3
+shapely==2.1.2
+six==1.17.0
+typing-extensions==4.16.0
+urllib3==2.7.0
