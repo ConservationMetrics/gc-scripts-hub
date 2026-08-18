@@ -10,7 +10,8 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
-    - sensingclues
+    - username
+    - password
     - groups
     - date_from
     - date_until
@@ -58,13 +59,19 @@ schema:
         type: string
         enum: null
       originalType: 'string[]'
-    sensingclues:
-      type: object
-      description: Username and password for a Sensing Clues Focus account.
+    password:
+      type: string
+      description: Sensing Clues Focus password.
       default: null
-      format: resource-sensingclues
+      originalType: string
+    username:
+      type: string
+      description: Sensing Clues Focus username.
+      default: null
+      originalType: string
   required:
-    - sensingclues
+    - username
+    - password
     - groups
     - db
     - db_table_name

@@ -4,7 +4,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from sensingcluespy.api_calls import SensingClues
 from sensingcluespy.src.helper_functions import make_query
@@ -43,17 +43,13 @@ _CORE_KEYS = frozenset(
 )
 
 
-class sensingclues(TypedDict):
-    username: str
-    password: str
-
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main(
-    sensingclues: sensingclues,
+    username: str,
+    password: str,
     groups: list,
     db: postgresql,
     db_table_name: str,
@@ -65,8 +61,10 @@ def main(
 
     Parameters
     ----------
-    sensingclues : sensingclues
-        Username and password for SensingClues Focus.
+    username : str
+        SensingClues Focus username.
+    password : str
+        SensingClues Focus password.
     groups : list
         Group names to query, e.g. ``["focus-project-1234"]``.
     db : postgresql
@@ -83,7 +81,7 @@ def main(
     if isinstance(groups, str):
         groups = [groups]
 
-    client = SensingClues(sensingclues["username"], sensingclues["password"])
+    client = SensingClues(username, password)
     _validate_groups(client, groups)
 
     observations = download_observations(

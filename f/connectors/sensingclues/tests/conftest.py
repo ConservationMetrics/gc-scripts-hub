@@ -54,7 +54,8 @@ def _register_results(rsps, callback=_results_callback):
 
 @dataclass
 class SensingCluesServer:
-    credentials: dict
+    username: str
+    password: str
     groups: list[str]
 
 
@@ -71,7 +72,8 @@ def sensingclues_server(mocked_responses):
     _register_facets(mocked_responses)
     _register_results(mocked_responses)
     return SensingCluesServer(
-        credentials={"username": _USERNAME, "password": _PASSWORD},
+        username=_USERNAME,
+        password=_PASSWORD,
         groups=[server_responses.CLUEY_GROUP],
     )
 
@@ -87,7 +89,8 @@ def sensingclues_server_paginated(mocked_responses, monkeypatch):
     _register_facets(mocked_responses)
     _register_results(mocked_responses)
     return SensingCluesServer(
-        credentials={"username": _USERNAME, "password": _PASSWORD},
+        username=_USERNAME,
+        password=_PASSWORD,
         groups=[server_responses.AFRICA_GROUP],
     )
 
@@ -99,7 +102,8 @@ def sensingclues_server_both_groups(mocked_responses):
     _register_facets(mocked_responses)
     _register_results(mocked_responses)
     return SensingCluesServer(
-        credentials={"username": _USERNAME, "password": _PASSWORD},
+        username=_USERNAME,
+        password=_PASSWORD,
         groups=[server_responses.CLUEY_GROUP, server_responses.AFRICA_GROUP],
     )
 
@@ -120,7 +124,8 @@ def sensingclues_server_empty(mocked_responses):
         content_type="application/json",
     )
     return SensingCluesServer(
-        credentials={"username": _USERNAME, "password": _PASSWORD},
+        username=_USERNAME,
+        password=_PASSWORD,
         groups=[server_responses.CLUEY_GROUP],
     )
 
@@ -131,7 +136,8 @@ def sensingclues_server_groups_only(mocked_responses):
     _register_login(mocked_responses)
     _register_facets(mocked_responses)
     return SensingCluesServer(
-        credentials={"username": _USERNAME, "password": _PASSWORD},
+        username=_USERNAME,
+        password=_PASSWORD,
         groups=[server_responses.CLUEY_GROUP],
     )
 
@@ -141,7 +147,8 @@ def sensingclues_server_unauthorized(mocked_responses):
     """Mock Focus rejecting login with HTTP 401."""
     _register_login(mocked_responses, status=401)
     return SensingCluesServer(
-        credentials={"username": "bad", "password": "wrong"},
+        username="bad",
+        password="wrong",
         groups=[server_responses.CLUEY_GROUP],
     )
 

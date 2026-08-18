@@ -26,17 +26,22 @@ from f.connectors.sensingclues.tests.assets.server_responses import (
 )
 
 
+def _run(server, db, table_name, attachment_root, groups=None):
+    main(
+        server.username,
+        server.password,
+        groups if groups is not None else server.groups,
+        db,
+        table_name,
+        attachment_root=attachment_root,
+    )
+
+
 def test_e2e(sensingclues_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "sc_observations"
 
-    main(
-        sensingclues_server.credentials,
-        sensingclues_server.groups,
-        pg_database,
-        table_name,
-        attachment_root=asset_storage,
-    )
+    _run(sensingclues_server, pg_database, table_name, asset_storage)
 
     raw_path = asset_storage / table_name / f"{table_name}_observations.json"
     assert raw_path.exists()
@@ -74,12 +79,8 @@ def test_pagination(sensingclues_server_paginated, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "sc_paginated"
 
-    main(
-        sensingclues_server_paginated.credentials,
-        sensingclues_server_paginated.groups,
-        pg_database,
-        table_name,
-        attachment_root=asset_storage,
+    _run(
+        sensingclues_server_paginated, pg_database, table_name, asset_storage
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -96,12 +97,8 @@ def test_multiple_groups(sensingclues_server_both_groups, pg_database, tmp_path)
     asset_storage = tmp_path / "datalake"
     table_name = "sc_both"
 
-    main(
-        sensingclues_server_both_groups.credentials,
-        sensingclues_server_both_groups.groups,
-        pg_database,
-        table_name,
-        attachment_root=asset_storage,
+    _run(
+        sensingclues_server_both_groups, pg_database, table_name, asset_storage
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -126,13 +123,7 @@ def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
     table_name = "sc_empty"
 
-    main(
-        sensingclues_server_empty.credentials,
-        sensingclues_server_empty.groups,
-        pg_database,
-        table_name,
-        attachment_root=asset_storage,
-    )
+    _run(sensingclues_server_empty, pg_database, table_name, asset_storage)
 
     assert not (asset_storage / table_name / f"{table_name}.csv").exists()
 
@@ -144,23 +135,22 @@ def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
 
 def test_invalid_group(sensingclues_server_groups_only, pg_database, tmp_path):
     with pytest.raises(ValueError, match="focus-project-does-not-exist"):
-        main(
-            sensingclues_server_groups_only.credentials,
-            ["focus-project-does-not-exist"],
+        _run(
+            sensingclues_server_groups_only,
             pg_database,
             "sc_bad_group",
-            attachment_root=tmp_path / "datalake",
+            tmp_path / "datalake",
+            groups=["focus-project-does-not-exist"],
         )
 
 
 def test_invalid_credentials(sensingclues_server_unauthorized, pg_database, tmp_path):
     with pytest.raises(SCPermissionDenied):
-        main(
-            sensingclues_server_unauthorized.credentials,
-            sensingclues_server_unauthorized.groups,
+        _run(
+            sensingclues_server_unauthorized,
             pg_database,
             "sc_unauthorized",
-            attachment_root=tmp_path / "datalake",
+            tmp_path / "datalake",
         )
 
 
