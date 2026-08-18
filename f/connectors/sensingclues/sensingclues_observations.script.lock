@@ -15,6 +15,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 requests==2.34.2
 sensingcluespy==0.2.3
+setuptools==80.10.2
 shapely==2.1.2
 six==1.17.0
 typing-extensions==4.16.0

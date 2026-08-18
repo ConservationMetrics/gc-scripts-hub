@@ -1,6 +1,7 @@
 # requirements:
 # psycopg[binary]
 # sensingcluespy~=0.2.3
+# setuptools<81
 
 import logging
 from pathlib import Path
