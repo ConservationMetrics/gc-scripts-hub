@@ -1,0 +1,985 @@
+{
+  "total": 4,
+  "start": 1,
+  "page-length": 10,
+  "results": [
+    {
+      "index": 1,
+      "uri": "/Observation/O3494596-n9e770de501315aa5.json",
+      "path": "fn:doc(\"/Observation/O3494596-n9e770de501315aa5.json\")",
+      "score": 2560,
+      "confidence": 0.07046405,
+      "fitness": 0.7609627,
+      "href": "/v1/documents?uri=%2FObservation%2FO3494596-n9e770de501315aa5.json",
+      "mimetype": "application/json",
+      "format": "json",
+      "matches": [
+        {
+          "path": "fn:doc(\"/Observation/O3494596-n9e770de501315aa5.json\")/envelope/headers/text(\"entityName\")",
+          "match-text": [
+            {
+              "highlight": "Observation"
+            }
+          ]
+        }
+      ],
+      "extracted": {
+        "kind": "array",
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-n9e770de501315aa5",
+              "entityName": "Observation",
+              "entityClass": "note",
+              "entityType": "community_work",
+              "checksum": "291228057689004223",
+              "shortId": 314478433,
+              "createdOn": "2024-11-07T22:09:57.321Z",
+              "createdBy": "gjosten",
+              "sources": [
+                {
+                  "name": "convertClueyToObservation"
+                }
+              ],
+              "ancestors": [
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_27",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_17",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6523"
+              ],
+              "geoRegion": [
+                "-17.809018,25.721077"
+              ],
+              "geoPoints": [
+                "-17.809018,25.721077"
+              ]
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "observationId": "O3494596-n9e770de501315aa5",
+              "observationClass": "note",
+              "observationType": "community_work",
+              "groupRef": "3494596",
+              "agentRef": "A7131207983971604413",
+              "featureRef": null,
+              "name": "n9e770de501315aa5",
+              "description": "",
+              "when": "2024-08-30T13:44:35+0200",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7210773933098,
+                  -17.8090175647775
+                ]
+              },
+              "tags": [
+                "hw_coexistence",
+                "communities",
+                "awareness_creation"
+              ],
+              "attributes": [
+                {
+                  "key": "actions",
+                  "value": []
+                },
+                {
+                  "key": "appVersion",
+                  "value": "3.16.0, 200105"
+                },
+                {
+                  "key": "beneficiariesMen",
+                  "value": "22"
+                },
+                {
+                  "key": "beneficiariesTotal",
+                  "value": "47"
+                },
+                {
+                  "key": "beneficiariesWomen",
+                  "value": "25"
+                },
+                {
+                  "key": "formality",
+                  "value": "formal"
+                },
+                {
+                  "key": "geometry",
+                  "value": {
+                    "coordinates": [
+                      25.7210773933098,
+                      -17.8090175647775
+                    ],
+                    "type": "Point"
+                  }
+                },
+                {
+                  "key": "lang",
+                  "value": "en-NL"
+                },
+                {
+                  "key": "location",
+                  "value": {
+                    "lat": "-17.809017564777523",
+                    "lon": "25.721077393309827"
+                  }
+                },
+                {
+                  "key": "observation_type",
+                  "value": "community_work"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "hw_coexistence",
+                    "communities",
+                    "awareness_creation"
+                  ]
+                },
+                {
+                  "key": "timestamp",
+                  "value": "2024-08-30T13:44:35+0200"
+                },
+                {
+                  "key": "type",
+                  "value": "note"
+                },
+                {
+                  "key": "user",
+                  "value": "jankees"
+                },
+                {
+                  "key": "userid",
+                  "value": "7131207983971604413"
+                },
+                {
+                  "key": "id",
+                  "value": "n9e770de501315aa5"
+                },
+                {
+                  "key": "pid",
+                  "value": "3494596"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "recievedAt",
+                  "value": "2024-08-30T13:44:39.124039+02:00"
+                },
+                {
+                  "key": "projectname",
+                  "value": "Demo Cluey Group"
+                }
+              ],
+              "concepts": [
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "label": "Note"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                  "label": "Community work"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_27",
+                  "label": "HW-Coexistence"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_17",
+                  "label": "Awareness creation"
+                }
+              ],
+              "group": {
+                "groupId": "3494596",
+                "groupName": "Demo Cluey Group"
+              },
+              "agent": {
+                "agentId": "A7131207983971604413",
+                "agentName": "jankees"
+              }
+            }
+          }
+        ]
+      },
+      "id": "O3494596-n9e770de501315aa5"
+    },
+    {
+      "index": 2,
+      "uri": "/Observation/O3494596-n76d468b3bc229ee3.json",
+      "path": "fn:doc(\"/Observation/O3494596-n76d468b3bc229ee3.json\")",
+      "score": 2560,
+      "confidence": 0.07046405,
+      "fitness": 0.7609627,
+      "href": "/v1/documents?uri=%2FObservation%2FO3494596-n76d468b3bc229ee3.json",
+      "mimetype": "application/json",
+      "format": "json",
+      "matches": [
+        {
+          "path": "fn:doc(\"/Observation/O3494596-n76d468b3bc229ee3.json\")/envelope/headers/text(\"entityName\")",
+          "match-text": [
+            {
+              "highlight": "Observation"
+            }
+          ]
+        }
+      ],
+      "extracted": {
+        "kind": "array",
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-n76d468b3bc229ee3",
+              "entityName": "Observation",
+              "entityClass": "note",
+              "entityType": "community_work",
+              "checksum": "15231612950294849685",
+              "shortId": 284448090,
+              "createdOn": "2024-11-07T22:09:57.321Z",
+              "createdBy": "gjosten",
+              "sources": [
+                {
+                  "name": "convertClueyToObservation"
+                }
+              ],
+              "ancestors": [
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_28",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6485",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6523",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6539"
+              ],
+              "geoRegion": [
+                "-17.830518,25.710667"
+              ],
+              "geoPoints": [
+                "-17.830518,25.710667"
+              ]
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "observationId": "O3494596-n76d468b3bc229ee3",
+              "observationClass": "note",
+              "observationType": "community_work",
+              "groupRef": "3494596",
+              "agentRef": "A7131207983971604413",
+              "featureRef": null,
+              "name": "n76d468b3bc229ee3",
+              "description": "",
+              "when": "2024-08-30T13:43:38+0200",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7106671342676,
+                  -17.8305176392791
+                ]
+              },
+              "tags": [
+                "sustainable_agriculture",
+                "field_visit",
+                "farmers"
+              ],
+              "attributes": [
+                {
+                  "key": "actions",
+                  "value": []
+                },
+                {
+                  "key": "appVersion",
+                  "value": "3.16.0, 200105"
+                },
+                {
+                  "key": "beneficiariesMen",
+                  "value": "6"
+                },
+                {
+                  "key": "beneficiariesTotal",
+                  "value": "20"
+                },
+                {
+                  "key": "beneficiariesWomen",
+                  "value": "14"
+                },
+                {
+                  "key": "formality",
+                  "value": "formal"
+                },
+                {
+                  "key": "geometry",
+                  "value": {
+                    "coordinates": [
+                      25.7106671342676,
+                      -17.8305176392791
+                    ],
+                    "type": "Point"
+                  }
+                },
+                {
+                  "key": "lang",
+                  "value": "en-NL"
+                },
+                {
+                  "key": "location",
+                  "value": {
+                    "lat": "-17.830517639279105",
+                    "lon": "25.710667134267624"
+                  }
+                },
+                {
+                  "key": "observation_type",
+                  "value": "community_work"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "sustainable_agriculture",
+                    "field_visit",
+                    "farmers"
+                  ]
+                },
+                {
+                  "key": "timestamp",
+                  "value": "2024-08-30T13:43:38+0200"
+                },
+                {
+                  "key": "type",
+                  "value": "note"
+                },
+                {
+                  "key": "user",
+                  "value": "jankees"
+                },
+                {
+                  "key": "userid",
+                  "value": "7131207983971604413"
+                },
+                {
+                  "key": "id",
+                  "value": "n76d468b3bc229ee3"
+                },
+                {
+                  "key": "pid",
+                  "value": "3494596"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "recievedAt",
+                  "value": "2024-08-30T13:43:42.4196+02:00"
+                },
+                {
+                  "key": "projectname",
+                  "value": "Demo Cluey Group"
+                }
+              ],
+              "concepts": [
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "label": "Note"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                  "label": "Community work"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
+                  "label": "Sustainable agriculture"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6527",
+                  "label": "Field visit"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_28",
+                  "label": "Farmers"
+                }
+              ],
+              "group": {
+                "groupId": "3494596",
+                "groupName": "Demo Cluey Group"
+              },
+              "agent": {
+                "agentId": "A7131207983971604413",
+                "agentName": "jankees"
+              }
+            }
+          }
+        ]
+      },
+      "id": "O3494596-n76d468b3bc229ee3"
+    },
+    {
+      "index": 3,
+      "uri": "/Observation/O3494596-n7ad11b298cc0ae6e.json",
+      "path": "fn:doc(\"/Observation/O3494596-n7ad11b298cc0ae6e.json\")",
+      "score": 2560,
+      "confidence": 0.07046405,
+      "fitness": 0.7609627,
+      "href": "/v1/documents?uri=%2FObservation%2FO3494596-n7ad11b298cc0ae6e.json",
+      "mimetype": "application/json",
+      "format": "json",
+      "matches": [
+        {
+          "path": "fn:doc(\"/Observation/O3494596-n7ad11b298cc0ae6e.json\")/envelope/headers/text(\"entityName\")",
+          "match-text": [
+            {
+              "highlight": "Observation"
+            }
+          ]
+        }
+      ],
+      "extracted": {
+        "kind": "array",
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-n7ad11b298cc0ae6e",
+              "entityName": "Observation",
+              "entityClass": "note",
+              "entityType": "community_work",
+              "checksum": "17036550543308072233",
+              "shortId": 120136221,
+              "createdOn": "2024-11-07T22:09:57.321Z",
+              "createdBy": "gjosten",
+              "sources": [
+                {
+                  "name": "convertClueyToObservation"
+                }
+              ],
+              "ancestors": [
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/v3_28",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6554",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6485",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6478",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/6539"
+              ],
+              "geoRegion": [
+                "-17.823365,25.713689"
+              ],
+              "geoPoints": [
+                "-17.823365,25.713689"
+              ]
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "observationId": "O3494596-n7ad11b298cc0ae6e",
+              "observationClass": "note",
+              "observationType": "community_work",
+              "groupRef": "3494596",
+              "agentRef": "A7131207983971604413",
+              "featureRef": null,
+              "name": "n7ad11b298cc0ae6e",
+              "description": "",
+              "when": "2024-08-30T13:42:39+0200",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7136894675384,
+                  -17.8233645566678
+                ]
+              },
+              "tags": [
+                "sustainable_agriculture",
+                "farmers",
+                "demonstration"
+              ],
+              "attributes": [
+                {
+                  "key": "actions",
+                  "value": []
+                },
+                {
+                  "key": "actorName",
+                  "value": "Samuel "
+                },
+                {
+                  "key": "actorType",
+                  "value": "trainers"
+                },
+                {
+                  "key": "appVersion",
+                  "value": "3.16.0, 200105"
+                },
+                {
+                  "key": "beneficiariesMen",
+                  "value": "12"
+                },
+                {
+                  "key": "beneficiariesTotal",
+                  "value": "26"
+                },
+                {
+                  "key": "beneficiariesWomen",
+                  "value": "14"
+                },
+                {
+                  "key": "descriptionActivity",
+                  "value": "Demonstrate new locally produced irrigation methods"
+                },
+                {
+                  "key": "endAt",
+                  "value": "30-08-2024 15:00"
+                },
+                {
+                  "key": "formality",
+                  "value": "formal"
+                },
+                {
+                  "key": "geometry",
+                  "value": {
+                    "coordinates": [
+                      25.7136894675384,
+                      -17.8233645566678
+                    ],
+                    "type": "Point"
+                  }
+                },
+                {
+                  "key": "goal",
+                  "value": "Introduce farmers collective to new climate resilient tech"
+                },
+                {
+                  "key": "lang",
+                  "value": "en-NL"
+                },
+                {
+                  "key": "location",
+                  "value": {
+                    "lat": "-17.82336455666781",
+                    "lon": "25.713689467538355"
+                  }
+                },
+                {
+                  "key": "nameBeneficiary",
+                  "value": "Vambena farmers collective"
+                },
+                {
+                  "key": "observation_type",
+                  "value": "community_work"
+                },
+                {
+                  "key": "outcome",
+                  "value": "6 farmers signed in for follow session"
+                },
+                {
+                  "key": "partners",
+                  "value": "Agri Foundation "
+                },
+                {
+                  "key": "startAt",
+                  "value": "30-08-2024 08:00"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "sustainable_agriculture",
+                    "farmers",
+                    "demonstration"
+                  ]
+                },
+                {
+                  "key": "timestamp",
+                  "value": "2024-08-30T13:42:39+0200"
+                },
+                {
+                  "key": "type",
+                  "value": "note"
+                },
+                {
+                  "key": "user",
+                  "value": "jankees"
+                },
+                {
+                  "key": "userid",
+                  "value": "7131207983971604413"
+                },
+                {
+                  "key": "venue",
+                  "value": "demonstration garden"
+                },
+                {
+                  "key": "id",
+                  "value": "n7ad11b298cc0ae6e"
+                },
+                {
+                  "key": "pid",
+                  "value": "3494596"
+                },
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "recievedAt",
+                  "value": "2024-08-30T13:42:46.175405+02:00"
+                },
+                {
+                  "key": "projectname",
+                  "value": "Demo Cluey Group"
+                }
+              ],
+              "concepts": [
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "label": "Note"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                  "label": "Community work"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_347",
+                  "label": "Sustainable agriculture"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_28",
+                  "label": "Farmers"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6554",
+                  "label": "Trainers"
+                }
+              ],
+              "group": {
+                "groupId": "3494596",
+                "groupName": "Demo Cluey Group"
+              },
+              "agent": {
+                "agentId": "A7131207983971604413",
+                "agentName": "jankees"
+              }
+            }
+          }
+        ]
+      },
+      "id": "O3494596-n7ad11b298cc0ae6e"
+    },
+    {
+      "index": 4,
+      "uri": "/Observation/O3494596-nff20c1dac0817042.json",
+      "path": "fn:doc(\"/Observation/O3494596-nff20c1dac0817042.json\")",
+      "score": 2560,
+      "confidence": 0.07046405,
+      "fitness": 0.7609627,
+      "href": "/v1/documents?uri=%2FObservation%2FO3494596-nff20c1dac0817042.json",
+      "mimetype": "application/json",
+      "format": "json",
+      "matches": [
+        {
+          "path": "fn:doc(\"/Observation/O3494596-nff20c1dac0817042.json\")/envelope/headers/text(\"entityName\")",
+          "match-text": [
+            {
+              "highlight": "Observation"
+            }
+          ]
+        }
+      ],
+      "extracted": {
+        "kind": "array",
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-nff20c1dac0817042",
+              "entityName": "Observation",
+              "entityClass": "note",
+              "entityType": "animal",
+              "checksum": "14734152680272900083",
+              "shortId": 258032937,
+              "createdOn": "2024-11-01T19:31:18.275Z",
+              "createdBy": "flow-operator",
+              "sources": [
+                {
+                  "name": "convertClueyToObservation"
+                }
+              ],
+              "ancestors": [
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/186",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/277",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/129",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1734",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1388",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/1911",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/88",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/255",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/123",
+                "https://sensingclues.poolparty.biz/SCCSSOntology/62"
+              ],
+              "geoRegion": [
+                "-17.838461,25.721025"
+              ],
+              "geoPoints": [
+                "-17.838461,25.721025"
+              ]
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "observationId": "O3494596-nff20c1dac0817042",
+              "observationClass": "note",
+              "observationType": "animal",
+              "groupRef": "3494596",
+              "agentRef": "A7131207983971604413",
+              "featureRef": null,
+              "name": "nff20c1dac0817042",
+              "description": "",
+              "when": "2024-08-24T09:07:58+0200",
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7210246000001,
+                  -17.8384612
+                ]
+              },
+              "tags": [
+                "elephant",
+                "dropping",
+                "photographed"
+              ],
+              "attributes": [
+                {
+                  "key": "actions",
+                  "value": []
+                },
+                {
+                  "key": "ageTrace",
+                  "value": "fresh"
+                },
+                {
+                  "key": "appVersion",
+                  "value": "3.16.0, 200105"
+                },
+                {
+                  "key": "editorId",
+                  "value": "7131207983971604413"
+                },
+                {
+                  "key": "editorName",
+                  "value": "jankees"
+                },
+                {
+                  "key": "geometry",
+                  "value": {
+                    "coordinates": [
+                      25.7210246000001,
+                      -17.8384612
+                    ],
+                    "type": "Point"
+                  }
+                },
+                {
+                  "key": "id",
+                  "value": "nff20c1dac0817042"
+                },
+                {
+                  "key": "images",
+                  "value": [
+                    "b9c9-b7be-9d51"
+                  ]
+                },
+                {
+                  "key": "lang",
+                  "value": "en-NL"
+                },
+                {
+                  "key": "location",
+                  "value": {
+                    "lat": "-17.838461199999962",
+                    "lon": "25.72102460000005"
+                  }
+                },
+                {
+                  "key": "nTotal",
+                  "value": "1"
+                },
+                {
+                  "key": "observation_type",
+                  "value": "animal"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "elephant",
+                    "dropping",
+                    "photographed"
+                  ]
+                },
+                {
+                  "key": "timestamp",
+                  "value": "2024-08-24T09:07:58+0200"
+                },
+                {
+                  "key": "type",
+                  "value": "note"
+                },
+                {
+                  "key": "user",
+                  "value": "jankees"
+                },
+                {
+                  "key": "userid",
+                  "value": "7131207983971604413"
+                },
+                {
+                  "key": "lastUpdateAt",
+                  "value": "2024-08-30T08:09:28.634806+02:00"
+                },
+                {
+                  "key": "pid",
+                  "value": "3494596"
+                },
+                {
+                  "key": "projectname",
+                  "value": "Demo Cluey Group"
+                },
+                {
+                  "key": "prevVersions",
+                  "value": [
+                    {
+                      "lang": "en-NL",
+                      "actions": [],
+                      "ageTrace": "fresh",
+                      "appVersion": "3.16.0, 200105",
+                      "geometry": {
+                        "coordinates": [
+                          25.7210246,
+                          -17.8384612
+                        ],
+                        "type": "Point"
+                      },
+                      "location": {
+                        "lat": "-17.838461199999976",
+                        "lon": "25.72102460000002"
+                      },
+                      "nTotal": "1",
+                      "observation_type": "animal",
+                      "tags": [
+                        "elephant",
+                        "dropping",
+                        "photographed"
+                      ],
+                      "timestamp": "2024-08-24T09:07:58+0200",
+                      "type": "note",
+                      "user": "jankees",
+                      "userid": "jankees",
+                      "id": "nff20c1dac0817042",
+                      "pid": "3494596",
+                      "status": "inactive",
+                      "recievedAt": "2024-08-24T09:08:01.757785+02:00",
+                      "projectname": "Demo Cluey Group",
+                      "images": [
+                        "b9c9-b7be-9d51"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "concepts": [
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "label": "Note"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
+                  "label": "Animal sighting"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/277",
+                  "label": "Elephant"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/129",
+                  "label": "Dropping"
+                },
+                {
+                  "lang": "en",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1734",
+                  "label": "Photographed"
+                }
+              ],
+              "group": {
+                "groupId": "3494596",
+                "groupName": "Demo Cluey Group"
+              },
+              "agent": {
+                "agentId": "A7131207983971604413",
+                "agentName": "jankees"
+              }
+            }
+          }
+        ]
+      },
+      "id": "O3494596-nff20c1dac0817042"
+    }
+  ]
+}
