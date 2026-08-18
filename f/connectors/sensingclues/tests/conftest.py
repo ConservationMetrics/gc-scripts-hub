@@ -126,6 +126,17 @@ def sensingclues_server_empty(mocked_responses):
 
 
 @pytest.fixture
+def sensingclues_server_groups_only(mocked_responses):
+    """Mock Focus login and group discovery without an observations endpoint."""
+    _register_login(mocked_responses)
+    _register_facets(mocked_responses)
+    return SensingCluesServer(
+        credentials={"username": _USERNAME, "password": _PASSWORD},
+        groups=[server_responses.CLUEY_GROUP],
+    )
+
+
+@pytest.fixture
 def sensingclues_server_unauthorized(mocked_responses):
     """Mock Focus rejecting login with HTTP 401."""
     _register_login(mocked_responses, status=401)

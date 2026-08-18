@@ -51,9 +51,8 @@ schema:
     groups:
       type: array
       description: >-
-        Sensing Clues group names to fetch, e.g. `focus-project-1234`. List
-        groups available to the account with `get_groups()` (see the connector
-        README).
+        Sensing Clues group names to fetch, e.g. `focus-project-1234`. See the
+        connector README for how to list groups available to the account.
       default: null
       items:
         type: string

@@ -1,11 +1,10 @@
-# workspace-dependencies-mode: manual
-# py: 3.12
+# py: 3.11
 certifi==2026.7.22
 charset-normalizer==3.5.1
 geojson==3.3.0
 geopandas==1.1.4
 idna==3.19
-numpy==2.5.2
+numpy==2.4.6
 packaging==26.3
 pandas==3.0.5
 psycopg==3.3.4

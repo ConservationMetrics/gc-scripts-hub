@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from sensingcluespy.api_calls import SensingClues
-from sensingcluespy.src import make_query
+from sensingcluespy.src.helper_functions import make_query
 
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
@@ -92,10 +92,24 @@ def main(
     write_observations(observations, db, db_table_name, attachment_root)
 
 
+def _list_group_names(client: SensingClues) -> list[str]:
+    """Return group names the account can see, from ``search/all/facets``.
+
+    ``SensingClues.get_groups()`` is not used: the PyPI wheel for
+    ``sensingcluespy==0.2.3`` omits the extractor JSON files that method
+    needs, so we parse the facets payload ourselves.
+    """
+    query = make_query(data_type=["observation", "track"])
+    payload = client._api_call("post", "search/all/facets", query).json()
+    values = (
+        payload.get("facets", {}).get("dataSources", {}).get("facetValues") or []
+    )
+    return [entry["name"] for entry in values if entry.get("name")]
+
+
 def _validate_groups(client: SensingClues, groups: list[str]) -> None:
-    """Raise if any requested group is not in the account's ``get_groups()`` list."""
-    available = client.get_groups()
-    names = set(available["name"].tolist()) if not available.empty else set()
+    """Raise if any requested group is not in the account's available groups."""
+    names = set(_list_group_names(client))
     missing = [group for group in groups if group not in names]
     if missing:
         raise ValueError(
@@ -147,7 +161,7 @@ def download_observations(
         observations.extend(batch)
         logger.info(
             "[%s] Fetched %s of %s observations",
-            groups,
+            ", ".join(groups),
             len(observations),
             total,
         )
@@ -156,7 +170,11 @@ def download_observations(
             break
         page += 1
 
-    logger.info("[%s] Downloaded %s total observations.", groups, len(observations))
+    logger.info(
+        "[%s] Downloaded %s total observations.",
+        ", ".join(groups),
+        len(observations),
+    )
     return observations
 
 

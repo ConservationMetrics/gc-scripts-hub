@@ -142,10 +142,10 @@ def test_no_observations(sensingclues_server_empty, pg_database, tmp_path):
             assert cur.fetchone()[0] is None
 
 
-def test_invalid_group(sensingclues_server, pg_database, tmp_path):
+def test_invalid_group(sensingclues_server_groups_only, pg_database, tmp_path):
     with pytest.raises(ValueError, match="focus-project-does-not-exist"):
         main(
-            sensingclues_server.credentials,
+            sensingclues_server_groups_only.credentials,
             ["focus-project-does-not-exist"],
             pg_database,
             "sc_bad_group",
