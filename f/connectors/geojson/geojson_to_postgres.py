@@ -18,6 +18,8 @@ def main(
     geojson_path: str,
     attachment_root: str = "/persistent-storage/datalake/",
     delete_geojson_file: bool = False,
+    reverse_properties_separated_by: str | None = None,
+    sep_policy: str = "remove",
 ):
     geojson_path = Path(attachment_root) / Path(geojson_path)
     transformed_geojson_data = transform_geojson_data(geojson_path)
@@ -26,7 +28,8 @@ def main(
         conninfo(db),
         db_table_name,
         use_mapping_table=False,
-        reverse_properties_separated_by=None,
+        reverse_properties_separated_by=reverse_properties_separated_by,
+        sep_policy=sep_policy,
     )
     db_writer.handle_output(transformed_geojson_data)
 

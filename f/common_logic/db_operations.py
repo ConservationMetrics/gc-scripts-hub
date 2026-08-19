@@ -231,6 +231,7 @@ def summarize_new_rows_updates_and_columns(
     primary_key: str = "_id",
     str_replace: list[tuple[str, str]] = None,
     reverse_properties_separated_by: str = None,
+    sep_policy: str = "remove",
 ):
     """
     Compare uploaded dataset against existing table to determine impact.
@@ -258,6 +259,9 @@ def summarize_new_rows_updates_and_columns(
     reverse_properties_separated_by : str or None, optional
         If provided, splits keys on this character, reverses segments, and rejoins.
         Must match the StructuredDBWriter settings. Defaults to None.
+    sep_policy : str, optional
+        Column-name separator policy for ``sanitize_sql_message``. Must match
+        StructuredDBWriter. Defaults to ``"remove"``.
 
     Returns
     -------
@@ -315,6 +319,7 @@ def summarize_new_rows_updates_and_columns(
                 reverse_properties_separated_by=reverse_properties_separated_by,
                 str_replace=str_replace,
                 maxlen=63,
+                sep_policy=sep_policy,
             )
 
             # Extract just the normalized column names (values from column_mapping)
@@ -437,6 +442,9 @@ class StructuredDBWriter:
        If provided, splits keys on this character, reverses segments, and rejoins — useful for nested property flattening.
      str_replace : list of tuple, optional
          List of (old, new) strings to apply to keys during sanitization.
+     sep_policy : str, optional
+         Separator policy for column sanitization (``"remove"`` or ``"underscore"``).
+         Defaults to ``"remove"`` to match existing warehouse columns.
      predefined_schema : callable or None, optional
          If provided, this function is executed to create or validate the schema before inserting any data.
          Signature: `(cursor, table_name) -> None`
@@ -456,6 +464,7 @@ class StructuredDBWriter:
         use_mapping_table=False,
         reverse_properties_separated_by=None,
         str_replace=[("/", "__"), ("$", "__")],
+        sep_policy="remove",
         predefined_schema=None,
     ):
         self.db_connection_string = db_connection_string
@@ -478,6 +487,7 @@ class StructuredDBWriter:
         self.use_mapping_table = use_mapping_table
         self.reverse_separator = reverse_properties_separated_by
         self.str_replace = str_replace
+        self.sep_policy = sep_policy
         self.predefined_schema = predefined_schema
 
     def _get_conn(self):
@@ -680,6 +690,7 @@ class StructuredDBWriter:
                     existing_mappings,
                     reverse_properties_separated_by=self.reverse_separator,
                     str_replace=self.str_replace,
+                    sep_policy=self.sep_policy,
                 )
                 rows.append((sanitized, existing_mappings))
                 original_to_sql.update(updated)
