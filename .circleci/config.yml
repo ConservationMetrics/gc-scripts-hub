@@ -47,7 +47,7 @@ jobs:
             pip install tox~=4.18 tox-docker~=5.0
       - run:
           name: Run tests
-          command: tox -- -v
+          command: tox -p 2 -- -v
           environment:
             PIP_UPLOADED_PRIOR_TO: P7D
             # Skip tox-docker's NetworkSettings.Gateway lookup (broken on newer

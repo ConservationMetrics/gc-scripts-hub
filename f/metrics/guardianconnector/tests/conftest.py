@@ -9,7 +9,7 @@ from f.common_logic.db_operations import conninfo
 @pytest.fixture(scope="function")
 def _postgres_instance():
     """Spin up a temporary PostgreSQL instance for tests."""
-    db = testing.postgresql.Postgresql(port=7654)
+    db = testing.postgresql.Postgresql()
     try:
         yield db
     finally:

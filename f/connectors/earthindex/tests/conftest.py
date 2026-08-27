@@ -51,7 +51,7 @@ def earthindex_server_no_layers(mocked_responses):
 
 @pytest.fixture
 def pg_database():
-    db = testing.postgresql.Postgresql(port=7654)
+    db = testing.postgresql.Postgresql()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
