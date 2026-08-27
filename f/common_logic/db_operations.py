@@ -7,7 +7,6 @@ This module provides functions and classes for interacting with PostgreSQL datab
 
 import json
 import logging
-import time
 
 from psycopg import Error, connect, errors, sql
 
@@ -719,7 +718,6 @@ class StructuredDBWriter:
                 self._create_missing_mappings(
                     pgconn, columns_table_name, missing_mappings
                 )
-                time.sleep(10)
 
             inserted_count = 0
             updated_count = 0
