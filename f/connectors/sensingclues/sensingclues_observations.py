@@ -1,3 +1,7 @@
+# py311
+# Must stay Python 3.11. `wmill script generate-metadata` targets 3.12 and pins
+# numpy==2.5.2, which will not install on CircleCI/tox (3.11).
+
 # requirements:
 # psycopg[binary]
 # sensingcluespy~=0.2.3
