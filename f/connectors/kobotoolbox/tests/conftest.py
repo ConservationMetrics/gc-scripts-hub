@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.kobotoolbox.tests.assets import server_responses
 
@@ -162,8 +161,8 @@ def koboserver_nested(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql(port=7654)
+def pg_database(postgresql_factory):
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
