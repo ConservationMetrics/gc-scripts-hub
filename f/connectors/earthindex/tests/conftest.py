@@ -1,6 +1,5 @@
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.earthindex.earthindex_pull import BASE_URL
 from f.connectors.earthindex.tests.assets import server_responses
@@ -50,8 +49,8 @@ def earthindex_server_no_layers(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql()
+def pg_database(postgresql_factory):
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn

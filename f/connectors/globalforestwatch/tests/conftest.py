@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.globalforestwatch.tests.assets import server_responses
 
@@ -38,9 +37,9 @@ def gfw_server(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
+def pg_database(postgresql_factory):
     """A dsn that may be used to connect to a live (local for test) postgresql server"""
-    db = testing.postgresql.Postgresql()
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn

@@ -6,7 +6,6 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.epicollect.tests.assets import server_responses
 
@@ -177,8 +176,8 @@ def epicollect_public_server(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql()
+def pg_database(postgresql_factory):
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn

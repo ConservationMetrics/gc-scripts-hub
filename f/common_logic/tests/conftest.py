@@ -3,15 +3,14 @@ import zipfile
 from pathlib import Path
 
 import pytest
-import testing.postgresql
 
 from f.common_logic.db_operations import conninfo
 
 
 @pytest.fixture(scope="function")
-def _postgres_instance():
+def _postgres_instance(postgresql_factory):
     """Spin up a temporary PostgreSQL instance for tests."""
-    db = testing.postgresql.Postgresql()
+    db = postgresql_factory()
     try:
         yield db
     finally:
