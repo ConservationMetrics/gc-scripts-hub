@@ -4,7 +4,6 @@ from typing import Optional
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.comapeo.comapeo_pull import comapeo_server
 from f.connectors.comapeo.tests.assets import server_responses
@@ -242,8 +241,8 @@ def comapeoserver_with_failing_attachments(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql(port=7654)
+def pg_database(postgresql_factory):
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
