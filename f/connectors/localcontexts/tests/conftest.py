@@ -146,4 +146,4 @@ def pg_database(postgresql_factory):
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
-    db.stop
+    db.stop()

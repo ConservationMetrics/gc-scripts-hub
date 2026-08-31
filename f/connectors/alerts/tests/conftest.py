@@ -1,5 +1,4 @@
 import pytest
-import testing.postgresql
 from gcp_storage_emulator.server import create_server
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import storage
@@ -12,7 +11,7 @@ def pg_database(postgresql_factory):
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
-    db.stop
+    db.stop()
 
 
 @pytest.fixture

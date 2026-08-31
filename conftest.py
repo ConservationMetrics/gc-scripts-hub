@@ -10,9 +10,9 @@ def postgresql_factory():
     """
     import testing.postgresql
 
-    factory = testing.postgresql.PostgresqlFactory(
-        cache_initialized_db=True, port=7654
-    )
+    # No explicit port: each instance binds to a random free port, so tox
+    # environments running in parallel (tox -p) never collide on the same port.
+    factory = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
     try:
         yield factory
     finally:
