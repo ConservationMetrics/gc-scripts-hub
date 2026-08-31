@@ -1,6 +1,6 @@
-import os
-
 import pytest
+import testing.postgresql
+from gcp_storage_emulator.server import create_server
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import storage
 
@@ -17,23 +17,21 @@ def pg_database(postgresql_factory):
 
 @pytest.fixture
 def gcs_emulator_client():
-    """Return a google.cloud.storage.Client against an GCS emulator running in tox-docker"""
-    # See https://github.com/tox-dev/tox-docker?tab=readme-ov-file#configuration, `expose` option
+    """Return a google.cloud.storage.Client connected to a local GCS emulator."""
+    host = "127.0.0.1"
+    # Port 0 lets the OS select and bind a free port atomically, avoiding an allocation race.
+    emulator_server = create_server(host, 0, in_memory=True)
+    emulator_server.start()
     try:
-        TOX_DOCKER_GCS_PORT = os.environ["TOX_DOCKER_GCS_PORT"]
-    except KeyError:
-        raise RuntimeError("You need to: $ pip install tox-docker")
-    emulator_endpoint = f"http://localhost:{TOX_DOCKER_GCS_PORT}"
-
-    # Create a storage client that connects to the emulator
-    storage_client = storage.Client(
-        project="test-project",
-        credentials=AnonymousCredentials(),
-        client_options={"api_endpoint": emulator_endpoint},
-    )
-
-    yield storage_client
-
-    # Clean up: Delete all buckets
-    for bucket in storage_client.list_buckets():
-        bucket.delete(force=True)
+        port = emulator_server._api._httpd.server_address[1]
+        storage_client = storage.Client(
+            project="test-project",
+            credentials=AnonymousCredentials(),
+            client_options={"api_endpoint": f"http://{host}:{port}"},
+        )
+        try:
+            yield storage_client
+        finally:
+            storage_client.close()
+    finally:
+        emulator_server.stop()

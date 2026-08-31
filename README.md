@@ -153,7 +153,7 @@ Make sure you have Python installed locally or create a virtual environment for 
 
 Install the following dependencies:
   ```bash
-  pip install 'tox>=4.15.0,<5' 'tox-docker~=5.0'
+  pip install 'tox>=4.15.0,<5'
   ```
 
 Then you can run all tests using tox:
@@ -165,11 +165,8 @@ If you are using homebrew you might have better luck using `pipx` or `uvx` to ma
 test runner:
   ```bash
   # Install test runner and run test in one go
-  uvx --with tox-docker tox
+  uvx tox
   ```
-
-The `tox-docker` test runner dependency is only required
-to run the `alerts` test suite; others can run with only `tox`.
 
 ### Individual Test Suites
 
