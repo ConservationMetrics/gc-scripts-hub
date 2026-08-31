@@ -16,7 +16,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install PostgreSQL 16 server to test against
+          name: Install PostgreSQL 14 server to test against
           command: |
             sudo apt-get update
             sudo apt-get install --yes --no-install-recommends postgresql-14
