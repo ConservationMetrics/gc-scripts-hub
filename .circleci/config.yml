@@ -26,6 +26,6 @@ jobs:
             pip install tox~=4.18
       - run:
           name: Run tests
-          command: tox -p 2 -- -v
+          command: tox -p 3 -- -v
           environment:
             PIP_UPLOADED_PRIOR_TO: P7D
