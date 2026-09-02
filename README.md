@@ -161,6 +161,10 @@ Then you can run all tests using tox:
   tox
   ```
 
+> [!TIP]
+>
+> You can speed up running tests by adding more workers to run in parallel using the `-p` flag, for example, `tox -p 2`.
+
 If you are using homebrew you might have better luck using `pipx` or `uvx` to manage the virtual environment for the
 test runner:
   ```bash
