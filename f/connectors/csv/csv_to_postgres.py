@@ -20,6 +20,7 @@ def main(
     id_column: str = None,
     use_mapping_table: bool = False,
     reverse_properties_separated_by: str | None = None,
+    sep_policy: str = "remove",
 ):
     """
     Import CSV data into PostgreSQL table.
@@ -42,6 +43,8 @@ def main(
         Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
     reverse_properties_separated_by : str, optional
         Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
+    sep_policy : str, optional
+        Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
     """
     csv_path = Path(attachment_root) / Path(csv_path)
     transformed_csv_data = transform_csv_data(csv_path, id_column)
@@ -51,6 +54,7 @@ def main(
         db_table_name,
         use_mapping_table=use_mapping_table,
         reverse_properties_separated_by=reverse_properties_separated_by,
+        sep_policy=sep_policy,
     )
     db_writer.handle_output(transformed_csv_data)
 

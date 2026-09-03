@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import xml.etree.ElementTree as ET
+from numbers import Integral, Real
 from pathlib import Path
 
 import filetype
@@ -487,6 +488,33 @@ def read_csv(path: Path):
         return rows
 
 
+def _stringify_tabular_value(value) -> str:
+    """Convert a pandas/Excel cell to a string without inventing a trailing ``.0``.
+
+    Excel stores numbers as IEEE floats, so pandas reads whole values such as
+    ``42`` as ``42.0``. ``DataFrame.astype(str)`` would then emit ``"42.0"``.
+    Whole numeric values are rendered as integers; genuine fractional values
+    keep their decimal. Missing cells become ``""`` rather than ``"nan"``.
+    Text cells that already contain ``"5.0"`` are left unchanged.
+    """
+    if isinstance(value, str):
+        return value.strip()
+    if value is None or (
+        not isinstance(value, (bytes, dict, list)) and pd.isna(value)
+    ):
+        return ""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, Integral):
+        return str(int(value))
+    if isinstance(value, Real):
+        number = float(value)
+        if number.is_integer():
+            return str(int(number))
+        return str(number)
+    return str(value).strip()
+
+
 @handle_file_errors
 def read_excel(path: Path):
     """
@@ -505,10 +533,10 @@ def read_excel(path: Path):
             "Excel file contains multiple sheets; only single-sheet files are supported at the moment."
         )
     df = excel.parse(sheet_name=0)
-
-    # Strip whitespace from all cells in the DataFrame
-    df = df.astype(str).apply(lambda col: col.str.strip())
-    rows = [df.columns.tolist()] + df.values.tolist()
+    rows = [[_stringify_tabular_value(c) for c in df.columns]] + [
+        [_stringify_tabular_value(v) for v in row]
+        for row in df.itertuples(index=False, name=None)
+    ]
 
     if len(rows) <= 1:
         raise ValueError("Excel file contains no data")

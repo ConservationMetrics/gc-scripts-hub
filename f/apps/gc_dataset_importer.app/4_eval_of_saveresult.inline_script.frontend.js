@@ -1,4 +1,4 @@
-if (state.newRows === 0 && state.updatedRows === 0) {
+if (state.newRows === 0 && state.updatedRows === 0 && !state.newColumns) {
   return "No rows to update!"
 } else if (state.finalizeSuccess) {
   return "✅ Dataset successfully written to the data warehouse! Navigate to a Guardian Connector tool like GC Explorer to set up a view for your dataset."
