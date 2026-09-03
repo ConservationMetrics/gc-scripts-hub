@@ -1,0 +1,74 @@
+summary: 'Sensing Clues: Fetch Observations'
+description: >-
+  Uses the Sensing Clues API to download observations for one Group, and save
+  these to the datalake and PostgreSQL.
+lock: '!inline f/connectors/sensingclues/sensingclues_observations.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - username
+    - password
+    - group_identifier
+    - date_from
+    - date_until
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: >-
+        A path where Sensing Clues data files will be stored. Files will be
+        stored as: `{attachment_root}/{db_table_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    date_from:
+      type: string
+      description: >-
+        Optional inclusive start date to filter observations, as YYYY-MM-DD
+        (UTC).
+      default: null
+      originalType: string
+    date_until:
+      type: string
+      description: 'Optional inclusive end date to filter observations, as YYYY-MM-DD (UTC).'
+      default: null
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: The name of the database table where observations will be stored.
+      default: null
+      originalType: string
+      pattern: '^.{1,54}$'
+    group_identifier:
+      type: string
+      description: >-
+        Numeric Sensing Clues group identifier, e.g. `1234`. See the connector
+        README for how to find it.
+      default: null
+      originalType: string
+      pattern: '^[0-9]+$'
+    password:
+      type: string
+      description: Sensing Clues Focus password.
+      default: null
+      originalType: string
+    username:
+      type: string
+      description: Sensing Clues Focus username.
+      default: null
+      originalType: string
+  required:
+    - username
+    - password
+    - group_identifier
+    - db
+    - db_table_name

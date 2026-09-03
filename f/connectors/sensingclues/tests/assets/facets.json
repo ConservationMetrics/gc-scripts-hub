@@ -1,0 +1,30 @@
+{
+  "snippet-format": "do-snippet",
+  "total": 57187,
+  "start": 1,
+  "page-length": 10,
+  "selected": "include",
+  "results": [],
+  "facets": {
+    "dataSources": {
+      "type": "custom",
+      "facetValues": [
+        {
+          "name": "focus-project-1234",
+          "count": 2414,
+          "value": "Demo Africa Upload"
+        },
+        {
+          "name": "focus-project-3494596",
+          "count": 6,
+          "value": "Demo Cluey Group"
+        },
+        {
+          "name": "focus-project-GFW",
+          "count": 54767,
+          "value": "GFW"
+        }
+      ]
+    }
+  }
+}

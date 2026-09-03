@@ -1,0 +1,198 @@
+{
+  "total": 2,
+  "start": 1,
+  "page-length": 10,
+  "results": [
+    {
+      "id": "O3494596-n9e770de501315aa5",
+      "extracted": {
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-n9e770de501315aa5",
+              "entityClass": "note",
+              "entityType": "community_work",
+              "createdOn": "2024-11-07T22:09:57.321Z",
+              "createdBy": "gjosten"
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7210773933098,
+                  -17.8090175647775
+                ]
+              },
+              "attributes": [
+                {
+                  "key": "beneficiariesMen",
+                  "value": "22"
+                },
+                {
+                  "key": "beneficiariesTotal",
+                  "value": "47"
+                },
+                {
+                  "key": "beneficiariesWomen",
+                  "value": "25"
+                },
+                {
+                  "key": "formality",
+                  "value": "formal"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "hw_coexistence",
+                    "communities",
+                    "awareness_creation"
+                  ]
+                }
+              ],
+              "observationClass": "note",
+              "observationType": "community_work",
+              "description": "",
+              "tags": [
+                "hw_coexistence",
+                "communities",
+                "awareness_creation"
+              ],
+              "when": "2024-08-30T13:44:35+0200",
+              "concepts": [
+                {
+                  "label": "Note",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "lang": "en"
+                },
+                {
+                  "label": "Community work",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/6477",
+                  "lang": "en"
+                },
+                {
+                  "label": "HW-Coexistence",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_27",
+                  "lang": "en"
+                },
+                {
+                  "label": "Awareness creation",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_17",
+                  "lang": "en"
+                }
+              ],
+              "agent": {
+                "agentName": "jankees",
+                "agentId": "A7131207983971604413"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "O3494596-nff20c1dac0817042",
+      "extracted": {
+        "content": [
+          {
+            "headers": {
+              "projectId": "3494596",
+              "projectName": "Demo Cluey Group",
+              "entityId": "O3494596-nff20c1dac0817042",
+              "entityClass": "note",
+              "entityType": "animal",
+              "createdOn": "2024-11-01T19:31:18.275Z",
+              "createdBy": "flow-operator"
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.7210246000001,
+                  -17.8384612
+                ]
+              },
+              "attributes": [
+                {
+                  "key": "images",
+                  "value": [
+                    "b9c9-b7be-9d51"
+                  ]
+                },
+                {
+                  "key": "nTotal",
+                  "value": "1"
+                },
+                {
+                  "key": "tags",
+                  "value": [
+                    "elephant",
+                    "dropping",
+                    "photographed"
+                  ]
+                }
+              ],
+              "observationClass": "note",
+              "observationType": "animal",
+              "description": "",
+              "tags": [
+                "elephant",
+                "dropping",
+                "photographed"
+              ],
+              "when": "2024-08-24T09:07:58+0200",
+              "concepts": [
+                {
+                  "label": "Note",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "lang": "en"
+                },
+                {
+                  "label": "Animal sighting",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
+                  "lang": "en"
+                },
+                {
+                  "label": "Elephant",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/277",
+                  "lang": "en"
+                },
+                {
+                  "label": "Dropping",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/129",
+                  "lang": "en"
+                },
+                {
+                  "label": "Photographed",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1734",
+                  "lang": "en"
+                }
+              ],
+              "agent": {
+                "agentName": "jankees",
+                "agentId": "A7131207983971604413"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
