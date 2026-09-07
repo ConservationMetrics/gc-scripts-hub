@@ -1,0 +1,72 @@
+summary: 'Gazettes: Download PDFs into a local cache'
+description: >-
+  Downloads scraped PDF links into a data lake cache using URL-derived
+  filenames, so files are never re-downloaded. Cached files are optionally
+  HEAD-checked against ETag/Content-Length to detect same-URL replacements.
+  Updates the <db_table_name>__documents state table.
+lock: '!inline f/connectors/gazettes/gazettes_download.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - docs
+    - db
+    - db_table_name
+    - cache_dir
+    - check_updates
+    - user_agent
+    - request_timeout
+  properties:
+    docs:
+      type: array
+      description: >-
+        Documents to download, as returned by Gazettes: Scrape (new_docs).
+      default: null
+      items:
+        type: object
+      originalType: object[]
+      nullable: false
+    db:
+      type: object
+      description: >-
+        The database connection parameters for the documents state table.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: >-
+        Detections table name; the state table is derived as
+        <db_table_name>__documents.
+      default: ggmc_notices
+      originalType: string
+      pattern: '^.{1,53}$'
+    cache_dir:
+      type: string
+      description: >-
+        Local directory where PDF files are cached.
+      default: /persistent-storage/datalake/gazettes/pdf
+      originalType: string
+    check_updates:
+      type: boolean
+      description: >-
+        When true (default), HEAD-check cached files against the remote
+        ETag/Content-Length and re-download same-URL replacements.
+      default: true
+      originalType: boolean
+    user_agent:
+      type: string
+      description: User-Agent header sent with requests.
+      default: null
+      originalType: string
+      nullable: false
+    request_timeout:
+      type: integer
+      description: Timeout in seconds for HTTP requests.
+      default: 60
+      originalType: integer
+  required:
+    - docs
+    - db
+    - db_table_name

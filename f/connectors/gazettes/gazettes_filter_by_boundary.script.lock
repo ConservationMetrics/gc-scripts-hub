@@ -1,0 +1,4 @@
+# workspace-dependencies-mode: manual
+# py: 3.11
+numpy==2.4.6
+shapely==2.1.2

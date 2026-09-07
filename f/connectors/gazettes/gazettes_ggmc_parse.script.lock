@@ -1,0 +1,7 @@
+# workspace-dependencies-mode: manual
+# py: 3.11
+numpy==2.4.6
+psycopg==3.3.3
+psycopg-binary==3.3.3
+shapely==2.1.2
+typing-extensions==4.15.0

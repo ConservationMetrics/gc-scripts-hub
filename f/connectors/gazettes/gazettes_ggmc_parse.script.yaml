@@ -1,0 +1,55 @@
+summary: 'Gazettes: Parse GGMC gazette texts into GeoJSON'
+description: >-
+  Parses Guyana Geology and Mines Commission gazette notice texts into GeoJSON
+  features using a deterministic regex parser (DMS coordinate sanitization,
+  shapely-validated polygons inside Guyana's bounds). If any notice block
+  fails to parse, the failure is logged, recorded on the documents state table,
+  and the run is failed for review. Writes the merged FeatureCollection to the
+  data lake.
+lock: '!inline f/connectors/gazettes/gazettes_ggmc_parse.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - texts
+    - db
+    - db_table_name
+    - destination_path
+  properties:
+    texts:
+      type: array
+      description: >-
+        Documents with extracted text, as returned by Gazettes: PDF to text
+        (texts).
+      default: null
+      items:
+        type: object
+      originalType: object[]
+      nullable: false
+    db:
+      type: object
+      description: >-
+        The database connection parameters; parse results are recorded on the
+        <db_table_name>__documents state table.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: >-
+        Name of the final detections table this data will be loaded into
+        (e.g. ggmc_notices).
+      default: ggmc_notices
+      originalType: string
+      pattern: '^.{1,53}$'
+    destination_path:
+      type: string
+      description: >-
+        Data lake directory where the merged FeatureCollection is written.
+      default: /persistent-storage/datalake/gazettes
+      originalType: string
+  required:
+    - texts
+    - db
+    - db_table_name

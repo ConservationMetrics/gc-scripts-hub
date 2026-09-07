@@ -1,0 +1,302 @@
+summary: 'Gazettes: Scrape, download, process, and notify (GGMC)'
+description: >-
+  This flow chains the gazettes pipeline for the GGMC gazettes site: (1)
+  Gazettes: Scrape PDF links and track updates (2) Gazettes: Download PDFs
+  into a local cache (3) Gazettes: Convert PDFs to text (OCR fallback for
+  image-only PDFs) (4) Gazettes: Parse GGMC gazette texts into GeoJSON (5)
+  Gazettes: Filter detections by boundary (6) GeoJSON to Postgres (7) Alerts:
+  Send a Twilio Message. Swap module d for another site-specific parser (and
+  adjust inputs) to reuse the pipeline for other government sites.
+value:
+  modules:
+    - id: a
+      value:
+        type: script
+        input_transforms:
+          site_url:
+            type: javascript
+            expr: flow_input.site_url
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          pdf_selector:
+            type: javascript
+            expr: flow_input.pdf_selector
+          link_pattern:
+            type: javascript
+            expr: flow_input.link_pattern
+          include_errored:
+            type: javascript
+            expr: flow_input.include_errored ?? false
+        is_trigger: false
+        path: f/connectors/gazettes/gazettes_scrape
+    - id: b
+      value:
+        type: script
+        input_transforms:
+          docs:
+            type: javascript
+            expr: results.a.new_docs
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          cache_dir:
+            type: javascript
+            expr: flow_input.cache_dir
+          check_updates:
+            type: javascript
+            expr: flow_input.check_updates ?? true
+        is_trigger: false
+        path: f/connectors/gazettes/gazettes_download
+      continue_on_error: false
+      skip_if:
+        expr: '!results.a || !results.a.new_docs || results.a.new_docs.length === 0'
+    - id: c
+      value:
+        type: script
+        input_transforms:
+          pdfs:
+            type: javascript
+            expr: results.b.new_pdfs
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          ocr_fallback:
+            type: javascript
+            expr: flow_input.ocr_fallback ?? true
+        is_trigger: false
+        path: f/connectors/gazettes/gazettes_pdf_to_text
+      continue_on_error: false
+      skip_if:
+        expr: '!results.b || !results.b.new_pdfs || results.b.new_pdfs.length === 0'
+    - id: d
+      value:
+        type: script
+        input_transforms:
+          texts:
+            type: javascript
+            expr: results.c.texts
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          destination_path:
+            type: javascript
+            expr: flow_input.destination_path
+        is_trigger: false
+        path: f/connectors/gazettes/gazettes_ggmc_parse
+      continue_on_error: false
+      skip_if:
+        expr: '!results.c || !results.c.texts || results.c.texts.length === 0'
+    - id: e
+      value:
+        type: script
+        input_transforms:
+          geojson_path:
+            type: javascript
+            expr: results.d.geojson_path
+          boundary_path:
+            type: javascript
+            expr: flow_input.boundary_path
+          keep:
+            type: javascript
+            expr: flow_input.keep ?? 'intersects'
+        is_trigger: false
+        path: f/connectors/gazettes/gazettes_filter_by_boundary
+      continue_on_error: false
+      skip_if:
+        expr: '!flow_input.boundary_path || !results.d || !results.d.geojson_path'
+    - id: f
+      value:
+        type: script
+        input_transforms:
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          geojson_path:
+            type: javascript
+            expr: results.e?.geojson_path ?? results.d.geojson_path
+          attachment_root:
+            type: javascript
+            expr: "'/'"
+          delete_geojson_file:
+            type: javascript
+            expr: flow_input.delete_geojson_file ?? false
+        is_trigger: false
+        path: f/connectors/geojson/geojson_to_postgres
+      continue_on_error: false
+      skip_if:
+        expr: '!results.d || !results.d.geojson_path || (results.e && results.e.kept === 0)'
+    - id: g
+      value:
+        type: script
+        input_transforms:
+          alerts_statistics:
+            type: javascript
+            expr: results.d.gazettes_statistics
+          instance_slug:
+            type: javascript
+            expr: flow_input.instance_slug
+          db_table_name:
+            type: javascript
+            expr: results.d.db_table_name
+          twilio_message_template:
+            type: javascript
+            expr: flow_input.twilio_message_template
+        is_trigger: false
+        path: f/connectors/alerts/alerts_twilio
+      continue_on_error: false
+      skip_if:
+        expr: >-
+          !flow_input.twilio_message_template || !flow_input.instance_slug ||
+          !results.d || !results.d.gazettes_statistics ||
+          !results.d.gazettes_statistics.total_alerts ||
+          results.d.gazettes_statistics.total_alerts === '0'
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - site_url
+    - db
+    - db_table_name
+    - pdf_selector
+    - link_pattern
+    - include_errored
+    - cache_dir
+    - check_updates
+    - destination_path
+    - boundary_path
+    - keep
+    - ocr_fallback
+    - delete_geojson_file
+    - instance_slug
+    - twilio_message_template
+  properties:
+    site_url:
+      type: string
+      description: >-
+        The government listing page to scrape for PDF links.
+      default: https://www.ggmc.gov.gy/gazettes/
+      originalType: string
+    db:
+      type: object
+      description: >-
+        The database connection parameters for the documents state table and
+        the detections table.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: >-
+        The name of the detections table (e.g. ggmc_notices). The scrape state
+        lives in a '<db_table_name>__documents' table.
+      default: ggmc_notices
+      originalType: string
+      pattern: '^.{1,53}$'
+    pdf_selector:
+      type: string
+      description: >-
+        CSS selector used to find PDF links on the page. The default scopes to
+        the GGMC page content area to skip navigation PDF links.
+      default: "#content a[href$='.pdf']"
+      originalType: string
+    link_pattern:
+      type: string
+      description: >-
+        Optional regex filter on the absolute URL of candidate links.
+      default: null
+      originalType: string
+      nullable: false
+    include_errored:
+      type: boolean
+      description: >-
+        Re-include documents previously marked with status 'error' (set this
+        for one run after fixing a parser issue, then unset it).
+      default: false
+      originalType: boolean
+    cache_dir:
+      type: string
+      description: >-
+        Local directory for the PDF cache.
+      default: /persistent-storage/datalake/gazettes/pdf
+      originalType: string
+    check_updates:
+      type: boolean
+      description: >-
+        HEAD-check cached PDFs for same-URL content replacements.
+      default: true
+      originalType: boolean
+    destination_path:
+      type: string
+      description: >-
+        Data lake directory where the merged FeatureCollection is written.
+      default: /persistent-storage/datalake/gazettes
+      originalType: string
+    boundary_path:
+      type: string
+      description: >-
+        Optional path to a GeoJSON boundary file; when set, only detections
+        intersecting it are loaded and notified. Place territory polygons
+        under /persistent-storage/datalake/boundaries/ for example.
+      default: null
+      originalType: string
+      nullable: false
+    keep:
+      type: string
+      description: >-
+        Spatial predicate for the boundary filter: intersects, within, or
+        centroid.
+      default: intersects
+      originalType: string
+      enum:
+        - intersects
+        - within
+        - centroid
+    ocr_fallback:
+      type: boolean
+      description: >-
+        OCR image-only/unreadable PDFs with marker during text extraction.
+        Requires marker's model weights and a local inference backend on the
+        Windmill worker (see the gazettes connector README).
+      default: true
+      originalType: boolean
+    delete_geojson_file:
+      type: boolean
+      description: >-
+        Delete the intermediate GeoJSON file after database load.
+      default: false
+      originalType: boolean
+    instance_slug:
+      type: string
+      description: >-
+        The URL slug for the instance, used to construct a link to the alerts
+        dashboard. Required for WhatsApp notification.
+      default: ''
+      originalType: string
+      nullable: false
+    twilio_message_template:
+      type: object
+      description: >-
+        Twilio account credentials, recipients and message content template
+        for sending a notification about new detections.
+      default: null
+      format: resource-twilio_message_template
+      nullable: true
+  required:
+    - site_url
+    - db
+    - db_table_name

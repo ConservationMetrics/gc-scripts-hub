@@ -1,0 +1,64 @@
+summary: 'Gazettes: Convert cached PDFs to text files'
+description: >-
+  Extracts plain text from downloaded PDFs using pypdf and caches it as .txt
+  files alongside them; unchanged PDFs are never re-extracted. PDFs with no
+  text layer (scans) or unreadable PDFs are OCR'd with marker (in-process;
+  needs its model weights and a local inference backend on the worker); if OCR
+  is unavailable or disabled the document is recorded as an error without
+  stopping the batch.
+lock: '!inline f/connectors/gazettes/gazettes_pdf_to_text.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - pdfs
+    - db
+    - db_table_name
+    - text_dir
+    - ocr_fallback
+  properties:
+    pdfs:
+      type: array
+      description: >-
+        Documents with downloaded PDFs, as returned by Gazettes: Download
+        (new_pdfs). Plain path strings are also accepted.
+      default: null
+      items:
+        type: object
+      originalType: object[]
+      nullable: false
+    db:
+      type: object
+      description: >-
+        Optional database connection parameters; when set, the documents state
+        table is updated with extraction results.
+      default: null
+      format: resource-postgresql
+      nullable: true
+    db_table_name:
+      type: string
+      description: >-
+        Detections table name for deriving the <db_table_name>__documents state
+        table. Only used together with db.
+      default: null
+      originalType: string
+      pattern: '^.{0,53}$'
+    text_dir:
+      type: string
+      description: >-
+        Optional directory for extracted text files. Default: alongside each
+        cached PDF.
+      default: null
+      originalType: string
+      nullable: false
+    ocr_fallback:
+      type: boolean
+      description: >-
+        OCR PDFs that have no extractable text layer (or fail to parse) using
+        marker, before recording them as errors.
+      default: true
+      originalType: boolean
+  required:
+    - pdfs
