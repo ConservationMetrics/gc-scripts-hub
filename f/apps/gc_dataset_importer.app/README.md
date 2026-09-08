@@ -46,11 +46,6 @@ The importer follows a structured 4-step process:
   _e.g., Locus Map, CoMapeo, CSV to Postgres, GeoJSON handling_
 
 ```mermaid
----
-config:
-  look: handDrawn
-  layout: dagre
----
 flowchart TD
 
  %% Unified conversion step
@@ -82,7 +77,7 @@ flowchart TD
     KML --> GeoJSON
     GPX --> GeoJSON
     Shapefile --> GeoJSON
-    GeoPackage (spatial layers) --> GeoJSON
+    GeoPackage --> GeoJSON
     GeoJSON2 -. already valid .-> GeoJSON
 
  %% Optional transformation
