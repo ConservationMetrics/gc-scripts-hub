@@ -61,6 +61,7 @@ schema:
       description: Sensing Clues Focus password.
       default: null
       originalType: string
+      password: true
     username:
       type: string
       description: Sensing Clues Focus username.
