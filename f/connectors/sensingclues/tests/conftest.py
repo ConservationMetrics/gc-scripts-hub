@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 import pytest
 import responses
-import testing.postgresql
 
 from f.connectors.sensingclues.tests.assets import server_responses
 
@@ -141,8 +140,8 @@ def sensingclues_server_unauthorized(mocked_responses):
 
 
 @pytest.fixture
-def pg_database():
-    db = testing.postgresql.Postgresql(port=7654)
+def pg_database(postgresql_factory):
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
