@@ -1,11 +1,10 @@
 import pytest
-import testing.postgresql
 
 
 @pytest.fixture
-def pg_database():
+def pg_database(postgresql_factory):
     """A dsn that may be used to connect to a live (local for test) postgresql server"""
-    db = testing.postgresql.Postgresql(port=7654)
+    db = postgresql_factory()
     dsn = db.dsn()
     dsn["dbname"] = dsn.pop("database")
     yield dsn
