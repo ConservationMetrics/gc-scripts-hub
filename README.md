@@ -12,7 +12,7 @@ can turn scripts into workflows and UIs. It empowers semi-technical users to acc
 
 Some of the tools available in the Guardian Connector Scripts Hub are:
 
-* Connector scripts to fetch or push data to tools such as ArcGIS, CoMapeo, Earth Index, EpiCollect5, Global Forest Watch, iNaturalist, KoboToolbox, Local Contexts, Mapbox, ODK, Timelapse.
+* Connector scripts to fetch or push data to tools such as ArcGIS, CoMapeo, Earth Index, EpiCollect5, Global Forest Watch, iNaturalist, KoboToolbox, Local Contexts, Mapbox, ODK, Sensing Clues, Timelapse.
 * Modules to write data (tabular and binary files) to a data warehouse (database) and data lake (file storage). 
 * Multi-step flows to chain scripts together, such as one to download and store GeoJSON and GeoTIFF change detection alerts, post these to a CoMapeo Archive Server API, and send a message to WhatsApp recipients via Twilio.
 * Scripts to export data from a database into a specific format (i.e., GeoJSON or CSV).

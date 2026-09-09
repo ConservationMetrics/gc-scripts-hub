@@ -1,0 +1,279 @@
+{
+  "total": 3,
+  "start": 1,
+  "page-length": 6,
+  "results": [
+    {
+      "id": "O1234-6832068424866241484-18",
+      "extracted": {
+        "content": [
+          {
+            "headers": {
+              "projectId": "1234",
+              "entityType": "poi",
+              "fileName": "POI-2025-demo.tsv",
+              "entityId": "O1234-6832068424866241484-18",
+              "projectName": "Demo Africa Upload",
+              "createdOn": "2026-01-06T11:44:04.144Z",
+              "createdBy": "flow-operator",
+              "entityClass": "note"
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.12555,
+                  -17.60102
+                ]
+              },
+              "attributes": [
+                {
+                  "key": "ID",
+                  "value": "18"
+                },
+                {
+                  "key": "Date",
+                  "value": "2025-12-31"
+                },
+                {
+                  "key": "Technical",
+                  "value": "Info panel"
+                },
+                {
+                  "key": "Water",
+                  "value": "NA"
+                },
+                {
+                  "key": "Flora",
+                  "value": "NA"
+                },
+                {
+                  "key": "ActionTaken",
+                  "value": "Pruned"
+                },
+                {
+                  "key": "fileName",
+                  "value": "POI-2025-demo.tsv"
+                }
+              ],
+              "observationClass": "note",
+              "observationType": "point_of_interest",
+              "description": "Observation poi",
+              "tags": [],
+              "when": "2025-12-31T00:00:00+01:00",
+              "concepts": [
+                {
+                  "label": "Visitor information panel",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/v3_303",
+                  "lang": "en"
+                },
+                {
+                  "label": "Pruned",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/465",
+                  "lang": "en"
+                },
+                {
+                  "label": "Point of Interest",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/461",
+                  "lang": "en"
+                },
+                {
+                  "label": "Note",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "lang": "en"
+                }
+              ],
+              "agent": {
+                "agentName": "",
+                "agentId": "sccss-ingest"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "O1234-3006453294253435466-1500",
+      "extracted": {
+        "content": [
+          {
+            "headers": {
+              "projectId": "1234",
+              "entityType": "animal",
+              "fileName": "AS-2025-demo.tsv",
+              "entityId": "O1234-3006453294253435466-1500",
+              "projectName": "Demo Africa Upload",
+              "createdOn": "2026-01-07T19:45:38.734Z",
+              "createdBy": "flow-operator",
+              "entityClass": "note"
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.35625,
+                  -17.78332
+                ]
+              },
+              "attributes": [
+                {
+                  "key": "ID",
+                  "value": "1500"
+                },
+                {
+                  "key": "Date",
+                  "value": "2025-12-30 17:30:00"
+                },
+                {
+                  "key": "ActionTaken",
+                  "value": "Report & took records"
+                },
+                {
+                  "key": "fileName",
+                  "value": "AS-2025-demo.tsv"
+                }
+              ],
+              "observationClass": "note",
+              "observationType": "animal_sighting",
+              "description": "Observation animal",
+              "tags": [],
+              "when": "2025-12-30T17:30:00",
+              "concepts": [
+                {
+                  "label": "Hippo",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/312",
+                  "lang": "en"
+                },
+                {
+                  "label": "Male",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/448",
+                  "lang": "en"
+                },
+                {
+                  "label": "Animal sighting",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
+                  "lang": "en"
+                },
+                {
+                  "label": "Note",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "lang": "en"
+                }
+              ],
+              "agent": {
+                "agentName": "",
+                "agentId": "sccss-ingest"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "O1234-3006453294253435466-1250",
+      "extracted": {
+        "content": [
+          {
+            "headers": {
+              "projectId": "1234",
+              "entityType": "animal",
+              "fileName": "AS-2025-demo.tsv",
+              "entityId": "O1234-3006453294253435466-1250",
+              "projectName": "Demo Africa Upload",
+              "createdOn": "2026-01-07T19:45:35.757Z",
+              "createdBy": "flow-operator",
+              "entityClass": "note"
+            }
+          },
+          {
+            "info": {
+              "title": "Observation",
+              "version": "0.0.1"
+            }
+          },
+          {
+            "Observation": {
+              "where": {
+                "type": "Point",
+                "coordinates": [
+                  25.43235,
+                  -17.72042
+                ]
+              },
+              "attributes": [
+                {
+                  "key": "ID",
+                  "value": "1250"
+                },
+                {
+                  "key": "Date",
+                  "value": "2025-12-30 01:30:00"
+                },
+                {
+                  "key": "ActionTaken",
+                  "value": "reported & took records"
+                },
+                {
+                  "key": "fileName",
+                  "value": "AS-2025-demo.tsv"
+                }
+              ],
+              "observationClass": "note",
+              "observationType": "animal_sighting",
+              "description": "Observation animal",
+              "tags": [],
+              "when": "2025-12-30T01:30:00",
+              "concepts": [
+                {
+                  "label": "Hippo",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/312",
+                  "lang": "en"
+                },
+                {
+                  "label": "Male",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/448",
+                  "lang": "en"
+                },
+                {
+                  "label": "Reported",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/8",
+                  "lang": "en"
+                },
+                {
+                  "label": "Animal sighting",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/186",
+                  "lang": "en"
+                },
+                {
+                  "label": "Note",
+                  "conceptId": "https://sensingclues.poolparty.biz/SCCSSOntology/1389",
+                  "lang": "en"
+                }
+              ],
+              "agent": {
+                "agentName": "",
+                "agentId": "sccss-ingest"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
