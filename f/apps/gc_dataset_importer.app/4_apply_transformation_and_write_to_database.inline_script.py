@@ -144,6 +144,8 @@ def main(
                 db_table_name=valid_sql_name,
                 geojson_path=file_path_obj.name,
                 attachment_root=str(file_path_obj.parent),
+                reverse_properties_separated_by="/",
+                sep_policy="underscore",
             )
             logger.info(f"GeoJSON saved to PostgreSQL table: {valid_sql_name}")
         else:  # csv
@@ -152,6 +154,8 @@ def main(
                 db_table_name=valid_sql_name,
                 csv_path=file_path_obj.name,
                 attachment_root=str(file_path_obj.parent),
+                reverse_properties_separated_by="/",
+                sep_policy="underscore",
             )
             logger.info(f"CSV saved to PostgreSQL table: {valid_sql_name}")
 

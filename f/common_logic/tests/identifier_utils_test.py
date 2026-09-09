@@ -10,6 +10,22 @@ from f.common_logic.identifier_utils import (
 )
 
 
+def test_sanitize_sql_message__spaces_become_underscores():
+    """Dataset Importer keeps word spaces as _ and reverses group/question paths."""
+    message = {"Basic information/Are you married?": "yes"}
+    sql_message, mapping = sanitize_sql_message(
+        message,
+        {},
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__"), ("$", "__")],
+        sep_policy="underscore",
+    )
+    assert sql_message == {"Are_you_married__Basic_information": "yes"}
+    assert mapping == {
+        "Basic information/Are you married?": "Are_you_married__Basic_information"
+    }
+
+
 def test_sanitize_sql_message():
     message = {
         "col.1": 1,

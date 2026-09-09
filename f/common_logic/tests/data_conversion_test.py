@@ -1134,6 +1134,48 @@ def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
     assert "Arlington" in record
     assert "Flourishing" in record
     assert "bamboo, wild boar" in record
+    assert record[headers.index("_id")] == "254135872"
+    assert record[headers.index("_index")] == "1"
+
+
+def test_convert_data__xlsx_preserves_integer_and_explicit_decimals(tmp_path):
+    """Excel stores numbers as floats; whole values must not gain a trailing .0."""
+    from openpyxl import Workbook
+
+    path = tmp_path / "numbers.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["id", "count", "score", "note"])
+    ws.append([1, 42, 3.14, "ok"])
+    ws.append([2, 0, 1.5, "  padded  "])
+    ws["A4"] = "3"
+    ws["B4"] = 10.0
+    ws["C4"] = None
+    ws["D4"] = "5.0"
+    wb.save(path)
+
+    result, output_format = convert_data([str(path)], "xlsx")
+    assert output_format == "csv"
+    assert result == [
+        ["id", "count", "score", "note"],
+        ["1", "42", "3.14", "ok"],
+        ["2", "0", "1.5", "padded"],
+        ["3", "10", "", "5.0"],
+    ]
+
+
+def test_convert_data__csv_preserves_written_number_text(tmp_path):
+    """CSV values stay as written: 42 stays 42, 42.0 stays 42.0."""
+    path = tmp_path / "numbers.csv"
+    path.write_text("id,count,score\n1,42,3.14\n2,42.0,1.50\n")
+
+    result, output_format = convert_data([str(path)], "csv")
+    assert output_format == "csv"
+    assert result == [
+        ["id", "count", "score"],
+        ["1", "42", "3.14"],
+        ["2", "42.0", "1.50"],
+    ]
 
 
 def test_convert_data__kobotoolbox_multiple_sheets_xlsx(

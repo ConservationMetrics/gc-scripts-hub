@@ -145,7 +145,11 @@ def main(uploaded_file, dataset_name, table_exists, table_name, db: postgresql):
                     f"Analyzing changes for {len(data_for_comparison)} rows against existing table"
                 )
                 new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-                    db, table_name=table_name, new_data=data_for_comparison
+                    db,
+                    table_name=table_name,
+                    new_data=data_for_comparison,
+                    reverse_properties_separated_by="/",
+                    sep_policy="underscore",
                 )
                 logger.info(
                     f"Impact analysis complete: {new_rows} new rows, {updates} updates, {new_columns} new columns"

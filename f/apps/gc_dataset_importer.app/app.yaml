@@ -2364,11 +2364,13 @@ value:
                   componentId: state
                 - id: newRows
                   componentId: state
+                - id: updatedRows
+                  componentId: state
                 - id: finalizeSuccess
                   componentId: state
               expr: >-
-                state.finalizeSuccess || !(state.newRows > 0 && state.newColumns
-                > 0)
+                state.finalizeSuccess || !(state.newRows > 0 ||
+                state.updatedRows > 0 || state.newColumns > 0)
             fillContainer:
               type: static
               value: false
@@ -2455,6 +2457,8 @@ value:
                     key: newRows
                   - id: state
                     key: updatedRows
+                  - id: state
+                    key: newColumns
                 suggestedRefreshOn: []
           configuration:
             copyButton:

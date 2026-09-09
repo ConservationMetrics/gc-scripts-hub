@@ -169,6 +169,7 @@ def sanitize_sql_message(
     reverse_properties_separated_by=None,
     str_replace=[],
     maxlen=63,
+    sep_policy="remove",
 ):
     """Sanitize a message for SQL compatibility and rename columns.
 
@@ -190,6 +191,10 @@ def sanitize_sql_message(
         A list of tuples specifying string replacements, by default [].
     maxlen : int, optional
         Maximum length of the returned identifier. Longer strings are truncated. Default is 63 (PostgreSQL identifier limit).
+    sep_policy : str, optional
+        Passed to ``normalize_identifier``. Default is ``"remove"`` so existing
+        warehouse columns keep matching. Use ``"underscore"`` to turn spaces
+        (and ``-./``) into ``_`` instead of deleting them.
 
     Returns
     -------
@@ -223,8 +228,8 @@ def sanitize_sql_message(
             maxlen=maxlen,
             make_snake=False,
             ensure_leading_alpha=False,
-            sep_policy="remove",
-        )  # These values are set to guarantee backwards compatibility, as existing warehouse data was already processed with these settings
+            sep_policy=sep_policy,
+        )  # make_snake/ensure_leading_alpha stay off for warehouse backwards compatibility. Default sep_policy is "remove" for the same reason; Dataset Importer passes "underscore".
         key = _shorten_and_uniqify(key, updated_column_renames.values(), maxlen)
 
         updated_column_renames[original_key] = key
