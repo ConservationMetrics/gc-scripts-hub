@@ -6,13 +6,14 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 import responses
 
-from f.connectors.inaturalist.inaturalist_pull import BASE_URL
+from f.connectors.inaturalist.inaturalist_pull import _API_V1, _API_V2
 from f.connectors.inaturalist.tests.assets import server_responses
 
 PROJECT_ID = server_responses.PROJECT_ID
 USERNAME = server_responses.USERNAME
 
 _MOCK_PHOTO_BYTES = b"fake-inaturalist-photo"
+_MOCK_SOUND_BYTES = b"fake-inaturalist-sound"
 
 
 @pytest.fixture
@@ -23,7 +24,7 @@ def mocked_responses():
 
 def _register_project_mock(rsps, project_id: str = PROJECT_ID):
     rsps.get(
-        f"{BASE_URL}/projects/{project_id}",
+        f"{_API_V1}/projects/{project_id}",
         json=server_responses.project_metadata(),
         status=200,
     )
@@ -34,6 +35,14 @@ def _register_photo_mock(rsps):
         responses.GET,
         re.compile(r"https://inaturalist-open-data\.s3\.amazonaws\.com/photos/"),
         callback=lambda _req: (200, {"Content-Type": "image/jpeg"}, _MOCK_PHOTO_BYTES),
+    )
+
+
+def _register_sound_mock(rsps):
+    rsps.add_callback(
+        responses.GET,
+        re.compile(r"https://static\.inaturalist\.org/sounds/"),
+        callback=lambda _req: (200, {"Content-Type": "audio/mp4"}, _MOCK_SOUND_BYTES),
     )
 
 
@@ -54,10 +63,15 @@ def _observations_paginated_callback(request):
 def _register_observations_mock(rsps, callback):
     rsps.add_callback(
         responses.GET,
-        re.compile(rf"{re.escape(BASE_URL)}/observations"),
+        re.compile(rf"{re.escape(_API_V2)}/observations"),
         callback=callback,
         content_type="application/json",
     )
+
+
+def _register_media_mocks(rsps):
+    _register_photo_mock(rsps)
+    _register_sound_mock(rsps)
 
 
 def _disable_delays(monkeypatch):
@@ -83,7 +97,7 @@ def inaturalist_project_server(mocked_responses, monkeypatch):
     _disable_delays(monkeypatch)
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_callback)
-    _register_photo_mock(mocked_responses)
+    _register_media_mocks(mocked_responses)
     return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
@@ -94,7 +108,7 @@ def inaturalist_project_server_paginated(mocked_responses, monkeypatch):
     monkeypatch.setattr("f.connectors.inaturalist.inaturalist_pull._PAGE_SIZE", 2)
     _register_project_mock(mocked_responses)
     _register_observations_mock(mocked_responses, _observations_paginated_callback)
-    _register_photo_mock(mocked_responses)
+    _register_media_mocks(mocked_responses)
     return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
@@ -104,7 +118,7 @@ def inaturalist_project_server_empty(mocked_responses):
     _register_project_mock(mocked_responses)
     mocked_responses.add_callback(
         responses.GET,
-        re.compile(rf"{re.escape(BASE_URL)}/observations"),
+        re.compile(rf"{re.escape(_API_V2)}/observations"),
         callback=lambda _req: (
             200,
             {},
@@ -120,7 +134,7 @@ def inaturalist_user_server(mocked_responses, monkeypatch):
     """Mock iNaturalist API returning fixture observations for a username."""
     _disable_delays(monkeypatch)
     _register_observations_mock(mocked_responses, _observations_callback)
-    _register_photo_mock(mocked_responses)
+    _register_media_mocks(mocked_responses)
     return INaturalistUserServer(username=USERNAME)
 
 
@@ -129,7 +143,7 @@ def inaturalist_user_server_empty(mocked_responses):
     """Mock iNaturalist API returning zero user observations."""
     mocked_responses.add_callback(
         responses.GET,
-        re.compile(rf"{re.escape(BASE_URL)}/observations"),
+        re.compile(rf"{re.escape(_API_V2)}/observations"),
         callback=lambda _req: (
             200,
             {},
