@@ -116,7 +116,7 @@ def _optional_text(value: Any) -> str | None:
 
 
 def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | None:
-    """Parse a GFW-style JSON string ``[[west, south], [east, north]]``."""
+    """Parse a JSON string ``[[west, south], [east, north]]``."""
     if bounding_box is None or bounding_box == "" or bounding_box == []:
         return None
     if isinstance(bounding_box, str):
