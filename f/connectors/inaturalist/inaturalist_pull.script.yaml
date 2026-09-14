@@ -1,7 +1,9 @@
 summary: "iNaturalist: Fetch Observations"
 description: >-
-  Uses the iNaturalist API to download public observations for a project or
-  user, saving GeoJSON and photo/sound attachments to the datalake and PostgreSQL.
+  Uses the iNaturalist API to download public observations for a project,
+  user, and/or geographic bounding box, saving GeoJSON and photo/sound
+  attachments to the datalake and PostgreSQL. At least one of `slug` or
+  `bounding_box` must be provided.
 lock: "!inline f/connectors/inaturalist/inaturalist_pull.script.lock"
 concurrency_time_window_s: 0
 kind: script
@@ -11,6 +13,7 @@ schema:
   order:
     - source
     - slug
+    - bounding_box
     - db
     - db_table_name
     - attachment_root
@@ -33,24 +36,53 @@ schema:
       default: null
       originalType: string
       pattern: "^.{1,54}$"
+    bounding_box:
+      type: object
+      description: >-
+        Optional geographic bounding box used to filter iNaturalist
+        observations. When supplied with `slug`, both filters are applied to
+        the same query. Example (Lake Accotink Park):
+        `{"swlat": 38.7905, "swlng": -77.2275, "nelat": 38.8020, "nelng": -77.2135}`.
+      default: null
+      originalType: object
+      properties:
+        swlat:
+          type: number
+          description: Southwest latitude
+        swlng:
+          type: number
+          description: Southwest longitude
+        nelat:
+          type: number
+          description: Northeast latitude
+        nelng:
+          type: number
+          description: Northeast longitude
+      required:
+        - swlat
+        - swlng
+        - nelat
+        - nelng
     slug:
       type: string
       description: >-
-        When source is "project": the project numeric ID or slug
+        Optional. When source is "project": the project numeric ID or slug
         (https://www.inaturalist.org/projects/{slug}). When source is "user":
-        the username (https://www.inaturalist.org/people/{username}).
+        the username (https://www.inaturalist.org/people/{username}). Either
+        `slug` or `bounding_box` must be provided.
       default: null
       originalType: string
     source:
       type: string
-      description: Whether `slug` identifies a project ("project") or a username ("user").
+      description: >-
+        Whether `slug` identifies a project ("project") or a username
+        ("user"). Required when `slug` is provided; unused for bounding-box-only
+        pulls.
       default: null
       enum:
         - project
         - user
       originalType: string
   required:
-    - source
-    - slug
     - db
     - db_table_name

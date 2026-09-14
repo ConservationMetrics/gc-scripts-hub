@@ -4,7 +4,7 @@
 
 ## `inaturalist_pull.py`
 
-Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for either a **project** or a **user**. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
+Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for a **project**, a **user**, and/or a geographic **bounding box**. At least one of `slug` or `bounding_box` must be supplied; when both are supplied they are combined on the same query. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
 
 Observations are requested from **API v2** with an explicit `fields` spec (`_OBSERVATION_FIELDS`). v2 silently ignores unknown field names (HTTP 200, no error), so that dict is the single source of truth for both the request and the table columns. The on-disk `{db_table_name}_observations.json` is this curated archive, not a raw v1 dump.
 
@@ -20,8 +20,11 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 
 ### Parameters
 
-- **source** — `"project"` or `"user"`.
-- **slug** — when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+- **source** — `"project"` or `"user"`. Required when `slug` is provided; unused for bounding-box-only pulls.
+- **slug** — *(optional)* when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+- **bounding_box** — *(optional)* object with `swlat`, `swlng`, `nelat`, and `nelng`. Limits the query to that rectangle. Combined with `slug` when both are set.
+
+Either `slug` or `bounding_box` must be provided.
 
 Project URLs:
 
@@ -38,6 +41,29 @@ Example: `https://www.inaturalist.org/people/field_observer` → slug `field_obs
 
 A project may itself filter quality grade (Lake Accotink Park uses `research,needs_id`), so a project pull is not the same population as an unfiltered user pull. Filtering by username does not require authentication and does not prove you are that user.
 
+Example bounding box for Lake Accotink Park:
+
+```json
+{
+  "swlat": 38.7905,
+  "swlng": -77.2275,
+  "nelat": 38.8020,
+  "nelng": -77.2135
+}
+```
+
+Equivalent direct API request (this connector still uses its curated `fields` spec, not `fields=all`):
+
+```bash
+curl -G 'https://api.inaturalist.org/v2/observations' \
+  --data-urlencode 'swlat=38.7905' \
+  --data-urlencode 'swlng=-77.2275' \
+  --data-urlencode 'nelat=38.8020' \
+  --data-urlencode 'nelng=-77.2135' \
+  --data-urlencode 'per_page=200' \
+  --data-urlencode 'fields=all'
+```
+
 ### Observation columns
 
 Identity and provenance: `_id` (numeric observation ID), `uuid`, `uri`, `updated_at`, `observer`, `observer_id`, `observer_name`, `observer_orcid`, `license_code`, `description`, `gbif_occurrence_id` (from `outlinks` where `source` is `GBIF`).
@@ -52,6 +78,50 @@ Media: `photo_filename` / `photo_url` (first photo, unchanged), `photo_filenames
 - The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between media downloads.
 - Photos are saved as `{photo_id}.{ext}` and sounds as `{sound_id}.{ext}` under `attachments/`.
 - Observations without visible coordinates are still stored with null geometry.
+
+## Sample curl request for Windmill API
+
+The path is `f/connectors/inaturalist/inaturalist_pull`. You can get an Authorization token [via the Windmill CLI](https://www.windmill.dev/docs/advanced/cli/user#creating-a-token), or by finding one in browser request headers once logged in to the Windmill UI.
+
+Bounding box only (Lake Accotink Park):
+
+```bash
+curl -X POST \
+  https://windmill.demo.guardianconnector.net/api/w/frizzle-demo/jobs/run/p/f/connectors/inaturalist/inaturalist_pull \
+  -H 'Authorization: Bearer Your_Access_Token' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "db": "$res:f/connectors/bcmdemo_db",
+    "db_table_name": "inat_accotink_bbox",
+    "bounding_box": {
+      "swlat": 38.7905,
+      "swlng": -77.2275,
+      "nelat": 38.8020,
+      "nelng": -77.2135
+    }
+  }'
+```
+
+Project slug plus the same bounding box:
+
+```bash
+curl -X POST \
+  https://windmill.demo.guardianconnector.net/api/w/frizzle-demo/jobs/run/p/f/connectors/inaturalist/inaturalist_pull \
+  -H 'Authorization: Bearer Your_Access_Token' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "db": "$res:f/connectors/bcmdemo_db",
+    "db_table_name": "inat_accotink",
+    "source": "project",
+    "slug": "lake-accotink-park",
+    "bounding_box": {
+      "swlat": 38.7905,
+      "swlng": -77.2275,
+      "nelat": 38.8020,
+      "nelng": -77.2135
+    }
+  }'
+```
 
 ## Future work: supporting private or obscured coordinates
 
