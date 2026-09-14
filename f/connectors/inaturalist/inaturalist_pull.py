@@ -23,7 +23,6 @@ _PAGE_SIZE = 200
 _PAGE_DELAY_S = 1.1
 _MEDIA_DELAY_S = 0.2
 _VALID_SOURCES = frozenset({"project", "user"})
-_BBOX_KEYS = ("swlat", "swlng", "nelat", "nelng")
 _BBOX_RANGES = {
     "swlat": (-90, 90),
     "nelat": (-90, 90),
@@ -116,35 +115,47 @@ def _optional_text(value: Any) -> str | None:
     return text.strip() or None
 
 
-def parse_bounding_box(bounding_box: dict | str | None) -> dict[str, float] | None:
-    """Parse and validate an iNaturalist southwest/northeast bounding box."""
-    if bounding_box is None or bounding_box == "":
+def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | None:
+    """Parse a GFW-style JSON string ``[[west, south], [east, north]]``."""
+    if bounding_box is None or bounding_box == "" or bounding_box == []:
         return None
     if isinstance(bounding_box, str):
+        bounding_box = bounding_box.strip()
+        if not bounding_box:
+            return None
         try:
             bounding_box = json.loads(bounding_box)
         except json.JSONDecodeError as exc:
             raise ValueError(
-                "bounding_box must be an object or a JSON object string."
+                "bounding_box must be a JSON list: [[west, south], [east, north]]."
             ) from exc
-    if not isinstance(bounding_box, dict):
+    if not isinstance(bounding_box, (list, tuple)):
+        raise ValueError("bounding_box must be [[west, south], [east, north]].")
+    if len(bounding_box) == 0:
+        return None
+    if len(bounding_box) != 2:
         raise ValueError(
-            "bounding_box must be an object with swlat, swlng, nelat, and nelng."
+            "bounding_box must contain exactly two [longitude, latitude] corners."
         )
 
-    missing = [key for key in _BBOX_KEYS if bounding_box.get(key) is None]
-    if missing:
-        raise ValueError(
-            "bounding_box is missing required properties: " + ", ".join(missing)
-        )
-
-    parsed: dict[str, float] = {}
-    for key in _BBOX_KEYS:
+    corners: list[tuple[float, float]] = []
+    for point in bounding_box:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ValueError(
+                "bounding_box must contain exactly two [longitude, latitude] corners."
+            )
         try:
-            parsed[key] = float(bounding_box[key])
+            corners.append((float(point[0]), float(point[1])))
         except (TypeError, ValueError) as exc:
             raise ValueError("bounding_box coordinates must be numeric.") from exc
 
+    (lng_a, lat_a), (lng_b, lat_b) = corners
+    parsed = {
+        "swlng": min(lng_a, lng_b),
+        "swlat": min(lat_a, lat_b),
+        "nelng": max(lng_a, lng_b),
+        "nelat": max(lat_a, lat_b),
+    }
     for key, (low, high) in _BBOX_RANGES.items():
         if not low <= parsed[key] <= high:
             raise ValueError(f"bounding_box {key} must be between {low} and {high}.")
@@ -161,7 +172,7 @@ def main(
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
-    bounding_box: dict | str | None = None,
+    bounding_box: str | list | None = None,
 ):
     """
     Fetch public iNaturalist observations for a project, user, and/or bounding
@@ -181,9 +192,9 @@ def main(
         Database table name and datalake subdirectory.
     attachment_root : str
         Root directory for persisted files.
-    bounding_box : dict or str, optional
-        Object with ``swlat``, ``swlng``, ``nelat``, and ``nelng``. Combined
-        with ``slug`` when both are provided.
+    bounding_box : str or list, optional
+        JSON string ``[[west, south], [east, north]]`` (lng/lat), same shape
+        as GFW. Combined with ``slug`` when both are provided.
     """
     source = _optional_text(source)
     slug = _optional_text(slug)

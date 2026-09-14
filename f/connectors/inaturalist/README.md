@@ -22,9 +22,12 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 
 - **source** — `"project"` or `"user"`. Required when `slug` is provided; unused for bounding-box-only pulls.
 - **slug** — *(optional)* when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
-- **bounding_box** — *(optional)* object with `swlat`, `swlng`, `nelat`, and `nelng`. Limits the query to that rectangle. Combined with `slug` when both are set.
+- **bounding_box** — *(optional)* JSON string of viewport bounds, `[[west, south], [east, north]]` (longitude, latitude), same idea as the GFW connector. Combined with `slug` when both are set.
 
 Either `slug` or `bounding_box` must be provided.
+
+> [!TIP]
+> Use [Mapbox Location Helper](https://labs.mapbox.com/location-helper/#18.22/38.79319/-77.220404) to pan and zoom to an area, then copy the viewport bounds and paste them into `bounding_box`.
 
 Project URLs:
 
@@ -44,22 +47,20 @@ A project may itself filter quality grade (Lake Accotink Park uses `research,nee
 Example bounding box for Lake Accotink Park:
 
 ```json
-{
-  "swlat": 38.7905,
-  "swlng": -77.2275,
-  "nelat": 38.8020,
-  "nelng": -77.2135
-}
+[
+  [-77.22182, 38.79260],
+  [-77.21899, 38.79402]
+]
 ```
 
-Equivalent direct API request (this connector still uses its curated `fields` spec, not `fields=all`):
+The connector sends those corners to iNaturalist as `swlng` / `swlat` / `nelng` / `nelat`. Equivalent direct API request (this connector still uses its curated `fields` spec, not `fields=all`):
 
 ```bash
 curl -G 'https://api.inaturalist.org/v2/observations' \
-  --data-urlencode 'swlat=38.7905' \
-  --data-urlencode 'swlng=-77.2275' \
-  --data-urlencode 'nelat=38.8020' \
-  --data-urlencode 'nelng=-77.2135' \
+  --data-urlencode 'swlng=-77.22182' \
+  --data-urlencode 'swlat=38.79260' \
+  --data-urlencode 'nelng=-77.21899' \
+  --data-urlencode 'nelat=38.79402' \
   --data-urlencode 'per_page=200' \
   --data-urlencode 'fields=all'
 ```
@@ -93,12 +94,7 @@ curl -X POST \
   -d '{
     "db": "$res:f/connectors/bcmdemo_db",
     "db_table_name": "inat_accotink_bbox",
-    "bounding_box": {
-      "swlat": 38.7905,
-      "swlng": -77.2275,
-      "nelat": 38.8020,
-      "nelng": -77.2135
-    }
+    "bounding_box": "[[-77.22182, 38.79260], [-77.21899, 38.79402]]"
   }'
 ```
 
@@ -114,12 +110,7 @@ curl -X POST \
     "db_table_name": "inat_accotink",
     "source": "project",
     "slug": "lake-accotink-park",
-    "bounding_box": {
-      "swlat": 38.7905,
-      "swlng": -77.2275,
-      "nelat": 38.8020,
-      "nelng": -77.2135
-    }
+    "bounding_box": "[[-77.22182, 38.79260], [-77.21899, 38.79402]]"
   }'
 ```
 

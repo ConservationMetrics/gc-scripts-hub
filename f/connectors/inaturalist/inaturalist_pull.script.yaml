@@ -11,8 +11,8 @@ schema:
   $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
-    - source
     - slug
+    - source
     - bounding_box
     - db
     - db_table_name
@@ -37,32 +37,14 @@ schema:
       originalType: string
       pattern: "^.{1,54}$"
     bounding_box:
-      type: object
+      type: string
       description: >-
-        Optional geographic bounding box used to filter iNaturalist
-        observations. When supplied with `slug`, both filters are applied to
-        the same query. Example (Lake Accotink Park):
-        `{"swlat": 38.7905, "swlng": -77.2275, "nelat": 38.8020, "nelng": -77.2135}`.
+        Optional viewport bounds as a JSON list of two corners,
+        `[[west, south], [east, north]]` (longitude, latitude). When supplied with
+        `slug`, both filters are applied to the same query.
       default: null
-      originalType: object
-      properties:
-        swlat:
-          type: number
-          description: Southwest latitude
-        swlng:
-          type: number
-          description: Southwest longitude
-        nelat:
-          type: number
-          description: Northeast latitude
-        nelng:
-          type: number
-          description: Northeast longitude
-      required:
-        - swlat
-        - swlng
-        - nelat
-        - nelng
+      originalType: string
+      pattern: '^(|\[\s*\[\s*-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?\s*\]\s*,\s*\[\s*-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?\s*\]\s*\])$'
     slug:
       type: string
       description: >-

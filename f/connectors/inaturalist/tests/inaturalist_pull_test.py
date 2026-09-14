@@ -33,11 +33,12 @@ from f.connectors.inaturalist.tests.assets.server_responses import (
     _load_observations,
 )
 
-LAKE_ACCOTINK_BBOX = {
-    "swlat": 38.7905,
-    "swlng": -77.2275,
-    "nelat": 38.8020,
-    "nelng": -77.2135,
+LAKE_ACCOTINK_BBOX = "[[-77.22182, 38.79260], [-77.21899, 38.79402]]"
+LAKE_ACCOTINK_QUERY = {
+    "swlng": -77.22182,
+    "swlat": 38.79260,
+    "nelng": -77.21899,
+    "nelat": 38.79402,
 }
 
 _TRANSFORM_READS = {
@@ -452,6 +453,22 @@ def test_slug_only_omits_bbox_params(
     assert not {"swlat", "swlng", "nelat", "nelng"} & params.keys()
 
 
+def test_slug_with_empty_bbox_omits_bbox_params(
+    inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_empty_bbox",
+        attachment_root=tmp_path / "datalake",
+        bounding_box="",
+    )
+    params = _first_observation_params(mocked_responses)
+    assert params["project_id"] == PROJECT_ID
+    assert not {"swlat", "swlng", "nelat", "nelng"} & params.keys()
+
+
 def test_bbox_only_sends_bbox_params(
     inaturalist_user_server, mocked_responses, pg_database, tmp_path
 ):
@@ -466,7 +483,7 @@ def test_bbox_only_sends_bbox_params(
         bounding_box=LAKE_ACCOTINK_BBOX,
     )
     params = _first_observation_params(mocked_responses)
-    _assert_bbox_params(params, LAKE_ACCOTINK_BBOX)
+    _assert_bbox_params(params, LAKE_ACCOTINK_QUERY)
     assert "project_id" not in params
     assert "user_id" not in params
     assert not (asset_storage / table_name / f"{table_name}_project.json").exists()
@@ -490,7 +507,7 @@ def test_slug_and_bbox_sends_both_filters(
     )
     params = _first_observation_params(mocked_responses)
     assert params["project_id"] == PROJECT_ID
-    _assert_bbox_params(params, LAKE_ACCOTINK_BBOX)
+    _assert_bbox_params(params, LAKE_ACCOTINK_QUERY)
 
 
 def test_bbox_json_string_sends_bbox_params(
@@ -502,9 +519,14 @@ def test_bbox_json_string_sends_bbox_params(
         pg_database,
         "inat_bbox_json",
         attachment_root=tmp_path / "datalake",
-        bounding_box=json.dumps(LAKE_ACCOTINK_BBOX),
+        bounding_box="""
+        [
+          [-77.22182, 38.79260],
+          [-77.21899, 38.79402]
+        ]
+        """,
     )
-    _assert_bbox_params(_first_observation_params(mocked_responses), LAKE_ACCOTINK_BBOX)
+    _assert_bbox_params(_first_observation_params(mocked_responses), LAKE_ACCOTINK_QUERY)
 
 
 def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
@@ -519,14 +541,14 @@ def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
 
 
 def test_incomplete_bbox_raises(pg_database, tmp_path):
-    with pytest.raises(ValueError, match="missing required properties"):
+    with pytest.raises(ValueError, match="exactly two"):
         main(
             None,
             None,
             pg_database,
             "inat_incomplete_bbox",
             attachment_root=tmp_path / "datalake",
-            bounding_box={"swlat": 38.7905, "swlng": -77.2275},
+            bounding_box="[[-77.22182, 38.79260]]",
         )
 
 
@@ -534,19 +556,19 @@ def test_incomplete_bbox_raises(pg_database, tmp_path):
     "bbox, match",
     [
         (
-            {**LAKE_ACCOTINK_BBOX, "swlat": 91},
-            "swlat must be between -90 and 90",
+            "[[-77.22182, 91], [-77.21899, 38.79402]]",
+            "nelat must be between -90 and 90",
         ),
         (
-            {**LAKE_ACCOTINK_BBOX, "swlng": -181},
+            "[[-181, 38.79260], [-77.21899, 38.79402]]",
             "swlng must be between -180 and 180",
         ),
         (
-            {**LAKE_ACCOTINK_BBOX, "swlat": 38.8020, "nelat": 38.7905},
+            "[[-77.22182, 38.79402], [-77.21899, 38.79402]]",
             "swlat must be less than nelat",
         ),
         (
-            {**LAKE_ACCOTINK_BBOX, "swlng": -77.2135, "nelng": -77.2275},
+            "[[-77.22182, 38.79260], [-77.22182, 38.79402]]",
             "swlng must be less than nelng",
         ),
     ],
