@@ -232,9 +232,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
             if last_id is not None:
                 params["id_above"] = last_id
 
-            resp = session.get(
-                f"{_API_V2}/observations", params=params, timeout=60
-            )
+            resp = session.get(f"{_API_V2}/observations", params=params, timeout=60)
             resp.raise_for_status()
             payload = resp.json()
             batch = payload.get("results") or []
@@ -274,7 +272,7 @@ def write_observations(
     project_id: str | None = None,
     user_id: str | None = None,
 ) -> None:
-    """Save curated JSON + GeoJSON to the datalake and write features to PostgreSQL."""
+    """Save JSON + GeoJSON to the datalake and write features to PostgreSQL."""
     save_path = Path(attachment_root) / db_table_name
     save_data_to_file(
         observations,
@@ -346,9 +344,7 @@ def _joined_filenames(
     items: list[dict], url_key: str = "url", default_ext: str = ""
 ) -> str | None:
     names = [
-        name
-        for item in items
-        if (name := _media_filename(item, url_key, default_ext))
+        name for item in items if (name := _media_filename(item, url_key, default_ext))
     ]
     return ", ".join(names) if names else None
 
@@ -499,9 +495,7 @@ def transform_observations_to_geojson(
             "license_code": observation.get("license_code"),
             "place_guess": observation.get("place_guess"),
             "positional_accuracy": observation.get("positional_accuracy"),
-            "public_positional_accuracy": observation.get(
-                "public_positional_accuracy"
-            ),
+            "public_positional_accuracy": observation.get("public_positional_accuracy"),
             "obscured": observation.get("obscured"),
             "geoprivacy": observation.get("geoprivacy"),
             "taxon_geoprivacy": observation.get("taxon_geoprivacy"),

@@ -15,10 +15,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.227944,
-          38.803349
-        ],
+        "coordinates": [-77.227944, 38.803349],
         "type": "Point"
       },
       "place_guess": "Fairfax County, US-VA, US",
@@ -82,10 +79,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.233173,
-          38.809508
-        ],
+        "coordinates": [-77.233173, 38.809508],
         "type": "Point"
       },
       "place_guess": "Virginia, US",
@@ -197,10 +191,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.228163,
-          38.803004
-        ],
+        "coordinates": [-77.228163, 38.803004],
         "type": "Point"
       },
       "place_guess": "Fairfax County, US-VA, US",
@@ -282,10 +273,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.218984,
-          38.797995
-        ],
+        "coordinates": [-77.218984, 38.797995],
         "type": "Point"
       },
       "place_guess": "Fairfax County, US-VA, US",
@@ -355,10 +343,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.2146989926,
-          38.672907787
-        ],
+        "coordinates": [-77.2146989926, 38.672907787],
         "type": "Point"
       },
       "place_guess": "Virginia, US",
@@ -428,10 +413,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.2240793892,
-          38.7949986197
-        ],
+        "coordinates": [-77.2240793892, 38.7949986197],
         "type": "Point"
       },
       "place_guess": "Lake Accotink, Springfield, VA, US",
@@ -484,10 +466,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.2153932229,
-          38.7933069104
-        ],
+        "coordinates": [-77.2153932229, 38.7933069104],
         "type": "Point"
       },
       "place_guess": "North Springfield, VA 22151, USA",
@@ -533,10 +512,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.2420836518,
-          38.660073331
-        ],
+        "coordinates": [-77.2420836518, 38.660073331],
         "type": "Point"
       },
       "place_guess": "Virginia, US",
@@ -600,10 +576,7 @@
       "captive": false,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.22994232,
-          38.79604758
-        ],
+        "coordinates": [-77.22994232, 38.79604758],
         "type": "Point"
       },
       "place_guess": "Springfield, VA 22151, USA",
@@ -656,10 +629,7 @@
       "captive": true,
       "mappable": true,
       "geojson": {
-        "coordinates": [
-          -77.21551208,
-          38.79463614
-        ],
+        "coordinates": [-77.21551208, 38.79463614],
         "type": "Point"
       },
       "place_guess": "North Springfield, VA 22151, USA",

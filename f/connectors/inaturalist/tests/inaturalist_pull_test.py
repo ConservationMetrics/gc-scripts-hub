@@ -29,7 +29,6 @@ from f.connectors.inaturalist.tests.assets.server_responses import (
     _load_observations,
 )
 
-
 _TRANSFORM_READS = {
     "id",
     "uuid",

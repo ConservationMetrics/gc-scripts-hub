@@ -4,7 +4,7 @@
 
 ## `inaturalist_pull.py`
 
-Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for either a **project** or a **user**. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/` (original-size photos; files already on disk are skipped).
+Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for either a **project** or a **user**. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
 
 Observations are requested from **API v2** with an explicit `fields` spec (`_OBSERVATION_FIELDS`). v2 silently ignores unknown field names (HTTP 200, no error), so that dict is the single source of truth for both the request and the table columns. The on-disk `{db_table_name}_observations.json` is this curated archive, not a raw v1 dump.
 
@@ -20,23 +20,23 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 
 ### Parameters
 
-* **source** — `"project"` or `"user"`.
-* **slug** — when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+- **source** — `"project"` or `"user"`.
+- **slug** — when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
 
 Project URLs:
 
-* `https://www.inaturalist.org/projects/{slug}`
-* `https://www.inaturalist.org/projects/{id}`
+- `https://www.inaturalist.org/projects/{slug}`
+- `https://www.inaturalist.org/projects/{id}`
 
 Example: [Lake Accotink Park](https://www.inaturalist.org/projects/lake-accotink-park) → slug `lake-accotink-park` or `13795`, source `project`.
 
 User profile URLs:
 
-* `https://www.inaturalist.org/people/{username}`
+- `https://www.inaturalist.org/people/{username}`
 
 Example: `https://www.inaturalist.org/people/field_observer` → slug `field_observer`, source `user`.
 
-For projects, this connector uses `project_id` (observations associated with the project), not `apply_project_rules_for`. A project may itself filter quality grade (Lake Accotink Park uses `research,needs_id`), so a project pull is not the same population as an unfiltered user pull. Filtering by username does not require authentication and does not prove you are that user.
+A project may itself filter quality grade (Lake Accotink Park uses `research,needs_id`), so a project pull is not the same population as an unfiltered user pull. Filtering by username does not require authentication and does not prove you are that user.
 
 ### Observation columns
 
@@ -48,10 +48,10 @@ Media: `photo_filename` / `photo_url` (first photo, unchanged), `photo_filenames
 
 ### Notes
 
-* Pagination uses observation ID cursors (`id_above`) rather than page numbers, as recommended by iNaturalist for large result sets.
-* The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between media downloads.
-* Photos are saved as `{photo_id}.{ext}` and sounds as `{sound_id}.{ext}` under `attachments/`.
-* Observations without visible coordinates are still stored with null geometry.
+- Pagination uses observation ID cursors (`id_above`) rather than page numbers, as recommended by iNaturalist for large result sets.
+- The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between media downloads.
+- Photos are saved as `{photo_id}.{ext}` and sounds as `{sound_id}.{ext}` under `attachments/`.
+- Observations without visible coordinates are still stored with null geometry.
 
 ## Future work: supporting private or obscured coordinates
 
@@ -59,6 +59,6 @@ Supporting private or obscured coordinates would require registering an iNatural
 
 ## 📚 Reference
 
-* [iNaturalist API v2 documentation](https://api.inaturalist.org/v2/docs/)
-* [iNaturalist API v1 documentation](https://api.inaturalist.org/v1/docs/) (project metadata)
-* [iNaturalist Getting Started](https://www.inaturalist.org/pages/getting+started)
+- [iNaturalist API v2 documentation](https://api.inaturalist.org/v2/docs/)
+- [iNaturalist API v1 documentation](https://api.inaturalist.org/v1/docs/) (project metadata)
+- [iNaturalist Getting Started](https://www.inaturalist.org/pages/getting+started)
