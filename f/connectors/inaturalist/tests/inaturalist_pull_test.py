@@ -1,18 +1,113 @@
 import json
+from urllib.parse import parse_qs, urlparse
 
 import psycopg
 import pytest
 
 from f.connectors.inaturalist.inaturalist_pull import (
+    _OBSERVATION_FIELDS,
+    _encode_fields,
+    _field_spec_paths,
+    _iter_media,
+    download_observations,
     main,
     transform_observations_to_geojson,
 )
 from f.connectors.inaturalist.tests.assets.server_responses import (
+    CAPTIVE_OBSERVATION_ID,
+    EMPTY_DESCRIPTION_OBSERVATION_ID,
+    MULTI_PHOTO_OBSERVATION_ID,
+    NEEDS_ID_OBSERVATION_ID,
+    NULL_ACCURACY_OBSERVATION_ID,
+    NULL_TAXON_OBSERVATION_ID,
+    OBSCURED_TAXON_GEOPRIVACY_ID,
+    OBSERVATION_COUNT,
+    PRIMARY_GBIF_OCCURRENCE_ID,
     PRIMARY_OBSERVATION_ID,
     PRIMARY_PHOTO_FILENAME,
     PROJECT_ID,
+    SOUND_FILENAME,
+    SOUND_ONLY_OBSERVATION_ID,
+    SYNTHETIC_OBSERVER_ORCID,
     USERNAME,
+    _load_observations,
 )
+
+_TRANSFORM_READS = {
+    "id",
+    "uuid",
+    "uri",
+    "updated_at",
+    "observed_on",
+    "time_observed_at",
+    "observed_time_zone",
+    "quality_grade",
+    "captive",
+    "mappable",
+    "geojson",
+    "place_guess",
+    "positional_accuracy",
+    "public_positional_accuracy",
+    "obscured",
+    "geoprivacy",
+    "taxon_geoprivacy",
+    "species_guess",
+    "description",
+    "license_code",
+    "identifications_count",
+    "community_taxon_id",
+    "num_identification_agreements",
+    "num_identification_disagreements",
+    "outlinks",
+    "outlinks.source",
+    "outlinks.url",
+    "taxon",
+    "taxon.id",
+    "taxon.name",
+    "taxon.rank",
+    "taxon.rank_level",
+    "taxon.preferred_common_name",
+    "taxon.iconic_taxon_name",
+    "user",
+    "user.id",
+    "user.login",
+    "user.name",
+    "user.orcid",
+    "photos",
+    "photos.id",
+    "photos.url",
+    "photos.license_code",
+    "photos.attribution",
+    "sounds",
+    "sounds.id",
+    "sounds.file_url",
+}
+
+
+def _observation_queries(mocked_responses) -> list[dict[str, list[str]]]:
+    return [
+        parse_qs(urlparse(call.request.url).query)
+        for call in mocked_responses.calls
+        if "/v2/observations" in call.request.url
+    ]
+
+
+def _row(cur, table_name: str, observation_id: int, columns: list[str]) -> dict:
+    cur.execute(
+        f"SELECT {', '.join(columns)} FROM {table_name} WHERE _id = %s",
+        (str(observation_id),),
+    )
+    values = cur.fetchone()
+    assert values is not None
+    return dict(zip(columns, values))
+
+
+def _truthy(value) -> bool:
+    return str(value).lower() in {"true", "t", "1"}
+
+
+def test_transform_keys_are_in_field_spec():
+    assert _TRANSFORM_READS <= _field_spec_paths(_OBSERVATION_FIELDS)
 
 
 def test_project_e2e(inaturalist_project_server, pg_database, tmp_path):
@@ -30,45 +125,116 @@ def test_project_e2e(inaturalist_project_server, pg_database, tmp_path):
     project_path = asset_storage / table_name / f"{table_name}_project.json"
     assert project_path.exists()
     with open(project_path) as f:
-        assert json.load(f)["slug"] == "lake-accotink-park"
+        project = json.load(f)
+        assert project["slug"] == "lake-accotink-park"
+        assert project["rule_preferences"][0]["value"] == "research,needs_id"
 
     raw_path = asset_storage / table_name / f"{table_name}_observations.json"
     assert raw_path.exists()
     with open(raw_path) as f:
-        assert len(json.load(f)) == 10
+        assert len(json.load(f)) == OBSERVATION_COUNT
 
     geojson_path = asset_storage / table_name / f"{table_name}.geojson"
     assert geojson_path.exists()
     with open(geojson_path) as f:
         geojson_data = json.load(f)
         assert geojson_data["type"] == "FeatureCollection"
-        assert len(geojson_data["features"]) == 10
+        assert len(geojson_data["features"]) == OBSERVATION_COUNT
 
     attachments = asset_storage / table_name / "attachments"
     assert (attachments / PRIMARY_PHOTO_FILENAME).exists()
+    assert (attachments / SOUND_FILENAME).exists()
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 10
+            assert cur.fetchone()[0] == OBSERVATION_COUNT
 
-            cur.execute(
-                f"SELECT g__type, g__coordinates, data_source, scientific_name, "
-                f"photo_url, photo_filename, project_id FROM {table_name} "
-                f"WHERE _id = %s",
-                (str(PRIMARY_OBSERVATION_ID),),
+            primary = _row(
+                cur,
+                table_name,
+                PRIMARY_OBSERVATION_ID,
+                [
+                    "g__type",
+                    "g__coordinates",
+                    "data_source",
+                    "scientific_name",
+                    "photo_url",
+                    "photo_filename",
+                    "project_id",
+                    "gbif_occurrence_id",
+                    "uuid",
+                    "observer",
+                ],
             )
-            row = cur.fetchone()
-            assert row is not None
-            assert row[0] == "Point"
-            assert row[1] == "[-77.227944, 38.803349]"
-            assert row[2] == "iNaturalist"
-            assert row[3] == "Lithobates sylvaticus"
-            assert row[4] == (
+            assert primary["g__type"] == "Point"
+            assert primary["g__coordinates"] == "[-77.227944, 38.803349]"
+            assert primary["data_source"] == "iNaturalist"
+            assert primary["scientific_name"] == "Lithobates sylvaticus"
+            assert primary["photo_url"] == (
                 "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/medium.jpg"
             )
-            assert row[5] == PRIMARY_PHOTO_FILENAME
-            assert row[6] == PROJECT_ID
+            assert primary["photo_filename"] == PRIMARY_PHOTO_FILENAME
+            assert primary["project_id"] == PROJECT_ID
+            assert primary["gbif_occurrence_id"] == PRIMARY_GBIF_OCCURRENCE_ID
+            assert primary["uuid"]
+            assert primary["observer"] == USERNAME
+
+            obscured = _row(
+                cur,
+                table_name,
+                OBSCURED_TAXON_GEOPRIVACY_ID,
+                [
+                    "obscured",
+                    "taxon_geoprivacy",
+                    "positional_accuracy",
+                    "public_positional_accuracy",
+                ],
+            )
+            assert _truthy(obscured["obscured"])
+            assert obscured["taxon_geoprivacy"] == "obscured"
+            assert str(obscured["positional_accuracy"]) == "3"
+            assert str(obscured["public_positional_accuracy"]) == "28210"
+
+            captive = _row(cur, table_name, CAPTIVE_OBSERVATION_ID, ["captive"])
+            assert _truthy(captive["captive"])
+
+            null_taxon = _row(
+                cur, table_name, NULL_TAXON_OBSERVATION_ID, ["taxon_rank", "taxon_id"]
+            )
+            assert null_taxon["taxon_rank"] is None
+            assert null_taxon["taxon_id"] is None
+
+            sound_only = _row(
+                cur,
+                table_name,
+                SOUND_ONLY_OBSERVATION_ID,
+                ["sound_count", "photo_count", "sound_filenames", "photo_filename"],
+            )
+            assert str(sound_only["sound_count"]) == "1"
+            assert str(sound_only["photo_count"]) == "0"
+            assert sound_only["sound_filenames"] == SOUND_FILENAME
+            assert sound_only["photo_filename"] is None
+
+            needs_id = _row(
+                cur,
+                table_name,
+                NEEDS_ID_OBSERVATION_ID,
+                [
+                    "quality_grade",
+                    "gbif_occurrence_id",
+                    "community_taxon_id",
+                    "taxon_id",
+                    "observer_name",
+                    "observer_orcid",
+                ],
+            )
+            assert needs_id["quality_grade"] == "needs_id"
+            assert needs_id["gbif_occurrence_id"] is None
+            assert str(needs_id["community_taxon_id"]) == "52861"
+            assert str(needs_id["taxon_id"]) == "1473617"
+            assert needs_id["observer_name"] == "Kathleen Murray"
+            assert needs_id["observer_orcid"] == SYNTHETIC_OBSERVER_ORCID
 
 
 def test_user_e2e(inaturalist_user_server, pg_database, tmp_path):
@@ -91,18 +257,17 @@ def test_user_e2e(inaturalist_user_server, pg_database, tmp_path):
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 10
+            assert cur.fetchone()[0] == OBSERVATION_COUNT
 
-            cur.execute(
-                f"SELECT data_source, user_id, scientific_name FROM {table_name} "
-                f"WHERE _id = %s",
-                (str(PRIMARY_OBSERVATION_ID),),
+            row = _row(
+                cur,
+                table_name,
+                PRIMARY_OBSERVATION_ID,
+                ["data_source", "user_id", "scientific_name"],
             )
-            row = cur.fetchone()
-            assert row is not None
-            assert row[0] == "iNaturalist"
-            assert row[1] == USERNAME
-            assert row[2] == "Lithobates sylvaticus"
+            assert row["data_source"] == "iNaturalist"
+            assert row["user_id"] == USERNAME
+            assert row["scientific_name"] == "Lithobates sylvaticus"
 
 
 def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path):
@@ -120,12 +285,12 @@ def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path)
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            assert cur.fetchone()[0] == 10
+            assert cur.fetchone()[0] == OBSERVATION_COUNT
 
             cur.execute(f"SELECT _id FROM {table_name} ORDER BY _id")
             ids = {row[0] for row in cur.fetchall()}
             assert str(PRIMARY_OBSERVATION_ID) in ids
-            assert "7288932" in ids
+            assert str(NULL_ACCURACY_OBSERVATION_ID) in ids
 
 
 def test_project_e2e__no_observations(
@@ -181,6 +346,74 @@ def test_invalid_source(pg_database, tmp_path):
             "inat_bad",
             attachment_root=tmp_path / "datalake",
         )
+
+
+def test_download_observations(mocked_responses, inaturalist_observations_server):
+    observations = download_observations({"project_id": PROJECT_ID})
+    assert len(observations) == OBSERVATION_COUNT
+    assert observations[0]["id"] == PRIMARY_OBSERVATION_ID
+
+    queries = _observation_queries(mocked_responses)
+    assert len(queries) == 1
+    assert queries[0]["project_id"] == [PROJECT_ID]
+    assert queries[0]["order_by"] == ["id"]
+    assert queries[0]["order"] == ["asc"]
+    assert queries[0]["fields"] == [_encode_fields(_OBSERVATION_FIELDS)]
+    assert "id_above" not in queries[0]
+
+
+def test_download_observations_pagination(
+    mocked_responses, inaturalist_observations_server_paginated
+):
+    observations = download_observations({"project_id": PROJECT_ID})
+    ids = [observation["id"] for observation in observations]
+    assert ids == sorted(ids)
+    assert len(ids) == OBSERVATION_COUNT
+    assert len(set(ids)) == OBSERVATION_COUNT
+
+    queries = _observation_queries(mocked_responses)
+    assert "id_above" not in queries[0]
+    assert [int(q["id_above"][0]) for q in queries[1:]] == ids[1::2]
+
+
+def test_download_observations_empty(inaturalist_observations_server_empty):
+    assert download_observations({"project_id": PROJECT_ID}) == []
+
+
+def test_download_observations_stuck_cursor(inaturalist_stuck_cursor_server):
+    with pytest.raises(RuntimeError, match="Pagination cursor did not advance"):
+        download_observations({"project_id": PROJECT_ID})
+
+
+def test_iter_media():
+    observations = [
+        {
+            "photos": [
+                {"id": 1, "url": "https://example.com/photos/1/square.jpg"},
+                {"id": 2, "url": None},
+                {"url": "https://example.com/photos/3/square.jpg"},
+            ],
+            "sounds": [
+                {"id": 10, "file_url": "https://static.inaturalist.org/sounds/10.m4a"},
+                {"id": 11},
+            ],
+        }
+    ]
+    assert list(_iter_media(observations)) == [
+        ("https://example.com/photos/1/original.jpg", "1.jpg"),
+        ("https://static.inaturalist.org/sounds/10.m4a", "10.m4a"),
+    ]
+
+
+def test_iter_media_fixture():
+    media = {
+        filename: url for url, filename in _iter_media(_load_observations()["results"])
+    }
+    assert media[PRIMARY_PHOTO_FILENAME] == (
+        "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/original.jpg"
+    )
+    assert SOUND_FILENAME in media
+    assert "/square." not in media[PRIMARY_PHOTO_FILENAME]
 
 
 def test_transform_with_location():
@@ -260,3 +493,31 @@ def test_transform_no_location():
     assert feature["geometry"] is None
     assert feature["properties"]["photo_url"] is None
     assert feature["properties"]["photo_filename"] is None
+
+
+def test_transform_photo_filenames():
+    observation = next(
+        o
+        for o in _load_observations()["results"]
+        if o["id"] == MULTI_PHOTO_OBSERVATION_ID
+    )
+    props = transform_observations_to_geojson([observation])["features"][0][
+        "properties"
+    ]
+    filenames = props["photo_filenames"].split(", ")
+    assert props["photo_count"] == 10
+    assert len(filenames) == 10
+    assert props["photo_filename"] == filenames[0]
+    assert "/medium." in props["photo_url"]
+
+
+def test_transform_description_empty_vs_null():
+    by_id = {o["id"]: o for o in _load_observations()["results"]}
+    empty = transform_observations_to_geojson(
+        [by_id[EMPTY_DESCRIPTION_OBSERVATION_ID]]
+    )["features"][0]["properties"]
+    missing = transform_observations_to_geojson([by_id[NEEDS_ID_OBSERVATION_ID]])[
+        "features"
+    ][0]["properties"]
+    assert empty["description"] == ""
+    assert missing["description"] is None

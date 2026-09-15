@@ -1,6 +1,6 @@
 """Mock iNaturalist API responses for testing.
 
-Fixtures are trimmed to the fields the production code reads.
+Fixtures match the v2 field spec the production code requests.
 """
 
 import json
@@ -13,10 +13,27 @@ PROJECT_SLUG = "lake-accotink-park"
 PROJECT_TITLE = "Lake Accotink Park"
 USERNAME = "lagin6489"
 
-# First observation in the ascending-id fixture (has geometry + photo)
+# First observation in the ascending-id fixture (has geometry + photos)
 PRIMARY_OBSERVATION_ID = 7276418
 PRIMARY_PHOTO_ID = 9408078
 PRIMARY_PHOTO_FILENAME = f"{PRIMARY_PHOTO_ID}.jpg"
+PRIMARY_GBIF_OCCURRENCE_ID = "1586109875"
+
+# Hand-set on 22885102; no Lake Accotink observer publishes an ORCID.
+SYNTHETIC_OBSERVER_ORCID = "https://orcid.org/0000-0000-0000-0000"
+
+OBSCURED_TAXON_GEOPRIVACY_ID = 7289153
+OBSCURED_USER_GEOPRIVACY_ID = 62639580
+CAPTIVE_OBSERVATION_ID = 187178048
+NULL_TAXON_OBSERVATION_ID = 26622141
+SOUND_ONLY_OBSERVATION_ID = 92912381
+SOUND_FILENAME = "298892.m4a"
+NEEDS_ID_OBSERVATION_ID = 22885102
+MULTI_PHOTO_OBSERVATION_ID = 7276475
+EMPTY_DESCRIPTION_OBSERVATION_ID = 7288496
+NULL_ACCURACY_OBSERVATION_ID = 7288932
+
+OBSERVATION_COUNT = 10
 
 
 def _load_observations() -> dict:
