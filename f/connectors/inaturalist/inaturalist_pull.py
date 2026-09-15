@@ -22,6 +22,7 @@ _PAGE_SIZE = 200
 # https://www.inaturalist.org/pages/api+recommended+practices — ~1 req/sec
 _PAGE_DELAY_S = 1.1
 _MEDIA_DELAY_S = 0.2
+_MEDIA_PROGRESS_EVERY = 200
 _VALID_SOURCES = frozenset({"project", "user"})
 _BBOX_RANGES = {
     "swlat": (-90, 90),
@@ -511,6 +512,18 @@ def download_observation_media(
                 )
 
             time.sleep(_MEDIA_DELAY_S)
+
+            completed = downloaded + failed
+            if completed and completed % _MEDIA_PROGRESS_EVERY == 0:
+                logger.info(
+                    "Media download progress: %s/%s processed "
+                    "(%s downloaded, %s skipped, %s failed).",
+                    downloaded + skipped + failed,
+                    len(media),
+                    downloaded,
+                    skipped,
+                    failed,
+                )
 
     logger.info(
         "Finished media downloads: %s downloaded, %s skipped (already on disk), "
