@@ -57,8 +57,14 @@ Media: `photo_filename` / `photo_url` (first photo, unchanged), `photo_filenames
 
 Supporting private or obscured coordinates would require registering an iNaturalist application, completing OAuth2 to obtain an access token, exchanging it for a JWT via `/users/api_token`, and sending that JWT on API requests. JWTs expire after about 24 hours, so a long-lived integration would need refresh logic.
 
+## Terms of use
+
+iNaturalist's [Terms of Use](https://www.inaturalist.org/pages/terms) cover the website, apps, and API. This connector only fetches **public** observations through the documented API, stays within their [recommended request rates](https://www.inaturalist.org/pages/api+recommended+practices), and does **not** use iNaturalist data to train commercial AI or ML models (the main prohibition in those terms). Observation and media licenses are per-record: contributors retain rights, and the default is [CC BY-NC](https://creativecommons.org/licenses/by-nc/4.0/) unless they chose otherwise. Keep `license_code`, `photo_license_code`, and `photo_attribution` with the data.
+
 ## 📚 Reference
 
+- [iNaturalist Terms of Use](https://www.inaturalist.org/pages/terms)
+- [iNaturalist API Recommended Practices](https://www.inaturalist.org/pages/api+recommended+practices)
 - [iNaturalist API v2 documentation](https://api.inaturalist.org/v2/docs/)
 - [iNaturalist API v1 documentation](https://api.inaturalist.org/v1/docs/) (project metadata)
 - [iNaturalist Getting Started](https://www.inaturalist.org/pages/getting+started)
