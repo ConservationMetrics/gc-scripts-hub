@@ -27,7 +27,7 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 Either `slug` or `bounding_box` must be provided.
 
 > [!TIP]
-> Use [Mapbox Location Helper](https://labs.mapbox.com/location-helper/#18.22/38.79319/-77.220404) to pan and zoom to an area, then copy the viewport bounds and paste them into `bounding_box`.
+> Use [Mapbox Location Helper](https://labs.mapbox.com/location-helper/) to pan and zoom to an area, then copy the viewport bounds and paste them into `bounding_box`.
 
 Project URLs:
 
