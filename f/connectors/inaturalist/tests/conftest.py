@@ -69,6 +69,14 @@ def _register_observations_mock(rsps, callback):
     )
 
 
+def _empty_observations_callback(_req):
+    return (200, {}, json.dumps(server_responses.observations_empty()))
+
+
+def _stuck_cursor_callback(_req):
+    return (200, {}, json.dumps({"total_results": 99, "results": [{"id": 5}]}))
+
+
 def _register_media_mocks(rsps):
     _register_photo_mock(rsps)
     _register_sound_mock(rsps)
@@ -116,16 +124,7 @@ def inaturalist_project_server_paginated(mocked_responses, monkeypatch):
 def inaturalist_project_server_empty(mocked_responses):
     """Mock iNaturalist API returning zero project observations."""
     _register_project_mock(mocked_responses)
-    mocked_responses.add_callback(
-        responses.GET,
-        re.compile(rf"{re.escape(_API_V2)}/observations"),
-        callback=lambda _req: (
-            200,
-            {},
-            json.dumps(server_responses.observations_empty()),
-        ),
-        content_type="application/json",
-    )
+    _register_observations_mock(mocked_responses, _empty_observations_callback)
     return INaturalistProjectServer(project_id=PROJECT_ID)
 
 
@@ -141,17 +140,37 @@ def inaturalist_user_server(mocked_responses, monkeypatch):
 @pytest.fixture
 def inaturalist_user_server_empty(mocked_responses):
     """Mock iNaturalist API returning zero user observations."""
-    mocked_responses.add_callback(
-        responses.GET,
-        re.compile(rf"{re.escape(_API_V2)}/observations"),
-        callback=lambda _req: (
-            200,
-            {},
-            json.dumps(server_responses.observations_empty()),
-        ),
-        content_type="application/json",
-    )
+    _register_observations_mock(mocked_responses, _empty_observations_callback)
     return INaturalistUserServer(username=USERNAME)
+
+
+@pytest.fixture
+def inaturalist_observations_server(mocked_responses, monkeypatch):
+    """Observations endpoint only; for testing download_observations directly."""
+    _disable_delays(monkeypatch)
+    _register_observations_mock(mocked_responses, _observations_callback)
+
+
+@pytest.fixture
+def inaturalist_observations_server_paginated(mocked_responses, monkeypatch):
+    """Paginated observations endpoint only."""
+    _disable_delays(monkeypatch)
+    monkeypatch.setattr("f.connectors.inaturalist.inaturalist_pull._PAGE_SIZE", 2)
+    _register_observations_mock(mocked_responses, _observations_paginated_callback)
+
+
+@pytest.fixture
+def inaturalist_observations_server_empty(mocked_responses):
+    """Empty observations endpoint only."""
+    _register_observations_mock(mocked_responses, _empty_observations_callback)
+
+
+@pytest.fixture
+def inaturalist_stuck_cursor_server(mocked_responses, monkeypatch):
+    """Same observation id on every page so the pagination cursor cannot advance."""
+    _disable_delays(monkeypatch)
+    monkeypatch.setattr("f.connectors.inaturalist.inaturalist_pull._PAGE_SIZE", 1)
+    _register_observations_mock(mocked_responses, _stuck_cursor_callback)
 
 
 @pytest.fixture

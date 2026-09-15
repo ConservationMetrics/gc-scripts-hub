@@ -1,11 +1,15 @@
 import json
+from urllib.parse import parse_qs, urlparse
 
 import psycopg
 import pytest
 
 from f.connectors.inaturalist.inaturalist_pull import (
     _OBSERVATION_FIELDS,
+    _encode_fields,
     _field_spec_paths,
+    _iter_media,
+    download_observations,
     main,
     transform_observations_to_geojson,
 )
@@ -78,6 +82,14 @@ _TRANSFORM_READS = {
     "sounds.id",
     "sounds.file_url",
 }
+
+
+def _observation_queries(mocked_responses) -> list[dict[str, list[str]]]:
+    return [
+        parse_qs(urlparse(call.request.url).query)
+        for call in mocked_responses.calls
+        if "/v2/observations" in call.request.url
+    ]
 
 
 def _row(cur, table_name: str, observation_id: int, columns: list[str]) -> dict:
@@ -334,6 +346,74 @@ def test_invalid_source(pg_database, tmp_path):
             "inat_bad",
             attachment_root=tmp_path / "datalake",
         )
+
+
+def test_download_observations(mocked_responses, inaturalist_observations_server):
+    observations = download_observations({"project_id": PROJECT_ID})
+    assert len(observations) == OBSERVATION_COUNT
+    assert observations[0]["id"] == PRIMARY_OBSERVATION_ID
+
+    queries = _observation_queries(mocked_responses)
+    assert len(queries) == 1
+    assert queries[0]["project_id"] == [PROJECT_ID]
+    assert queries[0]["order_by"] == ["id"]
+    assert queries[0]["order"] == ["asc"]
+    assert queries[0]["fields"] == [_encode_fields(_OBSERVATION_FIELDS)]
+    assert "id_above" not in queries[0]
+
+
+def test_download_observations_pagination(
+    mocked_responses, inaturalist_observations_server_paginated
+):
+    observations = download_observations({"project_id": PROJECT_ID})
+    ids = [observation["id"] for observation in observations]
+    assert ids == sorted(ids)
+    assert len(ids) == OBSERVATION_COUNT
+    assert len(set(ids)) == OBSERVATION_COUNT
+
+    queries = _observation_queries(mocked_responses)
+    assert "id_above" not in queries[0]
+    assert [int(q["id_above"][0]) for q in queries[1:]] == ids[1::2]
+
+
+def test_download_observations_empty(inaturalist_observations_server_empty):
+    assert download_observations({"project_id": PROJECT_ID}) == []
+
+
+def test_download_observations_stuck_cursor(inaturalist_stuck_cursor_server):
+    with pytest.raises(RuntimeError, match="Pagination cursor did not advance"):
+        download_observations({"project_id": PROJECT_ID})
+
+
+def test_iter_media():
+    observations = [
+        {
+            "photos": [
+                {"id": 1, "url": "https://example.com/photos/1/square.jpg"},
+                {"id": 2, "url": None},
+                {"url": "https://example.com/photos/3/square.jpg"},
+            ],
+            "sounds": [
+                {"id": 10, "file_url": "https://static.inaturalist.org/sounds/10.m4a"},
+                {"id": 11},
+            ],
+        }
+    ]
+    assert list(_iter_media(observations)) == [
+        ("https://example.com/photos/1/original.jpg", "1.jpg"),
+        ("https://static.inaturalist.org/sounds/10.m4a", "10.m4a"),
+    ]
+
+
+def test_iter_media_fixture():
+    media = {
+        filename: url for url, filename in _iter_media(_load_observations()["results"])
+    }
+    assert media[PRIMARY_PHOTO_FILENAME] == (
+        "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/original.jpg"
+    )
+    assert SOUND_FILENAME in media
+    assert "/square." not in media[PRIMARY_PHOTO_FILENAME]
 
 
 def test_transform_with_location():
