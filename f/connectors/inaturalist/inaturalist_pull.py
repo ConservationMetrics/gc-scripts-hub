@@ -295,6 +295,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
     """
     observations: list[dict[str, Any]] = []
     last_id: int | None = None
+    total_results: int | str = "unknown"
     params: dict[str, Any] = {
         **filter_params,
         "per_page": _PAGE_SIZE,
@@ -317,6 +318,8 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
             resp.raise_for_status()
             payload = resp.json()
             batch = payload.get("results") or []
+            if last_id is None:
+                total_results = payload.get("total_results", "unknown")
 
             if not batch:
                 break
@@ -332,7 +335,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
                 "[%s] Fetched %s of %s observations",
                 label,
                 len(observations),
-                payload.get("total_results", "unknown"),
+                total_results,
             )
 
             if len(batch) < params["per_page"]:
