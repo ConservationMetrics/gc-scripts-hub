@@ -4,7 +4,7 @@
 
 ## `inaturalist_pull.py`
 
-Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for either a **project** or a **user**. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
+Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for a **project**, a **user**, and/or a geographic **bounding box**. At least one of `slug` or `bounding_box` must be supplied; when both are supplied they are combined on the same query. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
 
 Observations are requested from **API v2** with an explicit `fields` spec (`_OBSERVATION_FIELDS`). v2 silently ignores unknown field names (HTTP 200, no error), so that dict is the single source of truth for both the request and the table columns. The on-disk `{db_table_name}_observations.json` is this curated archive, not a raw v1 dump.
 
@@ -20,8 +20,14 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 
 ### Parameters
 
-- **source** — `"project"` or `"user"`.
-- **slug** — when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+- **source** — `"project"` or `"user"`. Required when `slug` is provided; unused for bounding-box-only pulls.
+- **slug** — _(optional)_ when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
+- **bounding_box** — _(optional)_ JSON string of viewport bounds, `[[west, south], [east, north]]` (longitude, latitude), same idea as the GFW connector. Combined with `slug` when both are set.
+
+Either `slug` or `bounding_box` must be provided.
+
+> [!TIP]
+> Use [Mapbox Location Helper](https://labs.mapbox.com/location-helper/) to pan and zoom to an area, then copy the viewport bounds and paste them into `bounding_box`.
 
 Project URLs:
 

@@ -2,6 +2,7 @@
 # psycopg[binary]
 # requests~=2.32
 
+import json
 import logging
 import time
 from pathlib import Path
@@ -22,6 +23,12 @@ _PAGE_SIZE = 200
 _PAGE_DELAY_S = 1.1
 _MEDIA_DELAY_S = 0.2
 _VALID_SOURCES = frozenset({"project", "user"})
+_BBOX_RANGES = {
+    "swlat": (-90, 90),
+    "nelat": (-90, 90),
+    "swlng": (-180, 180),
+    "nelng": (-180, 180),
+}
 
 # v2 silently drops unknown field names (HTTP 200, no error). This spec is the
 # single source of truth for both the request and the transform.
@@ -101,52 +108,125 @@ def _field_spec_paths(spec: dict, prefix: str = "") -> set[str]:
     return paths
 
 
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = value if isinstance(value, str) else str(value)
+    return text.strip() or None
+
+
+def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | None:
+    """Parse a JSON string ``[[west, south], [east, north]]``."""
+    if bounding_box is None or bounding_box == "" or bounding_box == []:
+        return None
+    if isinstance(bounding_box, str):
+        bounding_box = bounding_box.strip()
+        if not bounding_box:
+            return None
+        try:
+            bounding_box = json.loads(bounding_box)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "bounding_box must be a JSON list: [[west, south], [east, north]]."
+            ) from exc
+    if not isinstance(bounding_box, (list, tuple)):
+        raise ValueError("bounding_box must be [[west, south], [east, north]].")
+    if len(bounding_box) == 0:
+        return None
+    if len(bounding_box) != 2:
+        raise ValueError(
+            "bounding_box must contain exactly two [longitude, latitude] corners."
+        )
+
+    corners: list[tuple[float, float]] = []
+    for point in bounding_box:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ValueError(
+                "bounding_box must contain exactly two [longitude, latitude] corners."
+            )
+        try:
+            corners.append((float(point[0]), float(point[1])))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("bounding_box coordinates must be numeric.") from exc
+
+    (lng_a, lat_a), (lng_b, lat_b) = corners
+    parsed = {
+        "swlng": min(lng_a, lng_b),
+        "swlat": min(lat_a, lat_b),
+        "nelng": max(lng_a, lng_b),
+        "nelat": max(lat_a, lat_b),
+    }
+    for key, (low, high) in _BBOX_RANGES.items():
+        if not low <= parsed[key] <= high:
+            raise ValueError(f"bounding_box {key} must be between {low} and {high}.")
+    if parsed["swlat"] >= parsed["nelat"]:
+        raise ValueError("bounding_box swlat must be less than nelat.")
+    if parsed["swlng"] >= parsed["nelng"]:
+        raise ValueError("bounding_box swlng must be less than nelng.")
+    return parsed
+
+
 def main(
-    source: str,
-    slug: str,
+    source: str | None,
+    slug: str | None,
     db: postgresql,
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
+    bounding_box: str | list | None = None,
 ):
     """
-    Fetch public iNaturalist observations for a project or user and write them
-    to the datalake and PostgreSQL.
+    Fetch public iNaturalist observations for a project, user, and/or bounding
+    box and write them to the datalake and PostgreSQL.
 
     Parameters
     ----------
-    source : str
-        ``"project"`` or ``"user"``.
-    slug : str
+    source : str, optional
+        ``"project"`` or ``"user"``. Required when ``slug`` is provided.
+    slug : str, optional
         Project numeric ID/slug when ``source`` is ``"project"``, or username
-        when ``source`` is ``"user"``.
+        when ``source`` is ``"user"``. Either ``slug`` or ``bounding_box``
+        must be provided.
     db : postgresql
         Database connection configuration.
     db_table_name : str
         Database table name and datalake subdirectory.
     attachment_root : str
         Root directory for persisted files.
+    bounding_box : str or list, optional
+        JSON string ``[[west, south], [east, north]]`` (lng/lat), same shape
+        as GFW. Combined with ``slug`` when both are provided.
     """
-    if source not in _VALID_SOURCES:
-        raise ValueError(
-            f"Invalid source '{source}'. Expected one of: {sorted(_VALID_SOURCES)}"
-        )
+    source = _optional_text(source)
+    slug = _optional_text(slug)
+    bbox = parse_bounding_box(bounding_box)
+    if slug is None and bbox is None:
+        raise ValueError("Either `slug` or `bounding_box` must be provided.")
 
+    filter_params: dict[str, Any] = {}
     project_id = None
     user_id = None
 
-    if source == "project":
-        project_id = slug
-        project = download_project_metadata(slug, db_table_name, attachment_root)
-        if project:
-            logger.info(
-                "Fetched project metadata for '%s' (id=%s)",
-                project.get("title") or slug,
-                project.get("id", slug),
+    if slug is not None:
+        if source not in _VALID_SOURCES:
+            raise ValueError(
+                f"Invalid source '{source}'. Expected one of: {sorted(_VALID_SOURCES)}"
             )
-        filter_params = {"project_id": slug}
-    else:
-        user_id = slug
-        filter_params = {"user_id": slug}
+        if source == "project":
+            project_id = slug
+            project = download_project_metadata(slug, db_table_name, attachment_root)
+            if project:
+                logger.info(
+                    "Fetched project metadata for '%s' (id=%s)",
+                    project.get("title") or slug,
+                    project.get("id", slug),
+                )
+            filter_params["project_id"] = slug
+        else:
+            user_id = slug
+            filter_params["user_id"] = slug
+
+    if bbox is not None:
+        filter_params.update(bbox)
 
     observations = download_observations(filter_params)
     write_observations(
@@ -205,7 +285,8 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
     Parameters
     ----------
     filter_params : dict
-        Extra query parameters such as ``project_id`` or ``user_id``.
+        Extra query parameters such as ``project_id``, ``user_id``, or
+        ``swlat`` / ``swlng`` / ``nelat`` / ``nelng``.
 
     Returns
     -------

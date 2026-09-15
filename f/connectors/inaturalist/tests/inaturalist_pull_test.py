@@ -33,6 +33,14 @@ from f.connectors.inaturalist.tests.assets.server_responses import (
     _load_observations,
 )
 
+LAKE_ACCOTINK_BBOX = "[[-77.22182, 38.79260], [-77.21899, 38.79402]]"
+LAKE_ACCOTINK_QUERY = {
+    "swlng": -77.22182,
+    "swlat": 38.79260,
+    "nelng": -77.21899,
+    "nelat": 38.79402,
+}
+
 _TRANSFORM_READS = {
     "id",
     "uuid",
@@ -104,6 +112,19 @@ def _row(cur, table_name: str, observation_id: int, columns: list[str]) -> dict:
 
 def _truthy(value) -> bool:
     return str(value).lower() in {"true", "t", "1"}
+
+
+def _first_observation_params(mocked_responses) -> dict[str, str]:
+    for call in mocked_responses.calls:
+        parsed = urlparse(call.request.url)
+        if parsed.path.rstrip("/").endswith("/observations"):
+            return {key: values[0] for key, values in parse_qs(parsed.query).items()}
+    raise AssertionError("expected an iNaturalist observations request")
+
+
+def _assert_bbox_params(params: dict[str, str], bbox: dict[str, float]) -> None:
+    for key, value in bbox.items():
+        assert float(params[key]) == value
 
 
 def test_transform_keys_are_in_field_spec():
@@ -414,6 +435,154 @@ def test_iter_media_fixture():
     )
     assert SOUND_FILENAME in media
     assert "/square." not in media[PRIMARY_PHOTO_FILENAME]
+
+
+def test_slug_only_omits_bbox_params(
+    inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_slug_only",
+        attachment_root=tmp_path / "datalake",
+    )
+    params = _first_observation_params(mocked_responses)
+    assert params["project_id"] == PROJECT_ID
+    assert "user_id" not in params
+    assert not {"swlat", "swlng", "nelat", "nelng"} & params.keys()
+
+
+def test_slug_with_empty_bbox_omits_bbox_params(
+    inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_empty_bbox",
+        attachment_root=tmp_path / "datalake",
+        bounding_box="",
+    )
+    params = _first_observation_params(mocked_responses)
+    assert params["project_id"] == PROJECT_ID
+    assert not {"swlat", "swlng", "nelat", "nelng"} & params.keys()
+
+
+def test_bbox_only_sends_bbox_params(
+    inaturalist_user_server, mocked_responses, pg_database, tmp_path
+):
+    asset_storage = tmp_path / "datalake"
+    table_name = "inat_bbox_only"
+    main(
+        None,
+        None,
+        pg_database,
+        table_name,
+        attachment_root=asset_storage,
+        bounding_box=LAKE_ACCOTINK_BBOX,
+    )
+    params = _first_observation_params(mocked_responses)
+    _assert_bbox_params(params, LAKE_ACCOTINK_QUERY)
+    assert "project_id" not in params
+    assert "user_id" not in params
+    assert not (asset_storage / table_name / f"{table_name}_project.json").exists()
+
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cur.fetchone()[0] == OBSERVATION_COUNT
+
+
+def test_slug_and_bbox_sends_both_filters(
+    inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_slug_bbox",
+        attachment_root=tmp_path / "datalake",
+        bounding_box=LAKE_ACCOTINK_BBOX,
+    )
+    params = _first_observation_params(mocked_responses)
+    assert params["project_id"] == PROJECT_ID
+    _assert_bbox_params(params, LAKE_ACCOTINK_QUERY)
+
+
+def test_bbox_json_string_sends_bbox_params(
+    inaturalist_user_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        None,
+        None,
+        pg_database,
+        "inat_bbox_json",
+        attachment_root=tmp_path / "datalake",
+        bounding_box="""
+        [
+          [-77.22182, 38.79260],
+          [-77.21899, 38.79402]
+        ]
+        """,
+    )
+    _assert_bbox_params(_first_observation_params(mocked_responses), LAKE_ACCOTINK_QUERY)
+
+
+def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="Either `slug` or `bounding_box`"):
+        main(
+            None,
+            None,
+            pg_database,
+            "inat_none",
+            attachment_root=tmp_path / "datalake",
+        )
+
+
+def test_incomplete_bbox_raises(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="exactly two"):
+        main(
+            None,
+            None,
+            pg_database,
+            "inat_incomplete_bbox",
+            attachment_root=tmp_path / "datalake",
+            bounding_box="[[-77.22182, 38.79260]]",
+        )
+
+
+@pytest.mark.parametrize(
+    "bbox, match",
+    [
+        (
+            "[[-77.22182, 91], [-77.21899, 38.79402]]",
+            "nelat must be between -90 and 90",
+        ),
+        (
+            "[[-181, 38.79260], [-77.21899, 38.79402]]",
+            "swlng must be between -180 and 180",
+        ),
+        (
+            "[[-77.22182, 38.79402], [-77.21899, 38.79402]]",
+            "swlat must be less than nelat",
+        ),
+        (
+            "[[-77.22182, 38.79260], [-77.22182, 38.79402]]",
+            "swlng must be less than nelng",
+        ),
+    ],
+)
+def test_invalid_bbox_raises(pg_database, tmp_path, bbox, match):
+    with pytest.raises(ValueError, match=match):
+        main(
+            None,
+            None,
+            pg_database,
+            "inat_bad_bbox",
+            attachment_root=tmp_path / "datalake",
+            bounding_box=bbox,
+        )
 
 
 def test_transform_with_location():
