@@ -58,6 +58,7 @@ Media: `photo_filename` / `photo_url` (first photo, unchanged), `photo_filenames
 - The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between media downloads.
 - Photos are saved as `{photo_id}.{ext}` and sounds as `{sound_id}.{ext}` under `attachments/`.
 - Observations without visible coordinates are still stored with null geometry.
+- iNaturalist projects, or bounding boxes, can yield a huge amount of data! It is possible that when running this script, Windmill will time out after a default of 30 minutes. If that is the case, you will need to increase instance-wide job timeout settings to a sane higher value, and restart the Windmill web app.
 
 ## Future work: supporting private or obscured coordinates
 
