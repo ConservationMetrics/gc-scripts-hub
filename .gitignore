@@ -1,6 +1,9 @@
 # Windmill
 wmill-lock.yaml
 
+# JavaScript dependencies
+node_modules/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
