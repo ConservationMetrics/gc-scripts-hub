@@ -1,0 +1,7 @@
+type: inline
+fields:
+  db:
+    type: static
+    value: $res:f/connectors/postgresql
+  import_id:
+    type: user
