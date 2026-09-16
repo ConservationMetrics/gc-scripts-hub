@@ -158,16 +158,18 @@ def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
         mock_db_connection,
         upload(
             "birds.geojson",
-            '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"heron","tags":["wetland"]},"geometry":{"type":"Point","coordinates":[1,2]}}]}',
+            '{"type":"FeatureCollection","features":[{"type":"Feature","id":"feature-123","properties":{"name":"heron","tags":["wetland"]},"geometry":{"type":"Point","coordinates":[1,2]}}]}',
         ),
         "create",
         "birds",
     )
+    assert staged["fields"] == ["name", "tags", "id", "g__type", "g__coordinates"]
     preview_import(mock_db_connection, staged["import_id"])
     apply_import(mock_db_connection, staged["import_id"])
     row = table_rows(mock_db_connection, "birds")[0]
     assert row["g__type"] == "Point"
     assert row["g__coordinates"] == "[1,2]"
+    assert row["id"] == "feature-123"
     assert row["tags"] == '["wetland"]'
 
 

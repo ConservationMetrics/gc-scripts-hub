@@ -110,6 +110,8 @@ def _parse_geojson(contents):
         if not isinstance(properties, dict):
             raise ImportValidationError("GeoJSON feature properties must be an object.")
         row = {key: _json_value(value) for key, value in properties.items()}
+        if "id" in feature:
+            row["id"] = _json_value(feature["id"])
         geometry = feature.get("geometry")
         if geometry is not None:
             if (
