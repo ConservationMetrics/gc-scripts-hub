@@ -223,7 +223,7 @@ value:
           connections: []
           eval: >-
             <center><em>Need help? Visit our <a
-            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer"
             target="_blank">documentation website</a>.</em></center>
           fieldType: template
         configuration: {}
@@ -732,8 +732,8 @@ value:
               Shapefile, XLS, XLSX, XML (<em>SMART only</em>)<br>
 
               <strong>Note:</strong> To upload media attachments (like photos),
-              please use Filebrowser. See <a
-              href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+              please use File Browser. See <a
+              href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer"
               target="_blank">documentation</a>.</p>
             fieldType: template
           configuration: {}
