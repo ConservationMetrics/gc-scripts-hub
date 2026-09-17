@@ -772,6 +772,7 @@ value:
                   application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
                 - application/vnd.ms-excel
                 - application/json
+                - application/geo+json
                 - application/xml
                 - application/geopackage+vnd.sqlite3
               connections:
