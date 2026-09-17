@@ -213,7 +213,7 @@ value:
           connections: []
           eval: >-
             <center><em>Need help? Visit our <a
-            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader"
+            href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer"
             target="_blank">documentation website</a>.</em></center>
           fieldType: template
         configuration: {}

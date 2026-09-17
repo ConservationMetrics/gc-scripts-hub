@@ -9,11 +9,9 @@ On CyberTracker Mobile, it is possible to produce a **Backup** archive for both 
 To create a backup from the mobile app, open the menu and go to **Settings → Data archive → Backup**. You will then be prompted to export a ZIP file. You can save the file to disk, or share via a communications tool like WhatsApp, Signal, or email.
 
 > [!TIP]
-> Once you have the file, you can use the `cybertracker_observations_from_backup.py` script, or the [GC Dataset Importer](https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-uploader) to import the data into Guardian Connector.
-
+> Once you have the file, you can use the `cybertracker_observations_from_backup.py` script, or the [GC Dataset Importer](https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer) to import the data into Guardian Connector.
 
 ## Backup archive contents
-
 
 The backup ZIP is structured as:
 
@@ -39,11 +37,11 @@ The script parses `data/0.json` and writes the observations to a PostgreSQL data
 
 > [!IMPORTANT]
 > **Tracks vs observations.** Some sessions are **track-only** captures: `trackOnly: true` and/or `fieldValues.trackFile` pointing at a `.kmz` (plus companion `.db` under `attachments/`). Those rows have **no** point coordinates in `fieldValues` in the form this connector uses for a Point (`cto_location` / `_location` from **Online**, or plain `location` from **Classic**, each with numeric `x` / `y`).
-> 
+>
 > These are **not** written to the observations GeoJSON: track geometry import is out of scope for now. To keep KMZ / DB / other track files, upload them with [Filebrowser](https://docs.guardianconnector.net/reference/gc-toolkit/filebrowser/).
 
 ## 📚 Reference
 
-* CyberTracker website: <https://www.cybertracker.org/>
-* CyberTracker Classic wiki: <https://cybertrackerwiki.org/classic/>
-* CyberTracker Online wiki: <https://cybertrackerwiki.org/online/>
+- CyberTracker website: <https://www.cybertracker.org/>
+- CyberTracker Classic wiki: <https://cybertrackerwiki.org/classic/>
+- CyberTracker Online wiki: <https://cybertrackerwiki.org/online/>
