@@ -1,0 +1,37 @@
+summary: 'GBIF: Submit occurrence download'
+description: Validates a small longitude/latitude bounding box and submits one
+  asynchronous GBIF SIMPLE_CSV download. Do not configure retries for this
+  submission step.
+lock: '!inline f/connectors/gbif/gbif_submit_download.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - gbif_account
+    - bounding_box
+    - max_months_lookback
+    - max_wait_seconds
+  properties:
+    bounding_box:
+      type: string
+      description: Two corners as `[[west, south], [east, north]]` in
+        longitude/latitude order; limited to approximately 15,000 km2.
+      default: null
+    gbif_account:
+      type: object
+      description: GBIF account resource containing its username (not email) and password.
+      default: null
+      format: resource-gbif
+    max_months_lookback:
+      type: integer
+      description: Optional non-negative months of LAST_INTERPRETED history, from the
+        first day of the cutoff month.
+      default: null
+    max_wait_seconds:
+      type: integer
+      description: Maximum elapsed seconds allowed for Flow polling, from 1 through 86400.
+      default: 86400
+  required:
+    - gbif_account
+    - bounding_box
