@@ -1,0 +1,11 @@
+type: inline
+fields:
+  db:
+    type: static
+    value: $res:f/connectors/postgresql
+  goal:
+    type: user
+  target_table:
+    type: user
+  uploaded_file:
+    type: user
