@@ -1,9 +1,10 @@
 summary: "iNaturalist: Fetch Observations"
 description: >-
   Uses the iNaturalist API to download public observations for a project,
-  user, and/or geographic bounding box, saving GeoJSON and photo/sound
-  attachments to the datalake and PostgreSQL. At least one of `slug` or
-  `bounding_box` must be provided.
+  user, and/or geographic bounding box, optionally limited by
+  `max_months_lookback`, saving GeoJSON and photo/sound attachments to the
+  datalake and PostgreSQL. At least one of `slug` or `bounding_box` must be
+  provided.
 lock: "!inline f/connectors/inaturalist/inaturalist_pull.script.lock"
 concurrency_time_window_s: 0
 kind: script
@@ -14,6 +15,7 @@ schema:
     - slug
     - source
     - bounding_box
+    - max_months_lookback
     - db
     - db_table_name
     - attachment_root
@@ -47,6 +49,15 @@ schema:
       default: null
       originalType: string
       pattern: '^(|\[\s*\[\s*-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?\s*\]\s*,\s*\[\s*-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?\s*\]\s*\])$'
+    max_months_lookback:
+      type: integer
+      description: >-
+        Number of months to look back when fetching observations. For example,
+        if set to 6, the script will fetch observations from the last 6 months
+        (on or after the first day of the cutoff month). Uses the iNaturalist
+        `d1` filter on date observed. If null or not specified, all matching
+        observations are fetched.
+      default: null
     slug:
       type: string
       description: >-

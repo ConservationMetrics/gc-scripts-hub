@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 import psycopg
@@ -508,6 +510,38 @@ def test_slug_and_bbox_sends_both_filters(
     params = _first_observation_params(mocked_responses)
     assert params["project_id"] == PROJECT_ID
     _assert_bbox_params(params, LAKE_ACCOTINK_QUERY)
+
+
+@patch("f.common_logic.date_utils.datetime")
+def test_max_months_lookback_sends_d1(
+    mock_datetime, inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    mock_datetime.now.return_value = datetime(2025, 10, 15)
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_lookback",
+        attachment_root=tmp_path / "datalake",
+        max_months_lookback=6,
+    )
+    params = _first_observation_params(mocked_responses)
+    assert params["d1"] == "2025-04-01"
+    assert params["project_id"] == PROJECT_ID
+
+
+def test_no_lookback_omits_d1(
+    inaturalist_project_server, mocked_responses, pg_database, tmp_path
+):
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        "inat_no_lookback",
+        attachment_root=tmp_path / "datalake",
+    )
+    params = _first_observation_params(mocked_responses)
+    assert "d1" not in params
 
 
 def test_bbox_json_string_sends_bbox_params(

@@ -4,7 +4,7 @@
 
 ## `inaturalist_pull.py`
 
-Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for a **project**, a **user**, and/or a geographic **bounding box**. At least one of `slug` or `bounding_box` must be supplied; when both are supplied they are combined on the same query. Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
+Fetches public observations via the [iNaturalist API](https://api.inaturalist.org/v2/docs/) for a **project**, a **user**, and/or a geographic **bounding box**. At least one of `slug` or `bounding_box` must be supplied; when both are supplied they are combined on the same query. Optionally limits results with `max_months_lookback` (same meaning as the GFW connector). Saves curated JSON and GeoJSON to the datalake, writes features to PostgreSQL, and downloads photo and sound attachments to `{attachment_root}/{db_table_name}/attachments/`. Files already on disk are skipped.
 
 Observations are requested from **API v2** with an explicit `fields` spec (`_OBSERVATION_FIELDS`). v2 silently ignores unknown field names (HTTP 200, no error), so that dict is the single source of truth for both the request and the table columns. The on-disk `{db_table_name}_observations.json` is this curated archive, not a raw v1 dump.
 
@@ -23,6 +23,7 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 - **source** — `"project"` or `"user"`. Required when `slug` is provided; unused for bounding-box-only pulls.
 - **slug** — _(optional)_ when `source` is `"project"`, the project numeric ID or slug; when `"user"`, the iNaturalist username.
 - **bounding_box** — _(optional)_ JSON string of viewport bounds, `[[west, south], [east, north]]` (longitude, latitude), same idea as the GFW connector. Combined with `slug` when both are set.
+- **max_months_lookback** — _(optional)_ number of months of observations to fetch, same name and meaning as GFW. For example, `6` keeps observations on or after the first day of the cutoff month. Sent as iNaturalist [`d1`](https://www.inaturalist.org/pages/api+reference) (date observed). Omit to fetch all matching observations.
 
 Either `slug` or `bounding_box` must be provided.
 
@@ -55,9 +56,11 @@ Media: `photo_filename` / `photo_url` (first photo, unchanged), `photo_filenames
 ### Notes
 
 - Pagination uses observation ID cursors (`id_above`) rather than page numbers, as recommended by iNaturalist for large result sets.
+- When `max_months_lookback` is set, the API `d1` filter is applied so only observations from that date onward are downloaded.
 - The script stays at or below ~60 requests per minute between paginated API calls, and pauses briefly between media downloads.
 - Photos are saved as `{photo_id}.{ext}` and sounds as `{sound_id}.{ext}` under `attachments/`.
 - Observations without visible coordinates are still stored with null geometry.
+- iNaturalist projects, or bounding boxes, can yield a huge amount of data! It is possible that when running this script, Windmill will time out after a default of 30 minutes. If that is the case, you will need to increase instance-wide job timeout settings to a sane higher value, and restart the Windmill web app.
 
 ## Future work: supporting private or obscured coordinates
 
@@ -66,6 +69,10 @@ Supporting private or obscured coordinates would require registering an iNatural
 ## Terms of use
 
 iNaturalist's [Terms of Use](https://www.inaturalist.org/pages/terms) cover the website, apps, and API. This connector only fetches **public** observations through the documented API, stays within their [recommended request rates](https://www.inaturalist.org/pages/api+recommended+practices), and does **not** use iNaturalist data to train commercial AI or ML models (the main prohibition in those terms). Observation and media licenses are per-record: contributors retain rights, and the default is [CC BY-NC](https://creativecommons.org/licenses/by-nc/4.0/) unless they chose otherwise. Keep `license_code`, `photo_license_code`, and `photo_attribution` with the data.
+
+> [!IMPORTANT]
+>
+> Please review the Query Rate section of the [iNaturalist API Recommended Practices](https://www.inaturalist.org/pages/api+recommended+practices) page to understand the request and rate limits and avoid being blocked.
 
 ## 📚 Reference
 

@@ -1,5 +1,6 @@
 # requirements:
 # psycopg[binary]
+# python-dateutil
 # requests~=2.32
 
 import json
@@ -11,6 +12,7 @@ from urllib.parse import urlparse
 
 import requests
 
+from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import postgresql
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
@@ -22,6 +24,7 @@ _PAGE_SIZE = 200
 # https://www.inaturalist.org/pages/api+recommended+practices — ~1 req/sec
 _PAGE_DELAY_S = 1.1
 _MEDIA_DELAY_S = 0.2
+_MEDIA_PROGRESS_EVERY = 200
 _VALID_SOURCES = frozenset({"project", "user"})
 _BBOX_RANGES = {
     "swlat": (-90, 90),
@@ -173,6 +176,7 @@ def main(
     db_table_name: str,
     attachment_root: str = "/persistent-storage/datalake",
     bounding_box: str | list | None = None,
+    max_months_lookback: int | None = None,
 ):
     """
     Fetch public iNaturalist observations for a project, user, and/or bounding
@@ -195,6 +199,9 @@ def main(
     bounding_box : str or list, optional
         JSON string ``[[west, south], [east, north]]`` (lng/lat), same shape
         as GFW. Combined with ``slug`` when both are provided.
+    max_months_lookback : int, optional
+        If set, only observations on or after the first day of the cutoff
+        month are fetched (iNaturalist ``d1``). Same meaning as GFW.
     """
     source = _optional_text(source)
     slug = _optional_text(slug)
@@ -227,6 +234,17 @@ def main(
 
     if bbox is not None:
         filter_params.update(bbox)
+
+    cutoff = calculate_cutoff_date(max_months_lookback)
+    if cutoff is not None:
+        year, month = cutoff
+        start_date = f"{year}-{month:02d}-01"
+        filter_params["d1"] = start_date
+        logger.info(
+            "Limiting to observations on or after %s (%s month lookback)",
+            start_date,
+            max_months_lookback,
+        )
 
     observations = download_observations(filter_params)
     write_observations(
@@ -285,8 +303,8 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
     Parameters
     ----------
     filter_params : dict
-        Extra query parameters such as ``project_id``, ``user_id``, or
-        ``swlat`` / ``swlng`` / ``nelat`` / ``nelng``.
+        Extra query parameters such as ``project_id``, ``user_id``,
+        ``swlat`` / ``swlng`` / ``nelat`` / ``nelng``, or ``d1``.
 
     Returns
     -------
@@ -295,6 +313,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
     """
     observations: list[dict[str, Any]] = []
     last_id: int | None = None
+    total_results: int | str = "unknown"
     params: dict[str, Any] = {
         **filter_params,
         "per_page": _PAGE_SIZE,
@@ -317,6 +336,8 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
             resp.raise_for_status()
             payload = resp.json()
             batch = payload.get("results") or []
+            if last_id is None:
+                total_results = payload.get("total_results", "unknown")
 
             if not batch:
                 break
@@ -332,7 +353,7 @@ def download_observations(filter_params: dict[str, Any]) -> list[dict[str, Any]]
                 "[%s] Fetched %s of %s observations",
                 label,
                 len(observations),
-                payload.get("total_results", "unknown"),
+                total_results,
             )
 
             if len(batch) < params["per_page"]:
@@ -508,6 +529,18 @@ def download_observation_media(
                 )
 
             time.sleep(_MEDIA_DELAY_S)
+
+            completed = downloaded + failed
+            if completed and completed % _MEDIA_PROGRESS_EVERY == 0:
+                logger.info(
+                    "Media download progress: %s/%s processed "
+                    "(%s downloaded, %s skipped, %s failed).",
+                    downloaded + skipped + failed,
+                    len(media),
+                    downloaded,
+                    skipped,
+                    failed,
+                )
 
     logger.info(
         "Finished media downloads: %s downloaded, %s skipped (already on disk), "
