@@ -58,7 +58,7 @@ value:
                   failure')
             stop_after_if:
               expr: result.succeeded === true
-              skip_if_stopped: true
+              skip_if_stopped: false
         skip_failures: false
       continue_on_error: false
     - id: ingest
@@ -98,7 +98,8 @@ schema:
       default: /persistent-storage/datalake
     bounding_box:
       type: string
-      description: Two corners `[[west, south], [east, north]]` in longitude/latitude
+      description: >-
+        Two corners `[[west, south], [east, north]]` in longitude/latitude
         order, maximum approximately 15,000 km2. Copy bounds from Mapbox
         Location Helper: https://labs.mapbox.com/location-helper
     db:

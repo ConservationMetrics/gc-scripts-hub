@@ -15,10 +15,10 @@ schema:
   properties:
     bounding_box:
       type: string
-      description: Two corners as `[[west, south], [east, north]]` in
-        longitude/latitude order; limited to approximately 15,000 km2. Copy
-        bounds from Mapbox Location Helper:
-        https://labs.mapbox.com/location-helper
+      description: >-
+        Two corners as `[[west, south], [east, north]]` in longitude/latitude
+        order; limited to approximately 15,000 km2. Copy bounds from Mapbox
+        Location Helper: https://labs.mapbox.com/location-helper
       default: null
     gbif_account:
       type: object
