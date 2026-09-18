@@ -1,10 +1,80 @@
 import json
 import logging
+import math
 import tempfile
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def bounding_box_to_wkt(
+    bounding_box: list | str, max_area_km2: float | None = None
+) -> str:
+    """Validate two longitude/latitude corners and return a counter-clockwise WKT polygon.
+
+    Parameters
+    ----------
+    bounding_box : list or str
+        ``[[west, south], [east, north]]`` or a JSON string with that shape.
+    max_area_km2 : float, optional
+        Maximum permitted approximate geographic area in square kilometres.
+
+    Returns
+    -------
+    str
+        A closed, counter-clockwise longitude/latitude WKT polygon.
+    """
+    if isinstance(bounding_box, str):
+        try:
+            bounding_box = json.loads(bounding_box)
+        except json.JSONDecodeError as exc:
+            raise ValueError("bounding_box must be valid JSON.") from exc
+    if not isinstance(bounding_box, list) or len(bounding_box) != 2:
+        raise ValueError("bounding_box must be [[west, south], [east, north]].")
+
+    corners = []
+    for corner in bounding_box:
+        if not isinstance(corner, list) or len(corner) != 2:
+            raise ValueError(
+                "bounding_box must contain two [longitude, latitude] corners."
+            )
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in corner
+        ):
+            raise ValueError("bounding_box coordinates must be finite numeric values.")
+        longitude, latitude = (float(value) for value in corner)
+        if not math.isfinite(longitude) or not math.isfinite(latitude):
+            raise ValueError("bounding_box coordinates must be finite numeric values.")
+        corners.append((longitude, latitude))
+
+    (west, south), (east, north) = corners
+    if not -180 <= west <= 180 or not -180 <= east <= 180:
+        raise ValueError("bounding_box longitudes must be between -180 and 180.")
+    if not -90 <= south <= 90 or not -90 <= north <= 90:
+        raise ValueError("bounding_box latitudes must be between -90 and 90.")
+    if west >= east:
+        raise ValueError(
+            "bounding_box west must be less than east; antimeridian bounds are unsupported."
+        )
+    if south >= north:
+        raise ValueError("bounding_box south must be less than north.")
+
+    width_km = (east - west) * 111.32 * math.cos(math.radians((south + north) / 2))
+    height_km = (north - south) * 111.32
+    area_km2 = width_km * height_km
+    if max_area_km2 is not None and area_km2 > max_area_km2:
+        raise ValueError(
+            f"bounding_box area ({area_km2:.0f} km2) exceeds {max_area_km2:g} km2."
+        )
+
+    # This ring is counter-clockwise in longitude/latitude coordinates; GBIF treats
+    # clockwise polygons as their complementary area.
+    return (
+        f"POLYGON(({west} {south},{east} {south},{east} {north},"
+        f"{west} {north},{west} {south}))"
+    )
 
 
 def geojson_to_line_delimited(source_path: Path) -> Path:

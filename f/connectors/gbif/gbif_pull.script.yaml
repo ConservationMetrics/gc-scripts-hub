@@ -1,0 +1,40 @@
+summary: 'GBIF: Download and import occurrences'
+description: Downloads a completed GBIF SIMPLE_CSV archive, preserves
+  provenance, converts its TSV contents to CSV, and upserts occurrences.
+lock: '!inline f/connectors/gbif/gbif_pull.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - download_key
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: Root directory for retained GBIF archive, converted CSV, and
+        citation metadata.
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: PostgreSQL resource used by the standard CSV importer.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: Destination PostgreSQL table and datalake subdirectory.
+      default: null
+      originalType: string
+      pattern: ^.{1,54}$
+    download_key:
+      type: string
+      description: A GBIF download key whose metadata must report SUCCEEDED.
+      default: null
+      originalType: string
+  required:
+    - download_key
+    - db
+    - db_table_name
