@@ -5,7 +5,7 @@ ad-hoc update. It submits a GBIF asynchronous SIMPLE_CSV download, waits
 passively for completion, preserves the archive and citation metadata, then
 upserts its occurrences into PostgreSQL.
 
-Create a Windmill `gbif` resource manually (custom resource types cannot be
+Create a Windmill `c_gbif` resource manually (custom resource types cannot be
 synced): `{"username":"string","password":"string"}`. Use the GBIF
 **username**, not an email address. Never place credentials in Flow inputs or
 logs. Register an account and review [GBIF download API restrictions](https://techdocs.gbif.org/en/data-use/api-downloads), including its load-dependent limit on incomplete downloads per account.

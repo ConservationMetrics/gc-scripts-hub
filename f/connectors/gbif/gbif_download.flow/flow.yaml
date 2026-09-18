@@ -99,7 +99,8 @@ schema:
     bounding_box:
       type: string
       description: Two corners `[[west, south], [east, north]]` in longitude/latitude
-        order, maximum approximately 15,000 km2.
+        order, maximum approximately 15,000 km2. Copy bounds from Mapbox
+        Location Helper: https://labs.mapbox.com/location-helper
     db:
       type: object
       description: PostgreSQL resource for occurrence data.
@@ -111,7 +112,7 @@ schema:
     gbif_account:
       type: object
       description: GBIF username/password resource.
-      format: resource-gbif
+      format: resource-c_gbif
     max_months_lookback:
       type: integer
       description: Optional LAST_INTERPRETED lookback in whole months.

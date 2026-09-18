@@ -16,7 +16,7 @@ _API = "https://api.gbif.org/v1/occurrence/download"
 _MAX_AREA_KM2 = 15_000
 
 
-class gbif(TypedDict):
+class c_gbif(TypedDict):
     """Windmill GBIF account resource."""
 
     username: str
@@ -24,7 +24,7 @@ class gbif(TypedDict):
 
 
 def main(
-    gbif_account: gbif,
+    gbif_account: c_gbif,
     bounding_box: list | str,
     max_months_lookback: int | None = None,
     max_wait_seconds: int = 86400,
@@ -33,7 +33,7 @@ def main(
 
     Parameters
     ----------
-    gbif_account : gbif
+    gbif_account : c_gbif
         Resource containing a GBIF username and password.
     bounding_box : list or str
         ``[[west, south], [east, north]]`` in longitude/latitude order.
