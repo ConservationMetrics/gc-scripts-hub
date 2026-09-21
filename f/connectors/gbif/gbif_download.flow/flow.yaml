@@ -1,8 +1,8 @@
 summary: "GBIF: Download occurrences"
 description:
-    "Downloads GBIF occurrences for a bounding box and imports them into
-    PostgreSQL. Use it for an initial backfill or recurring updates. The Flow
-    checks for completion every minute and waits up to 24 hours."
+    "Downloads GBIF occurrence records for an area and saves them to PostgreSQL.
+    Use it for a first download or to update existing data. GBIF can take time
+    to prepare the file, so this Flow checks every minute for up to 24 hours."
 value:
     modules:
         - id: submit
@@ -90,29 +90,33 @@ schema:
     properties:
         attachment_root:
             type: string
-            description: Root directory for retained archive, CSV, and provenance metadata.
+            description: Folder where downloaded files and supporting information are saved.
             default: /persistent-storage/datalake
         bounding_box:
             type: string
             description: >-
-                Two corners `[[west, south], [east, north]]` in longitude/latitude
-                order, maximum approximately 15,000 km2. Copy bounds from Mapbox
-                Location Helper: https://labs.mapbox.com/location-helper
+                Area to download as `[[west, south], [east, north]]`. The area
+                must be no larger than approximately 15,000 km2. Find these
+                values with Mapbox Location Helper:
+                https://labs.mapbox.com/location-helper
         db:
             type: object
-            description: PostgreSQL resource for occurrence data.
+            description: PostgreSQL database where occurrence records are saved.
             format: resource-postgresql
         db_table_name:
             type: string
-            description: Destination table and datalake subdirectory.
+            description: Table name. This is also used as the download folder name.
             pattern: ^.{1,54}$
         gbif_account:
             type: object
-            description: GBIF username/password resource.
+            description: GBIF account with a username (not email address) and password.
             format: resource-c_gbif
         max_months_lookback:
             type: integer
-            description: Optional LAST_INTERPRETED lookback in whole months.
+            description: >-
+                Only include records processed by GBIF within this many months.
+                This uses LAST_INTERPRETED: when the record last changed in GBIF,
+                not its observation date or the publisher's last update.
             default: null
             minimum: 0
             nullable: true
