@@ -4,8 +4,11 @@ import math
 import tempfile
 from pathlib import Path
 
+from pyproj import Geod
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+_WGS84_GEOD = Geod(ellps="WGS84")
 
 
 def is_valid_longitude_latitude(longitude: float, latitude: float) -> bool:
@@ -69,9 +72,11 @@ def bounding_box_to_wkt(
     if south >= north:
         raise ValueError("bounding_box south must be less than north.")
 
-    width_km = (east - west) * 111.32 * math.cos(math.radians((south + north) / 2))
-    height_km = (north - south) * 111.32
-    area_km2 = width_km * height_km
+    area_m2, _ = _WGS84_GEOD.polygon_area_perimeter(
+        [west, east, east, west, west],
+        [south, south, north, north, south],
+    )
+    area_km2 = abs(area_m2) / 1_000_000
     if max_area_km2 is not None and area_km2 > max_area_km2:
         raise ValueError(
             f"bounding_box area ({area_km2:.0f} km2) exceeds {max_area_km2:g} km2."

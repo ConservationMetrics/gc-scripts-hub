@@ -2,3 +2,4 @@ psycopg[binary]
 pytest
 testing.postgresql
 fiona
+pyproj

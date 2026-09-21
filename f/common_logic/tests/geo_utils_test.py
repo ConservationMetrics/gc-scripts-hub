@@ -82,7 +82,7 @@ def test_bounding_box_to_wkt_rejects_invalid_bounds():
         raise AssertionError(f"Expected invalid bounds to fail: {bounds}")
 
 
-def test_bounding_box_to_wkt_area_limit_uses_latitude_adjustment():
+def test_bounding_box_to_wkt_area_limit_uses_geodesic_area():
     assert bounding_box_to_wkt([[0, 0], [0.89, 0.89]], max_area_km2=10_000)
     try:
         bounding_box_to_wkt([[0, 0], [1, 1]], max_area_km2=10_000)
@@ -91,6 +91,7 @@ def test_bounding_box_to_wkt_area_limit_uses_latitude_adjustment():
     else:
         raise AssertionError("Expected area above 10,000 km2 to fail")
     bounding_box_to_wkt([[0, 70], [1, 71]], max_area_km2=10_000)
+    assert bounding_box_to_wkt([[0, 0], [1, 1]], max_area_km2=12_350)
 
 
 def test_bounding_box_to_wkt_preserves_close_coordinate_precision():
