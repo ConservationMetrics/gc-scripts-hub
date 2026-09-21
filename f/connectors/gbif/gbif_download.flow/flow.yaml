@@ -19,9 +19,6 @@ value:
           max_months_lookback:
             type: javascript
             expr: flow_input.max_months_lookback
-          max_wait_seconds:
-            type: javascript
-            expr: flow_input.max_wait_seconds
         is_trigger: false
         path: f/connectors/gbif/gbif_submit_download
       continue_on_error: false
@@ -90,7 +87,6 @@ schema:
     - db
     - db_table_name
     - attachment_root
-    - max_wait_seconds
   properties:
     attachment_root:
       type: string
@@ -120,12 +116,6 @@ schema:
       default: null
       minimum: 0
       nullable: true
-    max_wait_seconds:
-      type: integer
-      description: Polling deadline after submission; checks occur every 60 seconds.
-      default: 86400
-      maximum: 86400
-      minimum: 1
   required:
     - gbif_account
     - bounding_box

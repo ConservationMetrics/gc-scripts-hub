@@ -32,6 +32,9 @@ def test_submit_uses_basic_auth_and_last_interpreted_predicate(
     assert b'"key": "LAST_INTERPRETED"' in request.body
     assert b'"value": "2026-07-01"' in request.body
     assert result["download_key"] == server_responses.DOWNLOAD_KEY
+    submitted_at = datetime.fromisoformat(result["submitted_at"])
+    deadline = datetime.fromisoformat(result["deadline"])
+    assert deadline - submitted_at == timedelta(days=1)
 
 
 def test_submit_rejects_oversized_bounds_before_request(mocked_responses):

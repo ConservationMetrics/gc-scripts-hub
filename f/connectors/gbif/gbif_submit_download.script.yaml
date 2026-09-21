@@ -11,7 +11,6 @@ schema:
     - gbif_account
     - bounding_box
     - max_months_lookback
-    - max_wait_seconds
   properties:
     bounding_box:
       type: string
@@ -30,10 +29,6 @@ schema:
       description: Optional non-negative months of LAST_INTERPRETED history, from the
         first day of the cutoff month.
       default: null
-    max_wait_seconds:
-      type: integer
-      description: Maximum elapsed seconds allowed for Flow polling, from 1 through 86400.
-      default: 86400
   required:
     - gbif_account
     - bounding_box

@@ -14,6 +14,7 @@ from f.common_logic.geo_utils import bounding_box_to_wkt
 
 _API = "https://api.gbif.org/v1/occurrence/download"
 _MAX_AREA_KM2 = 15_000
+_MAX_WAIT_SECONDS = 24 * 60 * 60
 
 
 class c_gbif(TypedDict):
@@ -27,7 +28,6 @@ def main(
     gbif_account: c_gbif,
     bounding_box: list | str,
     max_months_lookback: int | None = None,
-    max_wait_seconds: int = 86400,
 ) -> dict:
     """Validate filters and submit exactly one GBIF download request.
 
@@ -39,20 +39,12 @@ def main(
         ``[[west, south], [east, north]]`` in longitude/latitude order.
     max_months_lookback : int, optional
         Include records interpreted on or after the cutoff month's first day.
-    max_wait_seconds : int
-        Absolute maximum Flow wait after submission, from 1 through 86,400.
     """
     if isinstance(max_months_lookback, bool) or (
         max_months_lookback is not None
         and (not isinstance(max_months_lookback, int) or max_months_lookback < 0)
     ):
         raise ValueError("max_months_lookback must be a non-negative integer or null.")
-    if (
-        isinstance(max_wait_seconds, bool)
-        or not isinstance(max_wait_seconds, int)
-        or not 1 <= max_wait_seconds <= 86_400
-    ):
-        raise ValueError("max_wait_seconds must be an integer from 1 through 86400.")
     if not gbif_account.get("username") or not gbif_account.get("password"):
         raise ValueError("gbif_account must contain a username and password.")
 
@@ -89,6 +81,6 @@ def main(
     submitted_at = datetime.now(timezone.utc)
     return {
         "download_key": download_key,
-        "deadline": (submitted_at + timedelta(seconds=max_wait_seconds)).isoformat(),
+        "deadline": (submitted_at + timedelta(seconds=_MAX_WAIT_SECONDS)).isoformat(),
         "submitted_at": submitted_at.isoformat(),
     }

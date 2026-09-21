@@ -1,35 +1,64 @@
-# `gbif_download`: GBIF occurrences
+# `gbif_download`: Download GBIF occurrences
 
-Run the `f/connectors/gbif/gbif_download` Flow for an initial backfill or an
-ad-hoc update. It submits a GBIF asynchronous SIMPLE_CSV download, waits
-passively for completion, preserves the archive and citation metadata, then
-upserts its occurrences into PostgreSQL.
+Runs a GBIF occurrence download and imports the results into PostgreSQL. The
+Flow is suitable for an initial backfill or a recurring update.
 
-Create a Windmill `c_gbif` resource manually (custom resource types cannot be
-synced): `{"username":"string","password":"string"}`. Use the GBIF
-**username**, not an email address. Never place credentials in Flow inputs or
-logs. Register an account and review [GBIF download API restrictions](https://techdocs.gbif.org/en/data-use/api-downloads), including its load-dependent limit on incomplete downloads per account.
+## Setup
 
-Bounds must be `[[west, south], [east, north]]` in longitude/latitude order,
-for example `[[-55.03, 3.23], [-54.12, 3.67]]`. Only non-antimeridian boxes of
-approximately 15,000 km2 or less are accepted. `max_months_lookback` filters
-GBIF `LAST_INTERPRETED`, not observation date; omit it for the initial
-backfill. For monthly updates, use a two-month overlap and use a wider
-backfill after longer gaps.
+Create a Windmill `c_gbif` resource with your GBIF username and password:
 
-Archives, converted CSV, and key/DOI/license/predicate provenance are stored
-under `{attachment_root}/{db_table_name}/`. The converted CSV and PostgreSQL
-columns use snake_case; `_id` duplicates the retained `gbif_id` value. Valid
-coordinates become longitude-first Point geometry. Imports are upsert-only, so
-records deleted by GBIF or moved outside the territory are not removed locally.
+```json
+{"username":"string","password":"string"}
+```
 
-Recommended schedule: `0 0 3 1 * *` (Windmill six-field cron, monthly on the
-first at 03:00 **UTC**). The Flow checks status every 60 seconds for at most 24
-hours without retaining a Python worker. Downloading/importing still use real
-jobs and may exceed a Windmill 30-minute default; operators may need to raise
-the instance maximum because a step timeout cannot exceed it.
+Use your GBIF username, not your email address. Keep these credentials out of
+Flow inputs and logs. Review the [GBIF download API restrictions](https://techdocs.gbif.org/en/data-use/api-downloads)
+before running downloads.
 
-If submission times out, do not resubmit automatically: inspect the Windmill
-run and the GBIF account downloads for the retained key. Terminal status or an
-expired deadline stops before ingestion. The shared CSV writer upserts rows but
-does not report reliable inserted-row counts or make the import atomic.
+## Parameters
+
+- **`bounding_box`** — Two corners in longitude/latitude order:
+  `[[west, south], [east, north]]`. Boxes must not cross the antimeridian and
+  must be approximately 15,000 km2 or smaller.
+- **`max_months_lookback`** — Optional number of months to look back. This
+  filters GBIF's `LAST_INTERPRETED` date, not the observation date. Omit it for
+  an initial backfill.
+- **`db`** — PostgreSQL resource for the occurrence table.
+- **`db_table_name`** — Destination table name and datalake subdirectory.
+- **`attachment_root`** — Directory for downloaded files. Defaults to
+  `/persistent-storage/datalake`.
+
+> [!TIP]
+> Use [Mapbox Location Helper](https://labs.mapbox.com/location-helper) to
+> choose an area and copy its viewport bounds into `bounding_box`.
+
+## Stored files and data
+
+Files are stored under
+`{attachment_root}/{db_table_name}/`:
+
+- The original GBIF archive
+- A converted CSV
+- Provenance metadata, including the download key, DOI, license, and query
+
+The CSV and PostgreSQL columns use `snake_case`. The `_id` column contains the
+GBIF `gbif_id`, and records with valid coordinates include Point geometry.
+
+Imports use upserts. Existing records are updated, but records deleted by GBIF
+or moved outside the selected area are not removed from PostgreSQL.
+
+## Scheduling and failures
+
+For monthly updates, use the Windmill cron schedule `0 0 3 1 * *` (the first
+day of each month at 03:00 UTC). Use a two-month lookback to reduce gaps
+between runs.
+
+If submission times out, check the Windmill run and the GBIF account's download
+list before trying again. The download may have been accepted even if the
+submission request timed out.
+
+The Flow checks GBIF every 60 seconds and has a hardcoded maximum wait of 24
+hours. If the download has not finished by then, the Flow stops before
+importing it. This limit prevents a stuck or unusually slow GBIF download from
+holding a Windmill job indefinitely. Large downloads may also need a Windmill
+job timeout longer than the 30-minute default.
