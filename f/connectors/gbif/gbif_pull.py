@@ -16,6 +16,7 @@ import requests
 
 from f.common_logic.db_operations import postgresql
 from f.common_logic.geo_utils import is_valid_longitude_latitude
+from f.common_logic.identifier_utils import camel_to_snake
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 _API = "https://api.gbif.org/v1/occurrence/download"
@@ -146,7 +147,15 @@ def _convert_archive(archive: Path, output_path: Path) -> tuple[Path, int]:
                 )
                 if not reader.fieldnames or len(reader.fieldnames) < 2:
                     raise ValueError("GBIF occurrence TSV has no usable header.")
-                fieldnames = [*reader.fieldnames, "_id", "g__type", "g__coordinates"]
+                fieldnames = [camel_to_snake(name) for name in reader.fieldnames]
+                generated_fields = ("_id", "g__type", "g__coordinates")
+                if len(fieldnames) != len(set(fieldnames)) or set(generated_fields).intersection(
+                    fieldnames
+                ):
+                    raise ValueError(
+                        "GBIF occurrence TSV has headers that conflict after snake_case conversion."
+                    )
+                fieldnames.extend(generated_fields)
                 writer = csv.DictWriter(output, fieldnames=fieldnames)
                 writer.writeheader()
                 seen_ids: set[str] = set()
@@ -154,17 +163,18 @@ def _convert_archive(archive: Path, output_path: Path) -> tuple[Path, int]:
                 for row in reader:
                     if None in row:
                         raise ValueError("GBIF occurrence TSV has malformed rows.")
-                    gbif_id = (row.get("gbifID") or "").strip()
+                    row = {camel_to_snake(name): value for name, value in row.items()}
+                    gbif_id = (row.get("gbif_id") or "").strip()
                     if not gbif_id:
-                        raise ValueError("GBIF occurrence TSV has a missing gbifID.")
+                        raise ValueError("GBIF occurrence TSV has a missing gbif_id.")
                     if gbif_id in seen_ids:
                         raise ValueError(
-                            f"GBIF occurrence TSV has duplicate gbifID {gbif_id}."
+                            f"GBIF occurrence TSV has duplicate gbif_id {gbif_id}."
                         )
                     seen_ids.add(gbif_id)
                     row["_id"] = gbif_id
                     coordinates = _coordinates(
-                        row.get("decimalLongitude"), row.get("decimalLatitude")
+                        row.get("decimal_longitude"), row.get("decimal_latitude")
                     )
                     row["g__type"] = "Point" if coordinates else ""
                     row["g__coordinates"] = (

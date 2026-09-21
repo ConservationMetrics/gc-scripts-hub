@@ -18,10 +18,10 @@ backfill. For monthly updates, use a two-month overlap and use a wider
 backfill after longer gaps.
 
 Archives, converted CSV, and key/DOI/license/predicate provenance are stored
-under `{attachment_root}/{db_table_name}/`. `_id` is the original `gbifID`; the
-original column is retained. Valid coordinates become longitude-first Point
-geometry. Imports are upsert-only, so records deleted by GBIF or moved outside
-the territory are not removed locally.
+under `{attachment_root}/{db_table_name}/`. The converted CSV and PostgreSQL
+columns use snake_case; `_id` duplicates the retained `gbif_id` value. Valid
+coordinates become longitude-first Point geometry. Imports are upsert-only, so
+records deleted by GBIF or moved outside the territory are not removed locally.
 
 Recommended schedule: `0 0 3 1 * *` (Windmill six-field cron, monthly on the
 first at 03:00 **UTC**). The Flow checks status every 60 seconds for at most 24

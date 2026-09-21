@@ -103,7 +103,7 @@ def test_real_archive_conversion_has_852_rows_and_preserves_geometry(
     assert count == 852
     rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
     assert len(rows) == 852
-    assert all(row["gbifID"] == row["_id"] and row["_id"] for row in rows)
+    assert all(row["gbif_id"] == row["_id"] and row["_id"] for row in rows)
     assert any(row["g__type"] == "Point" for row in rows)
 
 
@@ -174,6 +174,7 @@ def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
     csv_path, count = gbif_pull._convert_archive(archive, tmp_path / "coordinates.csv")
     assert count == 1
     row = next(csv.DictReader(csv_path.open(encoding="utf-8")))
+    assert row["decimal_longitude"] == "bad"
     assert row["species"] == "Test"
     assert row["g__type"] == ""
     assert row["g__coordinates"] == ""
@@ -197,8 +198,16 @@ def test_convert_treats_literal_quotes_as_tsv_data(tmp_path):
     csv_path, count = gbif_pull._convert_archive(archive, tmp_path / "quotes.csv")
     assert count == 2
     rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
-    assert [row["gbifID"] for row in rows] == ["1", "2"]
-    assert rows[0]["verbatimScientificName"] == '"unmatched quote'
+    assert [row["gbif_id"] for row in rows] == ["1", "2"]
+    assert rows[0]["verbatim_scientific_name"] == '"unmatched quote'
+
+
+def test_convert_rejects_headers_that_collide_after_snake_case_conversion(tmp_path):
+    archive = tmp_path / "colliding-headers.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("occurrences.csv", "gbifID\tgbif_id\n1\t1\n")
+    with pytest.raises(ValueError, match="conflict"):
+        gbif_pull._convert_archive(archive, tmp_path / "colliding-headers.csv")
 
 
 @pytest.mark.parametrize(
