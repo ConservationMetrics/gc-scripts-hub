@@ -170,6 +170,14 @@ def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
     assert row["g__coordinates"] == ""
 
 
+@pytest.mark.parametrize(
+    ("longitude", "latitude"),
+    [("181", "0"), ("0", "-91"), ("nan", "0"), ("0", "inf")],
+)
+def test_coordinates_rejects_invalid_wgs84_values(longitude, latitude):
+    assert gbif_pull._coordinates(longitude, latitude) is None
+
+
 def test_convert_treats_literal_quotes_as_tsv_data(tmp_path):
     archive = tmp_path / "literal-quotes.zip"
     with zipfile.ZipFile(archive, "w") as zipped:

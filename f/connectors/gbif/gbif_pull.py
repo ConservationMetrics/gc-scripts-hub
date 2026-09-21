@@ -6,7 +6,6 @@
 
 import csv
 import json
-import math
 import os
 import tempfile
 import zipfile
@@ -15,6 +14,7 @@ from pathlib import Path
 import requests
 
 from f.common_logic.db_operations import postgresql
+from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 _API = "https://api.gbif.org/v1/occurrence/download"
@@ -177,8 +177,6 @@ def _coordinates(longitude: str | None, latitude: str | None) -> list[float] | N
         latitude_value = float(latitude)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
-    if not (math.isfinite(longitude_value) and math.isfinite(latitude_value)):
-        return None
-    if not -180 <= longitude_value <= 180 or not -90 <= latitude_value <= 90:
+    if not is_valid_longitude_latitude(longitude_value, latitude_value):
         return None
     return [longitude_value, latitude_value]

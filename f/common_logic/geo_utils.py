@@ -8,6 +8,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def is_valid_longitude_latitude(longitude: float, latitude: float) -> bool:
+    """Return whether longitude and latitude are finite WGS84 coordinates."""
+    return (
+        math.isfinite(longitude)
+        and math.isfinite(latitude)
+        and -180 <= longitude <= 180
+        and -90 <= latitude <= 90
+    )
+
+
 def bounding_box_to_wkt(
     bounding_box: list | str, max_area_km2: float | None = None
 ) -> str:
@@ -45,15 +55,13 @@ def bounding_box_to_wkt(
         ):
             raise ValueError("bounding_box coordinates must be finite numeric values.")
         longitude, latitude = (float(value) for value in corner)
-        if not math.isfinite(longitude) or not math.isfinite(latitude):
-            raise ValueError("bounding_box coordinates must be finite numeric values.")
+        if not is_valid_longitude_latitude(longitude, latitude):
+            raise ValueError(
+                "bounding_box coordinates must be finite and within WGS84 bounds."
+            )
         corners.append((longitude, latitude))
 
     (west, south), (east, north) = corners
-    if not -180 <= west <= 180 or not -180 <= east <= 180:
-        raise ValueError("bounding_box longitudes must be between -180 and 180.")
-    if not -90 <= south <= 90 or not -90 <= north <= 90:
-        raise ValueError("bounding_box latitudes must be between -90 and 90.")
     if west >= east:
         raise ValueError(
             "bounding_box west must be less than east; antimeridian bounds are unsupported."

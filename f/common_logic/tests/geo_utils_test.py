@@ -3,6 +3,7 @@ import json
 from f.common_logic.geo_utils import (
     bounding_box_to_wkt,
     geojson_to_line_delimited,
+    is_valid_longitude_latitude,
 )
 
 # --- geojson_to_line_delimited ---
@@ -96,3 +97,12 @@ def test_bounding_box_to_wkt_preserves_close_coordinate_precision():
     wkt = bounding_box_to_wkt([[-122.12346, 45.0], [-122.12344, 45.00002]])
     assert "-122.12346 45.0,-122.12344 45.0" in wkt
     assert "-122.12344 45.00002,-122.12346 45.00002" in wkt
+
+
+def test_is_valid_longitude_latitude_rejects_non_finite_and_out_of_range_values():
+    assert is_valid_longitude_latitude(-180, -90)
+    assert is_valid_longitude_latitude(180, 90)
+    assert not is_valid_longitude_latitude(float("nan"), 0)
+    assert not is_valid_longitude_latitude(0, float("inf"))
+    assert not is_valid_longitude_latitude(-180.1, 0)
+    assert not is_valid_longitude_latitude(0, 90.1)
