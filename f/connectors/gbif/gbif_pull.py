@@ -6,6 +6,7 @@
 
 import csv
 import json
+import logging
 import os
 import tempfile
 import zipfile
@@ -18,6 +19,7 @@ from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 _API = "https://api.gbif.org/v1/occurrence/download"
+logger = logging.getLogger(__name__)
 
 
 def main(
@@ -71,6 +73,8 @@ def main(
         final_csv = destination / f"{download_key}.csv"
         os.replace(archive, final_archive)
         os.replace(csv_path, final_csv)
+        logger.info("GBIF archive saved to %s", final_archive)
+        logger.info("GBIF occurrence CSV saved to %s (%d records)", final_csv, record_count)
 
     provenance = {
         "download_key": download_key,
@@ -79,9 +83,11 @@ def main(
         "predicate": request.get("predicate") if isinstance(request, dict) else None,
         "record_count": record_count,
     }
-    (destination / f"{download_key}.json").write_text(
+    provenance_path = destination / f"{download_key}.json"
+    provenance_path.write_text(
         json.dumps(provenance, indent=2), encoding="utf-8"
     )
+    logger.info("GBIF provenance metadata saved to %s", provenance_path)
     if record_count:
         save_csv_to_postgres(
             db,

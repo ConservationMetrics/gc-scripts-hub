@@ -1,4 +1,5 @@
 import csv
+import logging
 import zipfile
 from datetime import datetime, timedelta, timezone
 
@@ -107,7 +108,7 @@ def test_real_archive_conversion_has_852_rows_and_preserves_geometry(
 
 
 def test_pull_imports_and_upserts_real_archive(
-    mocked_responses, archive_bytes, pg_database, tmp_path
+    mocked_responses, archive_bytes, pg_database, tmp_path, caplog
 ):
     metadata_url = (
         f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}"
@@ -116,10 +117,18 @@ def test_pull_imports_and_upserts_real_archive(
     mocked_responses.add(
         responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
     )
-    result = gbif_pull.main(
-        server_responses.DOWNLOAD_KEY, pg_database, "gbif_occurrences", str(tmp_path)
-    )
+    with caplog.at_level(logging.INFO, logger="f.connectors.gbif.gbif_pull"):
+        result = gbif_pull.main(
+            server_responses.DOWNLOAD_KEY,
+            pg_database,
+            "gbif_occurrences",
+            str(tmp_path),
+        )
     assert result["record_count"] == 852
+    destination = tmp_path / "gbif_occurrences"
+    assert f"GBIF archive saved to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}" in caplog.text
+    assert f"GBIF occurrence CSV saved to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'} (852 records)" in caplog.text
+    assert f"GBIF provenance metadata saved to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}" in caplog.text
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         cursor.execute(
             sql.SQL("SELECT count(*) FROM {} ").format(
