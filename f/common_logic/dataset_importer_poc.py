@@ -9,10 +9,14 @@ import base64
 import csv
 import hashlib
 import json
+import os
+import stat
 import uuid
+import zipfile
 from datetime import UTC, datetime, timedelta
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from psycopg import connect, errors, sql
 
@@ -21,11 +25,25 @@ from f.common_logic.identifier_utils import normalize_identifier
 
 SCHEMA = "dataset_importer_poc"
 MAX_SOURCE_BYTES = 25 * 1024 * 1024
+MAX_EXPANDED_BYTES = 100 * 1024 * 1024
 MAX_COLUMNS = 150
+MAX_ARCHIVE_MEMBERS = 1000
 SESSION_TTL = timedelta(hours=24)
 VALID_GOALS = {"create", "append", "merge", "sync"}
 VALID_POLICIES = {"imported", "existing"}
 AUXILIARY_SUFFIXES = ("__columns", "__labels", "__metadata")
+SHAPEFILE_EXTENSIONS = {".shp", ".shx", ".dbf", ".prj", ".cpg"}
+SUPPORTED_EXTENSIONS = {
+    ".csv",
+    ".geojson",
+    ".gpx",
+    ".gpkg",
+    ".json",
+    ".kml",
+    ".xls",
+    ".xlsx",
+    ".xml",
+}
 
 
 class ImportValidationError(ValueError):
@@ -52,6 +70,9 @@ def _payload(uploaded_file):
     encoded = uploaded_file.get("data")
     if not name or not isinstance(encoded, str):
         raise ImportValidationError("The upload must include a file name and data.")
+    max_encoded_bytes = 4 * ((MAX_SOURCE_BYTES + 2) // 3)
+    if len(encoded) > max_encoded_bytes:
+        raise ImportValidationError("Source uploads must not exceed 25 MiB.")
     try:
         contents = base64.b64decode(encoded, validate=True)
     except ValueError as exc:
@@ -86,20 +107,21 @@ def _parse_csv(contents):
             )
         # CSV has no representation for a JSON-style missing key. An empty cell is
         # an explicitly supplied empty value, which the importer stores as NULL.
-        rows = [
-            {key: (None if value == "" else value) for key, value in row.items()}
-            for row in reader
-        ]
+        rows = []
+        for row in reader:
+            if None in row or any(value is None for value in row.values()):
+                raise ImportValidationError("CSV rows must match the header column count.")
+            rows.append(
+                {key: (None if value == "" else value) for key, value in row.items()}
+            )
     except csv.Error as exc:
         raise ImportValidationError("The CSV file is malformed.") from exc
     return rows
 
 
-def _parse_geojson(contents):
-    try:
-        document = json.loads(contents)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ImportValidationError("The GeoJSON file is malformed.") from exc
+def _geojson_rows(document):
+    if not isinstance(document, dict):
+        raise ImportValidationError("GeoJSON must be a FeatureCollection.")
     if document.get("type") != "FeatureCollection" or not isinstance(
         document.get("features"), list
     ):
@@ -108,22 +130,26 @@ def _parse_geojson(contents):
     for feature in document["features"]:
         if not isinstance(feature, dict) or feature.get("type") != "Feature":
             raise ImportValidationError("GeoJSON collections must contain Features.")
-        properties = feature.get("properties") or {}
+        properties = feature.get("properties")
+        if properties is None:
+            properties = {}
         if not isinstance(properties, dict):
             raise ImportValidationError("GeoJSON feature properties must be an object.")
         row = {key: _json_value(value) for key, value in properties.items()}
+        reserved = {"feature.id", "g__type", "g__coordinates"} & row.keys()
+        if reserved:
+            raise ImportValidationError(
+                "GeoJSON properties use reserved fields: " + ", ".join(sorted(reserved))
+            )
         if "id" in feature:
-            row["id"] = _json_value(feature["id"])
+            row["feature.id"] = _json_value(feature["id"])
         geometry = feature.get("geometry")
         if geometry is not None:
-            if (
-                not isinstance(geometry, dict)
-                or geometry.get("type") == "GeometryCollection"
+            if not isinstance(geometry, dict) or not isinstance(
+                geometry.get("coordinates"), (list, tuple)
             ):
                 raise ImportValidationError("Unsupported GeoJSON geometry.")
-            if "coordinates" not in geometry:
-                raise ImportValidationError("GeoJSON geometries must have coordinates.")
-            row["g__type"] = geometry["type"]
+            row["g__type"] = geometry.get("type")
             row["g__coordinates"] = json.dumps(
                 geometry["coordinates"], separators=(",", ":")
             )
@@ -134,13 +160,183 @@ def _parse_geojson(contents):
     return rows
 
 
-def _parse_source(name, contents):
-    suffix = Path(name).suffix.lower()
+def _parse_geojson(contents):
+    try:
+        document = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ImportValidationError("The GeoJSON file is malformed.") from exc
+    return _geojson_rows(document)
+
+
+def _parse_json(contents):
+    try:
+        document = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ImportValidationError("The JSON file is malformed.") from exc
+    if not isinstance(document, list) or not document:
+        raise ImportValidationError("JSON must be a non-empty array of objects.")
+    if not all(isinstance(row, dict) for row in document):
+        raise ImportValidationError("Every JSON record must be an object.")
+    return [
+        {key: _json_value(value) for key, value in row.items()} for row in document
+    ]
+
+
+def _tabular_rows(data):
+    if not data:
+        return []
+    headers = data[0]
+    if not headers or any(not isinstance(header, str) or not header.strip() for header in headers):
+        raise ImportValidationError("Tabular files must have non-empty column names.")
+    if len(headers) != len(set(headers)):
+        raise ImportValidationError("Tabular files cannot contain duplicate column names.")
+    rows = []
+    for values in data[1:]:
+        if len(values) != len(headers):
+            raise ImportValidationError("A tabular row has the wrong number of values.")
+        rows.append(
+            {
+                header: None if value == "" else _json_value(value)
+                for header, value in zip(headers, values)
+            }
+        )
+    return rows
+
+
+def _parse_converted_paths(file_paths):
+    import fiona
+
+    from f.common_logic.data_conversion import convert_data, detect_structured_data_type
+
+    detected = detect_structured_data_type([str(path) for path in file_paths])
+    if detected == "unsupported" or detected == "xml":
+        raise ImportValidationError("The uploaded file type is not supported.")
+    if detected == "geopackage":
+        spatial_layers = []
+        for layer in fiona.listlayers(file_paths[0]):
+            with fiona.open(file_paths[0], layer=layer) as collection:
+                if collection.schema["geometry"] not in (None, "None"):
+                    spatial_layers.append(layer)
+        if len(spatial_layers) != 1:
+            raise ImportValidationError(
+                "A GeoPackage must contain exactly one spatial layer."
+            )
+    try:
+        converted, output_format = convert_data(
+            [str(path) for path in file_paths], detected
+        )
+    except (OSError, ValueError) as exc:
+        raise ImportValidationError(str(exc)) from exc
+    rows = _tabular_rows(converted) if output_format == "csv" else _geojson_rows(converted)
+    return detected, rows
+
+
+def _safe_archive_members(contents):
+    try:
+        archive = zipfile.ZipFile(BytesIO(contents))
+    except zipfile.BadZipFile as exc:
+        raise ImportValidationError("The ZIP file is malformed.") from exc
+    members = [member for member in archive.infolist() if not member.is_dir()]
+    if not members:
+        raise ImportValidationError("The ZIP file is empty.")
+    if len(members) > MAX_ARCHIVE_MEMBERS:
+        raise ImportValidationError("The ZIP file contains too many files.")
+    if sum(member.file_size for member in members) > MAX_EXPANDED_BYTES:
+        raise ImportValidationError("ZIP contents must not exceed 100 MiB uncompressed.")
+    seen = set()
+    for member in members:
+        member_path = Path(member.filename)
+        mode = member.external_attr >> 16
+        if (
+            member_path.is_absolute()
+            or ".." in member_path.parts
+            or stat.S_ISLNK(mode)
+            or member.filename in seen
+        ):
+            raise ImportValidationError("The ZIP file contains an unsafe file path.")
+        seen.add(member.filename)
+    return archive, members
+
+
+def _extract_member(archive, member, destination):
+    target = destination / Path(member.filename).name
+    if target.exists():
+        raise ImportValidationError("ZIP files cannot contain duplicate file names.")
+    with archive.open(member) as source, target.open("wb") as output:
+        output.write(source.read())
+    return target
+
+
+def _parse_zip(contents):
+    archive, members = _safe_archive_members(contents)
+    with archive, TemporaryDirectory() as directory:
+        destination = Path(directory)
+        suffixes = [Path(member.filename).suffix.lower() for member in members]
+        if ".shp" in suffixes:
+            if any(suffix not in SHAPEFILE_EXTENSIONS for suffix in suffixes):
+                raise ImportValidationError(
+                    "A Shapefile ZIP cannot contain unrelated files."
+                )
+            stems = {Path(member.filename).stem for member in members}
+            if len(stems) != 1 or not {".shp", ".shx", ".dbf"}.issubset(suffixes):
+                raise ImportValidationError(
+                    "A Shapefile ZIP must contain matching .shp, .shx, and .dbf files."
+                )
+            paths = [_extract_member(archive, member, destination) for member in members]
+            _, rows = _parse_converted_paths(paths)
+            return "shapefile", rows
+        if any(suffix not in SUPPORTED_EXTENSIONS for suffix in suffixes):
+            raise ImportValidationError("The ZIP file contains an unsupported file type.")
+        rows = []
+        for member in members:
+            path = _extract_member(archive, member, destination)
+            _, member_rows = _parse_path(path)
+            rows.extend(member_rows)
+        return "zip", rows
+
+
+def _parse_path(path):
+    suffix = path.suffix.lower()
+    if suffix == ".xlsx":
+        try:
+            with zipfile.ZipFile(path) as workbook:
+                if sum(member.file_size for member in workbook.infolist()) > MAX_EXPANDED_BYTES:
+                    raise ImportValidationError(
+                        "Spreadsheet contents must not exceed 100 MiB uncompressed."
+                    )
+        except zipfile.BadZipFile as exc:
+            raise ImportValidationError("The XLSX file is malformed.") from exc
+    contents = path.read_bytes()
     if suffix == ".csv":
         return "csv", _parse_csv(contents)
-    if suffix in {".geojson", ".json"}:
+    if suffix == ".geojson":
         return "geojson", _parse_geojson(contents)
-    raise ImportValidationError("This POC currently supports CSV and GeoJSON uploads.")
+    if suffix == ".json":
+        try:
+            document = json.loads(contents)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ImportValidationError("The JSON file is malformed.") from exc
+        if isinstance(document, dict) and document.get("type") == "FeatureCollection":
+            return "geojson", _geojson_rows(document)
+        from f.common_logic.data_conversion import detect_structured_data_type
+
+        detected = detect_structured_data_type([str(path)])
+        if detected == "cybertracker":
+            return _parse_converted_paths([path])
+        return "json", _parse_json(contents)
+    return _parse_converted_paths([path])
+
+
+def _parse_source(name, contents):
+    suffix = Path(name).suffix.lower()
+    if suffix == ".zip":
+        return _parse_zip(contents)
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise ImportValidationError("The uploaded file type is not supported.")
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / Path(name).name
+        path.write_bytes(contents)
+        return _parse_path(path)
 
 
 def _stored_name(source_name):
@@ -206,12 +402,14 @@ def _ensure_schema(cursor):
                 target_table TEXT NOT NULL,
                 source_name TEXT NOT NULL,
                 source_sha256 TEXT NOT NULL,
+                source_data BYTEA,
                 source_format TEXT NOT NULL,
                 source_mapping JSONB NOT NULL,
                 status TEXT NOT NULL,
                 preview JSONB,
                 created_at TIMESTAMPTZ NOT NULL,
                 expires_at TIMESTAMPTZ NOT NULL,
+                archive_path TEXT,
                 applied_at TIMESTAMPTZ
             );"""
         ).format(sql.Identifier(SCHEMA))
@@ -239,6 +437,16 @@ def _ensure_schema(cursor):
     cursor.execute(
         sql.SQL(
             "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS source_data BYTEA"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS archive_path TEXT"
         ).format(sql.Identifier(SCHEMA))
     )
     cursor.execute(
@@ -359,7 +567,7 @@ def _backfill_dataset_registry(cursor):
         ).format(sql.Identifier(SCHEMA))
     )
     for import_id, table_name, status in cursor.fetchall():
-        active = status == "applied"
+        active = status in {"applied", "archived"}
         if not active and _public_relation_exists(cursor, table_name):
             cursor.execute(
                 sql.SQL(
@@ -390,7 +598,7 @@ def _backfill_dataset_registry(cursor):
 def _cleanup_expired(cursor, now):
     cursor.execute(
         sql.SQL(
-            "DELETE FROM {}.import_sessions WHERE expires_at <= %s RETURNING import_id"
+            "DELETE FROM {}.import_sessions WHERE expires_at <= %s AND status != 'applied' RETURNING import_id"
         ).format(sql.Identifier(SCHEMA)),
         (now,),
     )
@@ -555,8 +763,8 @@ def stage_import(db, uploaded_file, goal, target_table):
         mapping = _source_mapping(rows, existing_mapping)
         cursor.execute(
             sql.SQL("""INSERT INTO {}.import_sessions
-                (import_id, goal, target_table, source_name, source_sha256, source_format, source_mapping, status, created_at, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'staged', %s, %s)""").format(
+                (import_id, goal, target_table, source_name, source_sha256, source_data, source_format, source_mapping, status, created_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'staged', %s, %s)""").format(
                 sql.Identifier(SCHEMA)
             ),
             (
@@ -565,6 +773,7 @@ def stage_import(db, uploaded_file, goal, target_table):
                 table_name,
                 name,
                 hashlib.sha256(contents).hexdigest(),
+                contents,
                 source_format,
                 json.dumps(mapping),
                 now,
@@ -674,7 +883,7 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
         goal, table_name, mapping, status, _ = _session(cursor, import_id)
-        if status == "applied":
+        if status in {"applied", "archived"}:
             raise ImportValidationError("This import has already been applied.")
         stored_columns = list(mapping.values())
         target_columns = _target_columns(cursor, table_name)
@@ -847,8 +1056,68 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
     return preview
 
 
+def _archive_source(db, import_id):
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            sql.SQL(
+                "SELECT target_table, source_name, source_data, status, archive_path FROM {}.import_sessions WHERE import_id = %s FOR UPDATE"
+            ).format(sql.Identifier(SCHEMA)),
+            (import_id,),
+        )
+        session = cursor.fetchone()
+        if not session:
+            raise ImportValidationError("This import session does not exist.")
+        table_name, source_name, source_data, status, archive_path = session
+        if status == "archived":
+            return archive_path
+        if status != "applied":
+            raise ImportValidationError("Apply this import before archiving its source.")
+        if source_data is None:
+            raise ImportValidationError(
+                "This legacy import has no retained source file. Stage it again."
+            )
+        root = Path(
+            os.environ.get(
+                "DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake"
+            )
+        )
+        dataset_directory = root / table_name
+        dataset_directory.mkdir(parents=True, exist_ok=True)
+        destination = dataset_directory / f"{import_id}_{Path(source_name).name}"
+        temporary = destination.with_suffix(destination.suffix + ".tmp")
+        try:
+            with temporary.open("xb") as output:
+                output.write(source_data)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+        cursor.execute(
+            sql.SQL(
+                "UPDATE {}.import_sessions SET status = 'archived', archive_path = %s, source_data = NULL WHERE import_id = %s"
+            ).format(sql.Identifier(SCHEMA)),
+            (str(destination), import_id),
+        )
+    return str(destination)
+
+
 def apply_import(db, import_id):
     """Apply the reviewed plan in one transaction.  A second confirmation is rejected."""
+    with connect(_conninfo(db), autocommit=True) as status_conn, status_conn.cursor() as status_cursor:
+        _ensure_schema(status_cursor)
+        status_cursor.execute(
+            sql.SQL("SELECT status, preview FROM {}.import_sessions WHERE import_id = %s").format(
+                sql.Identifier(SCHEMA)
+            ),
+            (import_id,),
+        )
+        existing = status_cursor.fetchone()
+    if existing and existing[0] == "applied":
+        archive_path = _archive_source(db, import_id)
+        return {"success": True, "preview": existing[1], "archive_path": archive_path}
+    if existing and existing[0] == "archived":
+        raise ImportValidationError("This import has already been applied.")
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
         goal, table_name, mapping, status, preview = _session(
@@ -978,4 +1247,5 @@ def apply_import(db, import_id):
             ).format(sql.Identifier(SCHEMA)),
             (datetime.now(UTC), import_id),
         )
-    return {"success": True, "preview": preview}
+    archive_path = _archive_source(db, import_id)
+    return {"success": True, "preview": preview, "archive_path": archive_path}
