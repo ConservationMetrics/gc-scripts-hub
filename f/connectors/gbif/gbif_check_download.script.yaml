@@ -1,0 +1,26 @@
+summary: 'GBIF: Check download status'
+description: >-
+  Part of the GBIF download Flow. Checks whether a GBIF download is ready. Do
+  not run this script on its own; open `GBIF: Download occurrences` instead.
+lock: '!inline f/connectors/gbif/gbif_check_download.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - download_key
+    - deadline
+  properties:
+    deadline:
+      type: string
+      description: Time when the Flow should stop waiting for the download.
+      default: null
+      originalType: string
+    download_key:
+      type: string
+      description: ID assigned to the download by GBIF.
+      default: null
+      originalType: string
+  required:
+    - download_key
+    - deadline

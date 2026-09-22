@@ -1,0 +1,36 @@
+summary: 'GBIF: Submit occurrence download'
+description: >-
+  Part of the GBIF download Flow. Starts a GBIF download. Do not run this script
+  on its own; open `GBIF: Download occurrences` instead.
+lock: '!inline f/connectors/gbif/gbif_submit_download.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - gbif_account
+    - bounding_box
+    - max_months_lookback
+  properties:
+    bounding_box:
+      type: string
+      description: >-
+        Area to download as `[[west, south], [east, north]]`. The area must be
+        no larger than approximately 15,000 km2. Find these values with Mapbox
+        Location Helper: https://labs.mapbox.com/location-helper
+      default: null
+    gbif_account:
+      type: object
+      description: GBIF account with a username (not email address) and password.
+      default: null
+      format: resource-c_gbif
+    max_months_lookback:
+      type: integer
+      description: >-
+        Only include records processed by GBIF within this many months. This
+        uses LAST_INTERPRETED: when the record last changed in GBIF, not its
+        observation date or the publisher's last update.
+      default: null
+  required:
+    - gbif_account
+    - bounding_box

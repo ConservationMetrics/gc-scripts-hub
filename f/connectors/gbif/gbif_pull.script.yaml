@@ -1,0 +1,40 @@
+summary: 'GBIF: Download and import occurrences'
+description: >-
+  Part of the GBIF download Flow. Saves a completed download to PostgreSQL. Do
+  not run this script on its own; open `GBIF: Download occurrences` instead.
+lock: '!inline f/connectors/gbif/gbif_pull.script.lock'
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - download_key
+    - db
+    - db_table_name
+    - attachment_root
+  properties:
+    attachment_root:
+      type: string
+      description: Folder where downloaded files and supporting information are saved.
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: PostgreSQL database where occurrence records are saved.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: Table name. This is also used as the download folder name.
+      default: null
+      originalType: string
+      pattern: ^.{1,54}$
+    download_key:
+      type: string
+      description: ID assigned to the download by GBIF.
+      default: null
+      originalType: string
+  required:
+    - download_key
+    - db
+    - db_table_name

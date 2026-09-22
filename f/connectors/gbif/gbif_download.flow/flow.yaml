@@ -1,0 +1,127 @@
+summary: "GBIF: Download occurrences"
+description:
+    "Downloads GBIF occurrence records for an area and saves them to PostgreSQL.
+    Use it for a first download or to update existing data. GBIF can take time
+    to prepare the file, so this Flow checks every minute for up to 24 hours."
+value:
+    modules:
+        - id: submit
+          value:
+              type: script
+              input_transforms:
+                  bounding_box:
+                      type: javascript
+                      expr: flow_input.bounding_box
+                  gbif_account:
+                      type: javascript
+                      expr: flow_input.gbif_account
+                  max_months_lookback:
+                      type: javascript
+                      expr: flow_input.max_months_lookback
+              is_trigger: false
+              path: f/connectors/gbif/gbif_submit_download
+          continue_on_error: false
+        - id: wait_for_download
+          value:
+              type: whileloopflow
+              modules:
+                  - id: delay
+                    sleep:
+                        type: javascript
+                        expr: "flow_input.iter.index === 0 ? 0 : 60"
+                    value:
+                        type: identity
+                  - id: check
+                    value:
+                        type: script
+                        input_transforms:
+                            deadline:
+                                type: javascript
+                                expr: results.submit.deadline
+                            download_key:
+                                type: javascript
+                                expr: results.submit.download_key
+                        is_trigger: false
+                        path: f/connectors/gbif/gbif_check_download
+                    retry:
+                        exponential:
+                            attempts: 3
+                            multiplier: 2
+                            random_factor: 20
+                            seconds: 5
+                        retry_if:
+                            expr:
+                                error.message && error.message.startsWith('retryable GBIF status check
+                                failure')
+                    stop_after_if:
+                        expr: result.succeeded === true
+                        skip_if_stopped: false
+              skip_failures: false
+          continue_on_error: false
+        - id: ingest
+          value:
+              type: script
+              input_transforms:
+                  attachment_root:
+                      type: javascript
+                      expr: flow_input.attachment_root
+                  db:
+                      type: javascript
+                      expr: flow_input.db
+                  db_table_name:
+                      type: javascript
+                      expr: flow_input.db_table_name
+                  download_key:
+                      type: javascript
+                      expr: results.submit.download_key
+              is_trigger: false
+              path: f/connectors/gbif/gbif_pull
+          continue_on_error: false
+schema:
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
+    order:
+        - gbif_account
+        - bounding_box
+        - max_months_lookback
+        - db
+        - db_table_name
+        - attachment_root
+    properties:
+        attachment_root:
+            type: string
+            description: Folder where downloaded files and supporting information are saved.
+            default: /persistent-storage/datalake
+        bounding_box:
+            type: string
+            description: >-
+                Area to download as `[[west, south], [east, north]]`. The area
+                must be no larger than approximately 15,000 km2. Find these
+                values with Mapbox Location Helper:
+                https://labs.mapbox.com/location-helper
+        db:
+            type: object
+            description: PostgreSQL database where occurrence records are saved.
+            format: resource-postgresql
+        db_table_name:
+            type: string
+            description: Table name. This is also used as the download folder name.
+            pattern: ^.{1,54}$
+        gbif_account:
+            type: object
+            description: GBIF account with a username (not email address) and password.
+            format: resource-c_gbif
+        max_months_lookback:
+            type: integer
+            description: >-
+                Only include records processed by GBIF within this many months.
+                This uses LAST_INTERPRETED: when the record last changed in GBIF,
+                not its observation date or the publisher's last update.
+            default: null
+            minimum: 0
+            nullable: true
+    required:
+        - gbif_account
+        - bounding_box
+        - db
+        - db_table_name
