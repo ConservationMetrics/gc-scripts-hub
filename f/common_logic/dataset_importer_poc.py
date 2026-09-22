@@ -1183,7 +1183,7 @@ def apply_import(db, import_id, preview_id):
         _ensure_schema(status_cursor)
         status_cursor.execute(
             sql.SQL(
-                "SELECT status, preview, preview_id FROM {}.import_sessions WHERE import_id = %s"
+                "SELECT status, preview, preview_id, archive_path FROM {}.import_sessions WHERE import_id = %s"
             ).format(sql.Identifier(SCHEMA)),
             (import_id,),
         )
@@ -1194,7 +1194,13 @@ def apply_import(db, import_id, preview_id):
         archive_path = _archive_source(db, import_id)
         return {"success": True, "preview": existing[1], "archive_path": archive_path}
     if existing and existing[0] == "archived":
-        raise ImportValidationError("This import has already been applied.")
+        if str(existing[2]) != str(preview_id):
+            raise ImportValidationError("This preview is no longer current. Review again.")
+        return {
+            "success": True,
+            "preview": existing[1],
+            "archive_path": existing[3],
+        }
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
         goal, table_name, mapping, status, preview, stored_preview_id = _session(

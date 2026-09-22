@@ -856,3 +856,18 @@ def test_schema_change_after_review_rejects_confirmation(mock_db_connection):
         )
     with pytest.raises(ImportValidationError, match="changed after review"):
         confirm(mock_db_connection, staged, preview)
+
+
+def test_completed_confirmation_is_idempotent(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    first = confirm(mock_db_connection, staged, preview)
+    second = confirm(mock_db_connection, staged, preview)
+
+    assert second == first
+    assert len(table_rows(mock_db_connection, "observations")) == 1
