@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -110,9 +111,16 @@ def test_real_archive_conversion_has_852_rows_and_preserves_geometry(
     assert any(row["g__type"] == "Point" for row in rows)
 
 
-def test_pull_imports_and_upserts_real_archive(
-    mocked_responses, archive_bytes, pg_database, tmp_path, caplog
+def test_pull_imports_and_upserts_enriched_real_archive(
+    mocked_responses, archive_bytes, pg_database, tmp_path, caplog, monkeypatch
 ):
+    def registry_titles(dataset_keys, publishing_org_keys):
+        return (
+            {key: f"Dataset {key}" for key in dataset_keys},
+            {key: f"Publisher {key}" for key in publishing_org_keys},
+        )
+
+    monkeypatch.setattr(gbif_pull, "_resolve_registry_titles", registry_titles)
     metadata_url = (
         f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}"
     )
@@ -129,9 +137,18 @@ def test_pull_imports_and_upserts_real_archive(
         )
     assert result["record_count"] == 852
     destination = tmp_path / "gbif_occurrences"
-    assert f"GBIF archive saved to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}" in caplog.text
-    assert f"GBIF occurrence CSV saved to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'} (852 records)" in caplog.text
-    assert f"GBIF provenance metadata saved to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}" in caplog.text
+    assert (
+        f"GBIF archive saved to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}"
+        in caplog.text
+    )
+    assert (
+        f"GBIF occurrence CSV saved to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'} (852 records)"
+        in caplog.text
+    )
+    assert (
+        f"GBIF provenance metadata saved to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}"
+        in caplog.text
+    )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         cursor.execute(
             sql.SQL("SELECT count(*) FROM {} ").format(
@@ -139,6 +156,28 @@ def test_pull_imports_and_upserts_real_archive(
             )
         )
         assert cursor.fetchone()[0] == 852
+        cursor.execute(
+            "SELECT dataset_key, dataset, publishing_org_key, publishing_org "
+            "FROM gbif_occurrences LIMIT 1"
+        )
+        dataset_key, dataset, publishing_org_key, publishing_org = cursor.fetchone()
+        assert dataset == f"Dataset {dataset_key}"
+        assert publishing_org == f"Publisher {publishing_org_key}"
+    saved_csv = destination / f"{server_responses.DOWNLOAD_KEY}.csv"
+    saved_row = next(csv.DictReader(saved_csv.open(encoding="utf-8")))
+    assert saved_row["dataset"] == f"Dataset {saved_row['dataset_key']}"
+    assert saved_row["publishing_org"] == (
+        f"Publisher {saved_row['publishing_org_key']}"
+    )
+    provenance = json.loads(
+        (destination / f"{server_responses.DOWNLOAD_KEY}.json").read_text()
+    )
+    assert provenance["enrichment"] == {
+        "dataset_keys": 19,
+        "datasets_resolved": 19,
+        "publishing_org_keys": 15,
+        "publishing_orgs_resolved": 15,
+    }
     mocked_responses.add(responses.GET, metadata_url, json=server_responses.metadata())
     mocked_responses.add(
         responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
@@ -211,6 +250,98 @@ def test_convert_rejects_headers_that_collide_after_snake_case_conversion(tmp_pa
         zipped.writestr("occurrences.csv", "gbifID\tgbif_id\n1\t1\n")
     with pytest.raises(ValueError, match="conflict"):
         gbif_pull._convert_archive(archive, tmp_path / "colliding-headers.csv")
+
+
+def test_enrich_csv_resolves_each_distinct_registry_key_once(
+    mocked_responses, tmp_path
+):
+    source = tmp_path / "converted.csv"
+    source.write_text(
+        "_id,dataset_key,publishing_org_key\n"
+        f"1,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n"
+        f"2,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n",
+        encoding="utf-8",
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/dataset/{server_responses.DATASET_KEY}",
+        json={"title": "eBird - EOD"},
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/organization/{server_responses.PUBLISHING_ORG_KEY}",
+        json={"title": " Cornell Lab of Ornithology "},
+    )
+
+    summary = gbif_pull._enrich_csv(source, tmp_path / "enriched.csv")
+
+    rows = list(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
+    assert len(mocked_responses.calls) == 2
+    assert {row["dataset"] for row in rows} == {"eBird - EOD"}
+    assert {row["publishing_org"] for row in rows} == {"Cornell Lab of Ornithology"}
+    assert all(row["dataset_key"] == server_responses.DATASET_KEY for row in rows)
+    assert summary == {
+        "dataset_keys": 1,
+        "datasets_resolved": 1,
+        "publishing_org_keys": 1,
+        "publishing_orgs_resolved": 1,
+    }
+
+
+def test_enrich_csv_keeps_keys_when_registry_lookup_fails(
+    mocked_responses, tmp_path, caplog
+):
+    source = tmp_path / "converted.csv"
+    source.write_text(
+        "_id,dataset_key,publishing_org_key\n"
+        f"1,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n",
+        encoding="utf-8",
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/dataset/{server_responses.DATASET_KEY}",
+        status=503,
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/organization/{server_responses.PUBLISHING_ORG_KEY}",
+        json={"key": server_responses.PUBLISHING_ORG_KEY},
+    )
+
+    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull"):
+        summary = gbif_pull._enrich_csv(source, tmp_path / "enriched.csv")
+
+    row = next(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
+    assert row["dataset_key"] == server_responses.DATASET_KEY
+    assert row["publishing_org_key"] == server_responses.PUBLISHING_ORG_KEY
+    assert row["dataset"] == ""
+    assert row["publishing_org"] == ""
+    assert summary["datasets_resolved"] == 0
+    assert summary["publishing_orgs_resolved"] == 0
+    assert "left 2 of 2 keys unresolved" in caplog.text
+
+
+def test_registry_enrichment_stops_at_deadline(monkeypatch, caplog):
+    lookup_times = iter([0, 0, 121])
+    looked_up = []
+
+    def registry_title(resource_type, key):
+        looked_up.append((resource_type, key))
+        return f"Title {key}"
+
+    monkeypatch.setattr(gbif_pull, "_REGISTRY_WORKERS", 2)
+    monkeypatch.setattr(gbif_pull, "monotonic", lambda: next(lookup_times))
+    monkeypatch.setattr(gbif_pull, "_registry_title", registry_title)
+
+    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull"):
+        dataset_titles, publishing_org_titles = gbif_pull._resolve_registry_titles(
+            {"dataset-1", "dataset-2"}, {"organization-1", "organization-2"}
+        )
+
+    assert set(dataset_titles) == {"dataset-1"}
+    assert set(publishing_org_titles) == {"organization-1"}
+    assert len(looked_up) == 2
+    assert "reached its 120-second deadline" in caplog.text
 
 
 @pytest.mark.parametrize(
