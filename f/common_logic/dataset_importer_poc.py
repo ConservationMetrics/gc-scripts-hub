@@ -407,6 +407,7 @@ def _ensure_schema(cursor):
                 source_mapping JSONB NOT NULL,
                 status TEXT NOT NULL,
                 preview JSONB,
+                preview_id UUID,
                 created_at TIMESTAMPTZ NOT NULL,
                 expires_at TIMESTAMPTZ NOT NULL,
                 archive_path TEXT,
@@ -447,6 +448,11 @@ def _ensure_schema(cursor):
     cursor.execute(
         sql.SQL(
             "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS archive_path TEXT"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS preview_id UUID"
         ).format(sql.Identifier(SCHEMA))
     )
     cursor.execute(
@@ -805,7 +811,7 @@ def _session(cursor, import_id, lock=False):
     lock_sql = " FOR UPDATE" if lock else ""
     cursor.execute(
         sql.SQL(
-            "SELECT goal, target_table, source_mapping, status, preview, expires_at FROM {}.import_sessions WHERE import_id = %s"
+            "SELECT goal, target_table, source_mapping, status, preview, expires_at, preview_id FROM {}.import_sessions WHERE import_id = %s"
             + lock_sql
         ).format(sql.Identifier(SCHEMA)),
         (import_id,),
@@ -821,7 +827,7 @@ def _session(cursor, import_id, lock=False):
         raise ImportValidationError(
             "This import session conflicts with another dataset. Start a new import."
         )
-    return result[:5]
+    return (*result[:5], result[6])
 
 
 def cleanup_expired_imports(db):
@@ -848,7 +854,69 @@ def _target_fingerprint(cursor, table_name):
         ).format(_quoted_table(table_name))
     )
     row_count, row_hash = cursor.fetchone()
-    return {"row_count": row_count, "row_hash": str(row_hash)}
+    cursor.execute(
+        """SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod),
+                  a.attnotnull, coalesce(pg_get_expr(d.adbin, d.adrelid), ''),
+                  a.attidentity, a.attgenerated
+           FROM pg_catalog.pg_attribute a
+           JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+           LEFT JOIN pg_catalog.pg_attrdef d
+             ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+           WHERE n.nspname = 'public' AND c.relname = %s
+             AND a.attnum > 0 AND NOT a.attisdropped
+           ORDER BY a.attnum""",
+        (table_name,),
+    )
+    columns = [list(column) for column in cursor.fetchall()]
+    cursor.execute(
+        """SELECT conname, pg_get_constraintdef(oid, true)
+           FROM pg_catalog.pg_constraint
+           WHERE conrelid = to_regclass(%s)
+           ORDER BY conname""",
+        (f"public.{table_name}",),
+    )
+    constraints = [list(constraint) for constraint in cursor.fetchall()]
+    cursor.execute(
+        """SELECT indexname, indexdef FROM pg_catalog.pg_indexes
+           WHERE schemaname = 'public' AND tablename = %s
+           ORDER BY indexname""",
+        (table_name,),
+    )
+    indexes = [list(index) for index in cursor.fetchall()]
+    cursor.execute(
+        """SELECT tgname, pg_get_triggerdef(oid, true)
+           FROM pg_catalog.pg_trigger
+           WHERE tgrelid = to_regclass(%s) AND NOT tgisinternal
+           ORDER BY tgname""",
+        (f"public.{table_name}",),
+    )
+    triggers = [list(trigger) for trigger in cursor.fetchall()]
+    cursor.execute(
+        """SELECT relrowsecurity, relforcerowsecurity
+           FROM pg_catalog.pg_class
+           WHERE oid = to_regclass(%s)""",
+        (f"public.{table_name}",),
+    )
+    row_security = list(cursor.fetchone())
+    cursor.execute(
+        """SELECT policyname, permissive, roles::text, cmd, qual, with_check
+           FROM pg_catalog.pg_policies
+           WHERE schemaname = 'public' AND tablename = %s
+           ORDER BY policyname""",
+        (table_name,),
+    )
+    policies = [list(policy) for policy in cursor.fetchall()]
+    return {
+        "row_count": row_count,
+        "row_hash": str(row_hash),
+        "columns": columns,
+        "constraints": constraints,
+        "indexes": indexes,
+        "triggers": triggers,
+        "row_security": row_security,
+        "policies": policies,
+    }
 
 
 def _identity_stored(source_mapping, selected):
@@ -881,24 +949,32 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
     if update_policy not in VALID_POLICIES:
         raise ImportValidationError("Choose an update policy.")
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         _ensure_schema(cursor)
-        goal, table_name, mapping, status, _ = _session(cursor, import_id)
+        goal, table_name, mapping, status, _, _ = _session(cursor, import_id)
         if status in {"applied", "archived"}:
             raise ImportValidationError("This import has already been applied.")
         stored_columns = list(mapping.values())
         target_columns = _target_columns(cursor, table_name)
+        cursor.execute(
+            sql.SQL("SELECT count(*) FROM {}.import_rows WHERE import_id = %s").format(
+                sql.Identifier(SCHEMA)
+            ),
+            (import_id,),
+        )
+        staged_count = cursor.fetchone()[0]
         incompatible = [
             column
             for column in stored_columns
             if column in target_columns
             and target_columns[column] not in {"text", "character varying"}
         ]
-        if incompatible:
+        if incompatible and staged_count > 0:
             raise ImportValidationError(
                 "This POC can only update existing text columns: "
                 + ", ".join(incompatible)
             )
-        if goal in {"merge", "sync"}:
+        if goal in {"merge", "sync"} and staged_count > 0:
             identity_columns = _identity_stored(mapping, identity_fields or [])
             missing_target = [
                 column for column in identity_columns if column not in target_columns
@@ -910,19 +986,13 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
         else:
             identity_columns = []
         if (
-            goal != "create"
+            staged_count > 0
+            and goal != "create"
             and len(set(target_columns) | set(stored_columns)) > MAX_COLUMNS
         ):
             raise ImportValidationError("The final dataset would exceed 150 columns.")
-        if goal in {"create", "sync"}:
-            cursor.execute(
-                sql.SQL(
-                    "SELECT count(*) FROM {}.import_rows WHERE import_id = %s"
-                ).format(sql.Identifier(SCHEMA)),
-                (import_id,),
-            )
-            if cursor.fetchone()[0] == 0:
-                raise ImportValidationError("Create and Sync imports cannot be empty.")
+        if goal in {"create", "sync"} and staged_count == 0:
+            raise ImportValidationError("Create and Sync imports cannot be empty.")
         if identity_columns:
             identity_expr = sql.SQL(", ").join(
                 sql.SQL("payload ->> {}").format(sql.Literal(column))
@@ -952,18 +1022,18 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
                 )
 
         additions = updates = deleted = unchanged = 0
-        cursor.execute(
-            sql.SQL("SELECT count(*) FROM {}.import_rows WHERE import_id = %s").format(
-                sql.Identifier(SCHEMA)
-            ),
-            (import_id,),
+        new_columns = (
+            len(set(stored_columns) - set(target_columns)) if staged_count > 0 else 0
         )
-        staged_count = cursor.fetchone()[0]
-        new_columns = len(set(stored_columns) - set(target_columns))
         if goal == "create":
             additions = staged_count
         elif goal == "append":
             additions = staged_count
+            cursor.execute(
+                sql.SQL("SELECT count(*) FROM {}").format(_quoted_table(table_name))
+            )
+            unchanged = cursor.fetchone()[0]
+        elif staged_count == 0:
             cursor.execute(
                 sql.SQL("SELECT count(*) FROM {}").format(_quoted_table(table_name))
             )
@@ -978,19 +1048,21 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
             )
             additions = cursor.fetchone()[0]
             if update_policy == "imported":
-                comparable = [
-                    column
-                    for column in stored_columns
-                    if column in target_columns and column != "_id"
-                ]
+                comparable = [column for column in stored_columns if column != "_id"]
                 if comparable:
                     changes = sql.SQL(" OR ").join(
-                        sql.SQL(
-                            "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
-                        ).format(
-                            sql.Literal(column),
-                            sql.Literal(column),
-                            sql.Identifier(column),
+                        (
+                            sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                            ).format(
+                                sql.Literal(column),
+                                sql.Literal(column),
+                                sql.Identifier(column),
+                            )
+                            if column in target_columns
+                            else sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS NOT NULL)"
+                            ).format(sql.Literal(column), sql.Literal(column))
                         )
                         for column in comparable
                     )
@@ -1034,7 +1106,10 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
                     (import_id,),
                 )
                 unchanged += cursor.fetchone()[0]
+        preview_id = uuid.uuid4()
         preview = {
+            "preview_id": str(preview_id),
+            "source_count": staged_count,
             "identity_fields": identity_fields or [],
             "update_policy": update_policy,
             "deleted": deleted,
@@ -1049,9 +1124,9 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
         }
         cursor.execute(
             sql.SQL(
-                "UPDATE {}.import_sessions SET status = 'reviewed', preview = %s WHERE import_id = %s"
+                "UPDATE {}.import_sessions SET status = 'reviewed', preview = %s, preview_id = %s WHERE import_id = %s"
             ).format(sql.Identifier(SCHEMA)),
-            (json.dumps(preview), import_id),
+            (json.dumps(preview), preview_id, import_id),
         )
     return preview
 
@@ -1102,31 +1177,35 @@ def _archive_source(db, import_id):
     return str(destination)
 
 
-def apply_import(db, import_id):
+def apply_import(db, import_id, preview_id):
     """Apply the reviewed plan in one transaction.  A second confirmation is rejected."""
     with connect(_conninfo(db), autocommit=True) as status_conn, status_conn.cursor() as status_cursor:
         _ensure_schema(status_cursor)
         status_cursor.execute(
-            sql.SQL("SELECT status, preview FROM {}.import_sessions WHERE import_id = %s").format(
-                sql.Identifier(SCHEMA)
-            ),
+            sql.SQL(
+                "SELECT status, preview, preview_id FROM {}.import_sessions WHERE import_id = %s"
+            ).format(sql.Identifier(SCHEMA)),
             (import_id,),
         )
         existing = status_cursor.fetchone()
     if existing and existing[0] == "applied":
+        if str(existing[2]) != str(preview_id):
+            raise ImportValidationError("This preview is no longer current. Review again.")
         archive_path = _archive_source(db, import_id)
         return {"success": True, "preview": existing[1], "archive_path": archive_path}
     if existing and existing[0] == "archived":
         raise ImportValidationError("This import has already been applied.")
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
-        goal, table_name, mapping, status, preview = _session(
+        goal, table_name, mapping, status, preview, stored_preview_id = _session(
             cursor, import_id, lock=True
         )
         if status != "reviewed" or not preview:
             raise ImportValidationError("Review this import before confirming it.")
+        if str(stored_preview_id) != str(preview_id):
+            raise ImportValidationError("This preview is no longer current. Review again.")
         stored_columns = list(mapping.values())
-        target_columns = _target_columns(cursor, table_name)
+        empty_noop = preview.get("source_count") == 0 and goal in {"append", "merge"}
         if goal == "create":
             cursor.execute(
                 sql.SQL("CREATE TABLE {} (_id TEXT PRIMARY KEY)").format(
@@ -1140,19 +1219,21 @@ def apply_import(db, import_id):
                     _quoted_table(table_name)
                 )
             )
+            target_columns = _target_columns(cursor, table_name)
             if _target_fingerprint(cursor, table_name) != preview["target_fingerprint"]:
                 raise ImportValidationError(
                     "The target dataset changed after review. Review the import again."
                 )
-        for column in stored_columns:
-            if column not in target_columns:
-                cursor.execute(
-                    sql.SQL("ALTER TABLE {} ADD COLUMN {} TEXT").format(
-                        _quoted_table(table_name), sql.Identifier(column)
+        if not empty_noop:
+            for column in stored_columns:
+                if column not in target_columns:
+                    cursor.execute(
+                        sql.SQL("ALTER TABLE {} ADD COLUMN {} TEXT").format(
+                            _quoted_table(table_name), sql.Identifier(column)
+                        )
                     )
-                )
-                target_columns[column] = "text"
-        _ensure_dataset_mapping(cursor, table_name, mapping)
+                    target_columns[column] = "text"
+            _ensure_dataset_mapping(cursor, table_name, mapping)
         if goal == "create":
             cursor.execute(
                 sql.SQL(
@@ -1192,6 +1273,12 @@ def apply_import(db, import_id):
         identity_columns = [mapping[field] for field in preview["identity_fields"]]
         if goal in {"create", "append"}:
             cursor.execute(insert_statement, (import_id,))
+            if cursor.rowcount != preview["added"]:
+                raise ImportValidationError(
+                    "The applied row count did not match the reviewed import. Review again."
+                )
+        elif not identity_columns:
+            pass
         else:
             condition = _identity_condition(identity_columns)
             if preview["update_policy"] == "imported":
@@ -1208,17 +1295,33 @@ def apply_import(db, import_id):
                     if column != "_id"
                 )
                 if assignments:
+                    changes = sql.SQL(" OR ").join(
+                        sql.SQL(
+                            "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                        ).format(
+                            sql.Literal(column),
+                            sql.Literal(column),
+                            sql.Identifier(column),
+                        )
+                        for column in columns
+                        if column != "_id"
+                    )
                     cursor.execute(
                         sql.SQL(
-                            "UPDATE {} t SET {} FROM {}.import_rows s WHERE s.import_id = %s AND {}"
+                            "UPDATE {} t SET {} FROM {}.import_rows s WHERE s.import_id = %s AND {} AND ({})"
                         ).format(
                             _quoted_table(table_name),
                             assignments,
                             sql.Identifier(SCHEMA),
                             condition,
+                            changes,
                         ),
                         (import_id,),
                     )
+                    if cursor.rowcount != preview["updated"]:
+                        raise ImportValidationError(
+                            "The applied update count did not match the reviewed import. Review again."
+                        )
             cursor.execute(
                 sql.SQL(
                     "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {})"
@@ -1232,6 +1335,10 @@ def apply_import(db, import_id):
                 ),
                 (import_id,),
             )
+            if cursor.rowcount != preview["added"]:
+                raise ImportValidationError(
+                    "The applied row count did not match the reviewed import. Review again."
+                )
             if goal == "sync":
                 cursor.execute(
                     sql.SQL(
@@ -1241,6 +1348,10 @@ def apply_import(db, import_id):
                     ),
                     (import_id,),
                 )
+                if cursor.rowcount != preview["deleted"]:
+                    raise ImportValidationError(
+                        "The applied deletion count did not match the reviewed import. Review again."
+                    )
         cursor.execute(
             sql.SQL(
                 "UPDATE {}.import_sessions SET status = 'applied', applied_at = %s WHERE import_id = %s"

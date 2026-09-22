@@ -18,6 +18,7 @@ type Preview = {
   final_count: number;
   unchanged: number;
   updated: number;
+  preview_id: string;
 };
 
 export declare const backend: {
@@ -25,5 +26,5 @@ export declare const backend: {
   check_dataset_name: (args: { dataset_name: string }) => Promise<{ available: boolean; table_name: string }>;
   stage_import: (args: { goal: Goal; target_table: string; uploaded_file: { data: string; name: string } }) => Promise<StagedImport>;
   preview_import: (args: { import_id: string; identity_fields: string[]; update_policy: Policy }) => Promise<Preview>;
-  apply_import: (args: { import_id: string }) => Promise<{ success: boolean }>;
+  apply_import: (args: { import_id: string; preview_id: string }) => Promise<{ success: boolean }>;
 };

@@ -28,6 +28,10 @@ def upload_bytes(name, contents):
     return {"name": name, "data": base64.b64encode(contents).decode()}
 
 
+def confirm(db, staged, preview):
+    return apply_import(db, staged["import_id"], preview["preview_id"])
+
+
 @pytest.fixture(autouse=True)
 def importer_datalake(tmp_path, monkeypatch):
     datalake = tmp_path / "datalake"
@@ -75,7 +79,7 @@ def test_create_csv_stages_previews_and_applies(mock_db_connection):
         "final_count": 2,
     }
 
-    assert apply_import(mock_db_connection, staged["import_id"])["success"] is True
+    assert confirm(mock_db_connection, staged, preview)["success"] is True
     assert list_datasets(mock_db_connection) == ["bird_observations"]
     assert {
         tuple(sorted({key: row[key] for key in ("species", "count")}.items()))
@@ -114,7 +118,7 @@ def test_merge_preserves_omitted_values_and_imported_null_clears_them(
     assert preview["added"] == 1
     assert preview["updated"] == 1
     assert preview["unchanged"] == 1
-    apply_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
     rows = table_rows(mock_db_connection, "observations")
     assert {(row["code"], row["note"]) for row in rows} == {
         ("A", None),
@@ -148,7 +152,7 @@ def test_sync_uses_null_safe_identity_and_deletes_only_absent_records(
     preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
     assert preview["deleted"] == 1
     assert preview["updated"] == 1
-    apply_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
     assert [
         (row["code"], row["note"])
         for row in table_rows(mock_db_connection, "observations")
@@ -188,8 +192,8 @@ def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
         "g__type",
         "g__coordinates",
     ]
-    preview_import(mock_db_connection, staged["import_id"])
-    apply_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
     row = table_rows(mock_db_connection, "birds")[0]
     assert row["g__type"] == "Point"
     assert row["g__coordinates"] == "[1,2]"
@@ -211,13 +215,13 @@ def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection):
         "merge",
         "observations",
     )
-    preview_import(mock_db_connection, staged["import_id"], ["code"])
+    preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
             'INSERT INTO "public"."observations" VALUES (%s, %s)', ("two", "C")
         )
     with pytest.raises(ImportValidationError, match="changed after review"):
-        apply_import(mock_db_connection, staged["import_id"])
+        confirm(mock_db_connection, staged, preview)
     assert {
         (row["_id"], row["code"])
         for row in table_rows(mock_db_connection, "observations")
@@ -254,8 +258,8 @@ def test_create_persists_column_mapping_for_later_imports(mock_db_connection):
         "create",
         "Bird Observations",
     )
-    preview_import(mock_db_connection, staged["import_id"])
-    apply_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
 
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
@@ -269,8 +273,8 @@ def test_create_persists_column_mapping_for_later_imports(mock_db_connection):
         "append",
         "bird_observations",
     )
-    preview_import(mock_db_connection, appended["import_id"])
-    apply_import(mock_db_connection, appended["import_id"])
+    appended_preview = preview_import(mock_db_connection, appended["import_id"])
+    confirm(mock_db_connection, appended, appended_preview)
     assert {
         (row["Bird_Name"], row["Count"])
         for row in table_rows(mock_db_connection, "bird_observations")
@@ -307,7 +311,7 @@ def test_existing_column_mapping_is_used_for_identity(mock_db_connection):
         mock_db_connection, staged["import_id"], ["Bird Name"]
     )
     assert preview["updated"] == 1
-    apply_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
     assert table_rows(mock_db_connection, "observations")[0]["note"] == "new"
 
 
@@ -354,8 +358,8 @@ def test_persisted_mapping_is_not_overwritten_by_fallback(mock_db_connection):
         "append",
         "observations",
     )
-    preview_import(mock_db_connection, staged["import_id"])
-    apply_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
     row = table_rows(mock_db_connection, "observations")[0]
     assert row["code"] is None
     assert row["code_raw"] == "A"
@@ -391,7 +395,7 @@ def test_mapping_change_after_staging_rejects_apply(mock_db_connection):
         "append",
         "observations",
     )
-    preview_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
             'CREATE TABLE "public"."observations__columns" (original_column TEXT, sql_column TEXT)'
@@ -402,7 +406,7 @@ def test_mapping_change_after_staging_rejects_apply(mock_db_connection):
         )
 
     with pytest.raises(ImportValidationError, match="mapping changed"):
-        apply_import(mock_db_connection, staged["import_id"])
+        confirm(mock_db_connection, staged, preview)
 
 
 def test_create_rejects_an_orphaned_mapping_table(mock_db_connection):
@@ -636,8 +640,8 @@ def test_successful_import_archives_exact_source(
         "create",
         "observations",
     )
-    preview_import(mock_db_connection, staged["import_id"])
-    result = apply_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    result = confirm(mock_db_connection, staged, preview)
 
     archived = Path(result["archive_path"])
     assert archived.is_relative_to(importer_datalake)
@@ -662,9 +666,9 @@ def test_archive_failure_retains_source_for_retry(
         "create",
         "observations",
     )
-    preview_import(mock_db_connection, staged["import_id"])
+    preview = preview_import(mock_db_connection, staged["import_id"])
     with pytest.raises(OSError):
-        apply_import(mock_db_connection, staged["import_id"])
+        confirm(mock_db_connection, staged, preview)
 
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
@@ -674,7 +678,7 @@ def test_archive_failure_retains_source_for_retry(
     assert cleanup_expired_imports(mock_db_connection) == 0
 
     monkeypatch.setenv("DATASET_IMPORTER_DATALAKE_ROOT", str(importer_datalake))
-    result = apply_import(mock_db_connection, staged["import_id"])
+    result = confirm(mock_db_connection, staged, preview)
     assert Path(result["archive_path"]).read_bytes() == b"name\nHeron\n"
 
 
@@ -734,3 +738,121 @@ def test_final_column_limit_includes_internal_id(mock_db_connection):
             "create",
             "wide_dataset",
         )
+
+
+def test_repreview_invalidates_the_previous_confirmation(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    first = preview_import(mock_db_connection, staged["import_id"])
+    second = preview_import(mock_db_connection, staged["import_id"])
+    assert first["preview_id"] != second["preview_id"]
+
+    with pytest.raises(ImportValidationError, match="no longer current"):
+        confirm(mock_db_connection, staged, first)
+    assert check_dataset_name(mock_db_connection, "observations")["available"] is False
+    assert confirm(mock_db_connection, staged, second)["success"] is True
+
+
+def test_new_column_on_matching_row_is_counted_as_update(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations" VALUES (%s, %s)', ("one", "A")
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,note\nA,new\n"),
+        "merge",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    assert preview["updated"] == 1
+    assert preview["columns_added"] == 1
+    confirm(mock_db_connection, staged, preview)
+    assert table_rows(mock_db_connection, "observations")[0]["note"] == "new"
+
+
+def test_unchanged_match_is_not_physically_updated(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT, note TEXT)'
+        )
+        cursor.execute('CREATE TABLE "public"."update_audit" (count INTEGER)')
+        cursor.execute('INSERT INTO "public"."update_audit" VALUES (0)')
+        cursor.execute(
+            """CREATE FUNCTION count_observation_updates() RETURNS trigger AS $$
+            BEGIN UPDATE public.update_audit SET count = count + 1; RETURN NEW; END;
+            $$ LANGUAGE plpgsql"""
+        )
+        cursor.execute(
+            """CREATE TRIGGER observations_updated AFTER UPDATE ON public.observations
+            FOR EACH ROW EXECUTE FUNCTION count_observation_updates()"""
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations" VALUES (%s, %s, %s)',
+            ("one", "A", "same"),
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,note\nA,same\n"),
+        "merge",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    assert preview["updated"] == 0
+    confirm(mock_db_connection, staged, preview)
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT count FROM public.update_audit")
+        assert cursor.fetchone()[0] == 0
+
+
+def test_empty_merge_is_a_noop_without_identity(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations" VALUES (%s, %s)', ("one", "A")
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "new_field\n"),
+        "merge",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    assert preview["added"] == preview["updated"] == preview["deleted"] == 0
+    assert preview["unchanged"] == preview["final_count"] == 1
+    confirm(mock_db_connection, staged, preview)
+    assert [(row["_id"], row["code"]) for row in table_rows(mock_db_connection, "observations")] == [("one", "A")]
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'observations' AND column_name = 'new_field'"
+        )
+        assert cursor.fetchone() is None
+
+
+def test_schema_change_after_review_rejects_confirmation(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code\nA\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'ALTER TABLE "public"."observations" ALTER COLUMN code SET DEFAULT \'unknown\''
+        )
+    with pytest.raises(ImportValidationError, match="changed after review"):
+        confirm(mock_db_connection, staged, preview)

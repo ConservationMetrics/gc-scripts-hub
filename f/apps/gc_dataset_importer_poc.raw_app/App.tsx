@@ -20,6 +20,7 @@ type Preview = {
   final_count: number;
   unchanged: number;
   updated: number;
+  preview_id: string;
 };
 
 const icon = (data: string) => `data:image/png;base64,${data}`;
@@ -224,7 +225,10 @@ export default function App() {
     setLoading(true);
     setError(undefined);
     try {
-      await backend.apply_import({ import_id: staged.import_id });
+      await backend.apply_import({
+        import_id: staged.import_id,
+        preview_id: preview.preview_id,
+      });
       if (goal === "create") {
         setDatasets((current) => [...new Set([...current, target])].sort());
       }

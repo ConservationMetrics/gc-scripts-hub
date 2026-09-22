@@ -3,5 +3,7 @@ fields:
   db:
     type: static
     value: $res:f/connectors/postgresql
+  preview_id:
+    type: user
   import_id:
     type: user
