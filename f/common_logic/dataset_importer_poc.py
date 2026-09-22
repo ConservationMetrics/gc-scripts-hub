@@ -10,11 +10,11 @@ import csv
 import hashlib
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 
-from psycopg import connect, sql
+from psycopg import connect, errors, sql
 
 from f.common_logic.db_operations import conninfo
 from f.common_logic.identifier_utils import normalize_identifier
@@ -22,8 +22,10 @@ from f.common_logic.identifier_utils import normalize_identifier
 SCHEMA = "dataset_importer_poc"
 MAX_SOURCE_BYTES = 25 * 1024 * 1024
 MAX_COLUMNS = 150
+SESSION_TTL = timedelta(hours=24)
 VALID_GOALS = {"create", "append", "merge", "sync"}
 VALID_POLICIES = {"imported", "existing"}
+AUXILIARY_SUFFIXES = ("__columns", "__labels", "__metadata")
 
 
 class ImportValidationError(ValueError):
@@ -153,7 +155,7 @@ def _stored_name(source_name):
     )
 
 
-def _source_mapping(rows):
+def _source_fields(rows):
     source_fields = []
     seen = set()
     for row in rows:
@@ -161,10 +163,24 @@ def _source_mapping(rows):
             if field not in seen:
                 seen.add(field)
                 source_fields.append(field)
-    mapping = {field: _stored_name(field) for field in source_fields}
+    return source_fields
+
+
+def _source_mapping(rows, existing_mapping=None):
+    existing_mapping = existing_mapping or {}
+    mapping = {
+        field: existing_mapping.get(field, _stored_name(field))
+        for field in _source_fields(rows)
+    }
     reverse = {}
+    for source, stored in existing_mapping.items():
+        if stored in reverse and reverse[stored] != source:
+            raise ImportValidationError(
+                f"The target dataset maps both '{reverse[stored]}' and '{source}' to '{stored}'."
+            )
+        reverse[stored] = source
     for source, stored in mapping.items():
-        if stored in reverse:
+        if stored in reverse and reverse[stored] != source:
             raise ImportValidationError(
                 f"Columns '{reverse[stored]}' and '{source}' have the same stored name. Rename one column."
             )
@@ -195,6 +211,7 @@ def _ensure_schema(cursor):
                 status TEXT NOT NULL,
                 preview JSONB,
                 created_at TIMESTAMPTZ NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
                 applied_at TIMESTAMPTZ
             );"""
         ).format(sql.Identifier(SCHEMA))
@@ -209,32 +226,299 @@ def _ensure_schema(cursor):
             );"""
         ).format(sql.Identifier(SCHEMA), sql.Identifier(SCHEMA))
     )
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {}.dataset_registry (
+                target_table TEXT PRIMARY KEY,
+                columns_table TEXT UNIQUE NOT NULL,
+                status TEXT NOT NULL CHECK (status IN ('reserved', 'active')),
+                source_import_id UUID UNIQUE
+            )"""
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "UPDATE {}.import_sessions SET expires_at = created_at + INTERVAL '24 hours' WHERE expires_at IS NULL"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ALTER COLUMN expires_at SET NOT NULL"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    _cleanup_expired(cursor, datetime.now(UTC))
+    _backfill_dataset_registry(cursor)
+
+
+def _columns_table_name(table_name):
+    return f"{table_name[:54]}__columns"
+
+
+def _relation_exists(cursor, table_name):
+    cursor.execute(
+        """SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = %s
+            AND table_type = 'BASE TABLE'
+        )""",
+        (table_name,),
+    )
+    return cursor.fetchone()[0]
+
+
+def _public_relation_exists(cursor, table_name):
+    cursor.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{table_name}",))
+    return cursor.fetchone()[0]
+
+
+def _normalize_dataset_name(dataset_name, *, allow_auxiliary=False):
+    if not isinstance(dataset_name, str) or not dataset_name.strip():
+        raise ImportValidationError("Enter a dataset name.")
+    table_name = normalize_identifier(dataset_name)
+    if table_name == "_":
+        raise ImportValidationError("Enter a dataset name containing letters or numbers.")
+    if not allow_auxiliary and table_name.endswith(AUXILIARY_SUFFIXES):
+        raise ImportValidationError("Dataset names cannot use a reserved suffix.")
+    return table_name
+
+
+def _mapping_name_is_available(cursor, table_name):
+    cursor.execute(
+        """SELECT table_name FROM information_schema.tables
+           WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"""
+    )
+    public_tables = [row[0] for row in cursor.fetchall()]
+    mapping_name = _columns_table_name(table_name)
+    if _public_relation_exists(cursor, mapping_name):
+        return False
+    cursor.execute("SELECT to_regclass(%s)", (f"{SCHEMA}.dataset_registry",))
+    if cursor.fetchone()[0] is not None:
+        cursor.execute(
+            sql.SQL(
+                "SELECT 1 FROM {}.dataset_registry WHERE target_table = %s OR columns_table = %s"
+            ).format(sql.Identifier(SCHEMA)),
+            (table_name, mapping_name),
+        )
+        if cursor.fetchone():
+            return False
+    return not any(
+        existing != table_name and _columns_table_name(existing) == mapping_name
+        for existing in public_tables
+        if not existing.endswith(AUXILIARY_SUFFIXES)
+    )
+
+
+def _claim_dataset_mapping(cursor, table_name, import_id, creating):
+    columns_table = _columns_table_name(table_name)
+    cursor.execute(
+        sql.SQL(
+            "SELECT target_table, columns_table, status, source_import_id FROM {}.dataset_registry WHERE target_table = %s OR columns_table = %s FOR UPDATE"
+        ).format(sql.Identifier(SCHEMA)),
+        (table_name, columns_table),
+    )
+    claimed = cursor.fetchone()
+    if claimed:
+        if claimed[0] != table_name or claimed[1] != columns_table:
+            raise ImportValidationError(
+                "This dataset name conflicts with an existing dataset. Choose another name."
+            )
+        if creating and claimed[3] != import_id:
+            raise ImportValidationError("A dataset with this name already exists.")
+        return
+    if creating and _public_relation_exists(cursor, columns_table):
+        raise ImportValidationError(
+            "This dataset name conflicts with an existing column mapping. Choose another name."
+        )
+    try:
+        cursor.execute(
+            sql.SQL(
+                "INSERT INTO {}.dataset_registry (target_table, columns_table, status, source_import_id) VALUES (%s, %s, %s, %s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (
+                table_name,
+                columns_table,
+                "reserved" if creating else "active",
+                import_id if creating else None,
+            ),
+        )
+    except errors.UniqueViolation as exc:
+        raise ImportValidationError(
+            "This dataset name conflicts with an existing dataset. Choose another name."
+        ) from exc
+
+
+def _backfill_dataset_registry(cursor):
+    cursor.execute(
+        sql.SQL(
+            "SELECT import_id, target_table, status FROM {}.import_sessions WHERE goal = 'create' AND status != 'invalidated' ORDER BY (status = 'applied') DESC, created_at DESC"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    for import_id, table_name, status in cursor.fetchall():
+        active = status == "applied"
+        if not active and _public_relation_exists(cursor, table_name):
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'invalidated' WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (import_id,),
+            )
+            continue
+        try:
+            _claim_dataset_mapping(cursor, table_name, import_id, not active)
+        except ImportValidationError:
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'invalidated' WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (import_id,),
+            )
+            continue
+        if active:
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (table_name,),
+            )
+
+
+def _cleanup_expired(cursor, now):
+    cursor.execute(
+        sql.SQL(
+            "DELETE FROM {}.import_sessions WHERE expires_at <= %s RETURNING import_id"
+        ).format(sql.Identifier(SCHEMA)),
+        (now,),
+    )
+    expired_ids = [row[0] for row in cursor.fetchall()]
+    if expired_ids:
+        cursor.execute(
+            sql.SQL(
+                "DELETE FROM {}.dataset_registry WHERE status = 'reserved' AND source_import_id = ANY(%s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (expired_ids,),
+        )
+    return len(expired_ids)
+
+
+def _dataset_is_eligible(cursor, table_name):
+    if table_name.endswith(AUXILIARY_SUFFIXES):
+        return False
+    cursor.execute(
+        """SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            JOIN pg_catalog.pg_class t ON t.relname = c.table_name
+            JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace
+            WHERE c.table_schema = 'public' AND c.table_name = %s
+            AND c.column_name = '_id' AND c.data_type IN ('text', 'character varying')
+            AND n.nspname = 'public' AND t.relkind = 'r'
+            AND EXISTS (
+                SELECT 1
+                FROM pg_catalog.pg_constraint con
+                WHERE con.conrelid = t.oid AND con.contype = 'p'
+                AND con.conkey = ARRAY[c.ordinal_position::smallint]
+            )
+        )""",
+        (table_name,),
+    )
+    return cursor.fetchone()[0]
+
+
+def _dataset_mapping(cursor, table_name):
+    target_columns = _target_columns(cursor, table_name)
+    mapping = {}
+    columns_table = _columns_table_name(table_name)
+    if _relation_exists(cursor, columns_table):
+        cursor.execute(
+            sql.SQL(
+                "SELECT original_column, sql_column FROM {} WHERE original_column IS NOT NULL"
+            ).format(_quoted_table(columns_table))
+        )
+        for original, stored in cursor.fetchall():
+            if original in mapping and mapping[original] != stored:
+                raise ImportValidationError(
+                    f"The target dataset has conflicting mappings for '{original}'."
+                )
+            mapping[original] = stored
+    mapped_columns = set(mapping.values())
+    for column in target_columns:
+        if (
+            column != "_id"
+            and column not in mapped_columns
+            and column not in mapping
+        ):
+            mapping[column] = column
+    return mapping
+
+
+def _ensure_dataset_mapping(cursor, table_name, mapping):
+    columns_table = _columns_table_name(table_name)
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {} (
+                original_column TEXT PRIMARY KEY,
+                sql_column TEXT UNIQUE NOT NULL
+            )"""
+        ).format(_quoted_table(columns_table))
+    )
+    cursor.execute(
+        sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
+            _quoted_table(columns_table)
+        )
+    )
+    for original, stored in mapping.items():
+        cursor.execute(
+            sql.SQL(
+                "SELECT original_column, sql_column FROM {} WHERE original_column = %s OR sql_column = %s"
+            ).format(_quoted_table(columns_table)),
+            (original, stored),
+        )
+        conflicts = [row for row in cursor.fetchall() if row != (original, stored)]
+        if conflicts:
+            raise ImportValidationError(
+                "The dataset column mapping changed after this import was staged. Stage the import again."
+            )
+        cursor.execute(
+            sql.SQL(
+                """INSERT INTO {} (original_column, sql_column)
+                SELECT %s, %s WHERE NOT EXISTS (
+                    SELECT 1 FROM {} WHERE original_column = %s OR sql_column = %s
+                )"""
+            ).format(_quoted_table(columns_table), _quoted_table(columns_table)),
+            (original, stored, original, stored),
+        )
 
 
 def list_datasets(db):
-    """Return ordinary public datasets in alphabetical order."""
+    """Return compatible public datasets in alphabetical order."""
     with connect(_conninfo(db), autocommit=True) as conn, conn.cursor() as cursor:
         cursor.execute(
             """SELECT table_name FROM information_schema.tables
                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-               AND table_name NOT LIKE '%\\_\\_columns' ESCAPE '\\'
                ORDER BY table_name"""
         )
-        return [row[0] for row in cursor.fetchall()]
+        table_names = [row[0] for row in cursor.fetchall()]
+        return [
+            table_name
+            for table_name in table_names
+            if _dataset_is_eligible(cursor, table_name)
+        ]
 
 
 def check_dataset_name(db, dataset_name):
-    table_name = normalize_identifier(dataset_name)
+    table_name = _normalize_dataset_name(dataset_name)
     with connect(_conninfo(db), autocommit=True) as conn, conn.cursor() as cursor:
-        cursor.execute(
-            """SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_name = %s
-            )""",
-            (table_name,),
-        )
-        exists = cursor.fetchone()[0]
-    return {"table_name": table_name, "available": not exists}
+        exists = _public_relation_exists(cursor, table_name)
+        mapping_available = _mapping_name_is_available(cursor, table_name)
+    return {
+        "table_name": table_name,
+        "available": not exists and mapping_available,
+    }
 
 
 def stage_import(db, uploaded_file, goal, target_table):
@@ -245,28 +529,34 @@ def stage_import(db, uploaded_file, goal, target_table):
         raise ImportValidationError("Choose or name a target dataset.")
     name, contents = _payload(uploaded_file)
     source_format, rows = _parse_source(name, contents)
-    mapping = _source_mapping(rows)
-    table_name = normalize_identifier(target_table)
+    table_name = _normalize_dataset_name(
+        target_table, allow_auxiliary=goal != "create"
+    )
     import_id = uuid.uuid4()
     now = datetime.now(UTC)
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
-        cursor.execute(
-            """SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = 'public' AND table_name = %s
-            )""",
-            (table_name,),
-        )
-        exists = cursor.fetchone()[0]
+        _cleanup_expired(cursor, now)
+        exists = _public_relation_exists(cursor, table_name)
         if goal == "create" and exists:
             raise ImportValidationError("A dataset with this name already exists.")
+        if goal == "create" and not _mapping_name_is_available(cursor, table_name):
+            raise ImportValidationError(
+                "This dataset name conflicts with an existing dataset. Choose another name."
+            )
         if goal != "create" and not exists:
             raise ImportValidationError("Select an existing dataset for this goal.")
+        if goal != "create" and not _dataset_is_eligible(cursor, table_name):
+            raise ImportValidationError(
+                "The selected table is not a compatible Guardian Connector dataset."
+            )
+        _claim_dataset_mapping(cursor, table_name, import_id, goal == "create")
+        existing_mapping = _dataset_mapping(cursor, table_name) if exists else {}
+        mapping = _source_mapping(rows, existing_mapping)
         cursor.execute(
             sql.SQL("""INSERT INTO {}.import_sessions
-                (import_id, goal, target_table, source_name, source_sha256, source_format, source_mapping, status, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 'staged', %s)""").format(
+                (import_id, goal, target_table, source_name, source_sha256, source_format, source_mapping, status, created_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'staged', %s, %s)""").format(
                 sql.Identifier(SCHEMA)
             ),
             (
@@ -278,6 +568,7 @@ def stage_import(db, uploaded_file, goal, target_table):
                 source_format,
                 json.dumps(mapping),
                 now,
+                now + SESSION_TTL,
             ),
         )
         cursor.executemany(
@@ -305,7 +596,7 @@ def _session(cursor, import_id, lock=False):
     lock_sql = " FOR UPDATE" if lock else ""
     cursor.execute(
         sql.SQL(
-            "SELECT goal, target_table, source_mapping, status, preview FROM {}.import_sessions WHERE import_id = %s"
+            "SELECT goal, target_table, source_mapping, status, preview, expires_at FROM {}.import_sessions WHERE import_id = %s"
             + lock_sql
         ).format(sql.Identifier(SCHEMA)),
         (import_id,),
@@ -315,7 +606,20 @@ def _session(cursor, import_id, lock=False):
         raise ImportValidationError(
             "This import session does not exist or has expired."
         )
-    return result
+    if result[5] <= datetime.now(UTC):
+        raise ImportValidationError("This import session has expired. Start a new import.")
+    if result[3] == "invalidated":
+        raise ImportValidationError(
+            "This import session conflicts with another dataset. Start a new import."
+        )
+    return result[:5]
+
+
+def cleanup_expired_imports(db):
+    """Delete expired staged data and return the number of removed sessions."""
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        _ensure_schema(cursor)
+        return _cleanup_expired(cursor, datetime.now(UTC))
 
 
 def _target_columns(cursor, table_name):
@@ -579,6 +883,14 @@ def apply_import(db, import_id):
                     )
                 )
                 target_columns[column] = "text"
+        _ensure_dataset_mapping(cursor, table_name, mapping)
+        if goal == "create":
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s AND source_import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (table_name, import_id),
+            )
         columns = [column for column in stored_columns if column in target_columns]
         insert_columns = ["_id", *columns]
         insert_values = sql.SQL(", ").join(
