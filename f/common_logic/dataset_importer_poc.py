@@ -1349,7 +1349,7 @@ def apply_import(db, import_id, preview_id):
                 ]
             )
             insert_statement = sql.SQL(
-                "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s"
+                "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s ORDER BY s.row_ordinal"
             ).format(
                 _quoted_table(table_name),
                 sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
@@ -1410,7 +1410,7 @@ def apply_import(db, import_id, preview_id):
                             )
                 cursor.execute(
                     sql.SQL(
-                        "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {})"
+                        "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {}) ORDER BY s.row_ordinal"
                     ).format(
                         _quoted_table(table_name),
                         sql.SQL(", ").join(map(sql.Identifier, insert_columns)),

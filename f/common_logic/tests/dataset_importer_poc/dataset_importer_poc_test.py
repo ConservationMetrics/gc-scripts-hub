@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import io
 import json
 import zipfile
@@ -865,6 +866,18 @@ def test_multi_file_zip_appends_rows_in_archive_order(mock_db_connection):
     )
     assert staged["source_format"] == "zip"
     assert staged["record_count"] == 2
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    expected_ids = [
+        hashlib.md5(f"{staged['import_id']}:{ordinal}".encode()).hexdigest()
+        for ordinal in (1, 2)
+    ]
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute('SELECT _id, name FROM "public"."observations"')
+        rows_by_id = dict(cursor.fetchall())
+    assert rows_by_id[expected_ids[0]] == "Heron"
+    assert rows_by_id[expected_ids[1]] == "Ibis"
 
 
 def test_successful_import_archives_exact_source(
