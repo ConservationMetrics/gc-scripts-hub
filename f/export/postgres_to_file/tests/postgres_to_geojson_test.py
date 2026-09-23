@@ -1,6 +1,9 @@
 import json
 
-from f.export.postgres_to_file.postgres_to_geojson import main
+from f.export.postgres_to_file.postgres_to_geojson import (
+    format_data_as_geojson,
+    main,
+)
 
 
 def test_script_e2e(pg_database, database_mock_data, tmp_path):
@@ -25,3 +28,23 @@ def test_script_e2e(pg_database, database_mock_data, tmp_path):
         assert data["features"][0]["id"] == "doc_id_1"
         assert data["features"][0]["geometry"]["coordinates"] == [151.2093, -33.8688]
         assert data["features"][0]["properties"]["project_name"] == "Forest Expedition"
+
+
+def test_geometry_collection_uses_geometries_member():
+    geometries = [
+        {"type": "Point", "coordinates": [1, 2]},
+        {"type": "LineString", "coordinates": [[3, 4], [5, 6]]},
+    ]
+    result = format_data_as_geojson(
+        (
+            ["_id", "g__type", "g__coordinates", "name"],
+            [("one", "GeometryCollection", json.dumps(geometries), "mixed")],
+        )
+    )
+
+    geometry = result["features"][0]["geometry"]
+    assert geometry == {
+        "type": "GeometryCollection",
+        "geometries": geometries,
+    }
+    assert "coordinates" not in geometry
