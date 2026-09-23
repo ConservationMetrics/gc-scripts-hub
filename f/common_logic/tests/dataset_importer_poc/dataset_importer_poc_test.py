@@ -94,6 +94,49 @@ def test_create_csv_stages_previews_and_applies(mock_db_connection):
         preview_import(mock_db_connection, staged["import_id"])
 
 
+def test_csv_detects_gbif_tab_delimiter():
+    rows = importer._parse_csv(
+        b"gbifID\tscientificName\tlocality\n"
+        b"1\tArdea alba\tNairobi, Kenya\n"
+        b"2\tBubo africanus\tCape Town, South Africa\n"
+    )
+
+    assert rows == [
+        {
+            "gbifID": "1",
+            "scientificName": "Ardea alba",
+            "locality": "Nairobi, Kenya",
+        },
+        {
+            "gbifID": "2",
+            "scientificName": "Bubo africanus",
+            "locality": "Cape Town, South Africa",
+        },
+    ]
+
+
+def test_zip_detects_gbif_tab_delimited_csv():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "occurrence.csv",
+            "gbifID\tscientificName\n1\tArdea alba\n2\tBubo africanus\n",
+        )
+
+    source_format, rows = importer._parse_zip(buffer.getvalue())
+
+    assert source_format == "zip"
+    assert rows == [
+        {"gbifID": "1", "scientificName": "Ardea alba"},
+        {"gbifID": "2", "scientificName": "Bubo africanus"},
+    ]
+
+
+def test_csv_still_rejects_inconsistent_row_width():
+    with pytest.raises(ImportValidationError, match="header column count"):
+        importer._parse_csv(b"species,count\nheron,2\nibis\n")
+
+
 def test_merge_preserves_omitted_values_and_imported_null_clears_them(
     mock_db_connection,
 ):

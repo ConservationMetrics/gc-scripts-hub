@@ -137,7 +137,11 @@ def _parse_csv(contents):
     except UnicodeDecodeError as exc:
         raise ImportValidationError("CSV files must be UTF-8 encoded.") from exc
     try:
-        reader = csv.DictReader(StringIO(text))
+        try:
+            dialect = csv.Sniffer().sniff(text[:65536], delimiters=",\t")
+        except csv.Error:
+            dialect = csv.excel
+        reader = csv.DictReader(StringIO(text), dialect=dialect)
         if not reader.fieldnames or any(
             name is None or not name.strip() for name in reader.fieldnames
         ):
