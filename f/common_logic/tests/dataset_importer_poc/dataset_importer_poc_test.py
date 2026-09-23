@@ -509,6 +509,23 @@ def test_expired_sessions_are_rejected_and_cleaned_up(mock_db_connection):
     assert check_dataset_name(mock_db_connection, "observations")["available"] is True
 
 
+def test_dataset_listing_cleans_expired_sources_on_app_load(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+
+    assert list_datasets(mock_db_connection) == []
+    assert check_dataset_name(mock_db_connection, "observations")["available"] is True
+
+
 def test_expiry_cleanup_removes_an_archive_orphaned_before_commit(
     mock_db_connection, importer_datalake
 ):

@@ -78,4 +78,6 @@ change.
 
 If archival fails, no target changes are made and the reviewed session retains
 the source until expiry so the same confirmation can be retried. Failed or
-abandoned staged sources are removed when their sessions expire.
+abandoned staged sources are removed after expiry on the next importer app load
+or backend operation. A deployment may also schedule `cleanup_expired_imports`
+when cleanup must run without importer activity.

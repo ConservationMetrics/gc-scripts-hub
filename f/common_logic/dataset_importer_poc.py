@@ -770,7 +770,8 @@ def _ensure_dataset_mapping(cursor, table_name, mapping):
 
 def list_datasets(db):
     """Return compatible public datasets in alphabetical order."""
-    with connect(_conninfo(db), autocommit=True) as conn, conn.cursor() as cursor:
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        _ensure_schema(cursor)
         cursor.execute(
             """SELECT table_name FROM information_schema.tables
                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
