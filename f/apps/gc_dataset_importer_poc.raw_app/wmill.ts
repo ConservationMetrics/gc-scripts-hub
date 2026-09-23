@@ -6,6 +6,7 @@ type Policy = "imported" | "existing";
 
 type StagedImport = {
   fields: string[];
+  geometry_warning?: string;
   import_id: string;
   record_count: number;
   source_format: string;
@@ -18,6 +19,8 @@ type Preview = {
   columns_added: number;
   deleted: number;
   final_count: number;
+  geometry_invalid?: number;
+  geometry_valid?: number;
   unchanged: number;
   updated: number;
   preview_id: string;

@@ -9,6 +9,7 @@ import base64
 import csv
 import hashlib
 import json
+import math
 import os
 import stat
 import uuid
@@ -32,6 +33,19 @@ MAX_ARCHIVE_MEMBERS = 1000
 SESSION_TTL = timedelta(hours=24)
 VALID_GOALS = {"create", "append", "merge", "sync"}
 VALID_POLICIES = {"imported", "existing"}
+COORDINATE_PAIRS = (
+    ("decimallongitude", "decimallatitude"),
+    ("longitude", "latitude"),
+    ("lon", "lat"),
+    ("lng", "lat"),
+)
+TABULAR_GEOMETRY_TYPES = {
+    "Point",
+    "LineString",
+    "MultiLineString",
+    "Polygon",
+    "MultiPolygon",
+}
 EMPTY_CONVERSION_ERRORS = {
     "Excel file contains no data",
     "GeoJSON contains no features",
@@ -56,6 +70,175 @@ SUPPORTED_EXTENSIONS = {
 
 class ImportValidationError(ValueError):
     """An import cannot safely proceed."""
+
+
+def _canonical_coordinate_field(name):
+    return "".join(character for character in name.casefold() if character.isalnum())
+
+
+def _point_coordinates(longitude, latitude):
+    try:
+        if isinstance(longitude, bool) or isinstance(latitude, bool):
+            return None
+        longitude = float(longitude)
+        latitude = float(latitude)
+    except (TypeError, ValueError):
+        return None
+    if not (
+        math.isfinite(longitude)
+        and math.isfinite(latitude)
+        and -180 <= longitude <= 180
+        and -90 <= latitude <= 90
+    ):
+        return None
+    return [longitude, latitude]
+
+
+def _position_coordinates(position):
+    if not isinstance(position, (list, tuple)) or len(position) < 2:
+        return None
+    point = _point_coordinates(position[0], position[1])
+    if point is None:
+        return None
+    extra = []
+    for value in position[2:]:
+        try:
+            if isinstance(value, bool):
+                return None
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(value):
+            return None
+        extra.append(value)
+    return point + extra
+
+
+def _normalize_geometry_coordinates(geometry_type, coordinates):
+    if geometry_type == "Point":
+        return _position_coordinates(coordinates)
+    if geometry_type == "LineString":
+        if not isinstance(coordinates, list) or len(coordinates) < 2:
+            return None
+        positions = [_position_coordinates(position) for position in coordinates]
+        return positions if all(position is not None for position in positions) else None
+    if geometry_type == "MultiLineString":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        parts = [
+            _normalize_geometry_coordinates("LineString", part) for part in coordinates
+        ]
+        return parts if all(part is not None for part in parts) else None
+    if geometry_type == "Polygon":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        rings = []
+        for ring in coordinates:
+            if not isinstance(ring, list) or len(ring) < 4:
+                return None
+            positions = [_position_coordinates(position) for position in ring]
+            if any(position is None for position in positions) or positions[0] != positions[-1]:
+                return None
+            rings.append(positions)
+        return rings
+    if geometry_type == "MultiPolygon":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        polygons = [
+            _normalize_geometry_coordinates("Polygon", polygon)
+            for polygon in coordinates
+        ]
+        return polygons if all(polygon is not None for polygon in polygons) else None
+    return None
+
+
+def _validate_explicit_tabular_geometry(rows):
+    for row in rows:
+        geometry_type = row["g__type"]
+        raw_coordinates = row["g__coordinates"]
+        if geometry_type is None and raw_coordinates is None:
+            continue
+        if geometry_type is None or raw_coordinates is None:
+            raise ImportValidationError(
+                "Explicit geometry requires both g__type and g__coordinates for each row."
+            )
+        try:
+            coordinates = (
+                json.loads(raw_coordinates)
+                if isinstance(raw_coordinates, str)
+                else raw_coordinates
+            )
+        except json.JSONDecodeError as exc:
+            raise ImportValidationError(
+                "Explicit g__coordinates values must be valid JSON arrays."
+            ) from exc
+        if geometry_type not in TABULAR_GEOMETRY_TYPES:
+            raise ImportValidationError(
+                "Explicit geometry requires a supported geometry type and JSON coordinate array."
+            )
+        coordinates = _normalize_geometry_coordinates(geometry_type, coordinates)
+        if coordinates is None:
+            raise ImportValidationError(
+                "Explicit geometry contains invalid coordinates for its geometry type."
+            )
+        row["g__coordinates"] = json.dumps(coordinates, separators=(",", ":"))
+
+
+def _normalize_tabular_geometry(rows):
+    if not rows:
+        return rows
+    fields = list(rows[0])
+    has_type = "g__type" in fields
+    has_coordinates = "g__coordinates" in fields
+    if has_type != has_coordinates:
+        raise ImportValidationError(
+            "Tabular geometry must include both g__type and g__coordinates columns."
+        )
+    if has_type:
+        _validate_explicit_tabular_geometry(rows)
+        return rows
+
+    canonical_fields = {}
+    for field in fields:
+        canonical_fields.setdefault(_canonical_coordinate_field(field), []).append(field)
+    matches = []
+    for longitude_alias, latitude_alias in COORDINATE_PAIRS:
+        longitude_fields = canonical_fields.get(longitude_alias, [])
+        latitude_fields = canonical_fields.get(latitude_alias, [])
+        if longitude_fields and latitude_fields:
+            if len(longitude_fields) != 1 or len(latitude_fields) != 1:
+                raise ImportValidationError(
+                    "Coordinate columns are ambiguous. Rename them before importing."
+                )
+            matches.append((longitude_fields[0], latitude_fields[0]))
+    if len(matches) > 1:
+        raise ImportValidationError(
+            "Multiple longitude and latitude column pairs were found. Rename all but one pair."
+        )
+    if not matches:
+        return rows
+
+    longitude_field, latitude_field = matches[0]
+    for row in rows:
+        coordinates = _point_coordinates(row[longitude_field], row[latitude_field])
+        row["g__type"] = "Point" if coordinates else None
+        row["g__coordinates"] = (
+            json.dumps(coordinates, separators=(",", ":")) if coordinates else None
+        )
+    return rows
+
+
+def _tabular_geometry_warning(rows):
+    fields = _source_fields(rows)
+    if {"g__type", "g__coordinates"}.issubset(fields):
+        return None
+    aliases = {alias for pair in COORDINATE_PAIRS for alias in pair}
+    if any(_canonical_coordinate_field(field) in aliases for field in fields):
+        return (
+            "Coordinate columns were incomplete or could not be paired within one file, "
+            "so no map geometry was generated."
+        )
+    return None
 
 
 def _conninfo(db):
@@ -161,7 +344,7 @@ def _parse_csv(contents):
             )
     except csv.Error as exc:
         raise ImportValidationError("The CSV file is malformed.") from exc
-    return rows
+    return _normalize_tabular_geometry(rows)
 
 
 def _geojson_rows(document):
@@ -255,7 +438,7 @@ def _tabular_rows(data):
                 for header, value in zip(headers, values)
             }
         )
-    return rows
+    return _normalize_tabular_geometry(rows)
 
 
 def _parse_converted_paths(file_paths):
@@ -439,6 +622,10 @@ def _source_mapping(rows, existing_mapping=None):
             )
         if stored == "_id":
             raise ImportValidationError("'_id' is reserved for internal row identity.")
+        if stored in {"g__type", "g__coordinates"} and source != stored:
+            raise ImportValidationError(
+                f"Column '{source}' conflicts with reserved geometry column '{stored}'."
+            )
         reverse[stored] = source
     if len(mapping) + 1 > MAX_COLUMNS:
         raise ImportValidationError(
@@ -819,6 +1006,11 @@ def stage_import(db, uploaded_file, goal, target_table):
         raise ImportValidationError("Choose or name a target dataset.")
     name, contents = _payload(uploaded_file)
     source_format, rows = _parse_source(name, contents)
+    geometry_warning = (
+        _tabular_geometry_warning(rows)
+        if source_format in {"csv", "xls", "xlsx", "zip"}
+        else None
+    )
     table_name = _normalize_dataset_name(
         target_table, allow_auxiliary=goal != "create"
     )
@@ -875,12 +1067,15 @@ def stage_import(db, uploaded_file, goal, target_table):
                 for ordinal, row in enumerate(rows, 1)
             ],
         )
-    return {
+    result = {
         "import_id": str(import_id),
         "source_format": source_format,
         "record_count": len(rows),
         "fields": list(mapping),
     }
+    if geometry_warning:
+        result["geometry_warning"] = geometry_warning
+    return result
 
 
 def _session(cursor, import_id, lock=False):
@@ -1038,6 +1233,26 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
             (import_id,),
         )
         staged_count = cursor.fetchone()[0]
+        geometry_counts = None
+        geometry_type_column = mapping.get("g__type")
+        geometry_coordinates_column = mapping.get("g__coordinates")
+        if geometry_type_column and geometry_coordinates_column:
+            cursor.execute(
+                sql.SQL(
+                    """SELECT
+                        count(*) FILTER (WHERE payload ->> {} IS NOT NULL AND payload ->> {} IS NOT NULL),
+                        count(*) FILTER (WHERE payload ->> {} IS NULL OR payload ->> {} IS NULL)
+                    FROM {}.import_rows WHERE import_id = %s"""
+                ).format(
+                    sql.Literal(geometry_type_column),
+                    sql.Literal(geometry_coordinates_column),
+                    sql.Literal(geometry_type_column),
+                    sql.Literal(geometry_coordinates_column),
+                    sql.Identifier(SCHEMA),
+                ),
+                (import_id,),
+            )
+            geometry_counts = cursor.fetchone()
         incompatible = [
             column
             for column in stored_columns
@@ -1197,6 +1412,9 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
             if goal != "create"
             else None,
         }
+        if geometry_counts is not None:
+            preview["geometry_valid"] = geometry_counts[0]
+            preview["geometry_invalid"] = geometry_counts[1]
         cursor.execute(
             sql.SQL(
                 "UPDATE {}.import_sessions SET status = 'reviewed', preview = %s, preview_id = %s WHERE import_id = %s"

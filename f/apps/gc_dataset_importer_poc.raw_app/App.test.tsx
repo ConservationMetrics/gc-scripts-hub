@@ -184,6 +184,21 @@ describe("Dataset importer", () => {
     expect(mockedBackend.stage_import).not.toHaveBeenCalled();
   });
 
+  it("lists every supported upload format", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: /Append/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Dataset"), {
+      target: { value: "observations" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText(/Supported formats:/)).toHaveTextContent(
+      "CSV or tab-delimited CSV, GeoJSON including GeometryCollection, JSON arrays and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing supported files.",
+    );
+  });
+
   it("shows validation messages returned by Windmill", async () => {
     mockedBackend.stage_import.mockResolvedValue({
       validation_error: "CSV rows must match the header column count.",
@@ -241,6 +256,40 @@ describe("Dataset importer", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Duplicate record identities were found in the target dataset.",
+    );
+  });
+
+  it("reports imported map geometry coverage", async () => {
+    mockedBackend.preview_import.mockResolvedValue({
+      ...preview,
+      geometry_invalid: 2,
+      geometry_valid: 18,
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Append");
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "18 of 20 imported records include valid map geometry",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "2 imported records have no valid map geometry",
+    );
+  });
+
+  it("shows incomplete coordinate-pair warnings", async () => {
+    mockedBackend.stage_import.mockResolvedValue({
+      ...stagedImport,
+      geometry_warning:
+        "Coordinate columns were incomplete, so no map geometry was generated.",
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Append");
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "no map geometry was generated",
     );
   });
 

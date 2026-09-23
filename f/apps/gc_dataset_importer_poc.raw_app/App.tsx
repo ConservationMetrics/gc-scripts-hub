@@ -21,6 +21,7 @@ type MetricKind =
 
 type StagedImport = {
   fields: string[];
+  geometry_warning?: string;
   import_id: string;
   record_count: number;
   source_format: string;
@@ -31,6 +32,8 @@ type Preview = {
   columns_added: number;
   deleted: number;
   final_count: number;
+  geometry_invalid?: number;
+  geometry_valid?: number;
   unchanged: number;
   updated: number;
   preview_id: string;
@@ -556,6 +559,12 @@ export default function App() {
           <h2 id="step-heading" ref={headingRef} tabIndex={-1}>
             Upload your data
           </h2>
+          <p className="lede">
+            Supported formats: CSV or tab-delimited CSV, GeoJSON including
+            GeometryCollection, JSON arrays and CyberTracker backups, GPX, KML,
+            single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and
+            ZIP archives containing supported files.
+          </p>
           <label
             className={`dropzone ${dragging ? "dragging" : ""}`}
             onDragEnter={(event) => {
@@ -702,6 +711,11 @@ export default function App() {
               </div>
             )}
           </dl>
+          {staged?.geometry_warning && (
+            <div className="notice warning" role="status">
+              {staged.geometry_warning}
+            </div>
+          )}
           {preview && (
             <div className="review-grid">
               <Metric
@@ -732,6 +746,19 @@ export default function App() {
               />
             </div>
           )}
+          {preview?.geometry_valid !== undefined &&
+            preview.geometry_invalid !== undefined && (
+              <div
+                className={`notice ${preview.geometry_invalid > 0 ? "warning" : "neutral"}`}
+                role="status"
+              >
+                {preview.geometry_valid} of{" "}
+                {preview.geometry_valid + preview.geometry_invalid} imported
+                records include valid map geometry.
+                {preview.geometry_invalid > 0 &&
+                  ` ${preview.geometry_invalid} imported record${preview.geometry_invalid === 1 ? " has" : "s have"} no valid map geometry.`}
+              </div>
+            )}
           {preview && goal === "sync" && preview.deleted > 0 && (
             <div className="notice warning" role="status">
               Sync will permanently delete {preview.deleted} unmatched record

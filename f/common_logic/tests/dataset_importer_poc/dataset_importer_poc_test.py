@@ -137,6 +137,120 @@ def test_csv_still_rejects_inconsistent_row_width():
         importer._parse_csv(b"species,count\nheron,2\nibis\n")
 
 
+def test_csv_infers_gbif_point_geometry(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "occurrences.csv",
+            "gbifID\tdecimalLongitude\tdecimalLatitude\tspecies\n"
+            "1\t-54.137074\t3.248835\tAzeta mimica\n",
+        ),
+        "create",
+        "gbif_points",
+    )
+
+    assert staged["fields"] == [
+        "gbifID",
+        "decimalLongitude",
+        "decimalLatitude",
+        "species",
+        "g__type",
+        "g__coordinates",
+    ]
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    assert preview["geometry_valid"] == 1
+    assert preview["geometry_invalid"] == 0
+    confirm(mock_db_connection, staged, preview)
+    row = table_rows(mock_db_connection, "gbif_points")[0]
+    assert row["g__type"] == "Point"
+    assert row["g__coordinates"] == "[-54.137074,3.248835]"
+
+
+@pytest.mark.parametrize(
+    ("headers", "values"),
+    [
+        ("Longitude,Latitude", "-54,3"),
+        ("lon,lat", "-54,3"),
+        ("lng,lat", "-54,3"),
+        ("Decimal Longitude,Decimal Latitude", "-54,3"),
+    ],
+)
+def test_csv_recognizes_common_coordinate_aliases(headers, values):
+    rows = importer._parse_csv(f"{headers}\n{values}\n".encode())
+
+    assert rows[0]["g__type"] == "Point"
+    assert rows[0]["g__coordinates"] == "[-54.0,3.0]"
+
+
+def test_csv_sets_invalid_or_missing_coordinates_to_null(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "points.csv",
+            "id,longitude,latitude\nvalid,-54,3\nmissing,,3\ninvalid,200,3\n",
+        ),
+        "create",
+        "partial_points",
+    )
+
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    assert preview["geometry_valid"] == 1
+    assert preview["geometry_invalid"] == 2
+    confirm(mock_db_connection, staged, preview)
+    rows = {row["id"]: row for row in table_rows(mock_db_connection, "partial_points")}
+    assert (rows["valid"]["g__type"], rows["valid"]["g__coordinates"]) == (
+        "Point",
+        "[-54.0,3.0]",
+    )
+    assert (rows["missing"]["g__type"], rows["missing"]["g__coordinates"]) == (
+        None,
+        None,
+    )
+    assert (rows["invalid"]["g__type"], rows["invalid"]["g__coordinates"]) == (
+        None,
+        None,
+    )
+
+
+def test_csv_rejects_ambiguous_coordinate_pairs():
+    with pytest.raises(ImportValidationError, match="Multiple longitude"):
+        importer._parse_csv(b"longitude,latitude,lon,lat\n-54,3,-54,3\n")
+
+
+def test_csv_warns_when_a_coordinate_pair_is_incomplete(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("points.csv", "id,longitude\nA,-54\n"),
+        "create",
+        "incomplete_points",
+    )
+
+    assert "no map geometry was generated" in staged["geometry_warning"]
+    assert "g__type" not in staged["fields"]
+
+
+def test_csv_preserves_valid_explicit_geometry():
+    rows = importer._parse_csv(
+        b'id,g__type,g__coordinates\nA,Point,"[\"\"-54\"\",\"\"3\"\"]"\nB,,\n'
+    )
+
+    assert rows[0]["g__coordinates"] == "[-54.0,3.0]"
+    assert rows[1]["g__type"] is None
+    assert rows[1]["g__coordinates"] is None
+
+
+def test_csv_rejects_partial_explicit_geometry_columns():
+    with pytest.raises(ImportValidationError, match="include both"):
+        importer._parse_csv(b"id,g__type\nA,Point\n")
+
+
+def test_csv_rejects_malformed_explicit_non_point_geometry():
+    with pytest.raises(ImportValidationError, match="invalid coordinates"):
+        importer._parse_csv(
+            b'id,g__type,g__coordinates\nA,LineString,"[1,2]"\n'
+        )
+
+
 def test_merge_preserves_omitted_values_and_imported_null_clears_them(
     mock_db_connection,
 ):
@@ -825,6 +939,26 @@ def test_single_sheet_xlsx_is_staged(mock_db_connection, tmp_path):
     assert staged["record_count"] == 1
 
 
+def test_xlsx_infers_point_geometry(mock_db_connection, tmp_path):
+    path = tmp_path / "points.xlsx"
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.append(["name", "longitude", "latitude"])
+    sheet.append(["Heron", -54.1, 3.2])
+    workbook.save(path)
+
+    staged = stage_import(
+        mock_db_connection,
+        upload_bytes(path.name, path.read_bytes()),
+        "create",
+        "xlsx_points",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+
+    assert preview["geometry_valid"] == 1
+    assert preview["geometry_invalid"] == 0
+
+
 @pytest.mark.parametrize(
     ("goal", "preview_error"),
     [("append", None), ("merge", None), ("sync", "cannot be empty")],
@@ -974,6 +1108,29 @@ def test_multi_file_zip_appends_rows_in_archive_order(mock_db_connection):
         rows_by_id = dict(cursor.fetchall())
     assert rows_by_id[expected_ids[0]] == "Heron"
     assert rows_by_id[expected_ids[1]] == "Ibis"
+
+
+def test_zip_infers_coordinates_for_each_tabular_member(mock_db_connection):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "first.csv", "name,longitude,latitude\nHeron,-54.1,3.2\n"
+        )
+        archive.writestr(
+            "second.csv",
+            "name,decimalLongitude,decimalLatitude\nIbis,-54.2,3.3\n",
+        )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload_bytes("points.zip", buffer.getvalue()),
+        "create",
+        "zip_points",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+
+    assert preview["geometry_valid"] == 2
+    assert preview["geometry_invalid"] == 0
 
 
 def test_successful_import_archives_exact_source(
