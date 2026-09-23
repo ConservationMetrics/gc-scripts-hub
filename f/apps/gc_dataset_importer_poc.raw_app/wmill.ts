@@ -11,6 +11,8 @@ type StagedImport = {
   source_format: string;
 };
 
+type ValidationFailure = { validation_error: string };
+
 type Preview = {
   added: number;
   columns_added: number;
@@ -30,7 +32,7 @@ export declare const backend: {
     goal: Goal;
     target_table: string;
     uploaded_file: { data: string; name: string };
-  }) => Promise<StagedImport>;
+  }) => Promise<StagedImport | ValidationFailure>;
   preview_import: (args: {
     import_id: string;
     identity_fields: string[];

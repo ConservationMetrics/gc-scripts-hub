@@ -332,6 +332,10 @@ export default function App() {
         target_table: target,
         uploaded_file: await filePayload(file),
       });
+      if ("validation_error" in result) {
+        setError(result.validation_error);
+        return;
+      }
       setStaged(result);
       setPreview(undefined);
       setIdentity([]);
