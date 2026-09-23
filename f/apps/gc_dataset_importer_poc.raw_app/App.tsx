@@ -157,7 +157,7 @@ function filePayload(file: File) {
 
 export default function App() {
   const [step, setStep] = useState<Step>("goal");
-  const [goal, setGoal] = useState<Goal>("create");
+  const [goal, setGoal] = useState<Goal>();
   const [datasets, setDatasets] = useState<string[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(true);
   const [datasetsError, setDatasetsError] = useState<string>();
@@ -266,7 +266,7 @@ export default function App() {
 
   function resetImport() {
     setStep("goal");
-    setGoal("create");
+    setGoal(undefined);
     setDatasetName("");
     setTargetTable("");
     setNameAvailable(undefined);
@@ -321,7 +321,7 @@ export default function App() {
   }
 
   async function stage() {
-    if (!file || !target) return;
+    if (!file || !target || !goal) return;
     setLoading(true);
     setError(undefined);
     try {
@@ -775,6 +775,7 @@ export default function App() {
           {step === "goal" && (
             <button
               className="primary"
+              disabled={!goal}
               onClick={() => setStep("dataset")}
               type="button"
             >

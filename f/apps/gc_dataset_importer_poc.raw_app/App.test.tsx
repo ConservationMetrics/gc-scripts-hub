@@ -66,6 +66,21 @@ describe("Dataset importer", () => {
     mockedBackend.apply_import.mockResolvedValue({ success: true });
   });
 
+  it("requires an explicit goal selection", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getAllByRole("radio")).toHaveLength(4);
+    expect(
+      screen
+        .getAllByRole<HTMLInputElement>("radio")
+        .every((option) => !option.checked),
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: /Create/ }));
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
   it("uses the conditional identity journey", async () => {
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
@@ -93,6 +108,7 @@ describe("Dataset importer", () => {
     });
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: /Create/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.change(screen.getByLabelText("Dataset name"), {
       target: { value: "Birds" },
@@ -107,6 +123,64 @@ describe("Dataset importer", () => {
       target: { files: [file] },
     });
     expect(screen.getByRole("alert")).toHaveTextContent("25 MiB");
+    expect(mockedBackend.stage_import).not.toHaveBeenCalled();
+  });
+
+  it("preserves prior input when navigating back", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: /Merge/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Dataset"), {
+      target: { value: "observations" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByLabelText("Dataset")).toHaveValue("observations");
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("radio", { name: /Merge/ })).toBeChecked();
+  });
+
+  it("shows an unavailable dataset name and blocks progress", async () => {
+    mockedBackend.check_dataset_name.mockResolvedValue({
+      available: false,
+      table_name: "birds",
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: /Create/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Dataset name"), {
+      target: { value: "Birds" },
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking availability",
+    );
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("already exists"),
+    );
+    expect(screen.getByPlaceholderText("Bird observations")).toBeInvalid();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("rejects an unsupported dropped file before staging", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: /Append/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Dataset"), {
+      target: { value: "observations" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    const input = screen.getByLabelText(/Drop a file here/);
+    fireEvent.drop(input.parentElement!, {
+      dataTransfer: { files: [new File(["bad"], "rows.exe")] },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("supported");
     expect(mockedBackend.stage_import).not.toHaveBeenCalled();
   });
 
@@ -185,5 +259,28 @@ describe("Dataset importer", () => {
     expect(
       screen.getByRole("button", { name: "Preview changes" }),
     ).toBeInTheDocument();
+  });
+
+  it("clears the journey after a successful import", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Append");
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    await screen.findByRole("button", { name: "Confirm import" });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
+    await screen.findByText("Import applied successfully.");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import another dataset" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "What's your goal?" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(
+      screen
+        .getAllByRole<HTMLInputElement>("radio")
+        .every((option) => !option.checked),
+    ).toBe(true);
   });
 });
