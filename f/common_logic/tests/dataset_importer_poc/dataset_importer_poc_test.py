@@ -128,6 +128,37 @@ def test_merge_preserves_omitted_values_and_imported_null_clears_them(
     }
 
 
+def test_existing_wins_preserves_matches_and_adds_new_rows(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT, note TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations" VALUES (%s, %s, %s), (%s, %s, %s)',
+            ("one", "A", "old", "two", "B", "retain"),
+        )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("update.csv", "code,note\nA,new\nC,added\n"),
+        "merge",
+        "observations",
+    )
+    preview = preview_import(
+        mock_db_connection, staged["import_id"], ["code"], "existing"
+    )
+    assert preview["added"] == 1
+    assert preview["updated"] == 0
+    assert preview["unchanged"] == 2
+    confirm(mock_db_connection, staged, preview)
+
+    assert {(row["code"], row["note"]) for row in table_rows(mock_db_connection, "observations")} == {
+        ("A", "old"),
+        ("B", "retain"),
+        ("C", "added"),
+    }
+
+
 def test_sync_uses_null_safe_identity_and_deletes_only_absent_records(
     mock_db_connection,
 ):
@@ -174,6 +205,58 @@ def test_duplicate_identity_is_rejected_before_writes(mock_db_connection):
     with pytest.raises(ImportValidationError, match="Duplicate record identities"):
         preview_import(mock_db_connection, staged["import_id"], ["code"])
     assert table_rows(mock_db_connection, "observations") == []
+
+
+def test_duplicate_composite_identity_in_target_is_rejected(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."people" (_id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."people" VALUES (%s, %s, %s), (%s, %s, %s)',
+            ("one", "Ada", "Lovelace", "two", "Ada", "Lovelace"),
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("people.csv", "first_name,last_name\nAda,Lovelace\n"),
+        "merge",
+        "people",
+    )
+
+    with pytest.raises(ImportValidationError, match="target dataset"):
+        preview_import(
+            mock_db_connection,
+            staged["import_id"],
+            ["first_name", "last_name"],
+        )
+
+
+@pytest.mark.parametrize(
+    "identity_fields",
+    [
+        ["first_name", "first_name"],
+        ["first_name", "last_name", "region", "year"],
+    ],
+)
+def test_identity_requires_one_to_three_distinct_fields(
+    mock_db_connection, identity_fields
+):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."people" (_id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT, region TEXT, year TEXT)'
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "people.csv",
+            "first_name,last_name,region,year\nAda,Lovelace,London,1843\n",
+        ),
+        "merge",
+        "people",
+    )
+
+    with pytest.raises(ImportValidationError, match="one to three distinct"):
+        preview_import(mock_db_connection, staged["import_id"], identity_fields)
 
 
 def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
@@ -413,9 +496,16 @@ def test_expired_sessions_are_rejected_and_cleaned_up(mock_db_connection):
             (staged["import_id"],),
         )
 
+    assert cleanup_expired_imports(mock_db_connection) == 1
     with pytest.raises(ImportValidationError, match="expired"):
         preview_import(mock_db_connection, staged["import_id"])
-    assert cleanup_expired_imports(mock_db_connection) == 0
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+        assert cursor.fetchone() is None
+    assert check_dataset_name(mock_db_connection, "observations")["available"] is True
 
 
 def test_mapping_change_after_staging_rejects_apply(mock_db_connection):
@@ -617,6 +707,37 @@ def test_json_and_cybertracker_are_detected_by_content(mock_db_connection):
     )
     assert detected["source_format"] == "cybertracker"
     assert detected["record_count"] > 0
+
+
+@pytest.mark.parametrize("document", ["[]", "{}", '[{"name":"Heron"}, 1]'])
+def test_json_requires_a_nonempty_array_of_objects(mock_db_connection, document):
+    with pytest.raises(ImportValidationError, match="array of objects|record must be an object"):
+        stage_import(
+            mock_db_connection,
+            upload("rows.json", document),
+            "create",
+            "json_rows",
+        )
+
+
+def test_unsupported_top_level_file_is_rejected(mock_db_connection):
+    with pytest.raises(ImportValidationError, match="not supported"):
+        stage_import(
+            mock_db_connection,
+            upload("rows.txt", "name\nHeron\n"),
+            "create",
+            "observations",
+        )
+
+
+def test_sanitized_column_name_collisions_are_rejected(mock_db_connection):
+    with pytest.raises(ImportValidationError, match="same stored name.*Rename"):
+        stage_import(
+            mock_db_connection,
+            upload("rows.csv", "Bird Name,Bird-Name\nHeron,Ibis\n"),
+            "create",
+            "observations",
+        )
 
 
 def test_zip_rejects_unsupported_members_without_staging(mock_db_connection):
@@ -878,7 +999,10 @@ def test_unchanged_match_is_not_physically_updated(mock_db_connection):
         assert cursor.fetchone()[0] == 0
 
 
-def test_empty_merge_is_a_noop_without_identity(mock_db_connection):
+@pytest.mark.parametrize("goal", ["append", "merge"])
+def test_empty_append_and_merge_are_noops_without_identity(
+    mock_db_connection, goal
+):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
             'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
@@ -889,7 +1013,7 @@ def test_empty_merge_is_a_noop_without_identity(mock_db_connection):
     staged = stage_import(
         mock_db_connection,
         upload("rows.csv", "new_field\n"),
-        "merge",
+        goal,
         "observations",
     )
     preview = preview_import(mock_db_connection, staged["import_id"])
@@ -902,6 +1026,45 @@ def test_empty_merge_is_a_noop_without_identity(mock_db_connection):
             "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'observations' AND column_name = 'new_field'"
         )
         assert cursor.fetchone() is None
+
+
+@pytest.mark.parametrize("goal", ["create", "sync"])
+def test_empty_create_and_sync_are_rejected(mock_db_connection, goal):
+    target = "new_observations"
+    if goal == "sync":
+        target = "observations"
+        with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+            cursor.execute(
+                'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
+            )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code\n"),
+        goal,
+        target,
+    )
+
+    with pytest.raises(ImportValidationError, match="cannot be empty"):
+        preview_import(mock_db_connection, staged["import_id"])
+
+
+def test_existing_dataset_final_column_limit_is_enforced(
+    mock_db_connection, monkeypatch
+):
+    monkeypatch.setattr(importer, "MAX_COLUMNS", 3)
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, existing TEXT)'
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "note,region\nnew,north\n"),
+        "append",
+        "observations",
+    )
+
+    with pytest.raises(ImportValidationError, match="exceed 150 columns"):
+        preview_import(mock_db_connection, staged["import_id"])
 
 
 def test_schema_change_after_review_rejects_confirmation(mock_db_connection):

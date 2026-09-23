@@ -476,8 +476,9 @@ def _ensure_schema(cursor):
             "ALTER TABLE {}.import_sessions ALTER COLUMN expires_at SET NOT NULL"
         ).format(sql.Identifier(SCHEMA))
     )
-    _cleanup_expired(cursor, datetime.now(UTC))
+    expired_count = _cleanup_expired(cursor, datetime.now(UTC))
     _backfill_dataset_registry(cursor)
+    return expired_count
 
 
 def _columns_table_name(table_name):
@@ -844,8 +845,7 @@ def _session(cursor, import_id, lock=False):
 def cleanup_expired_imports(db):
     """Delete expired staged data and return the number of removed sessions."""
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
-        _ensure_schema(cursor)
-        return _cleanup_expired(cursor, datetime.now(UTC))
+        return _ensure_schema(cursor)
 
 
 def _target_columns(cursor, table_name):
