@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import zipfile
 from pathlib import Path
 
@@ -199,6 +200,40 @@ def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
     assert row["g__coordinates"] == "[1,2]"
     assert row["feature_id"] == "feature-123"
     assert row["tags"] == '["wetland"]'
+
+
+def test_geojson_preserves_geometry_collection_type_and_positions(
+    mock_db_connection,
+):
+    geometries = [
+        {"type": "Point", "coordinates": [1, 2]},
+        {"type": "LineString", "coordinates": [[3, 4], [5, 6]]},
+    ]
+    source = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"name": "mixed"},
+                "geometry": {
+                    "type": "GeometryCollection",
+                    "geometries": geometries,
+                },
+            }
+        ],
+    }
+    staged = stage_import(
+        mock_db_connection,
+        upload("mixed.geojson", json.dumps(source)),
+        "create",
+        "mixed_geometries",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "mixed_geometries")[0]
+    assert row["g__type"] == "GeometryCollection"
+    assert json.loads(row["g__coordinates"]) == geometries
 
 
 def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection):

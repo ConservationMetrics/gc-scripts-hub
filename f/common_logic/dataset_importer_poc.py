@@ -147,12 +147,22 @@ def _geojson_rows(document):
         geometry = feature.get("geometry")
         if geometry is not None:
             if not isinstance(geometry, dict) or not isinstance(
-                geometry.get("coordinates"), (list, tuple)
+                geometry.get("type"), str
             ):
                 raise ImportValidationError("Unsupported GeoJSON geometry.")
+            if geometry["type"] == "GeometryCollection":
+                spatial_data = geometry.get("geometries")
+                if not isinstance(spatial_data, list) or not all(
+                    isinstance(item, dict) for item in spatial_data
+                ):
+                    raise ImportValidationError("Unsupported GeoJSON geometry.")
+            else:
+                spatial_data = geometry.get("coordinates")
+                if not isinstance(spatial_data, (list, tuple)):
+                    raise ImportValidationError("Unsupported GeoJSON geometry.")
             row["g__type"] = geometry.get("type")
             row["g__coordinates"] = json.dumps(
-                geometry["coordinates"], separators=(",", ":")
+                spatial_data, separators=(",", ":")
             )
         else:
             row["g__type"] = None
