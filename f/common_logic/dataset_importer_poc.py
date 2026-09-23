@@ -13,6 +13,7 @@ import os
 import stat
 import uuid
 import zipfile
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -1131,7 +1132,37 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
     return preview
 
 
-def _archive_source(db, import_id):
+def _write_source_archive(table_name, source_name, source_data, import_id):
+    if source_data is None:
+        raise ImportValidationError(
+            "This legacy import has no retained source file. Stage it again."
+        )
+    root = Path(
+        os.environ.get("DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake")
+    )
+    dataset_directory = root / table_name
+    dataset_directory.mkdir(parents=True, exist_ok=True)
+    destination = dataset_directory / f"{import_id}_{Path(source_name).name}"
+    if destination.exists():
+        if destination.read_bytes() != source_data:
+            raise ImportValidationError(
+                "The archive destination already contains different source data."
+            )
+        return str(destination), False
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    try:
+        with temporary.open("xb") as output:
+            output.write(source_data)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return str(destination), True
+
+
+def _archive_applied_source(db, import_id):
+    """Finish archival for sessions applied by an older importer version."""
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         cursor.execute(
             sql.SQL(
@@ -1146,40 +1177,27 @@ def _archive_source(db, import_id):
         if status == "archived":
             return archive_path
         if status != "applied":
-            raise ImportValidationError("Apply this import before archiving its source.")
-        if source_data is None:
             raise ImportValidationError(
-                "This legacy import has no retained source file. Stage it again."
+                "Apply this import before archiving its source."
             )
-        root = Path(
-            os.environ.get(
-                "DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake"
-            )
+        archive_path, _ = _write_source_archive(
+            table_name, source_name, source_data, import_id
         )
-        dataset_directory = root / table_name
-        dataset_directory.mkdir(parents=True, exist_ok=True)
-        destination = dataset_directory / f"{import_id}_{Path(source_name).name}"
-        temporary = destination.with_suffix(destination.suffix + ".tmp")
-        try:
-            with temporary.open("xb") as output:
-                output.write(source_data)
-                output.flush()
-                os.fsync(output.fileno())
-            os.replace(temporary, destination)
-        finally:
-            temporary.unlink(missing_ok=True)
         cursor.execute(
             sql.SQL(
                 "UPDATE {}.import_sessions SET status = 'archived', archive_path = %s, source_data = NULL WHERE import_id = %s"
             ).format(sql.Identifier(SCHEMA)),
-            (str(destination), import_id),
+            (archive_path, import_id),
         )
-    return str(destination)
+    return archive_path
 
 
 def apply_import(db, import_id, preview_id):
-    """Apply the reviewed plan in one transaction.  A second confirmation is rejected."""
-    with connect(_conninfo(db), autocommit=True) as status_conn, status_conn.cursor() as status_cursor:
+    """Archive the source and apply the reviewed plan without partial target writes."""
+    with (
+        connect(_conninfo(db), autocommit=True) as status_conn,
+        status_conn.cursor() as status_cursor,
+    ):
         _ensure_schema(status_cursor)
         status_cursor.execute(
             sql.SQL(
@@ -1190,121 +1208,124 @@ def apply_import(db, import_id, preview_id):
         existing = status_cursor.fetchone()
     if existing and existing[0] == "applied":
         if str(existing[2]) != str(preview_id):
-            raise ImportValidationError("This preview is no longer current. Review again.")
-        archive_path = _archive_source(db, import_id)
+            raise ImportValidationError(
+                "This preview is no longer current. Review again."
+            )
+        archive_path = _archive_applied_source(db, import_id)
         return {"success": True, "preview": existing[1], "archive_path": archive_path}
     if existing and existing[0] == "archived":
         if str(existing[2]) != str(preview_id):
-            raise ImportValidationError("This preview is no longer current. Review again.")
+            raise ImportValidationError(
+                "This preview is no longer current. Review again."
+            )
         return {
             "success": True,
             "preview": existing[1],
             "archive_path": existing[3],
         }
-    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
-        _ensure_schema(cursor)
-        goal, table_name, mapping, status, preview, stored_preview_id = _session(
-            cursor, import_id, lock=True
-        )
-        if status != "reviewed" or not preview:
-            raise ImportValidationError("Review this import before confirming it.")
-        if str(stored_preview_id) != str(preview_id):
-            raise ImportValidationError("This preview is no longer current. Review again.")
-        stored_columns = list(mapping.values())
-        empty_noop = preview.get("source_count") == 0 and goal in {"append", "merge"}
-        if goal == "create":
-            cursor.execute(
-                sql.SQL("CREATE TABLE {} (_id TEXT PRIMARY KEY)").format(
-                    _quoted_table(table_name)
-                )
+    archive_path = None
+    archive_created = False
+    try:
+        with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+            _ensure_schema(cursor)
+            goal, table_name, mapping, status, preview, stored_preview_id = _session(
+                cursor, import_id, lock=True
             )
-            target_columns = {"_id": "text"}
-        else:
-            cursor.execute(
-                sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
-                    _quoted_table(table_name)
-                )
-            )
-            target_columns = _target_columns(cursor, table_name)
-            if _target_fingerprint(cursor, table_name) != preview["target_fingerprint"]:
+            if status != "reviewed" or not preview:
+                raise ImportValidationError("Review this import before confirming it.")
+            if str(stored_preview_id) != str(preview_id):
                 raise ImportValidationError(
-                    "The target dataset changed after review. Review the import again."
+                    "This preview is no longer current. Review again."
                 )
-        if not empty_noop:
-            for column in stored_columns:
-                if column not in target_columns:
-                    cursor.execute(
-                        sql.SQL("ALTER TABLE {} ADD COLUMN {} TEXT").format(
-                            _quoted_table(table_name), sql.Identifier(column)
-                        )
-                    )
-                    target_columns[column] = "text"
-            _ensure_dataset_mapping(cursor, table_name, mapping)
-        if goal == "create":
             cursor.execute(
                 sql.SQL(
-                    "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s AND source_import_id = %s"
+                    "SELECT source_name, source_data FROM {}.import_sessions WHERE import_id = %s"
                 ).format(sql.Identifier(SCHEMA)),
-                (table_name, import_id),
+                (import_id,),
             )
-        columns = [column for column in stored_columns if column in target_columns]
-        insert_columns = ["_id", *columns]
-        insert_values = sql.SQL(", ").join(
-            [
-                sql.SQL("gen_random_uuid()::text"),
-                *[
-                    sql.SQL("s.payload ->> {}").format(sql.Literal(column))
-                    for column in columns
-                ],
-            ]
-        )
-        # pgcrypto may not be installed. UUID generation in the application keeps this portable.
-        insert_values = sql.SQL(", ").join(
-            [
-                sql.SQL("md5(s.import_id::text || ':' || s.row_ordinal::text)"),
-                *[
-                    sql.SQL("s.payload ->> {}").format(sql.Literal(column))
-                    for column in columns
-                ],
-            ]
-        )
-        insert_statement = sql.SQL(
-            "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s"
-        ).format(
-            _quoted_table(table_name),
-            sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
-            insert_values,
-            sql.Identifier(SCHEMA),
-        )
-        identity_columns = [mapping[field] for field in preview["identity_fields"]]
-        if goal in {"create", "append"}:
-            cursor.execute(insert_statement, (import_id,))
-            if cursor.rowcount != preview["added"]:
-                raise ImportValidationError(
-                    "The applied row count did not match the reviewed import. Review again."
-                )
-        elif not identity_columns:
-            pass
-        else:
-            condition = _identity_condition(identity_columns)
-            if preview["update_policy"] == "imported":
-                assignments = sql.SQL(", ").join(
-                    sql.SQL(
-                        "{} = CASE WHEN s.payload ? {} THEN s.payload ->> {} ELSE t.{} END"
-                    ).format(
-                        sql.Identifier(column),
-                        sql.Literal(column),
-                        sql.Literal(column),
-                        sql.Identifier(column),
+            source_name, source_data = cursor.fetchone()
+            archive_path, archive_created = _write_source_archive(
+                table_name, source_name, source_data, import_id
+            )
+            stored_columns = list(mapping.values())
+            empty_noop = preview.get("source_count") == 0 and goal in {
+                "append",
+                "merge",
+            }
+            if goal == "create":
+                cursor.execute(
+                    sql.SQL("CREATE TABLE {} (_id TEXT PRIMARY KEY)").format(
+                        _quoted_table(table_name)
                     )
-                    for column in columns
-                    if column != "_id"
                 )
-                if assignments:
-                    changes = sql.SQL(" OR ").join(
+                target_columns = {"_id": "text"}
+            else:
+                cursor.execute(
+                    sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
+                        _quoted_table(table_name)
+                    )
+                )
+                target_columns = _target_columns(cursor, table_name)
+                if (
+                    _target_fingerprint(cursor, table_name)
+                    != preview["target_fingerprint"]
+                ):
+                    raise ImportValidationError(
+                        "The target dataset changed after review. Review the import again."
+                    )
+            if not empty_noop:
+                for column in stored_columns:
+                    if column not in target_columns:
+                        cursor.execute(
+                            sql.SQL("ALTER TABLE {} ADD COLUMN {} TEXT").format(
+                                _quoted_table(table_name), sql.Identifier(column)
+                            )
+                        )
+                        target_columns[column] = "text"
+                _ensure_dataset_mapping(cursor, table_name, mapping)
+            if goal == "create":
+                cursor.execute(
+                    sql.SQL(
+                        "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s AND source_import_id = %s"
+                    ).format(sql.Identifier(SCHEMA)),
+                    (table_name, import_id),
+                )
+            columns = [column for column in stored_columns if column in target_columns]
+            insert_columns = ["_id", *columns]
+            insert_values = sql.SQL(", ").join(
+                [
+                    sql.SQL("md5(s.import_id::text || ':' || s.row_ordinal::text)"),
+                    *[
+                        sql.SQL("s.payload ->> {}").format(sql.Literal(column))
+                        for column in columns
+                    ],
+                ]
+            )
+            insert_statement = sql.SQL(
+                "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s"
+            ).format(
+                _quoted_table(table_name),
+                sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
+                insert_values,
+                sql.Identifier(SCHEMA),
+            )
+            identity_columns = [mapping[field] for field in preview["identity_fields"]]
+            if goal in {"create", "append"}:
+                cursor.execute(insert_statement, (import_id,))
+                if cursor.rowcount != preview["added"]:
+                    raise ImportValidationError(
+                        "The applied row count did not match the reviewed import. Review again."
+                    )
+            elif not identity_columns:
+                pass
+            else:
+                condition = _identity_condition(identity_columns)
+                if preview["update_policy"] == "imported":
+                    assignments = sql.SQL(", ").join(
                         sql.SQL(
-                            "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                            "{} = CASE WHEN s.payload ? {} THEN s.payload ->> {} ELSE t.{} END"
                         ).format(
+                            sql.Identifier(column),
                             sql.Literal(column),
                             sql.Literal(column),
                             sql.Identifier(column),
@@ -1312,57 +1333,75 @@ def apply_import(db, import_id, preview_id):
                         for column in columns
                         if column != "_id"
                     )
-                    cursor.execute(
-                        sql.SQL(
-                            "UPDATE {} t SET {} FROM {}.import_rows s WHERE s.import_id = %s AND {} AND ({})"
-                        ).format(
-                            _quoted_table(table_name),
-                            assignments,
-                            sql.Identifier(SCHEMA),
-                            condition,
-                            changes,
-                        ),
-                        (import_id,),
-                    )
-                    if cursor.rowcount != preview["updated"]:
-                        raise ImportValidationError(
-                            "The applied update count did not match the reviewed import. Review again."
+                    if assignments:
+                        changes = sql.SQL(" OR ").join(
+                            sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                            ).format(
+                                sql.Literal(column),
+                                sql.Literal(column),
+                                sql.Identifier(column),
+                            )
+                            for column in columns
+                            if column != "_id"
                         )
-            cursor.execute(
-                sql.SQL(
-                    "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {})"
-                ).format(
-                    _quoted_table(table_name),
-                    sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
-                    insert_values,
-                    sql.Identifier(SCHEMA),
-                    _quoted_table(table_name),
-                    condition,
-                ),
-                (import_id,),
-            )
-            if cursor.rowcount != preview["added"]:
-                raise ImportValidationError(
-                    "The applied row count did not match the reviewed import. Review again."
-                )
-            if goal == "sync":
+                        cursor.execute(
+                            sql.SQL(
+                                "UPDATE {} t SET {} FROM {}.import_rows s WHERE s.import_id = %s AND {} AND ({})"
+                            ).format(
+                                _quoted_table(table_name),
+                                assignments,
+                                sql.Identifier(SCHEMA),
+                                condition,
+                                changes,
+                            ),
+                            (import_id,),
+                        )
+                        if cursor.rowcount != preview["updated"]:
+                            raise ImportValidationError(
+                                "The applied update count did not match the reviewed import. Review again."
+                            )
                 cursor.execute(
                     sql.SQL(
-                        "DELETE FROM {} t WHERE NOT EXISTS (SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s AND {})"
+                        "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {})"
                     ).format(
-                        _quoted_table(table_name), sql.Identifier(SCHEMA), condition
+                        _quoted_table(table_name),
+                        sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
+                        insert_values,
+                        sql.Identifier(SCHEMA),
+                        _quoted_table(table_name),
+                        condition,
                     ),
                     (import_id,),
                 )
-                if cursor.rowcount != preview["deleted"]:
+                if cursor.rowcount != preview["added"]:
                     raise ImportValidationError(
-                        "The applied deletion count did not match the reviewed import. Review again."
+                        "The applied row count did not match the reviewed import. Review again."
                     )
-        cursor.execute(
-            sql.SQL(
-                "UPDATE {}.import_sessions SET status = 'applied', applied_at = %s WHERE import_id = %s"
-            ).format(sql.Identifier(SCHEMA)),
-            (datetime.now(UTC), import_id),
-        )
-    archive_path = _archive_source(db, import_id)
+                if goal == "sync":
+                    cursor.execute(
+                        sql.SQL(
+                            "DELETE FROM {} t WHERE NOT EXISTS (SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s AND {})"
+                        ).format(
+                            _quoted_table(table_name),
+                            sql.Identifier(SCHEMA),
+                            condition,
+                        ),
+                        (import_id,),
+                    )
+                    if cursor.rowcount != preview["deleted"]:
+                        raise ImportValidationError(
+                            "The applied deletion count did not match the reviewed import. Review again."
+                        )
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'archived', applied_at = %s, archive_path = %s, source_data = NULL WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (datetime.now(UTC), archive_path, import_id),
+            )
+    except Exception:
+        if archive_created and archive_path:
+            with suppress(OSError):
+                Path(archive_path).unlink(missing_ok=True)
+        raise
     return {"success": True, "preview": preview, "archive_path": archive_path}

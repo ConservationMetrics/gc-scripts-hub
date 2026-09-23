@@ -654,7 +654,7 @@ def test_successful_import_archives_exact_source(
         assert cursor.fetchone() == ("archived", None)
 
 
-def test_archive_failure_retains_source_for_retry(
+def test_archive_failure_does_not_write_target_and_can_be_retried(
     mock_db_connection, importer_datalake, tmp_path, monkeypatch
 ):
     blocked_root = tmp_path / "blocked"
@@ -671,15 +671,46 @@ def test_archive_failure_retains_source_for_retry(
         confirm(mock_db_connection, staged, preview)
 
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT to_regclass('public.observations')")
+        assert cursor.fetchone() == (None,)
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "SELECT status, source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
-    assert cleanup_expired_imports(mock_db_connection) == 0
+        assert cursor.fetchone() == ("reviewed", True)
 
     monkeypatch.setenv("DATASET_IMPORTER_DATALAKE_ROOT", str(importer_datalake))
     result = confirm(mock_db_connection, staged, preview)
     assert Path(result["archive_path"]).read_bytes() == b"name\nHeron\n"
+
+
+def test_database_failure_removes_archive_and_rolls_back_target(
+    mock_db_connection, importer_datalake, monkeypatch
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("birds.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+
+    def fail_mapping(*_args):
+        raise RuntimeError("database failure after archival")
+
+    monkeypatch.setattr(importer, "_ensure_dataset_mapping", fail_mapping)
+    with pytest.raises(RuntimeError, match="database failure after archival"):
+        confirm(mock_db_connection, staged, preview)
+
+    assert list(importer_datalake.rglob("*birds.csv")) == []
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT to_regclass('public.observations')")
+        assert cursor.fetchone() == (None,)
+        cursor.execute(
+            "SELECT status, source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+        assert cursor.fetchone() == ("reviewed", True)
 
 
 def test_geojson_reserved_properties_are_rejected(mock_db_connection):

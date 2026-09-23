@@ -14,8 +14,9 @@ complete.
   imported-wins or existing-wins update policy.
 
 Every import is staged, reviewed, and confirmed. Confirmation is rejected if
-the target or reviewed plan changed. Target database changes are transactional;
-the exact successful source is archived under
+the target or reviewed plan changed. The exact source is archived before any
+target writes, and target database changes are transactional. Successful
+sources are stored under
 `/persistent-storage/datalake/<dataset>`.
 
 ## Supported uploads
@@ -75,6 +76,6 @@ change.
 5. Publish the v2 path after pilot acceptance, then retire the legacy app only
    after remaining workflows have moved to v2 or their dedicated connectors.
 
-If archival fails after the database transaction commits, the session remains
-in an applied state with the source retained. Repeating confirmation with the
-same reviewed preview retries archival without applying target changes again.
+If archival fails, no target changes are made and the reviewed session retains
+the source until expiry so the same confirmation can be retried. Failed or
+abandoned staged sources are removed when their sessions expire.
