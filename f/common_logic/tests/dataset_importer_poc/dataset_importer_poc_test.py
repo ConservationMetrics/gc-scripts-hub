@@ -443,13 +443,10 @@ def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
     assert row["tags"] == '["wetland"]'
 
 
-def test_geojson_preserves_geometry_collection_type_and_positions(
-    mock_db_connection,
+@pytest.mark.parametrize("filename", ["mixed.geojson", "mixed.json"])
+def test_geojson_rejects_geometry_collections_during_staging(
+    mock_db_connection, filename
 ):
-    geometries = [
-        {"type": "Point", "coordinates": [1, 2]},
-        {"type": "LineString", "coordinates": [[3, 4], [5, 6]]},
-    ]
     source = {
         "type": "FeatureCollection",
         "features": [
@@ -458,23 +455,29 @@ def test_geojson_preserves_geometry_collection_type_and_positions(
                 "properties": {"name": "mixed"},
                 "geometry": {
                     "type": "GeometryCollection",
-                    "geometries": geometries,
+                    "geometries": [
+                        {"type": "Point", "coordinates": [1, 2]},
+                        {
+                            "type": "LineString",
+                            "coordinates": [[3, 4], [5, 6]],
+                        },
+                    ],
                 },
             }
         ],
     }
-    staged = stage_import(
-        mock_db_connection,
-        upload("mixed.geojson", json.dumps(source)),
-        "create",
-        "mixed_geometries",
-    )
-    preview = preview_import(mock_db_connection, staged["import_id"])
-    confirm(mock_db_connection, staged, preview)
 
-    row = table_rows(mock_db_connection, "mixed_geometries")[0]
-    assert row["g__type"] == "GeometryCollection"
-    assert json.loads(row["g__coordinates"]) == geometries
+    with pytest.raises(
+        ImportValidationError,
+        match="GeometryCollection geometries are not supported by this importer",
+    ):
+        stage_import(
+            mock_db_connection,
+            upload(filename, json.dumps(source)),
+            "create",
+            "mixed_geometries",
+        )
+    assert check_dataset_name(mock_db_connection, "mixed_geometries")["available"] is True
 
 
 def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection):

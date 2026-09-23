@@ -39,8 +39,7 @@ def format_data_as_geojson(data):
     features = []
     for row in rows:
         properties = {}
-        geometry_type = None
-        spatial_data = None
+        geometry = {}
         feature_id = None
 
         # The expected schema here is that geometry columns are prefixed with "g__"
@@ -50,17 +49,14 @@ def format_data_as_geojson(data):
             if col == "_id":
                 feature_id = value
             elif col == "g__coordinates":
-                spatial_data = json.loads(value) if value else None
+                if value:
+                    geometry["coordinates"] = json.loads(value)
+                else:
+                    geometry["coordinates"] = None
             elif col == "g__type":
-                geometry_type = value
+                geometry["type"] = value
             else:
                 properties[col] = value
-
-        geometry = {"type": geometry_type}
-        if geometry_type == "GeometryCollection":
-            geometry["geometries"] = spatial_data
-        else:
-            geometry["coordinates"] = spatial_data
 
         feature = {
             "type": "Feature",

@@ -378,15 +378,12 @@ def _geojson_rows(document):
             ):
                 raise ImportValidationError("Unsupported GeoJSON geometry.")
             if geometry["type"] == "GeometryCollection":
-                spatial_data = geometry.get("geometries")
-                if not isinstance(spatial_data, list) or not all(
-                    isinstance(item, dict) for item in spatial_data
-                ):
-                    raise ImportValidationError("Unsupported GeoJSON geometry.")
-            else:
-                spatial_data = geometry.get("coordinates")
-                if not isinstance(spatial_data, (list, tuple)):
-                    raise ImportValidationError("Unsupported GeoJSON geometry.")
+                raise ImportValidationError(
+                    "GeometryCollection geometries are not supported by this importer."
+                )
+            spatial_data = geometry.get("coordinates")
+            if not isinstance(spatial_data, (list, tuple)):
+                raise ImportValidationError("Unsupported GeoJSON geometry.")
             row["g__type"] = geometry.get("type")
             row["g__coordinates"] = json.dumps(
                 spatial_data, separators=(",", ":")
