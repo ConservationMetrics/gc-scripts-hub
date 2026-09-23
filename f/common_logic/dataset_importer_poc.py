@@ -60,6 +60,28 @@ def _quoted_table(table_name):
     return sql.SQL("{}.{}").format(sql.Identifier("public"), sql.Identifier(table_name))
 
 
+def _archive_destination(table_name, source_name, import_id):
+    root = Path(
+        os.environ.get("DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake")
+    )
+    return root / table_name / f"{import_id}_{Path(source_name).name}"
+
+
+def _fsync_directory(directory):
+    descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _remove_archive_file(path):
+    path = Path(path)
+    path.unlink(missing_ok=True)
+    if path.parent.exists():
+        _fsync_directory(path.parent)
+
+
 def _payload(uploaded_file):
     if isinstance(uploaded_file, list):
         if len(uploaded_file) != 1:
@@ -616,12 +638,29 @@ def _backfill_dataset_registry(cursor):
 def _cleanup_expired(cursor, now):
     cursor.execute(
         sql.SQL(
-            "DELETE FROM {}.import_sessions WHERE expires_at <= %s AND status != 'applied' RETURNING import_id"
+            "SELECT import_id, target_table, source_name, status FROM {}.import_sessions WHERE expires_at <= %s AND status != 'applied' FOR UPDATE"
         ).format(sql.Identifier(SCHEMA)),
         (now,),
     )
-    expired_ids = [row[0] for row in cursor.fetchall()]
+    expired_ids = []
+    for import_id, table_name, source_name, status in cursor.fetchall():
+        if status != "archived":
+            destination = _archive_destination(table_name, source_name, import_id)
+            try:
+                _remove_archive_file(destination)
+                _remove_archive_file(
+                    destination.with_suffix(destination.suffix + ".tmp")
+                )
+            except OSError:
+                continue
+        expired_ids.append(import_id)
     if expired_ids:
+        cursor.execute(
+            sql.SQL(
+                "DELETE FROM {}.import_sessions WHERE import_id = ANY(%s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (expired_ids,),
+        )
         cursor.execute(
             sql.SQL(
                 "DELETE FROM {}.dataset_registry WHERE status = 'reserved' AND source_import_id = ANY(%s)"
@@ -1147,12 +1186,9 @@ def _write_source_archive(table_name, source_name, source_data, import_id):
         raise ImportValidationError(
             "This legacy import has no retained source file. Stage it again."
         )
-    root = Path(
-        os.environ.get("DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake")
-    )
-    dataset_directory = root / table_name
+    destination = _archive_destination(table_name, source_name, import_id)
+    dataset_directory = destination.parent
     dataset_directory.mkdir(parents=True, exist_ok=True)
-    destination = dataset_directory / f"{import_id}_{Path(source_name).name}"
     if destination.exists():
         if destination.read_bytes() != source_data:
             raise ImportValidationError(
@@ -1166,6 +1202,7 @@ def _write_source_archive(table_name, source_name, source_data, import_id):
             output.flush()
             os.fsync(output.fileno())
         os.replace(temporary, destination)
+        _fsync_directory(dataset_directory)
     finally:
         temporary.unlink(missing_ok=True)
     return str(destination), True
@@ -1412,6 +1449,6 @@ def apply_import(db, import_id, preview_id):
     except Exception:
         if archive_created and archive_path:
             with suppress(OSError):
-                Path(archive_path).unlink(missing_ok=True)
+                _remove_archive_file(archive_path)
         raise
     return {"success": True, "preview": preview, "archive_path": archive_path}

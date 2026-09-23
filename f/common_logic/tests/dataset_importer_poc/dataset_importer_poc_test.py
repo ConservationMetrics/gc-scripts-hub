@@ -508,6 +508,87 @@ def test_expired_sessions_are_rejected_and_cleaned_up(mock_db_connection):
     assert check_dataset_name(mock_db_connection, "observations")["available"] is True
 
 
+def test_expiry_cleanup_removes_an_archive_orphaned_before_commit(
+    mock_db_connection, importer_datalake
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    preview_import(mock_db_connection, staged["import_id"])
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT target_table, source_name, source_data FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+        table_name, source_name, source_data = cursor.fetchone()
+        archive_path, created = importer._write_source_archive(
+            table_name, source_name, source_data, staged["import_id"]
+        )
+        assert created is True
+        cursor.execute(
+            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+
+    assert Path(archive_path).is_relative_to(importer_datalake)
+    assert Path(archive_path).exists()
+    assert cleanup_expired_imports(mock_db_connection) == 1
+    assert not Path(archive_path).exists()
+
+
+def test_expiry_cleanup_preserves_successful_archives(
+    mock_db_connection, importer_datalake
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    archive_path = Path(confirm(mock_db_connection, staged, preview)["archive_path"])
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+
+    assert archive_path.is_relative_to(importer_datalake)
+    assert cleanup_expired_imports(mock_db_connection) == 1
+    assert archive_path.read_bytes() == b"name\nHeron\n"
+
+
+def test_expiry_cleanup_retains_session_when_orphan_removal_fails(
+    mock_db_connection, monkeypatch
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+
+    def fail_removal(_path):
+        raise OSError("storage unavailable")
+
+    monkeypatch.setattr(importer, "_remove_archive_file", fail_removal)
+    assert cleanup_expired_imports(mock_db_connection) == 0
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+        assert cursor.fetchone() == (True,)
+
+
 def test_mapping_change_after_staging_rejects_apply(mock_db_connection):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
