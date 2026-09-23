@@ -37,7 +37,7 @@ export declare const backend: {
     import_id: string;
     identity_fields: string[];
     update_policy: Policy;
-  }) => Promise<Preview>;
+  }) => Promise<Preview | ValidationFailure>;
   apply_import: (args: {
     import_id: string;
     preview_id: string;

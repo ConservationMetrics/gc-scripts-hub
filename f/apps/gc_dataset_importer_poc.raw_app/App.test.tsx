@@ -226,6 +226,24 @@ describe("Dataset importer", () => {
     );
   });
 
+  it("shows preview validation messages returned by Windmill", async () => {
+    mockedBackend.preview_import.mockResolvedValue({
+      validation_error:
+        "Duplicate record identities were found in the target dataset.",
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Merge");
+    fireEvent.change(screen.getByLabelText("Identity field 1"), {
+      target: { value: "code" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Duplicate record identities were found in the target dataset.",
+    );
+  });
+
   it("requires identity and confirms destructive Sync explicitly", async () => {
     const destructivePreview = { ...preview, deleted: 3, final_count: 1 };
     mockedBackend.preview_import.mockResolvedValue(destructivePreview);

@@ -352,13 +352,16 @@ export default function App() {
     setLoading(true);
     setError(undefined);
     try {
-      setPreview(
-        await backend.preview_import({
-          import_id: staged.import_id,
-          identity_fields: identity,
-          update_policy: policy,
-        }),
-      );
+      const result = await backend.preview_import({
+        import_id: staged.import_id,
+        identity_fields: identity,
+        update_policy: policy,
+      });
+      if ("validation_error" in result) {
+        setError(result.validation_error);
+        return;
+      }
+      setPreview(result);
       setStep("review");
     } catch (reason) {
       setError(
