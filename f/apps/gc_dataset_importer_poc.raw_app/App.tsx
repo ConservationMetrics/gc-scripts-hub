@@ -130,6 +130,8 @@ function message(
   if (isRecord(error)) {
     const fromBody = responseMessage(error.body);
     if (fromBody) return fromBody;
+    const fromResponse = responseMessage(error);
+    if (fromResponse) return fromResponse;
   }
   const fromError =
     error instanceof Error

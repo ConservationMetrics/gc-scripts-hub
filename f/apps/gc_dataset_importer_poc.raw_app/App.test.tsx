@@ -184,6 +184,22 @@ describe("Dataset importer", () => {
     expect(mockedBackend.stage_import).not.toHaveBeenCalled();
   });
 
+  it("shows validation messages returned by Windmill", async () => {
+    mockedBackend.stage_import.mockRejectedValue({
+      message: "CSV rows must match the header column count.",
+      name: "ImportValidationError",
+      stack: 'File "/tmp/windmill/job/stage_import.py", line 5',
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Append");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "CSV rows must match the header column count.",
+    );
+    expect(screen.getByRole("alert")).not.toHaveTextContent("/tmp/windmill");
+  });
+
   it("stages, previews, and confirms an append", async () => {
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
