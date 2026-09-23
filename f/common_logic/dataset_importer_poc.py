@@ -32,6 +32,13 @@ MAX_ARCHIVE_MEMBERS = 1000
 SESSION_TTL = timedelta(hours=24)
 VALID_GOALS = {"create", "append", "merge", "sync"}
 VALID_POLICIES = {"imported", "existing"}
+EMPTY_CONVERSION_ERRORS = {
+    "Excel file contains no data",
+    "GeoJSON contains no features",
+    "No valid features found in GeoPackage",
+    "No valid features found in input file",
+    "No valid features found in shapefile",
+}
 AUXILIARY_SUFFIXES = ("__columns", "__labels", "__metadata")
 SHAPEFILE_EXTENSIONS = {".shp", ".shx", ".dbf", ".prj", ".cpg"}
 SUPPORTED_EXTENSIONS = {
@@ -259,6 +266,8 @@ def _parse_converted_paths(file_paths):
             [str(path) for path in file_paths], detected
         )
     except (OSError, ValueError) as exc:
+        if str(exc) in EMPTY_CONVERSION_ERRORS:
+            return detected, []
         raise ImportValidationError(str(exc)) from exc
     rows = _tabular_rows(converted) if output_format == "csv" else _geojson_rows(converted)
     return detected, rows

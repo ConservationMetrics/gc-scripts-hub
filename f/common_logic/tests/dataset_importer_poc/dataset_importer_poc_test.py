@@ -765,6 +765,42 @@ def test_single_sheet_xlsx_is_staged(mock_db_connection, tmp_path):
     assert staged["record_count"] == 1
 
 
+@pytest.mark.parametrize(
+    ("goal", "preview_error"),
+    [("append", None), ("merge", None), ("sync", "cannot be empty")],
+)
+def test_empty_xlsx_uses_operation_empty_rules(
+    mock_db_connection, tmp_path, goal, preview_error
+):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations" VALUES (%s, %s)', ("one", "A")
+        )
+    path = tmp_path / "empty.xlsx"
+    workbook = openpyxl.Workbook()
+    workbook.active.append(["code"])
+    workbook.save(path)
+    staged = stage_import(
+        mock_db_connection,
+        upload_bytes(path.name, path.read_bytes()),
+        goal,
+        "observations",
+    )
+    assert staged["record_count"] == 0
+
+    if preview_error:
+        with pytest.raises(ImportValidationError, match=preview_error):
+            preview_import(mock_db_connection, staged["import_id"])
+    else:
+        preview = preview_import(mock_db_connection, staged["import_id"])
+        assert preview["added"] == preview["updated"] == preview["deleted"] == 0
+        confirm(mock_db_connection, staged, preview)
+        assert table_rows(mock_db_connection, "observations")[0]["code"] == "A"
+
+
 def test_json_and_cybertracker_are_detected_by_content(mock_db_connection):
     regular = stage_import(
         mock_db_connection,
