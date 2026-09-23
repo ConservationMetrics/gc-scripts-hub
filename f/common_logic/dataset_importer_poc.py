@@ -82,6 +82,17 @@ def _fsync_directory(directory):
         os.close(descriptor)
 
 
+def _mkdir_durable(directory):
+    missing = []
+    current = Path(directory)
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    for created in reversed(missing):
+        _fsync_directory(created.parent)
+
+
 def _remove_archive_file(path):
     path = Path(path)
     path.unlink(missing_ok=True)
@@ -1198,12 +1209,13 @@ def _write_source_archive(table_name, source_name, source_data, import_id):
         )
     destination = _archive_destination(table_name, source_name, import_id)
     dataset_directory = destination.parent
-    dataset_directory.mkdir(parents=True, exist_ok=True)
+    _mkdir_durable(dataset_directory)
     if destination.exists():
         if destination.read_bytes() != source_data:
             raise ImportValidationError(
                 "The archive destination already contains different source data."
             )
+        _fsync_directory(dataset_directory)
         return str(destination), False
     temporary = destination.with_suffix(destination.suffix + ".tmp")
     try:
