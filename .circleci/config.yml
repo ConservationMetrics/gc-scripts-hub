@@ -17,11 +17,11 @@ jobs:
       - run:
           name: Install Dataset Importer dependencies
           command: npm ci
-          working_directory: f/apps/gc_dataset_importer_poc.raw_app
+          working_directory: f/apps/gc_dataset_importer_v2.raw_app
       - run:
           name: Validate Dataset Importer app
           command: npm run typecheck && npm run format:check && npm run lint && npm test && npm run lint:windmill && npm audit
-          working_directory: f/apps/gc_dataset_importer_poc.raw_app
+          working_directory: f/apps/gc_dataset_importer_v2.raw_app
 
   test:
     resource_class: medium

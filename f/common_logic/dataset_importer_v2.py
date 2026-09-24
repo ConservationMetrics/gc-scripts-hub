@@ -1,8 +1,8 @@
-"""Isolated SQL-backed engine for the Dataset Importer POC.
+"""SQL-backed engine for Dataset Importer v2.
 
-This module deliberately does not call the existing dataset importer or its
-``StructuredDBWriter``.  That writer's upsert-on-``_id`` contract is not
-compatible with append, merge, and sync semantics.
+The importer shares the established warehouse field-mapping behavior while
+providing transactional append, merge, and sync strategies beyond
+``StructuredDBWriter``'s upsert-on-``_id`` contract.
 """
 
 import base64
@@ -22,10 +22,18 @@ from tempfile import TemporaryDirectory
 
 from psycopg import connect, errors, sql
 
-from f.common_logic.db_operations import conninfo
-from f.common_logic.identifier_utils import normalize_identifier
+from f.common_logic.db_operations import (
+    column_mapping_table_name,
+    conninfo,
+    ensure_column_mapping_table,
+)
+from f.common_logic.identifier_utils import (
+    normalize_identifier,
+    sanitize_sql_columns,
+    uniquify_sql_identifier,
+)
 
-SCHEMA = "dataset_importer_poc"
+SCHEMA = "dataset_importer_v2"
 MAX_SOURCE_BYTES = 25 * 1024 * 1024
 MAX_EXPANDED_BYTES = 100 * 1024 * 1024
 MAX_COLUMNS = 150
@@ -576,18 +584,6 @@ def _parse_source(name, contents):
         return _parse_path(path)
 
 
-def _stored_name(source_name):
-    # _id belongs to the POC's internal row identity. Preserve uploaded IDs as data.
-    if source_name == "_id":
-        return "source_id"
-    return normalize_identifier(
-        source_name,
-        make_snake=False,
-        ensure_leading_alpha=False,
-        sep_policy="underscore",
-    )
-
-
 def _source_fields(rows):
     source_fields = []
     seen = set()
@@ -599,12 +595,9 @@ def _source_fields(rows):
     return source_fields
 
 
-def _source_mapping(rows, existing_mapping=None):
+def _source_mapping(rows, existing_mapping=None, target_columns=None):
     existing_mapping = existing_mapping or {}
-    mapping = {
-        field: existing_mapping.get(field, _stored_name(field))
-        for field in _source_fields(rows)
-    }
+    target_columns = set(target_columns or [])
     reverse = {}
     for source, stored in existing_mapping.items():
         if stored in reverse and reverse[stored] != source:
@@ -612,11 +605,29 @@ def _source_mapping(rows, existing_mapping=None):
                 f"The target dataset maps both '{reverse[stored]}' and '{source}' to '{stored}'."
             )
         reverse[stored] = source
+    # _id is owned by the importer. Preserve an uploaded _id as ordinary data,
+    # and let the shared resolver disambiguate a real source_id field if needed.
+    uploaded_id_column = existing_mapping.get("_id") or uniquify_sql_identifier(
+        "source_id", existing_mapping.values()
+    )
+    seeded_mapping = {**existing_mapping, "_id": uploaded_id_column}
+    mapping = sanitize_sql_columns(
+        _source_fields(rows),
+        seeded_mapping,
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__"), ("$", "__")],
+        sep_policy="underscore",
+    )
+    claimed_columns = set(existing_mapping.values()) | set(mapping.values())
+    for source, stored in list(mapping.items()):
+        if source == "_id" or source in existing_mapping or stored in target_columns:
+            continue
+        legacy_stored = sanitize_sql_columns([source])[source]
+        if legacy_stored in target_columns and legacy_stored not in claimed_columns:
+            claimed_columns.remove(stored)
+            claimed_columns.add(legacy_stored)
+            mapping[source] = legacy_stored
     for source, stored in mapping.items():
-        if stored in reverse and reverse[stored] != source:
-            raise ImportValidationError(
-                f"Columns '{reverse[stored]}' and '{source}' have the same stored name. Rename one column."
-            )
         if stored == "_id":
             raise ImportValidationError("'_id' is reserved for internal row identity.")
         if stored in {"g__type", "g__coordinates"} and source != stored:
@@ -631,7 +642,85 @@ def _source_mapping(rows, existing_mapping=None):
     return mapping
 
 
+def _schema_has_importer_contract(cursor, schema):
+    required_columns = {
+        "import_sessions": {
+            "import_id",
+            "goal",
+            "target_table",
+            "source_name",
+            "source_sha256",
+            "source_format",
+            "source_mapping",
+            "status",
+            "created_at",
+        },
+        "import_rows": {"import_id", "row_ordinal", "payload"},
+        "dataset_registry": {
+            "target_table",
+            "columns_table",
+            "status",
+            "source_import_id",
+        },
+    }
+    cursor.execute(
+        """SELECT table_name, column_name
+           FROM information_schema.columns
+           WHERE table_schema = %s AND table_name = ANY(%s)""",
+        (schema, list(required_columns)),
+    )
+    actual_columns = {table: set() for table in required_columns}
+    for table, column in cursor.fetchall():
+        actual_columns[table].add(column)
+    if any(
+        not columns.issubset(actual_columns[table])
+        for table, columns in required_columns.items()
+    ):
+        return False
+    cursor.execute(
+        """SELECT c.relname, c.relkind
+           FROM pg_catalog.pg_class c
+           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = %s AND c.relname = ANY(%s)""",
+        (schema, list(required_columns)),
+    )
+    return dict(cursor.fetchall()) == {table: "r" for table in required_columns}
+
+
+def _adopt_legacy_schema(cursor):
+    """Adopt an explicitly configured previous schema on first v2 use."""
+    migration_schema = os.environ.get("DATASET_IMPORTER_V2_MIGRATE_SCHEMA")
+    if not migration_schema:
+        return
+    if migration_schema == SCHEMA:
+        raise ImportValidationError("The migration source must differ from the v2 schema.")
+    # This session lock intentionally lives until the owning connection closes,
+    # covering all of _ensure_schema() in both transactional and autocommit callers.
+    cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", (SCHEMA,))
+    cursor.execute("SELECT to_regnamespace(%s)", (SCHEMA,))
+    if cursor.fetchone()[0] is not None:
+        return
+    cursor.execute(
+        """SELECT pg_get_userbyid(nspowner) = current_user
+           FROM pg_catalog.pg_namespace WHERE nspname = %s""",
+        (migration_schema,),
+    )
+    owned = cursor.fetchone()
+    if not owned or not owned[0] or not _schema_has_importer_contract(
+        cursor, migration_schema
+    ):
+        raise ImportValidationError(
+            "The configured migration schema is missing, incompatible, or not owned by the database user."
+        )
+    cursor.execute(
+        sql.SQL("ALTER SCHEMA {} RENAME TO {}").format(
+            sql.Identifier(migration_schema), sql.Identifier(SCHEMA)
+        )
+    )
+
+
 def _ensure_schema(cursor):
+    _adopt_legacy_schema(cursor)
     cursor.execute(
         sql.SQL("CREATE SCHEMA IF NOT EXISTS {};").format(sql.Identifier(SCHEMA))
     )
@@ -712,7 +801,7 @@ def _ensure_schema(cursor):
 
 
 def _columns_table_name(table_name):
-    return f"{table_name[:54]}__columns"
+    return column_mapping_table_name(table_name)
 
 
 def _relation_exists(cursor, table_name):
@@ -903,7 +992,6 @@ def _dataset_is_eligible(cursor, table_name):
 
 
 def _dataset_mapping(cursor, table_name):
-    target_columns = _target_columns(cursor, table_name)
     mapping = {}
     columns_table = _columns_table_name(table_name)
     if _relation_exists(cursor, columns_table):
@@ -913,31 +1001,20 @@ def _dataset_mapping(cursor, table_name):
             ).format(_quoted_table(columns_table))
         )
         for original, stored in cursor.fetchall():
+            if original == "_id":
+                continue
             if original in mapping and mapping[original] != stored:
                 raise ImportValidationError(
                     f"The target dataset has conflicting mappings for '{original}'."
                 )
             mapping[original] = stored
-    mapped_columns = set(mapping.values())
-    for column in target_columns:
-        if (
-            column != "_id"
-            and column not in mapped_columns
-            and column not in mapping
-        ):
-            mapping[column] = column
     return mapping
 
 
 def _ensure_dataset_mapping(cursor, table_name, mapping):
     columns_table = _columns_table_name(table_name)
-    cursor.execute(
-        sql.SQL(
-            """CREATE TABLE IF NOT EXISTS {} (
-                original_column TEXT PRIMARY KEY,
-                sql_column TEXT UNIQUE NOT NULL
-            )"""
-        ).format(_quoted_table(columns_table))
+    ensure_column_mapping_table(
+        cursor, columns_table, schema="public", upgrade_types=True
     )
     cursor.execute(
         sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
@@ -945,6 +1022,8 @@ def _ensure_dataset_mapping(cursor, table_name, mapping):
         )
     )
     for original, stored in mapping.items():
+        if original == "_id":
+            continue
         cursor.execute(
             sql.SQL(
                 "SELECT original_column, sql_column FROM {} WHERE original_column = %s OR sql_column = %s"
@@ -1031,7 +1110,8 @@ def stage_import(db, uploaded_file, goal, target_table):
             )
         _claim_dataset_mapping(cursor, table_name, import_id, goal == "create")
         existing_mapping = _dataset_mapping(cursor, table_name) if exists else {}
-        mapping = _source_mapping(rows, existing_mapping)
+        target_columns = _target_columns(cursor, table_name) if exists else {}
+        mapping = _source_mapping(rows, existing_mapping, target_columns)
         cursor.execute(
             sql.SQL("""INSERT INTO {}.import_sessions
                 (import_id, goal, target_table, source_name, source_sha256, source_data, source_format, source_mapping, status, created_at, expires_at)
@@ -1258,7 +1338,7 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
         ]
         if incompatible and staged_count > 0:
             raise ImportValidationError(
-                "This POC can only update existing text columns: "
+                "Dataset Importer v2 can only update existing text columns: "
                 + ", ".join(incompatible)
             )
         if goal in {"merge", "sync"} and staged_count > 0:
@@ -1480,6 +1560,16 @@ def _archive_applied_source(db, import_id):
     return archive_path
 
 
+def _import_status(cursor, import_id):
+    cursor.execute(
+        sql.SQL(
+            "SELECT status, preview, preview_id, archive_path FROM {}.import_sessions WHERE import_id = %s"
+        ).format(sql.Identifier(SCHEMA)),
+        (import_id,),
+    )
+    return cursor.fetchone()
+
+
 def apply_import(db, import_id, preview_id):
     """Archive the source and apply the reviewed plan without partial target writes."""
     with (
@@ -1487,13 +1577,7 @@ def apply_import(db, import_id, preview_id):
         status_conn.cursor() as status_cursor,
     ):
         _ensure_schema(status_cursor)
-        status_cursor.execute(
-            sql.SQL(
-                "SELECT status, preview, preview_id, archive_path FROM {}.import_sessions WHERE import_id = %s"
-            ).format(sql.Identifier(SCHEMA)),
-            (import_id,),
-        )
-        existing = status_cursor.fetchone()
+        existing = _import_status(status_cursor, import_id)
     if existing and existing[0] == "applied":
         if str(existing[2]) != str(preview_id):
             raise ImportValidationError(
@@ -1519,6 +1603,22 @@ def apply_import(db, import_id, preview_id):
             goal, table_name, mapping, status, preview, stored_preview_id = _session(
                 cursor, import_id, lock=True
             )
+            if status == "archived":
+                if str(stored_preview_id) != str(preview_id):
+                    raise ImportValidationError(
+                        "This preview is no longer current. Review again."
+                    )
+                cursor.execute(
+                    sql.SQL(
+                        "SELECT archive_path FROM {}.import_sessions WHERE import_id = %s"
+                    ).format(sql.Identifier(SCHEMA)),
+                    (import_id,),
+                )
+                return {
+                    "success": True,
+                    "preview": preview,
+                    "archive_path": cursor.fetchone()[0],
+                }
             if status != "reviewed" or not preview:
                 raise ImportValidationError("Review this import before confirming it.")
             if str(stored_preview_id) != str(preview_id):

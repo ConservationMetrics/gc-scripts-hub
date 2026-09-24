@@ -2,7 +2,9 @@ import base64
 import hashlib
 import io
 import json
+import threading
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import fiona
@@ -10,8 +12,8 @@ import openpyxl
 import psycopg
 import pytest
 
-import f.common_logic.dataset_importer_poc as importer
-from f.common_logic.dataset_importer_poc import (
+import f.common_logic.dataset_importer_v2 as importer
+from f.common_logic.dataset_importer_v2 import (
     ImportValidationError,
     apply_import,
     check_dataset_name,
@@ -20,6 +22,7 @@ from f.common_logic.dataset_importer_poc import (
     preview_import,
     stage_import,
 )
+from f.common_logic.db_operations import StructuredDBWriter
 
 
 def upload(name, text):
@@ -569,7 +572,7 @@ def test_existing_column_mapping_is_used_for_identity(mock_db_connection):
             'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, bird_name TEXT, note TEXT)'
         )
         cursor.execute(
-            'CREATE TABLE "public"."observations__columns" (original_column TEXT, sql_column TEXT)'
+            'CREATE TABLE "public"."observations__columns" (original_column VARCHAR(128), sql_column VARCHAR(64) NOT NULL)'
         )
         cursor.execute(
             'INSERT INTO "public"."observations__columns" VALUES (%s, %s)',
@@ -592,6 +595,171 @@ def test_existing_column_mapping_is_used_for_identity(mock_db_connection):
     assert preview["updated"] == 1
     confirm(mock_db_connection, staged, preview)
     assert table_rows(mock_db_connection, "observations")[0]["note"] == "new"
+
+
+def test_legacy_mapping_table_is_upgraded_for_long_source_columns(
+    mock_db_connection,
+):
+    long_column = "field_" + ("x" * 140)
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY)'
+        )
+        cursor.execute(
+            'CREATE TABLE "public"."observations__columns" (original_column VARCHAR(128), sql_column VARCHAR(64) NOT NULL)'
+        )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", f"{long_column}\nvalue\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            """SELECT data_type FROM information_schema.columns
+               WHERE table_schema = 'public'
+                 AND table_name = 'observations__columns'
+                 AND column_name = 'original_column'"""
+        )
+        assert cursor.fetchone() == ("text",)
+        cursor.execute(
+            'SELECT sql_column FROM "public"."observations__columns" WHERE original_column = %s',
+            (long_column,),
+        )
+        assert cursor.fetchone() is not None
+
+
+def test_legacy_internal_id_mapping_does_not_capture_uploaded_id(
+    mock_db_connection,
+):
+    writer = StructuredDBWriter(
+        mock_db_connection, "observations", use_mapping_table=True
+    )
+    writer.handle_output([{"_id": "legacy", "name": "Heron"}])
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "_id,name\nexternal,Ibis\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    rows = table_rows(mock_db_connection, "observations")
+    imported = next(row for row in rows if row["name"] == "Ibis")
+    assert imported["_id"] != "external"
+    assert imported["source_id"] == "external"
+
+    writer.handle_output([{"_id": "legacy", "name": "updated"}])
+    assert next(row for row in table_rows(mock_db_connection, "observations") if row["_id"] == "legacy")["name"] == "updated"
+
+
+def test_v2_reuses_unmapped_columns_from_default_legacy_writer(mock_db_connection):
+    writer = StructuredDBWriter(mock_db_connection, "observations")
+    writer.handle_output([{"_id": "legacy", "Bird Name": "Heron"}])
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "Bird Name\nIbis\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'observations'"
+        )
+        columns = {row[0] for row in cursor.fetchall()}
+    assert "BirdName" in columns
+    assert "Bird_Name" not in columns
+
+
+def test_unmapped_fallback_does_not_claim_a_persisted_mapping(
+    mock_db_connection,
+):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, "BirdName" TEXT)'
+        )
+        cursor.execute(
+            'CREATE TABLE "public"."observations__columns" (original_column TEXT, sql_column TEXT)'
+        )
+        cursor.execute(
+            'INSERT INTO "public"."observations__columns" VALUES (%s, %s)',
+            ("Old Name", "BirdName"),
+        )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "Bird Name\nIbis\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "observations")[0]
+    assert row["BirdName"] is None
+    assert row["Bird_Name"] == "Ibis"
+
+
+def test_legacy_writer_and_v2_round_trip_through_shared_mappings(
+    mock_db_connection,
+):
+    writer = StructuredDBWriter(
+        mock_db_connection,
+        "observations",
+        use_mapping_table=True,
+        reverse_properties_separated_by="/",
+        sep_policy="underscore",
+    )
+    writer.handle_output(
+        [
+            {
+                "_id": "one",
+                "Basic information/Bird Name": "Heron",
+                "Bird-Name": "old",
+            }
+        ]
+    )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "birds.csv",
+            "Basic information/Bird Name,Bird-Name\nHeron,from-v2\n",
+        ),
+        "merge",
+        "observations",
+    )
+    preview = preview_import(
+        mock_db_connection,
+        staged["import_id"],
+        ["Basic information/Bird Name"],
+    )
+    confirm(mock_db_connection, staged, preview)
+
+    writer.handle_output(
+        [
+            {
+                "_id": "one",
+                "Basic information/Bird Name": "Heron",
+                "Bird-Name": "from-legacy",
+            }
+        ]
+    )
+
+    rows = table_rows(mock_db_connection, "observations")
+    assert len(rows) == 1
+    assert rows[0]["Bird_Name__Basic_information"] == "Heron"
+    assert rows[0]["Bird_Name"] == "from-legacy"
 
 
 @pytest.mark.parametrize("dataset_name", ["", "   ", "---"])
@@ -653,7 +821,7 @@ def test_expired_sessions_are_rejected_and_cleaned_up(mock_db_connection):
     )
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "UPDATE dataset_importer_v2.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
             (staged["import_id"],),
         )
 
@@ -662,11 +830,69 @@ def test_expired_sessions_are_rejected_and_cleaned_up(mock_db_connection):
         preview_import(mock_db_connection, staged["import_id"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT 1 FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT 1 FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         assert cursor.fetchone() is None
     assert check_dataset_name(mock_db_connection, "observations")["available"] is True
+
+
+def test_previous_importer_schema_is_adopted_with_staged_sessions(
+    mock_db_connection, monkeypatch
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "ALTER SCHEMA dataset_importer_v2 RENAME TO dataset_importer_old"
+        )
+        assert importer._schema_has_importer_contract(
+            cursor, "dataset_importer_old"
+        )
+        cursor.execute(
+            "SELECT pg_get_userbyid(nspowner), current_user FROM pg_namespace WHERE nspname = 'dataset_importer_old'"
+        )
+        owner, current_user = cursor.fetchone()
+        assert owner == current_user
+    monkeypatch.setenv(
+        "DATASET_IMPORTER_V2_MIGRATE_SCHEMA", "dataset_importer_old"
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        listings = list(
+            executor.map(lambda _: list_datasets(mock_db_connection), range(2))
+        )
+    assert listings == [[], []]
+
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT to_regnamespace('dataset_importer_v2') IS NOT NULL")
+        assert cursor.fetchone() == (True,)
+        cursor.execute("SELECT to_regnamespace('dataset_importer_old')")
+        assert cursor.fetchone() == (None,)
+    assert table_rows(mock_db_connection, "observations")[0]["name"] == "Heron"
+
+
+def test_unrelated_schema_is_not_adopted(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("CREATE SCHEMA dataset_importer_bad")
+        cursor.execute("CREATE TABLE dataset_importer_bad.import_sessions (id TEXT)")
+        cursor.execute("CREATE TABLE dataset_importer_bad.import_rows (id TEXT)")
+        cursor.execute("CREATE TABLE dataset_importer_bad.dataset_registry (id TEXT)")
+
+    assert list_datasets(mock_db_connection) == []
+
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT to_regnamespace('dataset_importer_bad') IS NOT NULL")
+        assert cursor.fetchone() == (True,)
+        cursor.execute("SELECT to_regnamespace('dataset_importer_v2') IS NOT NULL")
+        assert cursor.fetchone() == (True,)
 
 
 def test_dataset_listing_cleans_expired_sources_on_app_load(mock_db_connection):
@@ -678,7 +904,7 @@ def test_dataset_listing_cleans_expired_sources_on_app_load(mock_db_connection):
     )
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "UPDATE dataset_importer_v2.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
             (staged["import_id"],),
         )
 
@@ -698,7 +924,7 @@ def test_expiry_cleanup_removes_an_archive_orphaned_before_commit(
     preview_import(mock_db_connection, staged["import_id"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT target_table, source_name, source_data FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT target_table, source_name, source_data FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         table_name, source_name, source_data = cursor.fetchone()
@@ -707,7 +933,7 @@ def test_expiry_cleanup_removes_an_archive_orphaned_before_commit(
         )
         assert created is True
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "UPDATE dataset_importer_v2.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
             (staged["import_id"],),
         )
 
@@ -730,7 +956,7 @@ def test_expiry_cleanup_preserves_successful_archives(
     archive_path = Path(confirm(mock_db_connection, staged, preview)["archive_path"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "UPDATE dataset_importer_v2.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
             (staged["import_id"],),
         )
 
@@ -750,7 +976,7 @@ def test_expiry_cleanup_retains_session_when_orphan_removal_fails(
     )
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "UPDATE dataset_importer_poc.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
+            "UPDATE dataset_importer_v2.import_sessions SET expires_at = now() - INTERVAL '1 second' WHERE import_id = %s",
             (staged["import_id"],),
         )
 
@@ -761,7 +987,7 @@ def test_expiry_cleanup_retains_session_when_orphan_removal_fails(
     assert cleanup_expired_imports(mock_db_connection) == 0
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT source_data IS NOT NULL FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         assert cursor.fetchone() == (True,)
@@ -852,13 +1078,13 @@ def test_existing_staged_create_is_backfilled_into_registry(mock_db_connection):
     )
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "DELETE FROM dataset_importer_poc.dataset_registry WHERE target_table = 'observations'"
+            "DELETE FROM dataset_importer_v2.dataset_registry WHERE target_table = 'observations'"
         )
 
     preview_import(mock_db_connection, staged["import_id"])
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT status, source_import_id FROM dataset_importer_poc.dataset_registry WHERE target_table = 'observations'"
+            "SELECT status, source_import_id FROM dataset_importer_v2.dataset_registry WHERE target_table = 'observations'"
         )
         status, source_import_id = cursor.fetchone()
         assert status == "reserved"
@@ -1045,14 +1271,72 @@ def test_unsupported_top_level_file_is_rejected(mock_db_connection):
         )
 
 
-def test_sanitized_column_name_collisions_are_rejected(mock_db_connection):
-    with pytest.raises(ImportValidationError, match="same stored name.*Rename"):
-        stage_import(
-            mock_db_connection,
-            upload("rows.csv", "Bird Name,Bird-Name\nHeron,Ibis\n"),
-            "create",
-            "observations",
+def test_sanitized_column_name_collisions_use_legacy_suffixes(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "Bird Name,Bird-Name\nHeron,Ibis\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "observations")[0]
+    assert row["Bird_Name"] == "Heron"
+    assert row["Bird_Name_001"] == "Ibis"
+
+
+def test_create_uses_legacy_nested_and_metadata_column_names(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "rows.csv",
+            "Basic information/Are you married?,$categoryId,categoryId\nyes,system,user\n",
+        ),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "observations")[0]
+    assert row["Are_you_married__Basic_information"] == "yes"
+    assert row["__categoryId"] == "system"
+    assert row["categoryId"] == "user"
+
+
+def test_uploaded_id_and_source_id_are_kept_as_distinct_data(mock_db_connection):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "_id,source_id\nexternal-id,source-value\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "observations")[0]
+    assert row["source_id"] == "external-id"
+    assert row["source_id_001"] == "source-value"
+
+
+def test_append_maps_legacy_name_to_existing_physical_column(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, "Bird_Name" TEXT)'
         )
+
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "Bird Name\nHeron\n"),
+        "append",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+
+    row = table_rows(mock_db_connection, "observations")[0]
+    assert row["Bird_Name"] == "Heron"
 
 
 def test_zip_rejects_unsupported_members_without_staging(mock_db_connection):
@@ -1154,7 +1438,7 @@ def test_successful_import_archives_exact_source(
     assert archived.read_bytes() == source
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT status, source_data FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT status, source_data FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         assert cursor.fetchone() == ("archived", None)
@@ -1180,7 +1464,7 @@ def test_archive_failure_does_not_write_target_and_can_be_retried(
         cursor.execute("SELECT to_regclass('public.observations')")
         assert cursor.fetchone() == (None,)
         cursor.execute(
-            "SELECT status, source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT status, source_data IS NOT NULL FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         assert cursor.fetchone() == ("reviewed", True)
@@ -1213,7 +1497,7 @@ def test_database_failure_removes_archive_and_rolls_back_target(
         cursor.execute("SELECT to_regclass('public.observations')")
         assert cursor.fetchone() == (None,)
         cursor.execute(
-            "SELECT status, source_data IS NOT NULL FROM dataset_importer_poc.import_sessions WHERE import_id = %s",
+            "SELECT status, source_data IS NOT NULL FROM dataset_importer_v2.import_sessions WHERE import_id = %s",
             (staged["import_id"],),
         )
         assert cursor.fetchone() == ("reviewed", True)
@@ -1449,4 +1733,32 @@ def test_completed_confirmation_is_idempotent(mock_db_connection):
     second = confirm(mock_db_connection, staged, preview)
 
     assert second == first
+    assert len(table_rows(mock_db_connection, "observations")) == 1
+
+
+def test_concurrent_confirmation_is_idempotent(
+    mock_db_connection, monkeypatch
+):
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "name\nHeron\n"),
+        "create",
+        "observations",
+    )
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    initial_reads = threading.Barrier(2)
+    original_status = importer._import_status
+
+    def synchronize_status_read(*args):
+        status = original_status(*args)
+        initial_reads.wait(timeout=5)
+        return status
+
+    monkeypatch.setattr(importer, "_import_status", synchronize_status_read)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(confirm, mock_db_connection, staged, preview)
+        second = executor.submit(confirm, mock_db_connection, staged, preview)
+        results = [first.result(timeout=5), second.result(timeout=5)]
+
+    assert results[0] == results[1]
     assert len(table_rows(mock_db_connection, "observations")) == 1

@@ -1,4 +1,4 @@
-from f.common_logic.dataset_importer_poc import apply_import
+from f.common_logic.dataset_importer_v2 import apply_import
 
 
 def main(db, import_id: str, preview_id: str):

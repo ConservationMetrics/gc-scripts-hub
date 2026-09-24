@@ -52,6 +52,37 @@ def conninfo(db: postgresql):
     return conn + password_part
 
 
+def column_mapping_table_name(table_name):
+    """Return the established mapping-table name for a dataset."""
+    return f"{table_name[:54]}__columns"
+
+
+def ensure_column_mapping_table(cursor, table_name, schema=None, upgrade_types=False):
+    """Create a warehouse-compatible column mapping table if it is absent.
+
+    The caller owns the connection and transaction so this helper is safe for
+    both the legacy autocommit writer and transactional import strategies.
+    """
+    identifier = (
+        sql.Identifier(schema, table_name) if schema else sql.Identifier(table_name)
+    )
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {} (
+            original_column TEXT NULL,
+            sql_column TEXT NOT NULL);"""
+        ).format(identifier)
+    )
+    if upgrade_types:
+        cursor.execute(
+            sql.SQL(
+                """ALTER TABLE {}
+                ALTER COLUMN original_column TYPE TEXT,
+                ALTER COLUMN sql_column TYPE TEXT"""
+            ).format(identifier)
+        )
+
+
 def check_if_table_exists(
     db_connection_string: str, table_name: str, schema: str = "public"
 ):
@@ -538,12 +569,7 @@ class StructuredDBWriter:
     def _get_existing_cols(self, pgconn, table_name, columns_table_name):
         """Fetches the column names of the given table."""
         with pgconn.cursor() as cursor:
-            query = sql.SQL("""
-            CREATE TABLE IF NOT EXISTS {columns_table_name} (
-            original_column VARCHAR(128) NULL,
-            sql_column VARCHAR(64) NOT NULL);
-            """).format(columns_table_name=sql.Identifier(columns_table_name))
-            cursor.execute(query)
+            ensure_column_mapping_table(cursor, columns_table_name)
             cursor.execute(
                 "SELECT column_name FROM information_schema.columns WHERE table_name = %s",
                 (table_name,),
@@ -668,7 +694,7 @@ class StructuredDBWriter:
 
         with self._get_conn() as pgconn:
             if self.use_mapping_table:
-                columns_table_name = f"{table_name[:54]}__columns"
+                columns_table_name = column_mapping_table_name(table_name)
                 existing_fields = self._get_existing_cols(
                     pgconn, table_name, columns_table_name
                 )

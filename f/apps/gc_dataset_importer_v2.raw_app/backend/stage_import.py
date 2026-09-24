@@ -1,4 +1,4 @@
-from f.common_logic.dataset_importer_poc import ImportValidationError, stage_import
+from f.common_logic.dataset_importer_v2 import ImportValidationError, stage_import
 
 
 def main(db, uploaded_file, goal: str, target_table: str):

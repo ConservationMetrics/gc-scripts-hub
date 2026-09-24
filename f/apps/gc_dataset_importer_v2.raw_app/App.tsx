@@ -560,10 +560,10 @@ export default function App() {
             Upload your data
           </h2>
           <p className="lede">
-            Supported formats: CSV or tab-delimited CSV, GeoJSON including
-            GeometryCollection, JSON arrays and CyberTracker backups, GPX, KML,
-            single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and
-            ZIP archives containing supported files.
+            Supported formats: CSV or tab-delimited CSV, GeoJSON, JSON arrays
+            and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS,
+            XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing
+            supported files.
           </p>
           <label
             className={`dropzone ${dragging ? "dragging" : ""}`}

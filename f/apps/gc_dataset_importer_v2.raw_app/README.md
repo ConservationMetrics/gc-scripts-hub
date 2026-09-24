@@ -1,8 +1,7 @@
-# GC Dataset Importer v2 Pilot
+# GC Dataset Importer v2
 
-React 19 Windmill full-code app for the Dataset Importer v2 pilot. It runs
-alongside `gc_dataset_importer.app` until production validation and cutover are
-complete.
+React 19 Windmill full-code app for Dataset Importer v2. It runs alongside the
+legacy `gc_dataset_importer.app` without changing that app's workflows.
 
 ## Import goals
 
@@ -64,17 +63,28 @@ runtime bridge while linting, bundling, developing, and deploying the raw app.
 Regenerate the interface from the target workspace when runnable signatures
 change.
 
-## Pilot and cutover
+## Production rollout
 
-1. Deploy under the v2 pilot path without replacing the legacy importer.
-2. Verify Create, Append, Merge, and Sync against disposable copies of mapped,
+1. Deploy the v2 app with a targeted Windmill deployment before running a full
+   repository sync. A full sync will remove repository paths deleted by this
+   release and cannot provide a side-by-side transition by itself.
+2. Copy and verify app and runnable ACLs in each workspace; a new Windmill path
+   does not inherit permissions, bookmarks, schedules, or external callers.
+3. Stop the previous preview app, back up PostgreSQL, and set
+   `DATASET_IMPORTER_V2_MIGRATE_SCHEMA` to its importer schema name before the
+   first v2 request. Schema adoption preserves staged sessions but is one-way;
+   rollback after adoption requires restoring the database backup. Remove the
+   migration variable after the first successful v2 request.
+4. Update links and integrations to the v2 path. Do not run the previous preview
+   app after v2 has adopted its schema.
+5. Verify Create, Append, Merge, and Sync against disposable copies of mapped,
    unmapped, tabular, spatial, CyberTracker, SMART, and archive datasets.
-3. Compare preview counts with committed rows, mappings, geometry, and datalake
+6. Compare preview counts with committed rows, mappings, geometry, and datalake
    artifacts.
-4. Confirm Windmill permissions, PostgreSQL privileges, persistent storage,
+7. Confirm Windmill permissions, PostgreSQL privileges, persistent storage,
    cleanup behavior, logs, and rollback access.
-5. Publish the v2 path after pilot acceptance, then retire the legacy app only
-   after remaining workflows have moved to v2 or their dedicated connectors.
+8. Only then run the full repository sync that removes the previous preview app;
+   keep the legacy Dataset Importer v1 until its own consumers are migrated.
 
 If archival fails, no target changes are made and the reviewed session retains
 the source until expiry so the same confirmation can be retried. Failed or

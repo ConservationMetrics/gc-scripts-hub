@@ -195,7 +195,7 @@ describe("Dataset importer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText(/Supported formats:/)).toHaveTextContent(
-      "CSV or tab-delimited CSV, GeoJSON including GeometryCollection, JSON arrays and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing supported files.",
+      "CSV or tab-delimited CSV, GeoJSON, JSON arrays and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing supported files.",
     );
   });
 
