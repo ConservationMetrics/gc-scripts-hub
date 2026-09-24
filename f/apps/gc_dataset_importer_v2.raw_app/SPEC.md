@@ -235,7 +235,7 @@ LIMITS:
     3-3: GeoJSON GeometryCollection is not supported; show a helpful error instead of importing it
     4: Source column names are converted to stable, SQL-safe stored column names per established convention.
     4-1: If source column mapping does not exist for a dataset, it is created
-    4-2: If two source column names result in identical strings after sanitization, the import is rejected and the user is asked to rename a column.
+    4-2: If two source column names would become the same stored column name, both fields are imported as distinct columns and stay distinct on later imports.
     4-3: If a dataset already has a column-name map, imports reuse it so the same fields stay connected
     5: Nested or multi-value source fields are retained as structured text
     6: Imports are all-or-nothing, if it fails, no data is written to the target dataset
