@@ -42,7 +42,17 @@ Files are stored under
 - Provenance metadata, including the download key, DOI, license, and query
 
 The CSV and PostgreSQL columns use `snake_case`. The `_id` column contains the
-GBIF `gbif_id`, and records with valid coordinates include Point geometry.
+GBIF `gbif_id`, and records with valid coordinates include Point geometry. The
+`dataset` and `publishing_org` columns contain human-readable titles resolved
+from GBIF's Registry API. Their corresponding `dataset_key` and
+`publishing_org_key` UUID columns are retained.
+
+Registry titles are resolved once per distinct key in each download. If GBIF's
+Registry API is unavailable or a key has no title, the import continues with an
+empty title while preserving the UUID. Registry enrichment stops starting new
+lookup batches after two minutes, and each active request has connect and read
+timeouts. The provenance file records how many dataset and publishing
+organization keys were found and resolved.
 
 Imports use upserts. Existing records are updated, but records deleted by GBIF
 or moved outside the selected area are not removed from PostgreSQL.

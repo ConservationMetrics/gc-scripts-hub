@@ -10,7 +10,11 @@ import logging
 import os
 import tempfile
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
+from itertools import zip_longest
 from pathlib import Path
+from time import monotonic
+from urllib.parse import quote
 
 import requests
 
@@ -20,6 +24,14 @@ from f.common_logic.identifier_utils import camel_to_snake
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
 _API = "https://api.gbif.org/v1/occurrence/download"
+_REGISTRY_API = "https://api.gbif.org/v1"
+_REGISTRY_DEADLINE_SECONDS = 120
+_REGISTRY_TIMEOUT = (5, 20)
+_REGISTRY_WORKERS = 8
+_REGISTRY_USER_AGENT = (
+    "GuardianConnector GBIF connector "
+    "(https://github.com/ConservationMetrics/gc-scripts-hub)"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -70,12 +82,18 @@ def main(
         csv_path, record_count = _convert_archive(
             archive, temporary / "occurrences.csv"
         )
+        enriched_csv = temporary / "enriched-occurrences.csv"
+        enrichment = _enrich_csv(csv_path, enriched_csv)
+        csv_path.unlink()
+        csv_path = enriched_csv
         final_archive = destination / f"{download_key}.zip"
         final_csv = destination / f"{download_key}.csv"
         os.replace(archive, final_archive)
         os.replace(csv_path, final_csv)
         logger.info("GBIF archive saved to %s", final_archive)
-        logger.info("GBIF occurrence CSV saved to %s (%d records)", final_csv, record_count)
+        logger.info(
+            "GBIF occurrence CSV saved to %s (%d records)", final_csv, record_count
+        )
 
     provenance = {
         "download_key": download_key,
@@ -83,11 +101,10 @@ def main(
         "license": metadata.get("license"),
         "predicate": request.get("predicate") if isinstance(request, dict) else None,
         "record_count": record_count,
+        "enrichment": enrichment,
     }
     provenance_path = destination / f"{download_key}.json"
-    provenance_path.write_text(
-        json.dumps(provenance, indent=2), encoding="utf-8"
-    )
+    provenance_path.write_text(json.dumps(provenance, indent=2), encoding="utf-8")
     logger.info("GBIF provenance metadata saved to %s", provenance_path)
     if record_count:
         save_csv_to_postgres(
@@ -149,9 +166,10 @@ def _convert_archive(archive: Path, output_path: Path) -> tuple[Path, int]:
                     raise ValueError("GBIF occurrence TSV has no usable header.")
                 fieldnames = [camel_to_snake(name) for name in reader.fieldnames]
                 generated_fields = ("_id", "g__type", "g__coordinates")
-                if len(fieldnames) != len(set(fieldnames)) or set(generated_fields).intersection(
-                    fieldnames
-                ):
+                reserved_fields = (*generated_fields, "dataset", "publishing_org")
+                if len(fieldnames) != len(set(fieldnames)) or set(
+                    reserved_fields
+                ).intersection(fieldnames):
                     raise ValueError(
                         "GBIF occurrence TSV has headers that conflict after snake_case conversion."
                     )
@@ -185,6 +203,120 @@ def _convert_archive(archive: Path, output_path: Path) -> tuple[Path, int]:
     except (OSError, UnicodeDecodeError, zipfile.BadZipFile) as exc:
         raise ValueError("GBIF archive is corrupt or not UTF-8 TSV data.") from exc
     return output_path, count
+
+
+def _enrich_csv(source_path: Path, output_path: Path) -> dict[str, int]:
+    """Add GBIF dataset and publishing organization titles to a converted CSV."""
+    with source_path.open(encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source)
+        if reader.fieldnames is None:
+            raise ValueError("Converted GBIF CSV has no header.")
+        dataset_keys: set[str] = set()
+        publishing_org_keys: set[str] = set()
+        for row in reader:
+            dataset_key = (row.get("dataset_key") or "").strip()
+            publishing_org_key = (row.get("publishing_org_key") or "").strip()
+            if dataset_key:
+                dataset_keys.add(dataset_key)
+            if publishing_org_key:
+                publishing_org_keys.add(publishing_org_key)
+
+    dataset_titles, publishing_org_titles = _resolve_registry_titles(
+        dataset_keys, publishing_org_keys
+    )
+
+    with (
+        source_path.open(encoding="utf-8", newline="") as source,
+        output_path.open("w", encoding="utf-8", newline="") as output,
+    ):
+        reader = csv.DictReader(source)
+        fieldnames = [*(reader.fieldnames or []), "dataset", "publishing_org"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in reader:
+            dataset_key = (row.get("dataset_key") or "").strip()
+            publishing_org_key = (row.get("publishing_org_key") or "").strip()
+            row["dataset"] = dataset_titles.get(dataset_key, "")
+            row["publishing_org"] = publishing_org_titles.get(publishing_org_key, "")
+            writer.writerow(row)
+
+    return {
+        "dataset_keys": len(dataset_keys),
+        "datasets_resolved": len(dataset_titles),
+        "publishing_org_keys": len(publishing_org_keys),
+        "publishing_orgs_resolved": len(publishing_org_titles),
+    }
+
+
+def _resolve_registry_titles(
+    dataset_keys: set[str], publishing_org_keys: set[str]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Resolve distinct GBIF Registry keys with bounded request concurrency."""
+    lookups: list[tuple[str, str]] = []
+    for dataset_key, publishing_org_key in zip_longest(
+        sorted(dataset_keys), sorted(publishing_org_keys)
+    ):
+        if dataset_key is not None:
+            lookups.append(("dataset", dataset_key))
+        if publishing_org_key is not None:
+            lookups.append(("organization", publishing_org_key))
+    if not lookups:
+        return {}, {}
+
+    dataset_titles: dict[str, str] = {}
+    publishing_org_titles: dict[str, str] = {}
+    deadline = monotonic() + _REGISTRY_DEADLINE_SECONDS
+    for offset in range(0, len(lookups), _REGISTRY_WORKERS):
+        if monotonic() >= deadline:
+            logger.warning(
+                "GBIF Registry enrichment reached its %d-second deadline.",
+                _REGISTRY_DEADLINE_SECONDS,
+            )
+            break
+        batch = lookups[offset : offset + _REGISTRY_WORKERS]
+        with ThreadPoolExecutor(max_workers=len(batch)) as executor:
+            results = executor.map(lambda lookup: _registry_title(*lookup), batch)
+            for (resource_type, key), title in zip(batch, results, strict=True):
+                if title is None:
+                    continue
+                if resource_type == "dataset":
+                    dataset_titles[key] = title
+                else:
+                    publishing_org_titles[key] = title
+
+    unresolved_count = len(lookups) - len(dataset_titles) - len(publishing_org_titles)
+    if unresolved_count:
+        logger.warning(
+            "GBIF Registry enrichment left %d of %d keys unresolved.",
+            unresolved_count,
+            len(lookups),
+        )
+    return dataset_titles, publishing_org_titles
+
+
+def _registry_title(resource_type: str, key: str) -> str | None:
+    """Return one Registry title, or ``None`` when lookup is unsuccessful."""
+    url = f"{_REGISTRY_API}/{resource_type}/{quote(key, safe='')}"
+    try:
+        response = requests.get(
+            url,
+            headers={"User-Agent": _REGISTRY_USER_AGENT},
+            timeout=_REGISTRY_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        logger.info("Could not resolve GBIF %s %s: %s", resource_type, key, exc)
+        return None
+
+    if not isinstance(payload, dict):
+        logger.info("GBIF %s %s returned an invalid payload.", resource_type, key)
+        return None
+    title = payload.get("title")
+    if not isinstance(title, str) or not title.strip():
+        logger.info("GBIF %s %s returned no title.", resource_type, key)
+        return None
+    return title.strip()
 
 
 def _coordinates(longitude: str | None, latitude: str | None) -> list[float] | None:
