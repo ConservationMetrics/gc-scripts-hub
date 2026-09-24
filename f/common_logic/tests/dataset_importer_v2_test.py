@@ -1103,7 +1103,7 @@ def test_existing_staged_create_is_backfilled_into_registry(mock_db_connection):
 def test_supported_formats_are_staged(
     mock_db_connection, relative_path, expected_format
 ):
-    path = Path(__file__).parents[1] / "assets" / relative_path
+    path = Path(__file__).parent / "assets" / relative_path
     staged = stage_import(
         mock_db_connection,
         upload_bytes(path.name, path.read_bytes()),
@@ -1141,7 +1141,7 @@ def test_single_layer_geopackage_is_staged(mock_db_connection, tmp_path):
 
 
 def test_multi_layer_geopackage_is_rejected(mock_db_connection):
-    path = Path(__file__).parents[1] / "assets" / "datasets_bees.gpkg"
+    path = Path(__file__).parent / "assets" / "datasets_bees.gpkg"
     with pytest.raises(ImportValidationError, match="exactly one spatial layer"):
         stage_import(
             mock_db_connection,
@@ -1233,7 +1233,7 @@ def test_json_and_cybertracker_are_detected_by_content(mock_db_connection):
     )
     assert regular["source_format"] == "json"
     cybertracker = (
-        Path(__file__).parents[3]
+        Path(__file__).resolve().parents[2]
         / "connectors"
         / "cybertracker"
         / "tests"
