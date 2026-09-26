@@ -1,0 +1,10 @@
+summary: Dataset Importer v2 engine
+description: Staging, preview, and transactional apply logic for Dataset Importer v2.
+lock: '!inline f/common_logic/dataset_importer_v2.script.lock'
+kind: script
+no_main_func: true
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  properties: {}
+  required: []

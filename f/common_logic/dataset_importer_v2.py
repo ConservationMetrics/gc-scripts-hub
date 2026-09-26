@@ -1,0 +1,1795 @@
+"""SQL-backed engine for Dataset Importer v2.
+
+The importer shares the established warehouse field-mapping behavior while
+providing transactional append, merge, and sync strategies beyond
+``StructuredDBWriter``'s upsert-on-``_id`` contract.
+"""
+
+import base64
+import csv
+import hashlib
+import json
+import math
+import os
+import stat
+import uuid
+import zipfile
+from contextlib import suppress
+from datetime import UTC, datetime, timedelta
+from io import BytesIO, StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from psycopg import connect, errors, sql
+
+from f.common_logic.db_operations import (
+    column_mapping_table_name,
+    conninfo,
+    ensure_column_mapping_table,
+)
+from f.common_logic.identifier_utils import (
+    normalize_identifier,
+    sanitize_sql_columns,
+    uniquify_sql_identifier,
+)
+
+SCHEMA = "dataset_importer_v2"
+MAX_SOURCE_BYTES = 25 * 1024 * 1024
+MAX_EXPANDED_BYTES = 100 * 1024 * 1024
+MAX_COLUMNS = 150
+MAX_ARCHIVE_MEMBERS = 1000
+SESSION_TTL = timedelta(hours=24)
+VALID_GOALS = {"create", "append", "merge", "sync"}
+VALID_POLICIES = {"imported", "existing"}
+COORDINATE_PAIRS = (
+    ("decimallongitude", "decimallatitude"),
+    ("longitude", "latitude"),
+    ("lon", "lat"),
+    ("lng", "lat"),
+)
+TABULAR_GEOMETRY_TYPES = {
+    "Point",
+    "LineString",
+    "MultiLineString",
+    "Polygon",
+    "MultiPolygon",
+}
+EMPTY_CONVERSION_ERRORS = {
+    "Excel file contains no data",
+    "GeoJSON contains no features",
+    "No valid features found in GeoPackage",
+    "No valid features found in input file",
+    "No valid features found in shapefile",
+}
+AUXILIARY_SUFFIXES = ("__columns", "__labels", "__metadata")
+SHAPEFILE_EXTENSIONS = {".shp", ".shx", ".dbf", ".prj", ".cpg"}
+SUPPORTED_EXTENSIONS = {
+    ".csv",
+    ".geojson",
+    ".gpx",
+    ".gpkg",
+    ".json",
+    ".kml",
+    ".xls",
+    ".xlsx",
+    ".xml",
+}
+
+
+class ImportValidationError(ValueError):
+    """An import cannot safely proceed."""
+
+
+def _canonical_coordinate_field(name):
+    return "".join(character for character in name.casefold() if character.isalnum())
+
+
+def _point_coordinates(longitude, latitude):
+    try:
+        if isinstance(longitude, bool) or isinstance(latitude, bool):
+            return None
+        longitude = float(longitude)
+        latitude = float(latitude)
+    except (TypeError, ValueError):
+        return None
+    if not (
+        math.isfinite(longitude)
+        and math.isfinite(latitude)
+        and -180 <= longitude <= 180
+        and -90 <= latitude <= 90
+    ):
+        return None
+    return [longitude, latitude]
+
+
+def _position_coordinates(position):
+    if not isinstance(position, (list, tuple)) or len(position) < 2:
+        return None
+    point = _point_coordinates(position[0], position[1])
+    if point is None:
+        return None
+    extra = []
+    for value in position[2:]:
+        try:
+            if isinstance(value, bool):
+                return None
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(value):
+            return None
+        extra.append(value)
+    return point + extra
+
+
+def _normalize_geometry_coordinates(geometry_type, coordinates):
+    if geometry_type == "Point":
+        return _position_coordinates(coordinates)
+    if geometry_type == "LineString":
+        if not isinstance(coordinates, list) or len(coordinates) < 2:
+            return None
+        positions = [_position_coordinates(position) for position in coordinates]
+        return positions if all(position is not None for position in positions) else None
+    if geometry_type == "MultiLineString":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        parts = [
+            _normalize_geometry_coordinates("LineString", part) for part in coordinates
+        ]
+        return parts if all(part is not None for part in parts) else None
+    if geometry_type == "Polygon":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        rings = []
+        for ring in coordinates:
+            if not isinstance(ring, list) or len(ring) < 4:
+                return None
+            positions = [_position_coordinates(position) for position in ring]
+            if any(position is None for position in positions) or positions[0] != positions[-1]:
+                return None
+            rings.append(positions)
+        return rings
+    if geometry_type == "MultiPolygon":
+        if not isinstance(coordinates, list) or not coordinates:
+            return None
+        polygons = [
+            _normalize_geometry_coordinates("Polygon", polygon)
+            for polygon in coordinates
+        ]
+        return polygons if all(polygon is not None for polygon in polygons) else None
+    return None
+
+
+def _validate_explicit_tabular_geometry(rows):
+    for row in rows:
+        geometry_type = row["g__type"]
+        raw_coordinates = row["g__coordinates"]
+        if geometry_type is None and raw_coordinates is None:
+            continue
+        if geometry_type is None or raw_coordinates is None:
+            raise ImportValidationError(
+                "Explicit geometry requires both g__type and g__coordinates for each row."
+            )
+        try:
+            coordinates = (
+                json.loads(raw_coordinates)
+                if isinstance(raw_coordinates, str)
+                else raw_coordinates
+            )
+        except json.JSONDecodeError as exc:
+            raise ImportValidationError(
+                "Explicit g__coordinates values must be valid JSON arrays."
+            ) from exc
+        if geometry_type not in TABULAR_GEOMETRY_TYPES:
+            raise ImportValidationError(
+                "Explicit geometry requires a supported geometry type and JSON coordinate array."
+            )
+        coordinates = _normalize_geometry_coordinates(geometry_type, coordinates)
+        if coordinates is None:
+            raise ImportValidationError(
+                "Explicit geometry contains invalid coordinates for its geometry type."
+            )
+        row["g__coordinates"] = json.dumps(coordinates, separators=(",", ":"))
+
+
+def _normalize_tabular_geometry(rows):
+    if not rows:
+        return rows
+    fields = list(rows[0])
+    has_type = "g__type" in fields
+    has_coordinates = "g__coordinates" in fields
+    if has_type != has_coordinates:
+        raise ImportValidationError(
+            "Tabular geometry must include both g__type and g__coordinates columns."
+        )
+    if has_type:
+        _validate_explicit_tabular_geometry(rows)
+        return rows
+
+    canonical_fields = {}
+    for field in fields:
+        canonical_fields.setdefault(_canonical_coordinate_field(field), []).append(field)
+    matches = []
+    for longitude_alias, latitude_alias in COORDINATE_PAIRS:
+        longitude_fields = canonical_fields.get(longitude_alias, [])
+        latitude_fields = canonical_fields.get(latitude_alias, [])
+        if longitude_fields and latitude_fields:
+            if len(longitude_fields) != 1 or len(latitude_fields) != 1:
+                raise ImportValidationError(
+                    "Coordinate columns are ambiguous. Rename them before importing."
+                )
+            matches.append((longitude_fields[0], latitude_fields[0]))
+    if len(matches) > 1:
+        raise ImportValidationError(
+            "Multiple longitude and latitude column pairs were found. Rename all but one pair."
+        )
+    if not matches:
+        return rows
+
+    longitude_field, latitude_field = matches[0]
+    for row in rows:
+        coordinates = _point_coordinates(row[longitude_field], row[latitude_field])
+        row["g__type"] = "Point" if coordinates else None
+        row["g__coordinates"] = (
+            json.dumps(coordinates, separators=(",", ":")) if coordinates else None
+        )
+    return rows
+
+
+def _tabular_geometry_warning(rows):
+    fields = _source_fields(rows)
+    if {"g__type", "g__coordinates"}.issubset(fields):
+        return None
+    aliases = {alias for pair in COORDINATE_PAIRS for alias in pair}
+    if any(_canonical_coordinate_field(field) in aliases for field in fields):
+        return (
+            "Coordinate columns were incomplete or could not be paired within one file, "
+            "so no map geometry was generated."
+        )
+    return None
+
+
+def _conninfo(db):
+    """Accept either a Windmill PostgreSQL resource or a test connection string."""
+    return db if isinstance(db, str) else conninfo(db)
+
+
+def _quoted_table(table_name):
+    return sql.SQL("{}.{}").format(sql.Identifier("public"), sql.Identifier(table_name))
+
+
+def _archive_destination(table_name, source_name, import_id):
+    root = Path(
+        os.environ.get("DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake")
+    )
+    return root / table_name / f"{import_id}_{Path(source_name).name}"
+
+
+def _fsync_directory(directory):
+    descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _mkdir_durable(directory):
+    missing = []
+    current = Path(directory)
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    for created in reversed(missing):
+        _fsync_directory(created.parent)
+
+
+def _remove_archive_file(path):
+    path = Path(path)
+    path.unlink(missing_ok=True)
+    if path.parent.exists():
+        _fsync_directory(path.parent)
+
+
+def _payload(uploaded_file):
+    if isinstance(uploaded_file, list):
+        if len(uploaded_file) != 1:
+            raise ImportValidationError("Upload exactly one source file.")
+        uploaded_file = uploaded_file[0]
+    if not isinstance(uploaded_file, dict):
+        raise ImportValidationError("The upload payload is invalid.")
+    name = Path(str(uploaded_file.get("name", ""))).name
+    encoded = uploaded_file.get("data")
+    if not name or not isinstance(encoded, str):
+        raise ImportValidationError("The upload must include a file name and data.")
+    max_encoded_bytes = 4 * ((MAX_SOURCE_BYTES + 2) // 3)
+    if len(encoded) > max_encoded_bytes:
+        raise ImportValidationError("Source uploads must not exceed 25 MiB.")
+    try:
+        contents = base64.b64decode(encoded, validate=True)
+    except ValueError as exc:
+        raise ImportValidationError(
+            "The uploaded file is not valid base64 data."
+        ) from exc
+    if len(contents) > MAX_SOURCE_BYTES:
+        raise ImportValidationError("Source uploads must not exceed 25 MiB.")
+    return name, contents
+
+
+def _json_value(value):
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    return value
+
+
+def _parse_csv(contents):
+    try:
+        text = contents.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ImportValidationError("CSV files must be UTF-8 encoded.") from exc
+    try:
+        try:
+            dialect = csv.Sniffer().sniff(text[:65536], delimiters=",\t")
+        except csv.Error:
+            dialect = csv.excel
+        reader = csv.DictReader(StringIO(text), dialect=dialect)
+        if not reader.fieldnames or any(
+            name is None or not name.strip() for name in reader.fieldnames
+        ):
+            raise ImportValidationError("CSV files must have non-empty column names.")
+        if len(set(reader.fieldnames)) != len(reader.fieldnames):
+            raise ImportValidationError(
+                "CSV files cannot contain duplicate column names."
+            )
+        # CSV has no representation for a JSON-style missing key. An empty cell is
+        # an explicitly supplied empty value, which the importer stores as NULL.
+        rows = []
+        for row in reader:
+            if None in row or any(value is None for value in row.values()):
+                raise ImportValidationError("CSV rows must match the header column count.")
+            rows.append(
+                {key: (None if value == "" else value) for key, value in row.items()}
+            )
+    except csv.Error as exc:
+        raise ImportValidationError("The CSV file is malformed.") from exc
+    return _normalize_tabular_geometry(rows)
+
+
+def _geojson_rows(document):
+    if not isinstance(document, dict):
+        raise ImportValidationError("GeoJSON must be a FeatureCollection.")
+    if document.get("type") != "FeatureCollection" or not isinstance(
+        document.get("features"), list
+    ):
+        raise ImportValidationError("GeoJSON must be a FeatureCollection.")
+    rows = []
+    for feature in document["features"]:
+        if not isinstance(feature, dict) or feature.get("type") != "Feature":
+            raise ImportValidationError("GeoJSON collections must contain Features.")
+        properties = feature.get("properties")
+        if properties is None:
+            properties = {}
+        if not isinstance(properties, dict):
+            raise ImportValidationError("GeoJSON feature properties must be an object.")
+        row = {key: _json_value(value) for key, value in properties.items()}
+        reserved = {"feature.id", "g__type", "g__coordinates"} & row.keys()
+        if reserved:
+            raise ImportValidationError(
+                "GeoJSON properties use reserved fields: " + ", ".join(sorted(reserved))
+            )
+        if "id" in feature:
+            row["feature.id"] = _json_value(feature["id"])
+        geometry = feature.get("geometry")
+        if geometry is not None:
+            if not isinstance(geometry, dict) or not isinstance(
+                geometry.get("type"), str
+            ):
+                raise ImportValidationError("Unsupported GeoJSON geometry.")
+            if geometry["type"] == "GeometryCollection":
+                raise ImportValidationError(
+                    "GeometryCollection geometries are not supported by this importer."
+                )
+            spatial_data = geometry.get("coordinates")
+            if not isinstance(spatial_data, (list, tuple)):
+                raise ImportValidationError("Unsupported GeoJSON geometry.")
+            row["g__type"] = geometry.get("type")
+            row["g__coordinates"] = json.dumps(
+                spatial_data, separators=(",", ":")
+            )
+        else:
+            row["g__type"] = None
+            row["g__coordinates"] = None
+        rows.append(row)
+    return rows
+
+
+def _parse_geojson(contents):
+    try:
+        document = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ImportValidationError("The GeoJSON file is malformed.") from exc
+    return _geojson_rows(document)
+
+
+def _parse_json(contents):
+    try:
+        document = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ImportValidationError("The JSON file is malformed.") from exc
+    if not isinstance(document, list) or not document:
+        raise ImportValidationError("JSON must be a non-empty array of objects.")
+    if not all(isinstance(row, dict) for row in document):
+        raise ImportValidationError("Every JSON record must be an object.")
+    return [
+        {key: _json_value(value) for key, value in row.items()} for row in document
+    ]
+
+
+def _tabular_rows(data):
+    if not data:
+        return []
+    headers = data[0]
+    if not headers or any(not isinstance(header, str) or not header.strip() for header in headers):
+        raise ImportValidationError("Tabular files must have non-empty column names.")
+    if len(headers) != len(set(headers)):
+        raise ImportValidationError("Tabular files cannot contain duplicate column names.")
+    rows = []
+    for values in data[1:]:
+        if len(values) != len(headers):
+            raise ImportValidationError("A tabular row has the wrong number of values.")
+        rows.append(
+            {
+                header: None if value == "" else _json_value(value)
+                for header, value in zip(headers, values)
+            }
+        )
+    return _normalize_tabular_geometry(rows)
+
+
+def _parse_converted_paths(file_paths):
+    import fiona
+
+    from f.common_logic.data_conversion import convert_data, detect_structured_data_type
+
+    detected = detect_structured_data_type([str(path) for path in file_paths])
+    if detected == "unsupported" or detected == "xml":
+        raise ImportValidationError("The uploaded file type is not supported.")
+    if detected == "geopackage":
+        spatial_layers = []
+        for layer in fiona.listlayers(file_paths[0]):
+            with fiona.open(file_paths[0], layer=layer) as collection:
+                if collection.schema["geometry"] not in (None, "None"):
+                    spatial_layers.append(layer)
+        if len(spatial_layers) != 1:
+            raise ImportValidationError(
+                "A GeoPackage must contain exactly one spatial layer."
+            )
+    try:
+        converted, output_format = convert_data(
+            [str(path) for path in file_paths], detected
+        )
+    except (OSError, ValueError) as exc:
+        if str(exc) in EMPTY_CONVERSION_ERRORS:
+            return detected, []
+        raise ImportValidationError(str(exc)) from exc
+    rows = _tabular_rows(converted) if output_format == "csv" else _geojson_rows(converted)
+    return detected, rows
+
+
+def _safe_archive_members(contents):
+    try:
+        archive = zipfile.ZipFile(BytesIO(contents))
+    except zipfile.BadZipFile as exc:
+        raise ImportValidationError("The ZIP file is malformed.") from exc
+    members = [member for member in archive.infolist() if not member.is_dir()]
+    if not members:
+        raise ImportValidationError("The ZIP file is empty.")
+    if len(members) > MAX_ARCHIVE_MEMBERS:
+        raise ImportValidationError("The ZIP file contains too many files.")
+    if sum(member.file_size for member in members) > MAX_EXPANDED_BYTES:
+        raise ImportValidationError("ZIP contents must not exceed 100 MiB uncompressed.")
+    seen = set()
+    for member in members:
+        member_path = Path(member.filename)
+        mode = member.external_attr >> 16
+        if (
+            member_path.is_absolute()
+            or ".." in member_path.parts
+            or stat.S_ISLNK(mode)
+            or member.filename in seen
+        ):
+            raise ImportValidationError("The ZIP file contains an unsafe file path.")
+        seen.add(member.filename)
+    return archive, members
+
+
+def _extract_member(archive, member, destination):
+    target = destination / Path(member.filename).name
+    if target.exists():
+        raise ImportValidationError("ZIP files cannot contain duplicate file names.")
+    with archive.open(member) as source, target.open("wb") as output:
+        output.write(source.read())
+    return target
+
+
+def _parse_zip(contents):
+    archive, members = _safe_archive_members(contents)
+    with archive, TemporaryDirectory() as directory:
+        destination = Path(directory)
+        suffixes = [Path(member.filename).suffix.lower() for member in members]
+        if ".shp" in suffixes:
+            if any(suffix not in SHAPEFILE_EXTENSIONS for suffix in suffixes):
+                raise ImportValidationError(
+                    "A Shapefile ZIP cannot contain unrelated files."
+                )
+            stems = {Path(member.filename).stem for member in members}
+            if len(stems) != 1 or not {".shp", ".shx", ".dbf"}.issubset(suffixes):
+                raise ImportValidationError(
+                    "A Shapefile ZIP must contain matching .shp, .shx, and .dbf files."
+                )
+            paths = [_extract_member(archive, member, destination) for member in members]
+            _, rows = _parse_converted_paths(paths)
+            return "shapefile", rows
+        if any(suffix not in SUPPORTED_EXTENSIONS for suffix in suffixes):
+            raise ImportValidationError("The ZIP file contains an unsupported file type.")
+        rows = []
+        for member in members:
+            path = _extract_member(archive, member, destination)
+            _, member_rows = _parse_path(path)
+            rows.extend(member_rows)
+        return "zip", rows
+
+
+def _parse_path(path):
+    suffix = path.suffix.lower()
+    if suffix == ".xlsx":
+        try:
+            with zipfile.ZipFile(path) as workbook:
+                if sum(member.file_size for member in workbook.infolist()) > MAX_EXPANDED_BYTES:
+                    raise ImportValidationError(
+                        "Spreadsheet contents must not exceed 100 MiB uncompressed."
+                    )
+        except zipfile.BadZipFile as exc:
+            raise ImportValidationError("The XLSX file is malformed.") from exc
+    contents = path.read_bytes()
+    if suffix == ".csv":
+        return "csv", _parse_csv(contents)
+    if suffix == ".geojson":
+        return "geojson", _parse_geojson(contents)
+    if suffix == ".json":
+        try:
+            document = json.loads(contents)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ImportValidationError("The JSON file is malformed.") from exc
+        if isinstance(document, dict) and document.get("type") == "FeatureCollection":
+            return "geojson", _geojson_rows(document)
+        from f.common_logic.data_conversion import detect_structured_data_type
+
+        detected = detect_structured_data_type([str(path)])
+        if detected == "cybertracker":
+            return _parse_converted_paths([path])
+        return "json", _parse_json(contents)
+    return _parse_converted_paths([path])
+
+
+def _parse_source(name, contents):
+    suffix = Path(name).suffix.lower()
+    if suffix == ".zip":
+        return _parse_zip(contents)
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise ImportValidationError("The uploaded file type is not supported.")
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / Path(name).name
+        path.write_bytes(contents)
+        return _parse_path(path)
+
+
+def _source_fields(rows):
+    source_fields = []
+    seen = set()
+    for row in rows:
+        for field in row:
+            if field not in seen:
+                seen.add(field)
+                source_fields.append(field)
+    return source_fields
+
+
+def _source_mapping(rows, existing_mapping=None, target_columns=None):
+    existing_mapping = existing_mapping or {}
+    target_columns = set(target_columns or [])
+    reverse = {}
+    for source, stored in existing_mapping.items():
+        if stored in reverse and reverse[stored] != source:
+            raise ImportValidationError(
+                f"The target dataset maps both '{reverse[stored]}' and '{source}' to '{stored}'."
+            )
+        reverse[stored] = source
+    # _id is owned by the importer. Preserve an uploaded _id as ordinary data,
+    # and let the shared resolver disambiguate a real source_id field if needed.
+    uploaded_id_column = existing_mapping.get("_id") or uniquify_sql_identifier(
+        "source_id", existing_mapping.values()
+    )
+    seeded_mapping = {**existing_mapping, "_id": uploaded_id_column}
+    mapping = sanitize_sql_columns(
+        _source_fields(rows),
+        seeded_mapping,
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__"), ("$", "__")],
+        sep_policy="underscore",
+    )
+    claimed_columns = set(existing_mapping.values()) | set(mapping.values())
+    for source, stored in list(mapping.items()):
+        if source == "_id" or source in existing_mapping or stored in target_columns:
+            continue
+        legacy_stored = sanitize_sql_columns([source])[source]
+        if legacy_stored in target_columns and legacy_stored not in claimed_columns:
+            claimed_columns.remove(stored)
+            claimed_columns.add(legacy_stored)
+            mapping[source] = legacy_stored
+    for source, stored in mapping.items():
+        if stored == "_id":
+            raise ImportValidationError("'_id' is reserved for internal row identity.")
+        if stored in {"g__type", "g__coordinates"} and source != stored:
+            raise ImportValidationError(
+                f"Column '{source}' conflicts with reserved geometry column '{stored}'."
+            )
+        reverse[stored] = source
+    if len(mapping) + 1 > MAX_COLUMNS:
+        raise ImportValidationError(
+            "An imported dataset may contain at most 150 columns."
+        )
+    return mapping
+
+
+def _schema_has_importer_contract(cursor, schema):
+    required_columns = {
+        "import_sessions": {
+            "import_id",
+            "goal",
+            "target_table",
+            "source_name",
+            "source_sha256",
+            "source_format",
+            "source_mapping",
+            "status",
+            "created_at",
+        },
+        "import_rows": {"import_id", "row_ordinal", "payload"},
+        "dataset_registry": {
+            "target_table",
+            "columns_table",
+            "status",
+            "source_import_id",
+        },
+    }
+    cursor.execute(
+        """SELECT table_name, column_name
+           FROM information_schema.columns
+           WHERE table_schema = %s AND table_name = ANY(%s)""",
+        (schema, list(required_columns)),
+    )
+    actual_columns = {table: set() for table in required_columns}
+    for table, column in cursor.fetchall():
+        actual_columns[table].add(column)
+    if any(
+        not columns.issubset(actual_columns[table])
+        for table, columns in required_columns.items()
+    ):
+        return False
+    cursor.execute(
+        """SELECT c.relname, c.relkind
+           FROM pg_catalog.pg_class c
+           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = %s AND c.relname = ANY(%s)""",
+        (schema, list(required_columns)),
+    )
+    return dict(cursor.fetchall()) == {table: "r" for table in required_columns}
+
+
+def _adopt_legacy_schema(cursor):
+    """Adopt an explicitly configured previous schema on first v2 use."""
+    migration_schema = os.environ.get("DATASET_IMPORTER_V2_MIGRATE_SCHEMA")
+    if not migration_schema:
+        return
+    if migration_schema == SCHEMA:
+        raise ImportValidationError("The migration source must differ from the v2 schema.")
+    # This session lock intentionally lives until the owning connection closes,
+    # covering all of _ensure_schema() in both transactional and autocommit callers.
+    cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", (SCHEMA,))
+    cursor.execute("SELECT to_regnamespace(%s)", (SCHEMA,))
+    if cursor.fetchone()[0] is not None:
+        return
+    cursor.execute(
+        """SELECT pg_get_userbyid(nspowner) = current_user
+           FROM pg_catalog.pg_namespace WHERE nspname = %s""",
+        (migration_schema,),
+    )
+    owned = cursor.fetchone()
+    if not owned or not owned[0] or not _schema_has_importer_contract(
+        cursor, migration_schema
+    ):
+        raise ImportValidationError(
+            "The configured migration schema is missing, incompatible, or not owned by the database user."
+        )
+    cursor.execute(
+        sql.SQL("ALTER SCHEMA {} RENAME TO {}").format(
+            sql.Identifier(migration_schema), sql.Identifier(SCHEMA)
+        )
+    )
+
+
+def _ensure_schema(cursor):
+    _adopt_legacy_schema(cursor)
+    cursor.execute(
+        sql.SQL("CREATE SCHEMA IF NOT EXISTS {};").format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {}.import_sessions (
+                import_id UUID PRIMARY KEY,
+                goal TEXT NOT NULL,
+                target_table TEXT NOT NULL,
+                source_name TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL,
+                source_data BYTEA,
+                source_format TEXT NOT NULL,
+                source_mapping JSONB NOT NULL,
+                status TEXT NOT NULL,
+                preview JSONB,
+                preview_id UUID,
+                created_at TIMESTAMPTZ NOT NULL,
+                expires_at TIMESTAMPTZ NOT NULL,
+                archive_path TEXT,
+                applied_at TIMESTAMPTZ
+            );"""
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {}.import_rows (
+                import_id UUID NOT NULL REFERENCES {}.import_sessions(import_id) ON DELETE CASCADE,
+                row_ordinal INTEGER NOT NULL,
+                payload JSONB NOT NULL,
+                PRIMARY KEY (import_id, row_ordinal)
+            );"""
+        ).format(sql.Identifier(SCHEMA), sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            """CREATE TABLE IF NOT EXISTS {}.dataset_registry (
+                target_table TEXT PRIMARY KEY,
+                columns_table TEXT UNIQUE NOT NULL,
+                status TEXT NOT NULL CHECK (status IN ('reserved', 'active')),
+                source_import_id UUID UNIQUE
+            )"""
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS source_data BYTEA"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS archive_path TEXT"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ADD COLUMN IF NOT EXISTS preview_id UUID"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "UPDATE {}.import_sessions SET expires_at = created_at + INTERVAL '24 hours' WHERE expires_at IS NULL"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    cursor.execute(
+        sql.SQL(
+            "ALTER TABLE {}.import_sessions ALTER COLUMN expires_at SET NOT NULL"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    expired_count = _cleanup_expired(cursor, datetime.now(UTC))
+    _backfill_dataset_registry(cursor)
+    return expired_count
+
+
+def _columns_table_name(table_name):
+    return column_mapping_table_name(table_name)
+
+
+def _relation_exists(cursor, table_name):
+    cursor.execute(
+        """SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = %s
+            AND table_type = 'BASE TABLE'
+        )""",
+        (table_name,),
+    )
+    return cursor.fetchone()[0]
+
+
+def _public_relation_exists(cursor, table_name):
+    cursor.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{table_name}",))
+    return cursor.fetchone()[0]
+
+
+def _normalize_dataset_name(dataset_name, *, allow_auxiliary=False):
+    if not isinstance(dataset_name, str) or not dataset_name.strip():
+        raise ImportValidationError("Enter a dataset name.")
+    table_name = normalize_identifier(dataset_name)
+    if table_name == "_":
+        raise ImportValidationError("Enter a dataset name containing letters or numbers.")
+    if not allow_auxiliary and table_name.endswith(AUXILIARY_SUFFIXES):
+        raise ImportValidationError("Dataset names cannot use a reserved suffix.")
+    return table_name
+
+
+def _mapping_name_is_available(cursor, table_name):
+    cursor.execute(
+        """SELECT table_name FROM information_schema.tables
+           WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"""
+    )
+    public_tables = [row[0] for row in cursor.fetchall()]
+    mapping_name = _columns_table_name(table_name)
+    if _public_relation_exists(cursor, mapping_name):
+        return False
+    cursor.execute("SELECT to_regclass(%s)", (f"{SCHEMA}.dataset_registry",))
+    if cursor.fetchone()[0] is not None:
+        cursor.execute(
+            sql.SQL(
+                "SELECT 1 FROM {}.dataset_registry WHERE target_table = %s OR columns_table = %s"
+            ).format(sql.Identifier(SCHEMA)),
+            (table_name, mapping_name),
+        )
+        if cursor.fetchone():
+            return False
+    return not any(
+        existing != table_name and _columns_table_name(existing) == mapping_name
+        for existing in public_tables
+        if not existing.endswith(AUXILIARY_SUFFIXES)
+    )
+
+
+def _claim_dataset_mapping(cursor, table_name, import_id, creating):
+    columns_table = _columns_table_name(table_name)
+    cursor.execute(
+        sql.SQL(
+            "SELECT target_table, columns_table, status, source_import_id FROM {}.dataset_registry WHERE target_table = %s OR columns_table = %s FOR UPDATE"
+        ).format(sql.Identifier(SCHEMA)),
+        (table_name, columns_table),
+    )
+    claimed = cursor.fetchone()
+    if claimed:
+        if claimed[0] != table_name or claimed[1] != columns_table:
+            raise ImportValidationError(
+                "This dataset name conflicts with an existing dataset. Choose another name."
+            )
+        if creating and claimed[3] != import_id:
+            raise ImportValidationError("A dataset with this name already exists.")
+        return
+    if creating and _public_relation_exists(cursor, columns_table):
+        raise ImportValidationError(
+            "This dataset name conflicts with an existing column mapping. Choose another name."
+        )
+    try:
+        cursor.execute(
+            sql.SQL(
+                "INSERT INTO {}.dataset_registry (target_table, columns_table, status, source_import_id) VALUES (%s, %s, %s, %s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (
+                table_name,
+                columns_table,
+                "reserved" if creating else "active",
+                import_id if creating else None,
+            ),
+        )
+    except errors.UniqueViolation as exc:
+        raise ImportValidationError(
+            "This dataset name conflicts with an existing dataset. Choose another name."
+        ) from exc
+
+
+def _backfill_dataset_registry(cursor):
+    cursor.execute(
+        sql.SQL(
+            "SELECT import_id, target_table, status FROM {}.import_sessions WHERE goal = 'create' AND status != 'invalidated' ORDER BY (status = 'applied') DESC, created_at DESC"
+        ).format(sql.Identifier(SCHEMA))
+    )
+    for import_id, table_name, status in cursor.fetchall():
+        active = status in {"applied", "archived"}
+        if not active and _public_relation_exists(cursor, table_name):
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'invalidated' WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (import_id,),
+            )
+            continue
+        try:
+            _claim_dataset_mapping(cursor, table_name, import_id, not active)
+        except ImportValidationError:
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'invalidated' WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (import_id,),
+            )
+            continue
+        if active:
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (table_name,),
+            )
+
+
+def _cleanup_expired(cursor, now):
+    cursor.execute(
+        sql.SQL(
+            "SELECT import_id, target_table, source_name, status FROM {}.import_sessions WHERE expires_at <= %s AND status != 'applied' FOR UPDATE"
+        ).format(sql.Identifier(SCHEMA)),
+        (now,),
+    )
+    expired_ids = []
+    for import_id, table_name, source_name, status in cursor.fetchall():
+        if status != "archived":
+            destination = _archive_destination(table_name, source_name, import_id)
+            try:
+                _remove_archive_file(destination)
+                _remove_archive_file(
+                    destination.with_suffix(destination.suffix + ".tmp")
+                )
+            except OSError:
+                continue
+        expired_ids.append(import_id)
+    if expired_ids:
+        cursor.execute(
+            sql.SQL(
+                "DELETE FROM {}.import_sessions WHERE import_id = ANY(%s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (expired_ids,),
+        )
+        cursor.execute(
+            sql.SQL(
+                "DELETE FROM {}.dataset_registry WHERE status = 'reserved' AND source_import_id = ANY(%s)"
+            ).format(sql.Identifier(SCHEMA)),
+            (expired_ids,),
+        )
+    return len(expired_ids)
+
+
+def _dataset_is_eligible(cursor, table_name):
+    if table_name.endswith(AUXILIARY_SUFFIXES):
+        return False
+    cursor.execute(
+        """SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns c
+            JOIN pg_catalog.pg_class t ON t.relname = c.table_name
+            JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace
+            WHERE c.table_schema = 'public' AND c.table_name = %s
+            AND c.column_name = '_id' AND c.data_type IN ('text', 'character varying')
+            AND n.nspname = 'public' AND t.relkind = 'r'
+            AND EXISTS (
+                SELECT 1
+                FROM pg_catalog.pg_constraint con
+                WHERE con.conrelid = t.oid AND con.contype = 'p'
+                AND con.conkey = ARRAY[c.ordinal_position::smallint]
+            )
+        )""",
+        (table_name,),
+    )
+    return cursor.fetchone()[0]
+
+
+def _dataset_mapping(cursor, table_name):
+    mapping = {}
+    columns_table = _columns_table_name(table_name)
+    if _relation_exists(cursor, columns_table):
+        cursor.execute(
+            sql.SQL(
+                "SELECT original_column, sql_column FROM {} WHERE original_column IS NOT NULL"
+            ).format(_quoted_table(columns_table))
+        )
+        for original, stored in cursor.fetchall():
+            if original == "_id":
+                continue
+            if original in mapping and mapping[original] != stored:
+                raise ImportValidationError(
+                    f"The target dataset has conflicting mappings for '{original}'."
+                )
+            mapping[original] = stored
+    return mapping
+
+
+def _ensure_dataset_mapping(cursor, table_name, mapping):
+    columns_table = _columns_table_name(table_name)
+    ensure_column_mapping_table(
+        cursor, columns_table, schema="public", upgrade_types=True
+    )
+    cursor.execute(
+        sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
+            _quoted_table(columns_table)
+        )
+    )
+    for original, stored in mapping.items():
+        if original == "_id":
+            continue
+        cursor.execute(
+            sql.SQL(
+                "SELECT original_column, sql_column FROM {} WHERE original_column = %s OR sql_column = %s"
+            ).format(_quoted_table(columns_table)),
+            (original, stored),
+        )
+        conflicts = [row for row in cursor.fetchall() if row != (original, stored)]
+        if conflicts:
+            raise ImportValidationError(
+                "The dataset column mapping changed after this import was staged. Stage the import again."
+            )
+        cursor.execute(
+            sql.SQL(
+                """INSERT INTO {} (original_column, sql_column)
+                SELECT %s, %s WHERE NOT EXISTS (
+                    SELECT 1 FROM {} WHERE original_column = %s OR sql_column = %s
+                )"""
+            ).format(_quoted_table(columns_table), _quoted_table(columns_table)),
+            (original, stored, original, stored),
+        )
+
+
+def list_datasets(db):
+    """Return compatible public datasets in alphabetical order."""
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        _ensure_schema(cursor)
+        cursor.execute(
+            """SELECT table_name FROM information_schema.tables
+               WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+               ORDER BY table_name"""
+        )
+        table_names = [row[0] for row in cursor.fetchall()]
+        return [
+            table_name
+            for table_name in table_names
+            if _dataset_is_eligible(cursor, table_name)
+        ]
+
+
+def check_dataset_name(db, dataset_name):
+    table_name = _normalize_dataset_name(dataset_name)
+    with connect(_conninfo(db), autocommit=True) as conn, conn.cursor() as cursor:
+        exists = _public_relation_exists(cursor, table_name)
+        mapping_available = _mapping_name_is_available(cursor, table_name)
+    return {
+        "table_name": table_name,
+        "available": not exists and mapping_available,
+    }
+
+
+def stage_import(db, uploaded_file, goal, target_table):
+    """Parse and persist one source file for review without touching its target table."""
+    if goal not in VALID_GOALS:
+        raise ImportValidationError("Choose Create, Append, Merge, or Sync.")
+    if not target_table:
+        raise ImportValidationError("Choose or name a target dataset.")
+    name, contents = _payload(uploaded_file)
+    source_format, rows = _parse_source(name, contents)
+    geometry_warning = (
+        _tabular_geometry_warning(rows)
+        if source_format in {"csv", "xls", "xlsx", "zip"}
+        else None
+    )
+    table_name = _normalize_dataset_name(
+        target_table, allow_auxiliary=goal != "create"
+    )
+    import_id = uuid.uuid4()
+    now = datetime.now(UTC)
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        _ensure_schema(cursor)
+        _cleanup_expired(cursor, now)
+        exists = _public_relation_exists(cursor, table_name)
+        if goal == "create" and exists:
+            raise ImportValidationError("A dataset with this name already exists.")
+        if goal == "create" and not _mapping_name_is_available(cursor, table_name):
+            raise ImportValidationError(
+                "This dataset name conflicts with an existing dataset. Choose another name."
+            )
+        if goal != "create" and not exists:
+            raise ImportValidationError("Select an existing dataset for this goal.")
+        if goal != "create" and not _dataset_is_eligible(cursor, table_name):
+            raise ImportValidationError(
+                "The selected table is not a compatible Guardian Connector dataset."
+            )
+        _claim_dataset_mapping(cursor, table_name, import_id, goal == "create")
+        existing_mapping = _dataset_mapping(cursor, table_name) if exists else {}
+        target_columns = _target_columns(cursor, table_name) if exists else {}
+        mapping = _source_mapping(rows, existing_mapping, target_columns)
+        cursor.execute(
+            sql.SQL("""INSERT INTO {}.import_sessions
+                (import_id, goal, target_table, source_name, source_sha256, source_data, source_format, source_mapping, status, created_at, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'staged', %s, %s)""").format(
+                sql.Identifier(SCHEMA)
+            ),
+            (
+                import_id,
+                goal,
+                table_name,
+                name,
+                hashlib.sha256(contents).hexdigest(),
+                contents,
+                source_format,
+                json.dumps(mapping),
+                now,
+                now + SESSION_TTL,
+            ),
+        )
+        cursor.executemany(
+            sql.SQL(
+                "INSERT INTO {}.import_rows (import_id, row_ordinal, payload) VALUES (%s, %s, %s)"
+            ).format(sql.Identifier(SCHEMA)),
+            [
+                (
+                    import_id,
+                    ordinal,
+                    json.dumps({mapping[key]: value for key, value in row.items()}),
+                )
+                for ordinal, row in enumerate(rows, 1)
+            ],
+        )
+    result = {
+        "import_id": str(import_id),
+        "source_format": source_format,
+        "record_count": len(rows),
+        "fields": list(mapping),
+    }
+    if geometry_warning:
+        result["geometry_warning"] = geometry_warning
+    return result
+
+
+def _session(cursor, import_id, lock=False):
+    lock_sql = " FOR UPDATE" if lock else ""
+    cursor.execute(
+        sql.SQL(
+            "SELECT goal, target_table, source_mapping, status, preview, expires_at, preview_id FROM {}.import_sessions WHERE import_id = %s"
+            + lock_sql
+        ).format(sql.Identifier(SCHEMA)),
+        (import_id,),
+    )
+    result = cursor.fetchone()
+    if not result:
+        raise ImportValidationError(
+            "This import session does not exist or has expired."
+        )
+    if result[5] <= datetime.now(UTC):
+        raise ImportValidationError("This import session has expired. Start a new import.")
+    if result[3] == "invalidated":
+        raise ImportValidationError(
+            "This import session conflicts with another dataset. Start a new import."
+        )
+    return (*result[:5], result[6])
+
+
+def cleanup_expired_imports(db):
+    """Delete expired staged data and return the number of removed sessions."""
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        return _ensure_schema(cursor)
+
+
+def _target_columns(cursor, table_name):
+    cursor.execute(
+        """SELECT column_name, data_type FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = %s ORDER BY ordinal_position""",
+        (table_name,),
+    )
+    return dict(cursor.fetchall())
+
+
+def _target_fingerprint(cursor, table_name):
+    """Return a database-side baseline used to reject a stale confirmation."""
+    cursor.execute(
+        sql.SQL(
+            "SELECT count(*), coalesce(sum(hashtextextended(row_to_json(t)::text, 0)::numeric), 0) FROM {} t"
+        ).format(_quoted_table(table_name))
+    )
+    row_count, row_hash = cursor.fetchone()
+    cursor.execute(
+        """SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod),
+                  a.attnotnull, coalesce(pg_get_expr(d.adbin, d.adrelid), ''),
+                  a.attidentity, a.attgenerated
+           FROM pg_catalog.pg_attribute a
+           JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+           JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+           LEFT JOIN pg_catalog.pg_attrdef d
+             ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+           WHERE n.nspname = 'public' AND c.relname = %s
+             AND a.attnum > 0 AND NOT a.attisdropped
+           ORDER BY a.attnum""",
+        (table_name,),
+    )
+    columns = [list(column) for column in cursor.fetchall()]
+    cursor.execute(
+        """SELECT conname, pg_get_constraintdef(oid, true)
+           FROM pg_catalog.pg_constraint
+           WHERE conrelid = to_regclass(%s)
+           ORDER BY conname""",
+        (f"public.{table_name}",),
+    )
+    constraints = [list(constraint) for constraint in cursor.fetchall()]
+    cursor.execute(
+        """SELECT indexname, indexdef FROM pg_catalog.pg_indexes
+           WHERE schemaname = 'public' AND tablename = %s
+           ORDER BY indexname""",
+        (table_name,),
+    )
+    indexes = [list(index) for index in cursor.fetchall()]
+    cursor.execute(
+        """SELECT tgname, pg_get_triggerdef(oid, true)
+           FROM pg_catalog.pg_trigger
+           WHERE tgrelid = to_regclass(%s) AND NOT tgisinternal
+           ORDER BY tgname""",
+        (f"public.{table_name}",),
+    )
+    triggers = [list(trigger) for trigger in cursor.fetchall()]
+    cursor.execute(
+        """SELECT relrowsecurity, relforcerowsecurity
+           FROM pg_catalog.pg_class
+           WHERE oid = to_regclass(%s)""",
+        (f"public.{table_name}",),
+    )
+    row_security = list(cursor.fetchone())
+    cursor.execute(
+        """SELECT policyname, permissive, roles::text, cmd, qual, with_check
+           FROM pg_catalog.pg_policies
+           WHERE schemaname = 'public' AND tablename = %s
+           ORDER BY policyname""",
+        (table_name,),
+    )
+    policies = [list(policy) for policy in cursor.fetchall()]
+    return {
+        "row_count": row_count,
+        "row_hash": str(row_hash),
+        "columns": columns,
+        "constraints": constraints,
+        "indexes": indexes,
+        "triggers": triggers,
+        "row_security": row_security,
+        "policies": policies,
+    }
+
+
+def _identity_stored(source_mapping, selected):
+    if not selected or len(selected) > 3 or len(set(selected)) != len(selected):
+        raise ImportValidationError(
+            "Select one to three distinct record identity fields."
+        )
+    missing = [field for field in selected if field not in source_mapping]
+    if missing:
+        raise ImportValidationError(
+            "Selected identity fields are not present in the import."
+        )
+    return [source_mapping[field] for field in selected]
+
+
+def _identity_condition(identity_columns, staged_alias="s", target_alias="t"):
+    return sql.SQL(" AND ").join(
+        sql.SQL("({}.payload ->> {} IS NOT DISTINCT FROM {}.{})").format(
+            sql.Identifier(staged_alias),
+            sql.Literal(column),
+            sql.Identifier(target_alias),
+            sql.Identifier(column),
+        )
+        for column in identity_columns
+    )
+
+
+def preview_import(db, import_id, identity_fields=None, update_policy="imported"):
+    """Calculate a SQL-side import plan and retain it for one confirmation."""
+    if update_policy not in VALID_POLICIES:
+        raise ImportValidationError("Choose an update policy.")
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        _ensure_schema(cursor)
+        goal, table_name, mapping, status, _, _ = _session(cursor, import_id)
+        if status in {"applied", "archived"}:
+            raise ImportValidationError("This import has already been applied.")
+        stored_columns = list(mapping.values())
+        target_columns = _target_columns(cursor, table_name)
+        cursor.execute(
+            sql.SQL("SELECT count(*) FROM {}.import_rows WHERE import_id = %s").format(
+                sql.Identifier(SCHEMA)
+            ),
+            (import_id,),
+        )
+        staged_count = cursor.fetchone()[0]
+        geometry_counts = None
+        geometry_type_column = mapping.get("g__type")
+        geometry_coordinates_column = mapping.get("g__coordinates")
+        if geometry_type_column and geometry_coordinates_column:
+            cursor.execute(
+                sql.SQL(
+                    """SELECT
+                        count(*) FILTER (WHERE payload ->> {} IS NOT NULL AND payload ->> {} IS NOT NULL),
+                        count(*) FILTER (WHERE payload ->> {} IS NULL OR payload ->> {} IS NULL)
+                    FROM {}.import_rows WHERE import_id = %s"""
+                ).format(
+                    sql.Literal(geometry_type_column),
+                    sql.Literal(geometry_coordinates_column),
+                    sql.Literal(geometry_type_column),
+                    sql.Literal(geometry_coordinates_column),
+                    sql.Identifier(SCHEMA),
+                ),
+                (import_id,),
+            )
+            geometry_counts = cursor.fetchone()
+        incompatible = [
+            column
+            for column in stored_columns
+            if column in target_columns
+            and target_columns[column] not in {"text", "character varying"}
+        ]
+        if incompatible and staged_count > 0:
+            raise ImportValidationError(
+                "Dataset Importer v2 can only update existing text columns: "
+                + ", ".join(incompatible)
+            )
+        if goal in {"merge", "sync"} and staged_count > 0:
+            identity_columns = _identity_stored(mapping, identity_fields or [])
+            missing_target = [
+                column for column in identity_columns if column not in target_columns
+            ]
+            if missing_target:
+                raise ImportValidationError(
+                    "Selected identity fields do not exist in the target dataset."
+                )
+        else:
+            identity_columns = []
+        if (
+            staged_count > 0
+            and goal != "create"
+            and len(set(target_columns) | set(stored_columns)) > MAX_COLUMNS
+        ):
+            raise ImportValidationError("The final dataset would exceed 150 columns.")
+        if goal in {"create", "sync"} and staged_count == 0:
+            raise ImportValidationError("Create and Sync imports cannot be empty.")
+        if identity_columns:
+            identity_expr = sql.SQL(", ").join(
+                sql.SQL("payload ->> {}").format(sql.Literal(column))
+                for column in identity_columns
+            )
+            cursor.execute(
+                sql.SQL(
+                    "SELECT 1 FROM {}.import_rows WHERE import_id = %s GROUP BY {} HAVING count(*) > 1 LIMIT 1"
+                ).format(sql.Identifier(SCHEMA), identity_expr),
+                (import_id,),
+            )
+            if cursor.fetchone():
+                raise ImportValidationError(
+                    "Duplicate record identities were found in the import."
+                )
+            target_expr = sql.SQL(", ").join(
+                sql.Identifier(column) for column in identity_columns
+            )
+            cursor.execute(
+                sql.SQL(
+                    "SELECT 1 FROM {} GROUP BY {} HAVING count(*) > 1 LIMIT 1"
+                ).format(_quoted_table(table_name), target_expr)
+            )
+            if cursor.fetchone():
+                raise ImportValidationError(
+                    "Duplicate record identities were found in the target dataset."
+                )
+
+        additions = updates = deleted = unchanged = 0
+        new_columns = (
+            len(set(stored_columns) - set(target_columns)) if staged_count > 0 else 0
+        )
+        if goal == "create":
+            additions = staged_count
+        elif goal == "append":
+            additions = staged_count
+            cursor.execute(
+                sql.SQL("SELECT count(*) FROM {}").format(_quoted_table(table_name))
+            )
+            unchanged = cursor.fetchone()[0]
+        elif staged_count == 0:
+            cursor.execute(
+                sql.SQL("SELECT count(*) FROM {}").format(_quoted_table(table_name))
+            )
+            unchanged = cursor.fetchone()[0]
+        else:
+            condition = _identity_condition(identity_columns)
+            cursor.execute(
+                sql.SQL(
+                    "SELECT count(*) FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {})"
+                ).format(sql.Identifier(SCHEMA), _quoted_table(table_name), condition),
+                (import_id,),
+            )
+            additions = cursor.fetchone()[0]
+            if update_policy == "imported":
+                comparable = [column for column in stored_columns if column != "_id"]
+                if comparable:
+                    changes = sql.SQL(" OR ").join(
+                        (
+                            sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                            ).format(
+                                sql.Literal(column),
+                                sql.Literal(column),
+                                sql.Identifier(column),
+                            )
+                            if column in target_columns
+                            else sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS NOT NULL)"
+                            ).format(sql.Literal(column), sql.Literal(column))
+                        )
+                        for column in comparable
+                    )
+                    cursor.execute(
+                        sql.SQL(
+                            "SELECT count(*) FROM {}.import_rows s JOIN {} t ON {} WHERE s.import_id = %s AND ({})"
+                        ).format(
+                            sql.Identifier(SCHEMA),
+                            _quoted_table(table_name),
+                            condition,
+                            changes,
+                        ),
+                        (import_id,),
+                    )
+                    updates = cursor.fetchone()[0]
+            cursor.execute(
+                sql.SQL(
+                    "SELECT count(*) FROM {}.import_rows s JOIN {} t ON {} WHERE s.import_id = %s"
+                ).format(sql.Identifier(SCHEMA), _quoted_table(table_name), condition),
+                (import_id,),
+            )
+            matched = cursor.fetchone()[0]
+            if goal == "sync":
+                cursor.execute(
+                    sql.SQL(
+                        "SELECT count(*) FROM {} t WHERE NOT EXISTS (SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s AND {})"
+                    ).format(
+                        _quoted_table(table_name), sql.Identifier(SCHEMA), condition
+                    ),
+                    (import_id,),
+                )
+                deleted = cursor.fetchone()[0]
+            unchanged = matched - updates
+            if goal == "merge":
+                cursor.execute(
+                    sql.SQL(
+                        "SELECT count(*) FROM {} t WHERE NOT EXISTS (SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s AND {})"
+                    ).format(
+                        _quoted_table(table_name), sql.Identifier(SCHEMA), condition
+                    ),
+                    (import_id,),
+                )
+                unchanged += cursor.fetchone()[0]
+        preview_id = uuid.uuid4()
+        preview = {
+            "preview_id": str(preview_id),
+            "source_count": staged_count,
+            "identity_fields": identity_fields or [],
+            "update_policy": update_policy,
+            "deleted": deleted,
+            "updated": updates,
+            "added": additions,
+            "columns_added": new_columns,
+            "unchanged": unchanged,
+            "final_count": unchanged + updates + additions,
+            "target_fingerprint": _target_fingerprint(cursor, table_name)
+            if goal != "create"
+            else None,
+        }
+        if geometry_counts is not None:
+            preview["geometry_valid"] = geometry_counts[0]
+            preview["geometry_invalid"] = geometry_counts[1]
+        cursor.execute(
+            sql.SQL(
+                "UPDATE {}.import_sessions SET status = 'reviewed', preview = %s, preview_id = %s WHERE import_id = %s"
+            ).format(sql.Identifier(SCHEMA)),
+            (json.dumps(preview), preview_id, import_id),
+        )
+    return preview
+
+
+def _write_source_archive(table_name, source_name, source_data, import_id):
+    if source_data is None:
+        raise ImportValidationError(
+            "This legacy import has no retained source file. Stage it again."
+        )
+    destination = _archive_destination(table_name, source_name, import_id)
+    dataset_directory = destination.parent
+    _mkdir_durable(dataset_directory)
+    if destination.exists():
+        if destination.read_bytes() != source_data:
+            raise ImportValidationError(
+                "The archive destination already contains different source data."
+            )
+        _fsync_directory(dataset_directory)
+        return str(destination), False
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    try:
+        with temporary.open("xb") as output:
+            output.write(source_data)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, destination)
+        _fsync_directory(dataset_directory)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return str(destination), True
+
+
+def _archive_applied_source(db, import_id):
+    """Finish archival for sessions applied by an older importer version."""
+    with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            sql.SQL(
+                "SELECT target_table, source_name, source_data, status, archive_path FROM {}.import_sessions WHERE import_id = %s FOR UPDATE"
+            ).format(sql.Identifier(SCHEMA)),
+            (import_id,),
+        )
+        session = cursor.fetchone()
+        if not session:
+            raise ImportValidationError("This import session does not exist.")
+        table_name, source_name, source_data, status, archive_path = session
+        if status == "archived":
+            return archive_path
+        if status != "applied":
+            raise ImportValidationError(
+                "Apply this import before archiving its source."
+            )
+        archive_path, _ = _write_source_archive(
+            table_name, source_name, source_data, import_id
+        )
+        cursor.execute(
+            sql.SQL(
+                "UPDATE {}.import_sessions SET status = 'archived', archive_path = %s, source_data = NULL WHERE import_id = %s"
+            ).format(sql.Identifier(SCHEMA)),
+            (archive_path, import_id),
+        )
+    return archive_path
+
+
+def _import_status(cursor, import_id):
+    cursor.execute(
+        sql.SQL(
+            "SELECT status, preview, preview_id, archive_path FROM {}.import_sessions WHERE import_id = %s"
+        ).format(sql.Identifier(SCHEMA)),
+        (import_id,),
+    )
+    return cursor.fetchone()
+
+
+def apply_import(db, import_id, preview_id):
+    """Archive the source and apply the reviewed plan without partial target writes."""
+    with (
+        connect(_conninfo(db), autocommit=True) as status_conn,
+        status_conn.cursor() as status_cursor,
+    ):
+        _ensure_schema(status_cursor)
+        existing = _import_status(status_cursor, import_id)
+    if existing and existing[0] == "applied":
+        if str(existing[2]) != str(preview_id):
+            raise ImportValidationError(
+                "This preview is no longer current. Review again."
+            )
+        archive_path = _archive_applied_source(db, import_id)
+        return {"success": True, "preview": existing[1], "archive_path": archive_path}
+    if existing and existing[0] == "archived":
+        if str(existing[2]) != str(preview_id):
+            raise ImportValidationError(
+                "This preview is no longer current. Review again."
+            )
+        return {
+            "success": True,
+            "preview": existing[1],
+            "archive_path": existing[3],
+        }
+    archive_path = None
+    archive_created = False
+    try:
+        with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+            _ensure_schema(cursor)
+            goal, table_name, mapping, status, preview, stored_preview_id = _session(
+                cursor, import_id, lock=True
+            )
+            if status == "archived":
+                if str(stored_preview_id) != str(preview_id):
+                    raise ImportValidationError(
+                        "This preview is no longer current. Review again."
+                    )
+                cursor.execute(
+                    sql.SQL(
+                        "SELECT archive_path FROM {}.import_sessions WHERE import_id = %s"
+                    ).format(sql.Identifier(SCHEMA)),
+                    (import_id,),
+                )
+                return {
+                    "success": True,
+                    "preview": preview,
+                    "archive_path": cursor.fetchone()[0],
+                }
+            if status != "reviewed" or not preview:
+                raise ImportValidationError("Review this import before confirming it.")
+            if str(stored_preview_id) != str(preview_id):
+                raise ImportValidationError(
+                    "This preview is no longer current. Review again."
+                )
+            cursor.execute(
+                sql.SQL(
+                    "SELECT source_name, source_data FROM {}.import_sessions WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (import_id,),
+            )
+            source_name, source_data = cursor.fetchone()
+            archive_path, archive_created = _write_source_archive(
+                table_name, source_name, source_data, import_id
+            )
+            stored_columns = list(mapping.values())
+            empty_noop = preview.get("source_count") == 0 and goal in {
+                "append",
+                "merge",
+            }
+            if goal == "create":
+                cursor.execute(
+                    sql.SQL("CREATE TABLE {} (_id TEXT PRIMARY KEY)").format(
+                        _quoted_table(table_name)
+                    )
+                )
+                target_columns = {"_id": "text"}
+            else:
+                cursor.execute(
+                    sql.SQL("LOCK TABLE {} IN SHARE ROW EXCLUSIVE MODE").format(
+                        _quoted_table(table_name)
+                    )
+                )
+                target_columns = _target_columns(cursor, table_name)
+                if (
+                    _target_fingerprint(cursor, table_name)
+                    != preview["target_fingerprint"]
+                ):
+                    raise ImportValidationError(
+                        "The target dataset changed after review. Review the import again."
+                    )
+            if not empty_noop:
+                for column in stored_columns:
+                    if column not in target_columns:
+                        cursor.execute(
+                            sql.SQL("ALTER TABLE {} ADD COLUMN {} TEXT").format(
+                                _quoted_table(table_name), sql.Identifier(column)
+                            )
+                        )
+                        target_columns[column] = "text"
+                _ensure_dataset_mapping(cursor, table_name, mapping)
+            if goal == "create":
+                cursor.execute(
+                    sql.SQL(
+                        "UPDATE {}.dataset_registry SET status = 'active', source_import_id = NULL WHERE target_table = %s AND source_import_id = %s"
+                    ).format(sql.Identifier(SCHEMA)),
+                    (table_name, import_id),
+                )
+            columns = [column for column in stored_columns if column in target_columns]
+            insert_columns = ["_id", *columns]
+            insert_values = sql.SQL(", ").join(
+                [
+                    sql.SQL("md5(s.import_id::text || ':' || s.row_ordinal::text)"),
+                    *[
+                        sql.SQL("s.payload ->> {}").format(sql.Literal(column))
+                        for column in columns
+                    ],
+                ]
+            )
+            insert_statement = sql.SQL(
+                "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s ORDER BY s.row_ordinal"
+            ).format(
+                _quoted_table(table_name),
+                sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
+                insert_values,
+                sql.Identifier(SCHEMA),
+            )
+            identity_columns = [mapping[field] for field in preview["identity_fields"]]
+            if goal in {"create", "append"}:
+                cursor.execute(insert_statement, (import_id,))
+                if cursor.rowcount != preview["added"]:
+                    raise ImportValidationError(
+                        "The applied row count did not match the reviewed import. Review again."
+                    )
+            elif not identity_columns:
+                pass
+            else:
+                condition = _identity_condition(identity_columns)
+                if preview["update_policy"] == "imported":
+                    assignments = sql.SQL(", ").join(
+                        sql.SQL(
+                            "{} = CASE WHEN s.payload ? {} THEN s.payload ->> {} ELSE t.{} END"
+                        ).format(
+                            sql.Identifier(column),
+                            sql.Literal(column),
+                            sql.Literal(column),
+                            sql.Identifier(column),
+                        )
+                        for column in columns
+                        if column != "_id"
+                    )
+                    if assignments:
+                        changes = sql.SQL(" OR ").join(
+                            sql.SQL(
+                                "(s.payload ? {} AND (s.payload ->> {}) IS DISTINCT FROM t.{})"
+                            ).format(
+                                sql.Literal(column),
+                                sql.Literal(column),
+                                sql.Identifier(column),
+                            )
+                            for column in columns
+                            if column != "_id"
+                        )
+                        cursor.execute(
+                            sql.SQL(
+                                "UPDATE {} t SET {} FROM {}.import_rows s WHERE s.import_id = %s AND {} AND ({})"
+                            ).format(
+                                _quoted_table(table_name),
+                                assignments,
+                                sql.Identifier(SCHEMA),
+                                condition,
+                                changes,
+                            ),
+                            (import_id,),
+                        )
+                        if cursor.rowcount != preview["updated"]:
+                            raise ImportValidationError(
+                                "The applied update count did not match the reviewed import. Review again."
+                            )
+                cursor.execute(
+                    sql.SQL(
+                        "INSERT INTO {} ({}) SELECT {} FROM {}.import_rows s WHERE s.import_id = %s AND NOT EXISTS (SELECT 1 FROM {} t WHERE {}) ORDER BY s.row_ordinal"
+                    ).format(
+                        _quoted_table(table_name),
+                        sql.SQL(", ").join(map(sql.Identifier, insert_columns)),
+                        insert_values,
+                        sql.Identifier(SCHEMA),
+                        _quoted_table(table_name),
+                        condition,
+                    ),
+                    (import_id,),
+                )
+                if cursor.rowcount != preview["added"]:
+                    raise ImportValidationError(
+                        "The applied row count did not match the reviewed import. Review again."
+                    )
+                if goal == "sync":
+                    cursor.execute(
+                        sql.SQL(
+                            "DELETE FROM {} t WHERE NOT EXISTS (SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s AND {})"
+                        ).format(
+                            _quoted_table(table_name),
+                            sql.Identifier(SCHEMA),
+                            condition,
+                        ),
+                        (import_id,),
+                    )
+                    if cursor.rowcount != preview["deleted"]:
+                        raise ImportValidationError(
+                            "The applied deletion count did not match the reviewed import. Review again."
+                        )
+            cursor.execute(
+                sql.SQL(
+                    "UPDATE {}.import_sessions SET status = 'archived', applied_at = %s, archive_path = %s, source_data = NULL WHERE import_id = %s"
+                ).format(sql.Identifier(SCHEMA)),
+                (datetime.now(UTC), archive_path, import_id),
+            )
+    except Exception:
+        if archive_created and archive_path:
+            with suppress(OSError):
+                _remove_archive_file(archive_path)
+        raise
+    return {"success": True, "preview": preview, "archive_path": archive_path}

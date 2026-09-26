@@ -4,6 +4,7 @@ from f.common_logic.identifier_utils import (
     camel_to_snake,
     normalize_and_snakecase_keys,
     normalize_identifier,
+    sanitize_sql_columns,
     sanitize_sql_message,
     slugify,
     validate_identifier,
@@ -23,6 +24,42 @@ def test_sanitize_sql_message__spaces_become_underscores():
     assert sql_message == {"Are_you_married__Basic_information": "yes"}
     assert mapping == {
         "Basic information/Are you married?": "Are_you_married__Basic_information"
+    }
+
+
+def test_sanitize_sql_columns_reuses_ordered_warehouse_naming():
+    mappings = sanitize_sql_columns(
+        [
+            "Basic information/Are you married?",
+            "$categoryId",
+            "categoryId",
+            "Bird Name",
+            "Bird-Name",
+        ],
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__"), ("$", "__")],
+        sep_policy="underscore",
+    )
+
+    assert mappings == {
+        "Basic information/Are you married?": "Are_you_married__Basic_information",
+        "$categoryId": "__categoryId",
+        "categoryId": "categoryId",
+        "Bird Name": "Bird_Name",
+        "Bird-Name": "Bird_Name_001",
+    }
+
+
+def test_sanitize_sql_columns_preserves_existing_mappings():
+    mappings = sanitize_sql_columns(
+        ["Bird Name", "bird.name"],
+        {"Bird Name": "legacy_bird"},
+        sep_policy="underscore",
+    )
+
+    assert mappings == {
+        "Bird Name": "legacy_bird",
+        "bird.name": "bird_name",
     }
 
 
