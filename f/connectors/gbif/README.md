@@ -5,7 +5,7 @@ Flow is suitable for an initial backfill or a recurring update.
 
 ## Setup
 
-Create a Windmill `c_gbif` resource with your GBIF username and password:
+Create a Windmill `gbif` resource with your GBIF username and password:
 
 ```json
 {"username":"string","password":"string"}
