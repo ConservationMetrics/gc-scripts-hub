@@ -17,7 +17,7 @@ _MAX_AREA_KM2 = 15_000
 _MAX_WAIT_SECONDS = 24 * 60 * 60
 
 
-class c_gbif(TypedDict):
+class gbif(TypedDict):
     """Windmill GBIF account resource."""
 
     username: str
@@ -25,7 +25,7 @@ class c_gbif(TypedDict):
 
 
 def main(
-    gbif_account: c_gbif,
+    gbif_account: gbif,
     bounding_box: list | str,
     max_months_lookback: int | None = None,
 ) -> dict:
@@ -33,7 +33,7 @@ def main(
 
     Parameters
     ----------
-    gbif_account : c_gbif
+    gbif_account : gbif
         Resource containing a GBIF username and password.
     bounding_box : list or str
         ``[[west, south], [east, north]]`` in longitude/latitude order.

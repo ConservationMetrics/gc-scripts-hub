@@ -110,7 +110,7 @@ schema:
         gbif_account:
             type: object
             description: GBIF account with a username (not email address) and password.
-            format: resource-c_gbif
+            format: resource-gbif
         max_months_lookback:
             type: integer
             description: >-
