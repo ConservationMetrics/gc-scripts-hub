@@ -550,10 +550,9 @@ export default function App() {
             Upload your data
           </h2>
           <p className="lede">
-            Supported formats: {acceptedExtensions.join(", ")}. CSV uploads can
-            be tab-delimited. JSON uploads can contain arrays or CyberTracker
-            backups. XML uploads must be SMART patrol exports. ZIP archives can
-            contain a Shapefile or supported files.
+            CSV uploads can be tab-delimited. JSON uploads can contain arrays or
+            CyberTracker backups. XML uploads must be SMART patrol exports. ZIP
+            archives can contain a Shapefile or supported files.
           </p>
           <label
             className={`dropzone ${dragging ? "dragging" : ""}`}
@@ -579,11 +578,25 @@ export default function App() {
               {file ? file.name : "Drop a file here, or click to browse"}
             </strong>
             <span>
-              {file
-                ? `${(file.size / 1024 / 1024).toFixed(2)} MiB`
-                : "Maximum source size: 25 MiB. GeoPackages must contain one spatial layer."}
+              {file ? (
+                `${(file.size / 1024 / 1024).toFixed(2)} MiB`
+              ) : (
+                <>
+                  Supported formats: {acceptedExtensions.join(", ")}. <br />
+                  Maximum source size: 25 MiB. GeoPackages must contain one
+                  spatial layer.
+                </>
+              )}
             </span>
           </label>
+          <p>
+            To upload media attachments, such as photos, use File Browser. See
+            the{" "}
+            <a href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer">
+              documentation
+            </a>
+            .
+          </p>
         </section>
       )}
 

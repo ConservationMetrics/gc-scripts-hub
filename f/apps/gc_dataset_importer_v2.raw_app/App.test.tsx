@@ -195,7 +195,7 @@ describe("Dataset importer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText(/Supported formats:/)).toHaveTextContent(
-      "Supported formats: csv, geojson, gpx, gpkg, json, kml, zip, xls, xlsx, xml. CSV uploads can be tab-delimited. JSON uploads can contain arrays or CyberTracker backups. XML uploads must be SMART patrol exports. ZIP archives can contain a Shapefile or supported files.",
+      "Supported formats: csv, geojson, gpx, gpkg, json, kml, zip, xls, xlsx, xml. Maximum source size: 25 MiB. GeoPackages must contain one spatial layer.",
     );
   });
 
