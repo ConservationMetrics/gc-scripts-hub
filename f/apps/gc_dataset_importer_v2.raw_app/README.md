@@ -25,7 +25,7 @@ Successful sources are stored under
 
 ## Known Limitations
 
-- No "replace dataset" option. Decided against it just for simplicity. The difference between "sync" and "replace" is that "sync" retains existing columns even if they don't exist in the newly imported dataset where "replace" would not have. If you want to "replace" today, you can just delete the dataset and create a new one.
+- No "replace dataset" option. Decided against it just for simplicity. The difference between "sync" and "replace" is that "sync" retains existing columns even if they don't exist in the newly imported dataset where "replace" would not have.
 - `.geojson` imports with GeometryCollections are not supported because we don't have a valid table schema to support these. We would need `__geometry` instead of `__coordinates`.
 
 ## How it works
