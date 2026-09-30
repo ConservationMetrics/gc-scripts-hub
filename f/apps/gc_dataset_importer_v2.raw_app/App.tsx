@@ -606,7 +606,22 @@ export default function App() {
             Choose record identity
           </h2>
           <p className="lede">
-            Select one to three fields that together identify a record.
+            Choose one to three columns to match rows in your file to existing
+            records. For example, use a record ID, or a combination of site and
+            observation date. All selected values must match for two rows to
+            count as the same record.
+          </p>
+          <p>
+            Choose values that stay the same when a record is updated. Their
+            combination must be unique for each record in both your file and the
+            dataset.
+          </p>
+          <p>
+            Matching rows follow the update policy below. Uploaded rows without
+            a match are added as new records.{" "}
+            {goal === "sync"
+              ? "Sync also deletes existing records that have no match in your file."
+              : "Merge keeps existing records that have no match in your file."}
           </p>
           <div className="identity-fields">
             {[0, 1, 2].map((position) => (
