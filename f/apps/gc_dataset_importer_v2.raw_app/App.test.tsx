@@ -195,7 +195,7 @@ describe("Dataset importer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText(/Supported formats:/)).toHaveTextContent(
-      "CSV or tab-delimited CSV, GeoJSON, JSON arrays and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS, XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing supported files.",
+      "Supported formats: csv, geojson, gpx, gpkg, json, kml, zip, xls, xlsx, xml. CSV uploads can be tab-delimited. JSON uploads can contain arrays or CyberTracker backups. XML uploads must be SMART patrol exports. ZIP archives can contain a Shapefile or supported files.",
     );
   });
 

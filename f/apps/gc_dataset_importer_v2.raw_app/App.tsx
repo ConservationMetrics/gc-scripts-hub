@@ -297,9 +297,7 @@ export default function App() {
     const extension = nextFile.name.split(".").pop()?.toLowerCase() ?? "";
     if (!acceptedExtensions.includes(extension)) {
       clearUpload();
-      setError(
-        "Choose a supported CSV, JSON, spatial, spreadsheet, XML, or ZIP file.",
-      );
+      setError(`Choose a supported file (${acceptedExtensions.join(", ")}).`);
       return;
     }
     if (nextFile.size > MAX_SOURCE_BYTES) {
@@ -552,10 +550,10 @@ export default function App() {
             Upload your data
           </h2>
           <p className="lede">
-            Supported formats: CSV or tab-delimited CSV, GeoJSON, JSON arrays
-            and CyberTracker backups, GPX, KML, single-layer GeoPackage, XLS,
-            XLSX, SMART XML, Shapefile ZIP, and ZIP archives containing
-            supported files.
+            Supported formats: {acceptedExtensions.join(", ")}. CSV uploads can
+            be tab-delimited. JSON uploads can contain arrays or CyberTracker
+            backups. XML uploads must be SMART patrol exports. ZIP archives can
+            contain a Shapefile or supported files.
           </p>
           <label
             className={`dropzone ${dragging ? "dragging" : ""}`}
@@ -568,7 +566,9 @@ export default function App() {
             onDrop={dropFile}
           >
             <input
-              accept=".csv,.geojson,.gpx,.gpkg,.json,.kml,.zip,.xls,.xlsx,.xml"
+              accept={acceptedExtensions
+                .map((extension) => `.${extension}`)
+                .join(",")}
               onChange={(event) => {
                 selectFile(event.target.files?.[0]);
                 event.target.value = "";
