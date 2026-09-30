@@ -5,7 +5,7 @@ description: >-
 lock: '!inline f/connectors/gbif/gbif_check_download.script.lock'
 kind: script
 schema:
-  $schema: https://json-schema.org/draft/2020-12/schema
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
     - download_key

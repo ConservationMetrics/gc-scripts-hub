@@ -41,7 +41,7 @@ def test_submit_uses_basic_auth_and_last_interpreted_predicate(
 def test_submit_rejects_oversized_bounds_before_request(mocked_responses):
     with pytest.raises(ValueError):
         gbif_submit_download.main(
-            {"username": "u", "password": "p"}, [[0, 0], [1.2, 1.2]]
+            {"username": "u", "password": "p"}, [[0, 0], [2, 2]]
         )
     assert not mocked_responses.calls
 

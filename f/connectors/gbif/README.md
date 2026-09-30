@@ -1,7 +1,8 @@
 # `gbif_download`: Download GBIF occurrences
 
-Runs a GBIF occurrence download and imports the results into PostgreSQL. The
-Flow is suitable for an initial backfill or a recurring update.
+Runs a GBIF occurrence download, imports the results into PostgreSQL, and
+saves facet counts for the same area. The Flow is suitable for an initial
+backfill or a recurring update.
 
 ## Setup
 
@@ -25,6 +26,10 @@ before running downloads.
   an initial backfill.
 - **`db`** — PostgreSQL resource for the occurrence table.
 - **`db_table_name`** — Destination table name and datalake subdirectory.
+  The name can be at most 47 characters. Dataset, publisher, year, species,
+  and basis-of-record counts are saved in `{db_table_name}_datasets`,
+  `{db_table_name}_publishers`, `{db_table_name}_years`,
+  `{db_table_name}_species`, and `{db_table_name}_basis_of_record`.
 - **`attachment_root`** — Directory for downloaded files. Defaults to
   `/persistent-storage/datalake`.
 
@@ -56,6 +61,24 @@ organization keys were found and resolved.
 
 Imports use upserts. Existing records are updated, but records deleted by GBIF
 or moved outside the selected area are not removed from PostgreSQL.
+
+## Statistics tables
+
+The last step counts occurrences in the bounding box and replaces five tables:
+
+- `{db_table_name}_datasets` — `name`, `count`
+- `{db_table_name}_publishers` — `name`, `count`
+- `{db_table_name}_years` — `year`, `count`
+- `{db_table_name}_species` — `name`, `count`
+- `{db_table_name}_basis_of_record` — `type`, `count`
+
+Dataset and publisher names are GBIF Registry titles. Species names are
+scientific names. Years and basis of record use the facet value. When a
+Registry lookup fails, the table stores the GBIF key. Each run replaces the
+previous rows with the current GBIF index for the area.
+
+`max_months_lookback` applies to the occurrence download. The statistics
+tables count every occurrence GBIF currently indexes in the bounding box.
 
 ## Scheduling and failures
 
