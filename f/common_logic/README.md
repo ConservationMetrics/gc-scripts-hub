@@ -6,8 +6,8 @@ For more information on sharing common logic in Windmill, see https://www.windmi
 
 ## SQL ingestion
 
-`StructuredDBWriter` remains the backward-compatible connector interface for
-dynamic schemas and `_id` upserts. Dataset Importer v2 adds staged Create,
+Currently, `StructuredDBWriter` is the connector interface for dynamic 
+schemas and `_id` upserts. Dataset Importer v2 adds staged Create,
 Append, Merge, and Sync workflows without changing that interface.
 
 Both paths share the warehouse contracts in `identifier_utils.py` and
