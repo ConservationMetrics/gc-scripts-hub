@@ -140,6 +140,71 @@ def test_csv_still_rejects_inconsistent_row_width():
         importer._parse_csv(b"species,count\nheron,2\nibis\n")
 
 
+@pytest.mark.parametrize("delimiter", [",", ";", "\t"])
+def test_csv_preserves_bom_quoted_delimiters_and_multiline_cells(delimiter):
+    contents = (
+        f"\ufeffname{delimiter}note\r\n"
+        f'Heron{delimiter}"comma, semicolon; tab\t and\r\nnewline"\r\n'
+    ).encode()
+    assert importer._parse_csv(contents) == [
+        {"name": "Heron", "note": "comma, semicolon; tab\t and\r\nnewline"}
+    ]
+
+
+@pytest.mark.parametrize("delimiter", [",", ";", "\t"])
+@pytest.mark.parametrize("values", ["Ibis", "Ibis{d}1{d}extra"])
+def test_csv_fallback_rejects_inconsistent_rows(delimiter, values):
+    contents = (
+        f"name{delimiter}count\nHeron{delimiter}2\n{values.format(d=delimiter)}\n"
+    )
+    with pytest.raises(ImportValidationError, match="header column count"):
+        importer._parse_csv(contents.encode())
+
+
+@pytest.mark.parametrize("contents", [b"name,name\nHeron,2\n", b"name,\nHeron,2\n"])
+def test_csv_rejects_invalid_headers(contents):
+    with pytest.raises(ImportValidationError, match="column names"):
+        importer._parse_csv(contents)
+
+
+def test_csv_single_column_and_blank_lines():
+    assert importer._parse_csv(b"name\n\nHeron\n") == [{"name": "Heron"}]
+    assert importer._parse_csv(b"name\n") == []
+    with pytest.raises(ImportValidationError, match="column names"):
+        importer._parse_csv(b"")
+
+
+def test_kobo_csv_stages_previews_and_applies(mock_db_connection, kobotoolbox_csv_file):
+    staged = stage_import(
+        mock_db_connection,
+        upload_bytes(kobotoolbox_csv_file.name, kobotoolbox_csv_file.read_bytes()),
+        "create",
+        "kobo_rows",
+    )
+    assert staged["source_format"] == "csv"
+    assert staged["record_count"] == 3
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    assert confirm(mock_db_connection, staged, preview)["success"] is True
+    rows = table_rows(mock_db_connection, "kobo_rows")
+    assert any(
+        "Arlington" in row.values() and "bamboo, wild boar" in row.values()
+        for row in rows
+    )
+
+
+def test_zip_detects_kobo_semicolon_csv(kobotoolbox_csv_file):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(kobotoolbox_csv_file.name, kobotoolbox_csv_file.read_bytes())
+    source_format, rows = importer._parse_zip(buffer.getvalue())
+    assert source_format == "zip"
+    assert len(rows) == 3
+    assert any(
+        "Arlington" in row.values() and "bamboo, wild boar" in row.values()
+        for row in rows
+    )
+
+
 def test_csv_infers_gbif_point_geometry(mock_db_connection):
     staged = stage_import(
         mock_db_connection,

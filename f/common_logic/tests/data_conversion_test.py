@@ -1074,6 +1074,45 @@ def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
     assert "bamboo, wild boar" in record
 
 
+@pytest.mark.parametrize("delimiter", [",", ";", "\t"])
+def test_csv_preserves_quoted_delimiters_and_multiline_cells(tmp_path, delimiter):
+    path = tmp_path / "quoted.csv"
+    path.write_text(
+        f'"name,;\t"{delimiter}note\r\n'
+        f'Heron{delimiter}"comma, semicolon; tab\t and\r\nnewline"\r\n',
+        newline="",
+    )
+    rows, output_format = convert_data([str(path)], "csv")
+    assert output_format == "csv"
+    assert rows == [
+        ["name,;\t", "note"],
+        ["Heron", "comma, semicolon; tab\t and\r\nnewline"],
+    ]
+
+
+@pytest.mark.parametrize("delimiter", [",", ";", "\t"])
+def test_csv_fallback_preserves_inconsistent_rows(tmp_path, delimiter):
+    path = tmp_path / "uneven.csv"
+    path.write_text(f'"name,;\t"{delimiter}count\nHeron{delimiter}2\nIbis\n')
+    rows, _ = convert_data([str(path)], "csv")
+    assert rows == [["name,;\t", "count"], ["Heron", "2"], ["Ibis"]]
+
+
+def test_csv_single_column(tmp_path):
+    path = tmp_path / "names.csv"
+    path.write_text("name\nHeron\n")
+    rows, _ = convert_data([str(path)], "csv")
+    assert rows == [["name"], ["Heron"]]
+
+
+@pytest.mark.parametrize("contents", ["", " \n"])
+def test_csv_empty_input_is_rejected(tmp_path, contents):
+    path = tmp_path / "empty.csv"
+    path.write_text(contents)
+    with pytest.raises(ValueError, match="empty or contains only whitespace"):
+        convert_data([str(path)], "csv")
+
+
 def test_read_data__csv_only_headers(tmp_path):
     file = tmp_path / "only_headers.csv"
     file.write_text("start,location,comment\n")

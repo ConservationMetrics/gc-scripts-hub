@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import xml.etree.ElementTree as ET
+from io import StringIO
 from numbers import Integral, Real
 from pathlib import Path
 
@@ -462,6 +463,36 @@ def to_geojson(
     return {"type": "FeatureCollection", "features": features}
 
 
+def parse_csv_rows(text: str) -> list[list[str]]:
+    """Parse CSV text using comma, semicolon (KoboToolbox), or tab delimiters.
+
+    Parameters
+    ----------
+    text : str
+        Decoded CSV contents.
+
+    Returns
+    -------
+    list[list[str]]
+        Rows including the header, without column or row-width validation.
+        Empty input returns an empty list.
+    """
+    delimiters = ",;\t"
+    try:
+        dialect = csv.Sniffer().sniff(text[:65536], delimiters=delimiters)
+    except csv.Error:
+        # Sniffing can fail on inconsistent row widths. Parse the header with
+        # each candidate so quoted delimiters do not influence the fallback.
+        delimiter = max(
+            delimiters,
+            key=lambda candidate: len(
+                next(csv.reader(StringIO(text, newline=""), delimiter=candidate), [])
+            ),
+        )
+        return list(csv.reader(StringIO(text, newline=""), delimiter=delimiter))
+    return list(csv.reader(StringIO(text, newline=""), dialect=dialect))
+
+
 @handle_file_errors
 def read_csv(path: Path):
     """
@@ -479,10 +510,7 @@ def read_csv(path: Path):
         if not header.strip():
             raise ValueError("CSV file is empty or contains only whitespace")
         f.seek(0)
-
-        # KoboToolbox uses ';'; everything else is usually ',' or tab
-        delimiter = max(",;\t", key=header.count)
-        rows = list(csv.reader(f, delimiter=delimiter))
+        rows = parse_csv_rows(f.read())
         if len(rows) <= 1:
             raise ValueError("CSV file contains no data")
         return rows

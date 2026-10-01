@@ -16,7 +16,7 @@ import uuid
 import zipfile
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
-from io import BytesIO, StringIO
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -323,32 +323,34 @@ def _json_value(value):
 
 
 def _parse_csv(contents):
+    from f.common_logic.data_conversion import parse_csv_rows
+
     try:
         text = contents.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ImportValidationError("CSV files must be UTF-8 encoded.") from exc
     try:
-        try:
-            dialect = csv.Sniffer().sniff(text[:65536], delimiters=",\t")
-        except csv.Error:
-            dialect = csv.excel
-        reader = csv.DictReader(StringIO(text), dialect=dialect)
-        if not reader.fieldnames or any(
-            name is None or not name.strip() for name in reader.fieldnames
-        ):
+        parsed = parse_csv_rows(text)
+        headers = parsed[0] if parsed else []
+        if not headers or any(not name.strip() for name in headers):
             raise ImportValidationError("CSV files must have non-empty column names.")
-        if len(set(reader.fieldnames)) != len(reader.fieldnames):
+        if len(set(headers)) != len(headers):
             raise ImportValidationError(
                 "CSV files cannot contain duplicate column names."
             )
         # CSV has no representation for a JSON-style missing key. An empty cell is
         # an explicitly supplied empty value, which the importer stores as NULL.
         rows = []
-        for row in reader:
-            if None in row or any(value is None for value in row.values()):
+        for values in parsed[1:]:
+            if not values:
+                continue
+            if len(values) != len(headers):
                 raise ImportValidationError("CSV rows must match the header column count.")
             rows.append(
-                {key: (None if value == "" else value) for key, value in row.items()}
+                {
+                    key: (None if value == "" else value)
+                    for key, value in zip(headers, values)
+                }
             )
     except csv.Error as exc:
         raise ImportValidationError("The CSV file is malformed.") from exc
