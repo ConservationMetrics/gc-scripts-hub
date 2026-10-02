@@ -31,7 +31,7 @@ _REGISTRY_DEADLINE_SECONDS = 120
 _REGISTRY_TIMEOUT = (5, 20)
 _REGISTRY_WORKERS = 8
 _REGISTRY_USER_AGENT = (
-    "GuardianConnector GBIF connector "
+    "Guardian Connector GBIF connector "
     "(https://github.com/ConservationMetrics/gc-scripts-hub)"
 )
 _METADATA_SUFFIX = "__metadata"

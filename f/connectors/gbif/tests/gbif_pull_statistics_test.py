@@ -81,7 +81,7 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
     assert registry_calls == 6 + 5 + 11
     assert len(mocked_responses.calls) == calls_after_first_run * 2
     assert all(
-        call.request.headers["User-Agent"].startswith("GuardianConnector")
+        call.request.headers["User-Agent"].startswith("Guardian Connector")
         for call in mocked_responses.calls
     )
 
@@ -145,9 +145,9 @@ def test_statistics_keeps_keys_when_registry_lookup_fails(
         assert _fetch_facet(cursor, "gbif_occurrences", "species") == [
             ("2474363", None, 4)
         ]
-        assert _fetch_facet(
-            cursor, "gbif_occurrences", "year", "key DESC"
-        ) == [("2020", None, 3)]
+        assert _fetch_facet(cursor, "gbif_occurrences", "year", "key DESC") == [
+            ("2020", None, 3)
+        ]
     assert "Skipping GBIF year facet value 'nope'" in caplog.text
     assert "dataset statistics left 1 of 1 names unresolved" in caplog.text
     assert "species statistics left 1 of 1 names unresolved" in caplog.text
@@ -193,9 +193,7 @@ def test_statistics_creates_an_empty_table_for_an_empty_area(
     }
     _register_snapshot(mocked_responses, empty)
     table_name = "A" * gbif_pull_statistics._MAX_TABLE_NAME_LENGTH
-    result = gbif_pull_statistics.main(
-        empty["bounds"], pg_database, table_name
-    )
+    result = gbif_pull_statistics.main(empty["bounds"], pg_database, table_name)
     assert result["occurrence_count"] == 0
     assert result["species"] == 0
     statistics = table_name.lower()
@@ -213,16 +211,12 @@ def test_statistics_rejects_oversized_bounds_before_request(
     mocked_responses, pg_database
 ):
     with pytest.raises(ValueError):
-        gbif_pull_statistics.main(
-            [[0, 0], [2, 2]], pg_database, "gbif_occurrences"
-        )
+        gbif_pull_statistics.main([[0, 0], [2, 2]], pg_database, "gbif_occurrences")
     assert not mocked_responses.calls
 
 
 @pytest.mark.parametrize("name", ["a" * 64, "bad/name", "", "bad\\name"])
-def test_statistics_rejects_invalid_table_names(
-    mocked_responses, pg_database, name
-):
+def test_statistics_rejects_invalid_table_names(mocked_responses, pg_database, name):
     with pytest.raises(ValueError, match="db_table_name"):
         gbif_pull_statistics.main([[-55.03, 3.23], [-54.12, 3.67]], pg_database, name)
     assert not mocked_responses.calls
@@ -369,9 +363,7 @@ def _keyed_rows(entries, names=None):
 
 def _fetch_facet(cursor, table_name, facet, order="count DESC, label, key"):
     cursor.execute(
-        sql.SQL(
-            "SELECT key, label, count FROM {} WHERE facet = %s ORDER BY {}"
-        ).format(
+        sql.SQL("SELECT key, label, count FROM {} WHERE facet = %s ORDER BY {}").format(
             sql.Identifier(table_name),
             sql.SQL(order),
         ),

@@ -22,7 +22,7 @@ _FACET_LIMIT = 1000
 _HEADERS = {
     "Accept": "application/json",
     "User-Agent": (
-        "GuardianConnector GBIF connector "
+        "Guardian Connector GBIF connector "
         "(https://github.com/ConservationMetrics/gc-scripts-hub)"
     ),
 }
