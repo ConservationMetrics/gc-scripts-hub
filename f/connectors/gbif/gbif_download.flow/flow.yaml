@@ -124,7 +124,8 @@ schema:
       type: string
       description: >-
         Table name for occurrence records and the download folder. Counts are
-        also saved in `{name}__statistics`.
+        also saved in `{name}__statistics`, with the GBIF key and label kept
+        separate.
       pattern: '^.{1,51}$'
     gbif_account:
       type: object

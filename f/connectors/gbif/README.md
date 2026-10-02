@@ -63,21 +63,28 @@ or moved outside the selected area are not removed from PostgreSQL.
 ## Statistics table
 
 The last step counts occurrences in the bounding box and replaces
-`{db_table_name}__statistics`. Each row is one facet value:
+`{db_table_name}__statistics`. Each row is one facet value. `key` is the GBIF
+identifier and `label` is the display name, so two datasets, publishers, or
+species that share a title stay separate rows.
 
-| facet | name | count |
-| --- | --- | ---: |
-| dataset | Forest monitoring dataset | 60 |
-| publisher | Forest Research Institute | 60 |
-| year | 2026 | 70 |
-| species | Panthera onca | 55 |
-| basis_of_record | HUMAN_OBSERVATION | 80 |
+| facet | key | label | count |
+| --- | --- | --- | ---: |
+| dataset | 7a3679ef-5582-4aaa-81f0-8c2545cafc81 | Pl@ntNet observations | 60 |
+| publisher | 28eb1a3f-1c15-4a95-931a-4af90ecb574d | iNaturalist.org | 60 |
+| year | 2026 | | 70 |
+| species | 2474363 | Psophia crepitans Linnaeus, 1758 | 55 |
+| basis_of_record | HUMAN_OBSERVATION | | 80 |
+| statistics_imported_at | 2026-10-02T00:33:00+00:00 | | |
+| observations_last_imported_at | 2026-10-02T00:12:00+00:00 | | |
 
-`name` is text, including years. Dataset and publisher names are GBIF Registry
-titles. Species names are scientific names. Years and basis of record use the
-facet value. When a Registry lookup fails, the table stores the GBIF key.
-Filter with `WHERE facet = 'species'`. Each run replaces the previous rows
-with the current GBIF index for the area.
+Dataset and publisher labels are GBIF Registry titles. Species labels are
+scientific names. Years and basis of record have no separate label. When a
+Registry lookup fails, `label` is empty and `key` still identifies the row.
+`statistics_imported_at` is rewritten each time the counts are saved.
+`observations_last_imported_at` is written when occurrences are imported and
+kept when the counts are replaced. Filter with `WHERE facet = 'species'`.
+Each statistics run replaces the previous count rows with the current GBIF
+index for the area.
 
 `max_months_lookback` applies to the occurrence download. The statistics
 table counts every occurrence GBIF currently indexes in the bounding box.

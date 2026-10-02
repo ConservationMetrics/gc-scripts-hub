@@ -7,6 +7,7 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import NamedTuple
 from urllib.parse import quote
 
@@ -27,6 +28,9 @@ _HEADERS = {
 }
 _MAX_AREA_KM2 = 35_000
 _STATISTICS_SUFFIX = "__statistics"
+_STATISTICS_COLUMNS = ("facet", "key", "label", "count")
+_OBSERVATIONS_IMPORTED_AT = "observations_last_imported_at"
+_STATISTICS_IMPORTED_AT = "statistics_imported_at"
 _REGISTRY_FIELDS = {
     "dataset": "title",
     "organization": "title",
@@ -84,7 +88,7 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
         Database connection resource.
     db_table_name : str
         Occurrence table name. Counts are written to ``{name}__statistics``
-        with columns ``facet``, ``name``, and ``count``.
+        with columns ``facet``, ``key``, ``label``, and ``count``.
     """
     table_name = _validate_table_name(db_table_name)
     logger.info("Starting GBIF statistics for %s.", table_name)
@@ -285,19 +289,23 @@ def _rows(
     facet: _Facet,
     entries: list[tuple[str, int]],
     resolved: dict[tuple[str, str], str],
-) -> list[tuple[str, str, int]]:
-    """Build sorted ``(facet, name, count)`` rows, falling back to the GBIF key."""
+) -> list[tuple[str, str, str | None, int]]:
+    """Build sorted ``(facet, key, label, count)`` rows.
+
+    ``key`` is the GBIF facet value. ``label`` is the Registry title or
+    scientific name, and stays empty when that lookup fails or the facet has
+    no Registry record.
+    """
     rows = []
     unresolved = 0
-    for name, count in entries:
-        if facet.name == "year" and not name.isdigit():
-            logger.warning("Skipping GBIF year facet value %r.", name)
+    for key, count in entries:
+        if facet.name == "year" and not key.isdigit():
+            logger.warning("Skipping GBIF year facet value %r.", key)
             continue
-        label = resolved.get((facet.registry, name)) if facet.registry else name
+        label = resolved.get((facet.registry, key)) if facet.registry else None
         if facet.registry and not label:
             unresolved += 1
-            label = name
-        rows.append((facet.name, label, count))
+        rows.append((facet.name, key, label, count))
     if unresolved:
         logger.warning(
             "GBIF %s statistics left %d of %d names unresolved.",
@@ -308,8 +316,29 @@ def _rows(
     if facet.name == "year":
         rows.sort(key=lambda row: -int(row[1]))
     else:
-        rows.sort(key=lambda row: (-row[2], row[1]))
+        rows.sort(key=lambda row: (-row[3], row[2] or "", row[1]))
     return rows
+
+
+def record_observations_imported(db: postgresql, db_table_name: str) -> str:
+    """Record when occurrences were last imported, leaving facet counts in place."""
+    table_name = _validate_table_name(db_table_name)
+    qualified = f"{table_name}{_STATISTICS_SUFFIX}"
+    imported_at = _timestamp()
+    logger.info("Recording observations import time in %s.", qualified)
+    with (
+        connect(conninfo(db), autocommit=True) as connection,
+        connection.transaction(),
+        connection.cursor() as cursor,
+    ):
+        _ensure_statistics_table(cursor, qualified)
+        table = sql.Identifier(qualified)
+        cursor.execute(
+            sql.SQL("DELETE FROM {} WHERE facet = %s").format(table),
+            (_OBSERVATIONS_IMPORTED_AT,),
+        )
+        _insert_marker(cursor, table, _OBSERVATIONS_IMPORTED_AT, imported_at)
+    return imported_at
 
 
 def _replace_statistics(
@@ -324,23 +353,95 @@ def _replace_statistics(
         connection.transaction(),
         connection.cursor() as cursor,
     ):
-        _replace_table(cursor, qualified, rows)
-    logger.info("Saved %d GBIF statistics rows to %s.", len(rows), qualified)
+        written = _replace_table(cursor, qualified, rows)
+    logger.info("Saved %d GBIF statistics rows to %s.", written, qualified)
 
 
-def _replace_table(cursor, table_name: str, rows: list[tuple[str, str, int]]) -> None:
+def _replace_table(
+    cursor, table_name: str, rows: list[tuple[str, str, str | None, int]]
+) -> int:
+    """Replace facet rows and stamp ``statistics_imported_at``.
+
+    An existing ``observations_last_imported_at`` row is copied forward. The
+    occurrence import writes that row, and this replacement must not drop it.
+    """
+    preserved = _observations_imported_at(cursor, table_name)
     table = sql.Identifier(table_name)
+    cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
+    _create_statistics_table(cursor, table)
+    if rows:
+        with cursor.copy(
+            sql.SQL("COPY {} (facet, key, label, count) FROM STDIN").format(table)
+        ) as copy:
+            for row in rows:
+                copy.write_row(row)
+    _insert_marker(cursor, table, _STATISTICS_IMPORTED_AT, _timestamp())
+    if preserved is not None:
+        _insert_marker(cursor, table, _OBSERVATIONS_IMPORTED_AT, preserved)
+    return len(rows) + 1 + (preserved is not None)
+
+
+def _observations_imported_at(cursor, table_name: str) -> str | None:
+    """Return the stored occurrence-import time, if this table already has one."""
+    cursor.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = %s
+          AND column_name = 'key'
+        """,
+        (table_name,),
+    )
+    if cursor.fetchone() is None:
+        return None
+    cursor.execute(
+        sql.SQL("SELECT key FROM {} WHERE facet = %s").format(
+            sql.Identifier(table_name)
+        ),
+        (_OBSERVATIONS_IMPORTED_AT,),
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _ensure_statistics_table(cursor, table_name: str) -> None:
+    """Create the statistics table, replacing it when the columns are outdated."""
+    cursor.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = %s
+        ORDER BY ordinal_position
+        """,
+        (table_name,),
+    )
+    existing = tuple(name for (name,) in cursor.fetchall())
+    table = sql.Identifier(table_name)
+    if existing == _STATISTICS_COLUMNS:
+        return
+    if existing:
+        cursor.execute(sql.SQL("DROP TABLE {}").format(table))
+    _create_statistics_table(cursor, table)
+
+
+def _create_statistics_table(cursor, table: sql.Identifier) -> None:
     cursor.execute(
         sql.SQL(
-            "CREATE TABLE IF NOT EXISTS {} ("
-            "facet TEXT NOT NULL, name TEXT NOT NULL, count BIGINT NOT NULL)"
+            "CREATE TABLE {} ("
+            "facet TEXT NOT NULL, key TEXT NOT NULL, label TEXT, count BIGINT)"
         ).format(table)
     )
-    cursor.execute(sql.SQL("TRUNCATE {}").format(table))
-    if not rows:
-        return
-    with cursor.copy(
-        sql.SQL("COPY {} (facet, name, count) FROM STDIN").format(table)
-    ) as copy:
-        for row in rows:
-            copy.write_row(row)
+
+
+def _insert_marker(cursor, table: sql.Identifier, facet: str, key: str) -> None:
+    cursor.execute(
+        sql.SQL(
+            "INSERT INTO {} (facet, key, label, count) VALUES (%s, %s, NULL, NULL)"
+        ).format(table),
+        (facet, key),
+    )
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()

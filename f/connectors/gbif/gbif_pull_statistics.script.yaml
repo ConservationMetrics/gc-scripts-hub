@@ -28,7 +28,8 @@ schema:
     db_table_name:
       type: string
       description: >-
-        Occurrence table name. Counts are saved in `{name}__statistics`.
+        Occurrence table name. Counts are saved in `{name}__statistics`
+        as facet, key, label, and count.
       default: null
       originalType: string
       pattern: '^.{1,51}$'

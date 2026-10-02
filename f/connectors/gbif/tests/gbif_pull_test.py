@@ -163,6 +163,7 @@ def test_pull_imports_and_upserts_enriched_real_archive(
         dataset_key, dataset, publishing_org_key, publishing_org = cursor.fetchone()
         assert dataset == f"Dataset {dataset_key}"
         assert publishing_org == f"Publisher {publishing_org_key}"
+        first_imported_at = _observations_imported_at(cursor)
     saved_csv = destination / f"{server_responses.DOWNLOAD_KEY}.csv"
     saved_row = next(csv.DictReader(saved_csv.open(encoding="utf-8")))
     assert saved_row["dataset"] == f"Dataset {saved_row['dataset_key']}"
@@ -192,6 +193,7 @@ def test_pull_imports_and_upserts_enriched_real_archive(
             )
         )
         assert cursor.fetchone()[0] == 852
+        assert _observations_imported_at(cursor) >= first_imported_at
 
 
 def test_convert_rejects_missing_and_duplicate_ids(tmp_path):
@@ -359,7 +361,7 @@ def test_convert_rejects_missing_multiple_or_header_only_members(
         gbif_pull._convert_archive(archive, tmp_path / "invalid.csv")
 
 
-def test_pull_retains_empty_download_without_creating_a_table(
+def test_pull_retains_empty_download_without_creating_an_occurrence_table(
     mocked_responses, pg_database, tmp_path
 ):
     archive = tmp_path / "empty.zip"
@@ -380,3 +382,19 @@ def test_pull_retains_empty_download_without_creating_a_table(
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         cursor.execute("SELECT to_regclass('empty_gbif')")
         assert cursor.fetchone()[0] is None
+        _observations_imported_at(cursor, "empty_gbif")
+
+
+def _observations_imported_at(cursor, table_name="gbif_occurrences"):
+    cursor.execute(
+        sql.SQL(
+            "SELECT key, label, count FROM {} WHERE facet = %s"
+        ).format(sql.Identifier(f"{table_name}__statistics")),
+        ("observations_last_imported_at",),
+    )
+    rows = cursor.fetchall()
+    assert len(rows) == 1
+    key, label, count = rows[0]
+    assert label is None and count is None
+    assert datetime.fromisoformat(key).tzinfo is not None
+    return key

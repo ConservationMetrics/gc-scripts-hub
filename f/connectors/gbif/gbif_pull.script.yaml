@@ -25,10 +25,12 @@ schema:
       format: resource-postgresql
     db_table_name:
       type: string
-      description: Table name. This is also used as the download folder name.
+      description: >-
+        Table name. This is also used as the download folder name. The last
+        import time is saved in `{name}__statistics`.
       default: null
       originalType: string
-      pattern: '^.{1,54}$'
+      pattern: '^.{1,51}$'
     download_key:
       type: string
       description: ID assigned to the download by GBIF.

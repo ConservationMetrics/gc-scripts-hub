@@ -22,6 +22,10 @@ from f.common_logic.db_operations import postgresql
 from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.common_logic.identifier_utils import camel_to_snake
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
+from f.connectors.gbif.gbif_pull_statistics import (
+    _MAX_TABLE_NAME_LENGTH,
+    record_observations_imported,
+)
 
 _API = "https://api.gbif.org/v1/occurrence/download"
 _REGISTRY_API = "https://api.gbif.org/v1"
@@ -56,12 +60,13 @@ def main(
     """
     if (
         not db_table_name
-        or len(db_table_name) > 54
+        or len(db_table_name) > _MAX_TABLE_NAME_LENGTH
         or "/" in db_table_name
         or "\\" in db_table_name
     ):
         raise ValueError(
-            "db_table_name must be a non-empty table name of at most 54 characters."
+            "db_table_name must be a non-empty table name of at most "
+            f"{_MAX_TABLE_NAME_LENGTH} characters."
         )
     metadata = _metadata(download_key)
     if metadata.get("status") != "SUCCEEDED":
@@ -115,6 +120,7 @@ def main(
             delete_csv_file=False,
             id_column="_id",
         )
+    record_observations_imported(db, db_table_name)
     return {
         "download_key": download_key,
         "doi": metadata.get("doi"),
