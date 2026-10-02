@@ -1,10 +1,8 @@
 summary: 'GBIF: Download occurrences'
 description: >-
-  Downloads GBIF occurrence records for an area and saves them to PostgreSQL,
-  then saves dataset, publisher, year, species, and basis-of-record counts in
-  companion tables. Use it for a first download or to update existing data. GBIF
-  can take time to prepare the file, so this Flow checks every minute for up to
-  24 hours.
+  Downloads GBIF occurrence records for an area and saves them to PostgreSQL.
+  Use it for a first download or to update existing data. GBIF can take time to
+  prepare the file, so this Flow checks every minute for up to 24 hours.
 value:
   modules:
     - id: submit
@@ -62,7 +60,7 @@ value:
       continue_on_error: false
     - id: ingest
       value:
-        path: f/connectors/gbif/gbif_pull
+        path: f/connectors/gbif/gbif_pull_occurrences
         type: script
         is_trigger: false
         input_transforms:
@@ -77,22 +75,6 @@ value:
             type: javascript
           attachment_root:
             expr: flow_input.attachment_root
-            type: javascript
-      continue_on_error: false
-    - id: statistics
-      value:
-        path: f/connectors/gbif/gbif_pull_statistics
-        type: script
-        is_trigger: false
-        input_transforms:
-          db:
-            expr: flow_input.db
-            type: javascript
-          bounding_box:
-            expr: flow_input.bounding_box
-            type: javascript
-          db_table_name:
-            expr: flow_input.db_table_name
             type: javascript
       continue_on_error: false
 schema:
@@ -123,10 +105,9 @@ schema:
     db_table_name:
       type: string
       description: >-
-        Table name for occurrence records and the download folder. Counts are
-        also saved in `{name}__statistics`, with the GBIF key and label kept
-        separate.
-      pattern: '^.{1,51}$'
+        Table name for occurrence records and the download folder. The last
+        import time is saved in `{name}__metadata`.
+      pattern: '^.{1,53}$'
     gbif_account:
       type: object
       description: GBIF account with a username (not email address) and password.

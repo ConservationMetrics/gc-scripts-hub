@@ -2,7 +2,7 @@ summary: 'GBIF: Download and import occurrences'
 description: >-
   Part of the GBIF download Flow. Saves a completed download to PostgreSQL. Do
   not run this script on its own; open `GBIF: Download occurrences` instead.
-lock: '!inline f/connectors/gbif/gbif_pull.script.lock'
+lock: '!inline f/connectors/gbif/gbif_pull_occurrences.script.lock'
 kind: script
 schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
@@ -27,10 +27,10 @@ schema:
       type: string
       description: >-
         Table name. This is also used as the download folder name. The last
-        import time is saved in `{name}__statistics`.
+        import time is saved in `{name}__metadata`.
       default: null
       originalType: string
-      pattern: '^.{1,51}$'
+      pattern: '^.{1,53}$'
     download_key:
       type: string
       description: ID assigned to the download by GBIF.

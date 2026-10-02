@@ -1,8 +1,8 @@
 summary: 'GBIF: Save occurrence statistics'
 description: >-
-  Part of the GBIF download Flow. Saves dataset, publisher, year, species, and
-  basis-of-record counts for the same area. Do not run this script on its own;
-  open `GBIF: Download occurrences` instead.
+  Counts dataset, publisher, year, species, and basis-of-record values for
+  every occurrence GBIF indexes in an area, and replaces that table. This is
+  separate from the occurrence download and does not apply a lookback period.
 lock: '!inline f/connectors/gbif/gbif_pull_statistics.script.lock'
 kind: script
 schema:
@@ -16,7 +16,7 @@ schema:
     bounding_box:
       type: string
       description: >-
-        Area to download as `[[west, south], [east, north]]`. The area must be
+        Area to summarize as `[[west, south], [east, north]]`. The area must be
         no larger than approximately 35,000 km2. Find these values with Mapbox
         Location Helper: https://labs.mapbox.com/location-helper
       default: null
@@ -28,11 +28,10 @@ schema:
     db_table_name:
       type: string
       description: >-
-        Occurrence table name. Counts are saved in `{name}__statistics`
-        as facet, key, label, and count.
+        Table where counts are saved, with columns facet, key, label, and count.
       default: null
       originalType: string
-      pattern: '^.{1,51}$'
+      pattern: '^.{1,63}$'
   required:
     - bounding_box
     - db

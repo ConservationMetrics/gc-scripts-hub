@@ -1,8 +1,16 @@
-# `gbif_download`: Download GBIF occurrences
+# GBIF connectors
 
-Runs a GBIF occurrence download, imports the results into PostgreSQL, and
-saves facet counts for the same area. The Flow is suitable for an initial
-backfill or a recurring update.
+Two separate entry points:
+
+- **`gbif_download`** downloads occurrence records for an area and upserts them
+  into PostgreSQL. Use it for an initial backfill or a recurring update.
+- **`gbif_pull_statistics`** replaces one table with GBIF's facet counts for an
+  area. It can be run on its own, without downloading occurrences.
+
+The two are not meant to describe the same set of rows. The download can limit
+records with `max_months_lookback` and upserts what it imports. The statistics
+script counts every occurrence GBIF currently indexes in the bounding box, and
+it replaces its table on each run.
 
 ## Setup
 
@@ -16,7 +24,7 @@ Use your GBIF username, not your email address. Keep these credentials out of
 Flow inputs and logs. Review the [GBIF download API restrictions](https://techdocs.gbif.org/en/data-use/api-downloads)
 before running downloads.
 
-## Parameters
+## Download parameters
 
 - **`bounding_box`** — Two corners in longitude/latitude order:
   `[[west, south], [east, north]]`. Boxes must not cross the antimeridian and
@@ -26,8 +34,8 @@ before running downloads.
   an initial backfill.
 - **`db`** — PostgreSQL resource for the occurrence table.
 - **`db_table_name`** — Destination table name and datalake subdirectory.
-  The name can be at most 51 characters. Dataset, publisher, year, species,
-  and basis-of-record counts are saved in `{db_table_name}__statistics`.
+  The name can be at most 53 characters. The last import time is saved in
+  `{db_table_name}__metadata`.
 - **`attachment_root`** — Directory for downloaded files. Defaults to
   `/persistent-storage/datalake`.
 
@@ -60,12 +68,22 @@ organization keys were found and resolved.
 Imports use upserts. Existing records are updated, but records deleted by GBIF
 or moved outside the selected area are not removed from PostgreSQL.
 
-## Statistics table
+Each successful import replaces `{db_table_name}__metadata` with one row:
 
-The last step counts occurrences in the bounding box and replaces
-`{db_table_name}__statistics`. Each row is one facet value. `key` is the GBIF
-identifier and `label` is the display name, so two datasets, publishers, or
-species that share a title stay separate rows.
+| observations_last_imported_at |
+| --- |
+| 2026-10-02T00:12:00+00:00 |
+
+## Occurrence statistics
+
+`gbif_pull_statistics` is a standalone script. It takes the same style of
+bounding box and writes facet counts into `db_table_name` itself. There is no
+companion-table suffix. The name can be at most 63 characters. The area must
+be approximately 35,000 km2 or smaller.
+
+Each row is one facet value. `key` is the GBIF identifier and `label` is the
+display name, so two datasets, publishers, or species that share a title stay
+separate rows.
 
 | facet | key | label | count |
 | --- | --- | --- | ---: |
@@ -75,19 +93,13 @@ species that share a title stay separate rows.
 | species | 2474363 | Psophia crepitans Linnaeus, 1758 | 55 |
 | basis_of_record | HUMAN_OBSERVATION | | 80 |
 | statistics_imported_at | 2026-10-02T00:33:00+00:00 | | |
-| observations_last_imported_at | 2026-10-02T00:12:00+00:00 | | |
 
 Dataset and publisher labels are GBIF Registry titles. Species labels are
 scientific names. Years and basis of record have no separate label. When a
 Registry lookup fails, `label` is empty and `key` still identifies the row.
-`statistics_imported_at` is rewritten each time the counts are saved.
-`observations_last_imported_at` is written when occurrences are imported and
-kept when the counts are replaced. Filter with `WHERE facet = 'species'`.
-Each statistics run replaces the previous count rows with the current GBIF
-index for the area.
-
-`max_months_lookback` applies to the occurrence download. The statistics
-table counts every occurrence GBIF currently indexes in the bounding box.
+`statistics_imported_at` is rewritten each time the counts are saved. Filter
+with `WHERE facet = 'species'`. Each run replaces the table with the current
+GBIF index for the area, including occurrences outside any download lookback.
 
 ## Scheduling and failures
 

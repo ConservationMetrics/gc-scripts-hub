@@ -26,7 +26,7 @@ def test_statistics_writes_excerpt_and_replaces_stale_rows(
     assert "Requesting GBIF speciesKey facet at offset 0." in caplog.text
     assert "Resolving 22 GBIF registry names." in caplog.text
     assert "Resolved 1 of 22 GBIF registry names." in caplog.text
-    assert "Replacing GBIF statistics table gbif_occurrences__statistics." in caplog.text
+    assert "Replacing GBIF statistics table gbif_occurrences." in caplog.text
     assert "Finished GBIF statistics for gbif_occurrences." in caplog.text
 
 
@@ -49,7 +49,7 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
             """
             SELECT column_name, data_type
             FROM information_schema.columns
-            WHERE table_name = 'gbif_occurrences__statistics'
+            WHERE table_name = 'gbif_occurrences'
             ORDER BY ordinal_position
             """
         )
@@ -61,22 +61,13 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
         ]
         _assert_import_timestamp(cursor, "statistics_imported_at")
         cursor.execute(
-            "INSERT INTO gbif_occurrences__statistics (facet, key, label, count) "
-            "VALUES "
-            "('dataset', 'stale', 'Stale dataset', 1), "
-            "('observations_last_imported_at', '2020-01-01T00:00:00+00:00', NULL, NULL)"
+            "INSERT INTO gbif_occurrences (facet, key, label, count) "
+            "VALUES ('dataset', 'stale', 'Stale dataset', 1)"
         )
         calls_after_first_run = len(mocked_responses.calls)
         gbif_pull_statistics.main(bounds, pg_database, "gbif_occurrences")
-        cursor.execute(
-            "SELECT count(*) FROM gbif_occurrences__statistics WHERE key = 'stale'"
-        )
+        cursor.execute("SELECT count(*) FROM gbif_occurrences WHERE key = 'stale'")
         assert cursor.fetchone()[0] == 0
-        cursor.execute(
-            "SELECT key, label, count FROM gbif_occurrences__statistics "
-            "WHERE facet = 'observations_last_imported_at'"
-        )
-        assert cursor.fetchone() == ("2020-01-01T00:00:00+00:00", None, None)
         _assert_import_timestamp(cursor, "statistics_imported_at")
         _assert_snapshot_tables(cursor, "gbif_occurrences", statistics_snapshot)
 
@@ -145,17 +136,17 @@ def test_statistics_keeps_keys_when_registry_lookup_fails(
             [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
         )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "dataset") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "dataset") == [
             (dataset_key, None, 4)
         ]
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "publisher") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "publisher") == [
             (publisher_key, "Cornell Lab of Ornithology", 4)
         ]
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "species") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "species") == [
             ("2474363", None, 4)
         ]
         assert _fetch_facet(
-            cursor, "gbif_occurrences__statistics", "year", "key DESC"
+            cursor, "gbif_occurrences", "year", "key DESC"
         ) == [("2020", None, 3)]
     assert "Skipping GBIF year facet value 'nope'" in caplog.text
     assert "dataset statistics left 1 of 1 names unresolved" in caplog.text
@@ -187,12 +178,12 @@ def test_statistics_stops_when_a_facet_page_repeats(
     assert calls["datasetKey"] == 2
     assert calls["speciesKey"] == 1
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "dataset") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "dataset") == [
             ("dataset-1", "Stuck dataset", 4)
         ]
 
 
-def test_statistics_creates_empty_tables_for_an_empty_area(
+def test_statistics_creates_an_empty_table_for_an_empty_area(
     mocked_responses, pg_database, statistics_snapshot
 ):
     empty = {
@@ -207,11 +198,9 @@ def test_statistics_creates_empty_tables_for_an_empty_area(
     )
     assert result["occurrence_count"] == 0
     assert result["species"] == 0
-    statistics = f"{table_name.lower()}__statistics"
+    statistics = table_name.lower()
     assert len(statistics) == 63
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        cursor.execute("SELECT to_regclass(%s)", (table_name.lower(),))
-        assert cursor.fetchone()[0] is None
         cursor.execute(
             sql.SQL("SELECT facet, label, count FROM {}").format(
                 sql.Identifier(statistics)
@@ -230,8 +219,8 @@ def test_statistics_rejects_oversized_bounds_before_request(
     assert not mocked_responses.calls
 
 
-@pytest.mark.parametrize("name", ["a" * 52, "bad/name", "", "bad\\name"])
-def test_statistics_rejects_table_names_that_cannot_be_suffixed(
+@pytest.mark.parametrize("name", ["a" * 64, "bad/name", "", "bad\\name"])
+def test_statistics_rejects_invalid_table_names(
     mocked_responses, pg_database, name
 ):
     with pytest.raises(ValueError, match="db_table_name"):
@@ -316,15 +305,15 @@ def test_statistics_keeps_distinct_keys_that_share_a_label(
         [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
     )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "dataset") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "dataset") == [
             ("dataset-a", "Shared title", 4),
             ("dataset-b", "Shared title", 2),
         ]
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "publisher") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "publisher") == [
             ("org-a", "Shared publisher", 4),
             ("org-b", "Shared publisher", 2),
         ]
-        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "species") == [
+        assert _fetch_facet(cursor, "gbif_occurrences", "species") == [
             ("1", "Panthera onca", 3),
             ("2", "Panthera onca", 3),
         ]
@@ -332,7 +321,7 @@ def test_statistics_keeps_distinct_keys_that_share_a_label(
 
 def _assert_snapshot_tables(cursor, table_name, snapshot):
     names = snapshot["names"]
-    statistics = f"{table_name}__statistics"
+    statistics = table_name
     expected = {
         "dataset": _keyed_rows(snapshot["facets"]["datasetKey"], names["dataset"]),
         "publisher": _keyed_rows(
@@ -393,7 +382,7 @@ def _fetch_facet(cursor, table_name, facet, order="count DESC, label, key"):
 
 def _assert_import_timestamp(cursor, facet):
     cursor.execute(
-        "SELECT key, label, count FROM gbif_occurrences__statistics WHERE facet = %s",
+        "SELECT key, label, count FROM gbif_occurrences WHERE facet = %s",
         (facet,),
     )
     rows = cursor.fetchall()

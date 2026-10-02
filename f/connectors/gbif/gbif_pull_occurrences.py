@@ -11,21 +11,19 @@ import os
 import tempfile
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from itertools import zip_longest
 from pathlib import Path
 from time import monotonic
 from urllib.parse import quote
 
 import requests
+from psycopg import connect, sql
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import conninfo, postgresql
 from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.common_logic.identifier_utils import camel_to_snake
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
-from f.connectors.gbif.gbif_pull_statistics import (
-    _MAX_TABLE_NAME_LENGTH,
-    record_observations_imported,
-)
 
 _API = "https://api.gbif.org/v1/occurrence/download"
 _REGISTRY_API = "https://api.gbif.org/v1"
@@ -36,6 +34,8 @@ _REGISTRY_USER_AGENT = (
     "GuardianConnector GBIF connector "
     "(https://github.com/ConservationMetrics/gc-scripts-hub)"
 )
+_METADATA_SUFFIX = "__metadata"
+_MAX_TABLE_NAME_LENGTH = 63 - len(_METADATA_SUFFIX)
 logger = logging.getLogger(__name__)
 
 
@@ -59,7 +59,8 @@ def main(
         Root directory for retained archives, CSV, and provenance metadata.
     """
     if (
-        not db_table_name
+        not isinstance(db_table_name, str)
+        or not db_table_name
         or len(db_table_name) > _MAX_TABLE_NAME_LENGTH
         or "/" in db_table_name
         or "\\" in db_table_name
@@ -120,13 +121,37 @@ def main(
             delete_csv_file=False,
             id_column="_id",
         )
-    record_observations_imported(db, db_table_name)
+    _record_imported_at(db, db_table_name)
     return {
         "download_key": download_key,
         "doi": metadata.get("doi"),
         "destination": db_table_name,
         "record_count": record_count,
     }
+
+
+def _record_imported_at(db: postgresql, db_table_name: str) -> None:
+    """Replace `{name}__metadata` with the time this import finished."""
+    table_name = f"{db_table_name.lower()}{_METADATA_SUFFIX}"
+    logger.info("Recording observations import time in %s.", table_name)
+    with (
+        connect(conninfo(db), autocommit=True) as connection,
+        connection.transaction(),
+        connection.cursor() as cursor,
+    ):
+        table = sql.Identifier(table_name)
+        cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
+        cursor.execute(
+            sql.SQL(
+                "CREATE TABLE {} (observations_last_imported_at TIMESTAMPTZ NOT NULL)"
+            ).format(table)
+        )
+        cursor.execute(
+            sql.SQL(
+                "INSERT INTO {} (observations_last_imported_at) VALUES (%s)"
+            ).format(table),
+            (datetime.now(timezone.utc),),
+        )
 
 
 def _metadata(download_key: str) -> dict:

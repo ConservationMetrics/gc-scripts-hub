@@ -255,8 +255,7 @@ value:
             .filter(name =>
               !name.endsWith("__columns") &&
               !name.endsWith("__labels") &&
-              !name.endsWith("__metadata") &&
-              !name.endsWith("__statistics")
+              !name.endsWith("__metadata")
             )
             // Remove local contexts tables
             .filter(name =>

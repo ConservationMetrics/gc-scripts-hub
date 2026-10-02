@@ -27,9 +27,7 @@ _HEADERS = {
     ),
 }
 _MAX_AREA_KM2 = 35_000
-_STATISTICS_SUFFIX = "__statistics"
-_STATISTICS_COLUMNS = ("facet", "key", "label", "count")
-_OBSERVATIONS_IMPORTED_AT = "observations_last_imported_at"
+_MAX_TABLE_NAME_LENGTH = 63
 _STATISTICS_IMPORTED_AT = "statistics_imported_at"
 _REGISTRY_FIELDS = {
     "dataset": "title",
@@ -74,11 +72,10 @@ _FACETS = (
     _Facet("species", "speciesKey", "species"),
     _Facet("basis_of_record", "basisOfRecord", None),
 )
-_MAX_TABLE_NAME_LENGTH = 63 - len(_STATISTICS_SUFFIX)
 
 
 def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
-    """Replace the statistics companion table for one GBIF bounding box.
+    """Replace one table with GBIF facet counts for a bounding box.
 
     Parameters
     ----------
@@ -87,8 +84,8 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
     db : postgresql
         Database connection resource.
     db_table_name : str
-        Occurrence table name. Counts are written to ``{name}__statistics``
-        with columns ``facet``, ``key``, ``label``, and ``count``.
+        Statistics table. Rows use columns ``facet``, ``key``, ``label``,
+        and ``count``.
     """
     table_name = _validate_table_name(db_table_name)
     logger.info("Starting GBIF statistics for %s.", table_name)
@@ -110,7 +107,7 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
 
 
 def _validate_table_name(db_table_name: str) -> str:
-    """Return a lowercase table name that can take the statistics suffix."""
+    """Return a lowercase table name PostgreSQL can store."""
     if (
         not isinstance(db_table_name, str)
         or not db_table_name
@@ -320,52 +317,25 @@ def _rows(
     return rows
 
 
-def record_observations_imported(db: postgresql, db_table_name: str) -> str:
-    """Record when occurrences were last imported, leaving facet counts in place."""
-    table_name = _validate_table_name(db_table_name)
-    qualified = f"{table_name}{_STATISTICS_SUFFIX}"
-    imported_at = _timestamp()
-    logger.info("Recording observations import time in %s.", qualified)
-    with (
-        connect(conninfo(db), autocommit=True) as connection,
-        connection.transaction(),
-        connection.cursor() as cursor,
-    ):
-        _ensure_statistics_table(cursor, qualified)
-        table = sql.Identifier(qualified)
-        cursor.execute(
-            sql.SQL("DELETE FROM {} WHERE facet = %s").format(table),
-            (_OBSERVATIONS_IMPORTED_AT,),
-        )
-        _insert_marker(cursor, table, _OBSERVATIONS_IMPORTED_AT, imported_at)
-    return imported_at
-
-
 def _replace_statistics(
     db: postgresql, table_name: str, tables: list[tuple[_Facet, list[tuple]]]
 ) -> None:
-    """Replace the statistics companion table in one transaction."""
-    qualified = f"{table_name}{_STATISTICS_SUFFIX}"
+    """Replace the statistics table in one transaction."""
     rows = [row for _facet, facet_rows in tables for row in facet_rows]
-    logger.info("Replacing GBIF statistics table %s.", qualified)
+    logger.info("Replacing GBIF statistics table %s.", table_name)
     with (
         connect(conninfo(db), autocommit=True) as connection,
         connection.transaction(),
         connection.cursor() as cursor,
     ):
-        written = _replace_table(cursor, qualified, rows)
-    logger.info("Saved %d GBIF statistics rows to %s.", written, qualified)
+        written = _replace_table(cursor, table_name, rows)
+    logger.info("Saved %d GBIF statistics rows to %s.", written, table_name)
 
 
 def _replace_table(
     cursor, table_name: str, rows: list[tuple[str, str, str | None, int]]
 ) -> int:
-    """Replace facet rows and stamp ``statistics_imported_at``.
-
-    An existing ``observations_last_imported_at`` row is copied forward. The
-    occurrence import writes that row, and this replacement must not drop it.
-    """
-    preserved = _observations_imported_at(cursor, table_name)
+    """Replace facet rows and stamp ``statistics_imported_at``."""
     table = sql.Identifier(table_name)
     cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
     _create_statistics_table(cursor, table)
@@ -376,53 +346,7 @@ def _replace_table(
             for row in rows:
                 copy.write_row(row)
     _insert_marker(cursor, table, _STATISTICS_IMPORTED_AT, _timestamp())
-    if preserved is not None:
-        _insert_marker(cursor, table, _OBSERVATIONS_IMPORTED_AT, preserved)
-    return len(rows) + 1 + (preserved is not None)
-
-
-def _observations_imported_at(cursor, table_name: str) -> str | None:
-    """Return the stored occurrence-import time, if this table already has one."""
-    cursor.execute(
-        """
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = current_schema()
-          AND table_name = %s
-          AND column_name = 'key'
-        """,
-        (table_name,),
-    )
-    if cursor.fetchone() is None:
-        return None
-    cursor.execute(
-        sql.SQL("SELECT key FROM {} WHERE facet = %s").format(
-            sql.Identifier(table_name)
-        ),
-        (_OBSERVATIONS_IMPORTED_AT,),
-    )
-    row = cursor.fetchone()
-    return row[0] if row else None
-
-
-def _ensure_statistics_table(cursor, table_name: str) -> None:
-    """Create the statistics table, replacing it when the columns are outdated."""
-    cursor.execute(
-        """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = %s
-        ORDER BY ordinal_position
-        """,
-        (table_name,),
-    )
-    existing = tuple(name for (name,) in cursor.fetchall())
-    table = sql.Identifier(table_name)
-    if existing == _STATISTICS_COLUMNS:
-        return
-    if existing:
-        cursor.execute(sql.SQL("DROP TABLE {}").format(table))
-    _create_statistics_table(cursor, table)
+    return len(rows) + 1
 
 
 def _create_statistics_table(cursor, table: sql.Identifier) -> None:
