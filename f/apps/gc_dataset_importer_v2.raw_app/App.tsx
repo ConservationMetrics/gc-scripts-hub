@@ -97,22 +97,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function usableMessage(value: unknown): string | undefined {
-  if (
-    typeof value !== "string" ||
-    value.includes('File "') ||
-    value.includes("Traceback")
-  )
-    return undefined;
-  return value;
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  if (value.includes('File "') || value.includes("Traceback")) {
+    // Windmill may include the Python stack in the message. Keep its error
+    // explanation without exposing stack frames in the user-facing alert.
+    return value.match(/^[\w.]+:\s*(.+)$/m)?.[1]?.trim();
+  }
+  return value.trim();
 }
 
 function responseMessage(value: unknown): string | undefined {
-  if (!isRecord(value)) return usableMessage(value);
-  for (const key of ["message", "error"]) {
+  if (typeof value === "string") {
+    try {
+      const decoded: unknown = JSON.parse(value);
+      if (isRecord(decoded)) return responseMessage(decoded);
+    } catch {
+      // A plain-text error message needs no JSON decoding.
+    }
+    return usableMessage(value);
+  }
+  if (!isRecord(value)) return undefined;
+  for (const key of ["validation_error", "detail", "message", "error"]) {
     const candidate = value[key];
-    const found = isRecord(candidate)
-      ? responseMessage(candidate)
-      : usableMessage(candidate);
+    const found = responseMessage(candidate);
     if (found) return found;
   }
   return undefined;
@@ -360,7 +367,7 @@ export default function App() {
       setError(
         message(
           reason,
-          "We could not preview this import. Check the selected identity fields and try again.",
+          "We could not preview this import. Try again. If the problem persists, report it with the upload filename and selected identity fields.",
         ),
       );
     } finally {

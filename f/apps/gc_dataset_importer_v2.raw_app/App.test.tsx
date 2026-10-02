@@ -259,6 +259,52 @@ describe("Dataset importer", () => {
     );
   });
 
+  it.each([
+    {
+      body: {
+        error: {
+          message:
+            'Traceback (most recent call last):\n  File "importer.py", line 1\nImportValidationError: Duplicate record identities were found in the uploaded file.',
+        },
+      },
+    },
+    {
+      body: JSON.stringify({
+        error: {
+          message:
+            "Duplicate record identities were found in the uploaded file.",
+        },
+      }),
+    },
+    {
+      body: {
+        detail: "Duplicate record identities were found in the uploaded file.",
+      },
+    },
+  ])(
+    "shows the preview failure reason from a rejected request (%j)",
+    async (reason) => {
+      mockedBackend.preview_import.mockRejectedValueOnce(reason);
+      render(<App />);
+      await waitFor(() =>
+        expect(mockedBackend.list_datasets).toHaveBeenCalled(),
+      );
+      await chooseExistingGoal("Merge");
+      fireEvent.change(screen.getByLabelText("Identity field 1"), {
+        target: { value: "code" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Duplicate record identities were found in the uploaded file.",
+      );
+      expect(alert).not.toHaveTextContent("Traceback");
+      expect(alert).not.toHaveTextContent("importer.py");
+      expect(screen.getByLabelText("Identity field 1")).toHaveValue("code");
+    },
+  );
+
   it("reports imported map geometry coverage", async () => {
     mockedBackend.preview_import.mockResolvedValue({
       ...preview,
