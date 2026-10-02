@@ -25,7 +25,7 @@ def test_statistics_writes_excerpt_and_replaces_stale_rows(
     assert "Requesting GBIF speciesKey facet at offset 0." in caplog.text
     assert "Resolving 22 GBIF registry names." in caplog.text
     assert "Resolved 1 of 22 GBIF registry names." in caplog.text
-    assert "Replacing GBIF statistics tables for gbif_occurrences." in caplog.text
+    assert "Replacing GBIF statistics table gbif_occurrences__statistics." in caplog.text
     assert "Finished GBIF statistics for gbif_occurrences." in caplog.text
 
 
@@ -37,9 +37,9 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
         result = gbif_pull_statistics.main(bounds, pg_database, "GBIF_Occurrences")
         assert result == {
             "occurrence_count": 856,
-            "datasets": 6,
-            "publishers": 5,
-            "years": 8,
+            "dataset": 6,
+            "publisher": 5,
+            "year": 8,
             "species": 11,
             "basis_of_record": 3,
         }
@@ -48,18 +48,23 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
             """
             SELECT column_name, data_type
             FROM information_schema.columns
-            WHERE table_name = 'gbif_occurrences_basis_of_record'
+            WHERE table_name = 'gbif_occurrences__statistics'
             ORDER BY ordinal_position
             """
         )
-        assert cursor.fetchall() == [("type", "text"), ("count", "bigint")]
+        assert cursor.fetchall() == [
+            ("facet", "text"),
+            ("name", "text"),
+            ("count", "bigint"),
+        ]
         cursor.execute(
-            "INSERT INTO gbif_occurrences_datasets (name, count) VALUES ('stale', 1)"
+            "INSERT INTO gbif_occurrences__statistics (facet, name, count) "
+            "VALUES ('dataset', 'stale', 1)"
         )
         calls_after_first_run = len(mocked_responses.calls)
         gbif_pull_statistics.main(bounds, pg_database, "gbif_occurrences")
         cursor.execute(
-            "SELECT count(*) FROM gbif_occurrences_datasets WHERE name = 'stale'"
+            "SELECT count(*) FROM gbif_occurrences__statistics WHERE name = 'stale'"
         )
         assert cursor.fetchone()[0] == 0
         _assert_snapshot_tables(cursor, "gbif_occurrences", statistics_snapshot)
@@ -129,20 +134,20 @@ def test_statistics_keeps_keys_when_registry_lookup_fails(
             [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
         )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        assert _fetch(cursor, "gbif_occurrences_datasets", ("name", "count")) == [
+        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "dataset") == [
             (dataset_key, 4)
         ]
-        assert _fetch(cursor, "gbif_occurrences_publishers", ("name", "count")) == [
+        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "publisher") == [
             ("Cornell Lab of Ornithology", 4)
         ]
-        assert _fetch(cursor, "gbif_occurrences_species", ("name", "count")) == [
+        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "species") == [
             ("2474363", 4)
         ]
-        assert _fetch(cursor, "gbif_occurrences_years", ("year", "count")) == [
-            (2020, 3)
-        ]
+        assert _fetch_facet(
+            cursor, "gbif_occurrences__statistics", "year", "name DESC"
+        ) == [("2020", 3)]
     assert "Skipping GBIF year facet value 'nope'" in caplog.text
-    assert "datasets statistics left 1 of 1 names unresolved" in caplog.text
+    assert "dataset statistics left 1 of 1 names unresolved" in caplog.text
     assert "species statistics left 1 of 1 names unresolved" in caplog.text
 
 
@@ -171,7 +176,7 @@ def test_statistics_stops_when_a_facet_page_repeats(
     assert calls["datasetKey"] == 2
     assert calls["speciesKey"] == 1
     with connect(**pg_database) as connection, connection.cursor() as cursor:
-        assert _fetch(cursor, "gbif_occurrences_datasets", ("name", "count")) == [
+        assert _fetch_facet(cursor, "gbif_occurrences__statistics", "dataset") == [
             ("Stuck dataset", 4)
         ]
 
@@ -191,13 +196,13 @@ def test_statistics_creates_empty_tables_for_an_empty_area(
     )
     assert result["occurrence_count"] == 0
     assert result["species"] == 0
-    species = f"{table_name.lower()}_species"
-    assert len(f"{table_name.lower()}_basis_of_record") == 63
+    statistics = f"{table_name.lower()}__statistics"
+    assert len(statistics) == 63
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         cursor.execute("SELECT to_regclass(%s)", (table_name.lower(),))
         assert cursor.fetchone()[0] is None
         cursor.execute(
-            sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(species))
+            sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(statistics))
         )
         assert cursor.fetchone()[0] == 0
 
@@ -212,7 +217,7 @@ def test_statistics_rejects_oversized_bounds_before_request(
     assert not mocked_responses.calls
 
 
-@pytest.mark.parametrize("name", ["a" * 48, "bad/name", "", "bad\\name"])
+@pytest.mark.parametrize("name", ["a" * 52, "bad/name", "", "bad\\name"])
 def test_statistics_rejects_table_names_that_cannot_be_suffixed(
     mocked_responses, pg_database, name
 ):
@@ -262,41 +267,30 @@ def _register_snapshot(mocked, snapshot, fail_kinds=()):
 
 def _assert_snapshot_tables(cursor, table_name, snapshot):
     names = snapshot["names"]
+    statistics = f"{table_name}__statistics"
     expected = {
-        "datasets": _labeled_rows(snapshot["facets"]["datasetKey"], names["dataset"]),
-        "publishers": _labeled_rows(
+        "dataset": _labeled_rows(snapshot["facets"]["datasetKey"], names["dataset"]),
+        "publisher": _labeled_rows(
             snapshot["facets"]["publishingOrg"], names["organization"]
         ),
         "species": _labeled_rows(snapshot["facets"]["speciesKey"], names["species"]),
         "basis_of_record": _labeled_rows(snapshot["facets"]["basisOfRecord"]),
-        "years": sorted(
-            (
-                (int(entry["name"]), entry["count"])
-                for entry in snapshot["facets"]["year"]
-            ),
-            key=lambda row: -row[0],
+        "year": sorted(
+            ((entry["name"], entry["count"]) for entry in snapshot["facets"]["year"]),
+            key=lambda row: -int(row[0]),
         ),
     }
-    columns = {
-        "datasets": ("name", "count"),
-        "publishers": ("name", "count"),
-        "species": ("name", "count"),
-        "basis_of_record": ("type", "count"),
-        "years": ("year", "count"),
-    }
-    order = {
-        "years": "year DESC",
-        "datasets": "count DESC, name",
-        "publishers": "count DESC, name",
-        "species": "count DESC, name",
-        "basis_of_record": "count DESC, type",
-    }
     fetched = {
-        suffix: _fetch(cursor, f"{table_name}_{suffix}", columns[suffix], order[suffix])
-        for suffix in expected
+        facet: _fetch_facet(
+            cursor,
+            statistics,
+            facet,
+            "name DESC" if facet == "year" else "count DESC, name",
+        )
+        for facet in expected
     }
     assert fetched == expected
-    assert fetched["years"][0] == (2026, 195)
+    assert fetched["year"][0] == ("2026", 195)
     assert [name for name, count in fetched["species"] if count == 3] == [
         "Hemiodus huraulti (Géry, 1964)",
         "Heteroscada reckia Hübner, 1806",
@@ -312,12 +306,12 @@ def _labeled_rows(entries, names=None):
     return rows
 
 
-def _fetch(cursor, table_name, columns, order="count DESC"):
+def _fetch_facet(cursor, table_name, facet, order="count DESC, name"):
     cursor.execute(
-        sql.SQL("SELECT {} FROM {} ORDER BY {}").format(
-            sql.SQL(", ").join(map(sql.Identifier, columns)),
+        sql.SQL("SELECT name, count FROM {} WHERE facet = %s ORDER BY {}").format(
             sql.Identifier(table_name),
             sql.SQL(order),
-        )
+        ),
+        (facet,),
     )
     return cursor.fetchall()

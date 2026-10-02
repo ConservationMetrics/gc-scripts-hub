@@ -26,6 +26,7 @@ _HEADERS = {
     ),
 }
 _MAX_AREA_KM2 = 35_000
+_STATISTICS_SUFFIX = "__statistics"
 _REGISTRY_FIELDS = {
     "dataset": "title",
     "organization": "title",
@@ -57,25 +58,23 @@ logger = logging.getLogger(__name__)
 
 
 class _Facet(NamedTuple):
-    suffix: str
+    name: str
     parameter: str
-    label_column: str
     registry: str | None
 
 
 _FACETS = (
-    _Facet("datasets", "datasetKey", "name", "dataset"),
-    _Facet("publishers", "publishingOrg", "name", "organization"),
-    _Facet("years", "year", "year", None),
-    _Facet("species", "speciesKey", "name", "species"),
-    _Facet("basis_of_record", "basisOfRecord", "type", None),
+    _Facet("dataset", "datasetKey", "dataset"),
+    _Facet("publisher", "publishingOrg", "organization"),
+    _Facet("year", "year", None),
+    _Facet("species", "speciesKey", "species"),
+    _Facet("basis_of_record", "basisOfRecord", None),
 )
-_COLUMN_TYPES = {"name": "TEXT", "count": "BIGINT", "year": "INTEGER", "type": "TEXT"}
-_MAX_TABLE_NAME_LENGTH = 63 - max(len(facet.suffix) + 1 for facet in _FACETS)
+_MAX_TABLE_NAME_LENGTH = 63 - len(_STATISTICS_SUFFIX)
 
 
 def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
-    """Replace facet-count tables for one GBIF bounding box.
+    """Replace the statistics companion table for one GBIF bounding box.
 
     Parameters
     ----------
@@ -84,9 +83,8 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
     db : postgresql
         Database connection resource.
     db_table_name : str
-        Occurrence table name. Counts are written to ``{name}_datasets``,
-        ``{name}_publishers``, ``{name}_years``, ``{name}_species``, and
-        ``{name}_basis_of_record``.
+        Occurrence table name. Counts are written to ``{name}__statistics``
+        with columns ``facet``, ``name``, and ``count``.
     """
     table_name = _validate_table_name(db_table_name)
     logger.info("Starting GBIF statistics for %s.", table_name)
@@ -95,20 +93,20 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
     occurrence_count, tables = _collect(wkt)
     summary = {
         "occurrence_count": occurrence_count,
-        **{facet.suffix: len(rows) for facet, rows in tables},
+        **{facet.name: len(rows) for facet, rows in tables},
     }
     logger.info(
         "GBIF statistics found %d occurrences: %s.",
         occurrence_count,
         {name: summary[name] for name in summary if name != "occurrence_count"},
     )
-    _replace_tables(db, table_name, tables)
+    _replace_statistics(db, table_name, tables)
     logger.info("Finished GBIF statistics for %s.", table_name)
     return summary
 
 
 def _validate_table_name(db_table_name: str) -> str:
-    """Return a lowercase table name that can take every statistics suffix."""
+    """Return a lowercase table name that can take the statistics suffix."""
     if (
         not isinstance(db_table_name, str)
         or not db_table_name
@@ -287,79 +285,62 @@ def _rows(
     facet: _Facet,
     entries: list[tuple[str, int]],
     resolved: dict[tuple[str, str], str],
-) -> list[tuple]:
-    """Build sorted ``(label, count)`` rows, falling back to the GBIF key."""
+) -> list[tuple[str, str, int]]:
+    """Build sorted ``(facet, name, count)`` rows, falling back to the GBIF key."""
     rows = []
     unresolved = 0
     for name, count in entries:
-        if facet.label_column == "year":
-            if not name.isdigit():
-                logger.warning("Skipping GBIF year facet value %r.", name)
-                continue
-            rows.append((int(name), count))
+        if facet.name == "year" and not name.isdigit():
+            logger.warning("Skipping GBIF year facet value %r.", name)
             continue
         label = resolved.get((facet.registry, name)) if facet.registry else name
         if facet.registry and not label:
             unresolved += 1
             label = name
-        rows.append((label, count))
+        rows.append((facet.name, label, count))
     if unresolved:
         logger.warning(
             "GBIF %s statistics left %d of %d names unresolved.",
-            facet.suffix,
+            facet.name,
             unresolved,
             len(entries),
         )
-    if facet.label_column == "year":
-        rows.sort(key=lambda row: -row[0])
+    if facet.name == "year":
+        rows.sort(key=lambda row: -int(row[1]))
     else:
-        rows.sort(key=lambda row: (-row[1], row[0]))
+        rows.sort(key=lambda row: (-row[2], row[1]))
     return rows
 
 
-def _replace_tables(
+def _replace_statistics(
     db: postgresql, table_name: str, tables: list[tuple[_Facet, list[tuple]]]
 ) -> None:
-    """Replace every statistics table in one transaction."""
-    logger.info("Replacing GBIF statistics tables for %s.", table_name)
+    """Replace the statistics companion table in one transaction."""
+    qualified = f"{table_name}{_STATISTICS_SUFFIX}"
+    rows = [row for _facet, facet_rows in tables for row in facet_rows]
+    logger.info("Replacing GBIF statistics table %s.", qualified)
     with (
         connect(conninfo(db), autocommit=True) as connection,
         connection.transaction(),
         connection.cursor() as cursor,
     ):
-        for facet, rows in tables:
-            qualified = f"{table_name}_{facet.suffix}"
-            _replace_table(cursor, qualified, facet, rows)
-            logger.info(
-                "Saved %d GBIF %s rows to %s.", len(rows), facet.suffix, qualified
-            )
+        _replace_table(cursor, qualified, rows)
+    logger.info("Saved %d GBIF statistics rows to %s.", len(rows), qualified)
 
 
-def _replace_table(cursor, table_name: str, facet: _Facet, rows: list[tuple]) -> None:
-    columns = (
-        (facet.label_column, _COLUMN_TYPES[facet.label_column]),
-        ("count", _COLUMN_TYPES["count"]),
-    )
+def _replace_table(cursor, table_name: str, rows: list[tuple[str, str, int]]) -> None:
     table = sql.Identifier(table_name)
     cursor.execute(
-        sql.SQL("CREATE TABLE IF NOT EXISTS {} ({})").format(
-            table,
-            sql.SQL(", ").join(
-                sql.SQL("{} {} NOT NULL").format(
-                    sql.Identifier(column), sql.SQL(column_type)
-                )
-                for column, column_type in columns
-            ),
-        )
+        sql.SQL(
+            "CREATE TABLE IF NOT EXISTS {} ("
+            "facet TEXT NOT NULL, name TEXT NOT NULL, count BIGINT NOT NULL)"
+        ).format(table)
     )
     cursor.execute(sql.SQL("TRUNCATE {}").format(table))
     if not rows:
         return
     with cursor.copy(
-        sql.SQL("COPY {} ({}) FROM STDIN").format(
-            table,
-            sql.SQL(", ").join(sql.Identifier(column) for column, _type in columns),
-        )
+        sql.SQL("COPY {} (facet, name, count) FROM STDIN").format(table)
     ) as copy:
         for row in rows:
             copy.write_row(row)

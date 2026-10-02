@@ -264,7 +264,8 @@ value:
             .filter(name =>
               !name.endsWith("__columns") &&
               !name.endsWith("__labels") &&
-              !name.endsWith("__metadata")
+              !name.endsWith("__metadata") &&
+              !name.endsWith("__statistics")
             )
             .sort((a, b) => a.localeCompare(b))
         language: frontend

@@ -124,9 +124,8 @@ schema:
       type: string
       description: >-
         Table name for occurrence records and the download folder. Counts are
-        also saved in tables with this name plus `_datasets`, `_publishers`,
-        `_years`, `_species`, and `_basis_of_record`.
-      pattern: '^.{1,47}$'
+        also saved in `{name}__statistics`.
+      pattern: '^.{1,51}$'
     gbif_account:
       type: object
       description: GBIF account with a username (not email address) and password.

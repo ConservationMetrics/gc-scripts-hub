@@ -26,10 +26,8 @@ before running downloads.
   an initial backfill.
 - **`db`** — PostgreSQL resource for the occurrence table.
 - **`db_table_name`** — Destination table name and datalake subdirectory.
-  The name can be at most 47 characters. Dataset, publisher, year, species,
-  and basis-of-record counts are saved in `{db_table_name}_datasets`,
-  `{db_table_name}_publishers`, `{db_table_name}_years`,
-  `{db_table_name}_species`, and `{db_table_name}_basis_of_record`.
+  The name can be at most 51 characters. Dataset, publisher, year, species,
+  and basis-of-record counts are saved in `{db_table_name}__statistics`.
 - **`attachment_root`** — Directory for downloaded files. Defaults to
   `/persistent-storage/datalake`.
 
@@ -62,23 +60,27 @@ organization keys were found and resolved.
 Imports use upserts. Existing records are updated, but records deleted by GBIF
 or moved outside the selected area are not removed from PostgreSQL.
 
-## Statistics tables
+## Statistics table
 
-The last step counts occurrences in the bounding box and replaces five tables:
+The last step counts occurrences in the bounding box and replaces
+`{db_table_name}__statistics`. Each row is one facet value:
 
-- `{db_table_name}_datasets` — `name`, `count`
-- `{db_table_name}_publishers` — `name`, `count`
-- `{db_table_name}_years` — `year`, `count`
-- `{db_table_name}_species` — `name`, `count`
-- `{db_table_name}_basis_of_record` — `type`, `count`
+| facet | name | count |
+| --- | --- | ---: |
+| dataset | Forest monitoring dataset | 60 |
+| publisher | Forest Research Institute | 60 |
+| year | 2026 | 70 |
+| species | Panthera onca | 55 |
+| basis_of_record | HUMAN_OBSERVATION | 80 |
 
-Dataset and publisher names are GBIF Registry titles. Species names are
-scientific names. Years and basis of record use the facet value. When a
-Registry lookup fails, the table stores the GBIF key. Each run replaces the
-previous rows with the current GBIF index for the area.
+`name` is text, including years. Dataset and publisher names are GBIF Registry
+titles. Species names are scientific names. Years and basis of record use the
+facet value. When a Registry lookup fails, the table stores the GBIF key.
+Filter with `WHERE facet = 'species'`. Each run replaces the previous rows
+with the current GBIF index for the area.
 
 `max_months_lookback` applies to the occurrence download. The statistics
-tables count every occurrence GBIF currently indexes in the bounding box.
+table counts every occurrence GBIF currently indexes in the bounding box.
 
 ## Scheduling and failures
 

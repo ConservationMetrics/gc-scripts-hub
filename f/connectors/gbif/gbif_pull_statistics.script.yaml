@@ -22,18 +22,16 @@ schema:
       default: null
     db:
       type: object
-      description: PostgreSQL database where statistics tables are saved.
+      description: PostgreSQL database where the statistics table is saved.
       default: null
       format: resource-postgresql
     db_table_name:
       type: string
       description: >-
-        Occurrence table name. Counts are saved in tables with this name plus
-        `_datasets`, `_publishers`, `_years`, `_species`, and
-        `_basis_of_record`.
+        Occurrence table name. Counts are saved in `{name}__statistics`.
       default: null
       originalType: string
-      pattern: '^.{1,47}$'
+      pattern: '^.{1,51}$'
   required:
     - bounding_box
     - db
