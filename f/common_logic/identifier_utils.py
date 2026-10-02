@@ -49,6 +49,11 @@ def _shorten_and_uniqify(identifier, conflicts, maxlen=63):
     return new_identifier
 
 
+def uniquify_sql_identifier(identifier, conflicts, maxlen=63):
+    """Return an identifier that does not collide with existing SQL names."""
+    return _shorten_and_uniqify(identifier, conflicts, maxlen)
+
+
 def camel_to_snake(name: str) -> str:
     """
     Convert CamelCase string to snake_case.
@@ -235,6 +240,54 @@ def sanitize_sql_message(
         updated_column_renames[original_key] = key
         sanitized_sql_message[key] = value
     return sanitized_sql_message, updated_column_renames
+
+
+def sanitize_sql_columns(
+    source_columns,
+    column_renames=None,
+    *,
+    reverse_properties_separated_by=None,
+    str_replace=None,
+    maxlen=63,
+    sep_policy="remove",
+):
+    """Resolve ordered source columns using the established warehouse naming rules.
+
+    Parameters
+    ----------
+    source_columns : iterable of str
+        Source column names in deterministic allocation order.
+    column_renames : dict, optional
+        Existing original-to-SQL mappings that must remain authoritative.
+    reverse_properties_separated_by : str, optional
+        Separator for reversing nested property names.
+    str_replace : list of tuple, optional
+        Replacements applied before identifier normalization.
+    maxlen : int, optional
+        Maximum SQL identifier length.
+    sep_policy : str, optional
+        Separator normalization policy.
+
+    Returns
+    -------
+    dict
+        A mapping for each requested source column to its SQL column.
+
+    Notes
+    -----
+    This delegates to ``sanitize_sql_message`` so batch importers and
+    ``StructuredDBWriter`` share collision, truncation, and metadata behavior.
+    """
+    source_columns = list(source_columns)
+    _, mappings = sanitize_sql_message(
+        dict.fromkeys(source_columns),
+        column_renames or {},
+        reverse_properties_separated_by=reverse_properties_separated_by,
+        str_replace=str_replace or [],
+        maxlen=maxlen,
+        sep_policy=sep_policy,
+    )
+    return {column: mappings[column] for column in source_columns}
 
 
 def normalize_and_snakecase_keys(dictionary, special_case_keys=None):
