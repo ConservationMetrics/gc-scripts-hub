@@ -52,13 +52,13 @@ schema:
       description: >-
         This is a prefix added to the database table names created by this
         script. For each project, the observations and tracks data are stored in
-        separate  tables with this prefix and `_observations` and `_tracks`
-        suffixes.  For instance, if `db_table_prefix` is "comapeo" and the
-        project `name` is "My Mapeo Project", the script will create Postgres
-        tables named  `comapeo_my_mapeo_project_observations` and
-        `comapeo_my_mapeo_project_tracks`.  If no prefix is provided, the table
-        names will simply be the project `name`  with the suffixes, such as
-        `my_mapeo_project_observations` and  `my_mapeo_project_tracks`.
+        separate tables with this prefix and `_observations` and `_tracks`
+        suffixes. For instance, if `db_table_prefix` is "comapeo" and the
+        project name is "My Mapeo Project", the script will create Postgres
+        tables named `comapeo_my_mapeo_project_observations` and
+        `comapeo_my_mapeo_project_tracks`. If no prefix is provided, the table
+        names will simply be the project name with the suffixes, such as
+        `my_mapeo_project_observations` and `my_mapeo_project_tracks`.
       default: comapeo
       originalType: string
   required:
