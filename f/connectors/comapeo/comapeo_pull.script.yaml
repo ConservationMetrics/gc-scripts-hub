@@ -1,12 +1,12 @@
-summary: 'CoMapeo: Fetch Observations, Tracks, and Categories'
+summary: "CoMapeo: Fetch Observations, Tracks, and Categories"
 description: >-
   This script fetches observations, tracks, and categories from the REST API of
   a CoMapeo archive server.
-lock: '!inline f/connectors/comapeo/comapeo_pull.script.lock'
+lock: "!inline f/connectors/comapeo/comapeo_pull.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
     - comapeo
@@ -32,7 +32,11 @@ schema:
       format: resource-comapeo_server
     comapeo_project_blocklist:
       type: array
-      description: An optional blocklist of project IDs to exclude from fetching.
+      description: >-
+        An optional blocklist of project names to exclude from fetching. Names
+        must match the project name shown in CoMapeo. You can find the project
+        name in the CoMapeo UI, or in this script's output once the script has 
+        run.
       default: null
       items:
         type: string

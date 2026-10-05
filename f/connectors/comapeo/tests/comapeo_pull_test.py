@@ -11,6 +11,7 @@ from f.connectors.comapeo.comapeo_pull import (
     fetch_all_fields,
     fetch_all_presets,
     fetch_preset,
+    lookup_project_ids_by_name,
     main,
     transform_comapeo_observations,
     transform_comapeo_tracks,
@@ -786,6 +787,31 @@ def test_download_file(mocked_responses, tmp_path):
     assert failed == 1
 
 
+def test_lookup_project_ids_by_name(caplog):
+    """Project names from GET /projects resolve to the IDs used for exclusion."""
+    projects = server_responses.comapeo_projects("http://comapeo.example.org")["data"]
+
+    assert lookup_project_ids_by_name(projects, ["River Mapping"]) == {"river_mapping"}
+    assert lookup_project_ids_by_name(
+        projects, ["Forest Expedition", "River Mapping"]
+    ) == {"forest_expedition", "river_mapping"}
+    # Same display name on two projects excludes both IDs.
+    assert lookup_project_ids_by_name(
+        [
+            {"projectId": "a", "name": "Shared Name"},
+            {"projectId": "b", "name": "Shared Name"},
+            {"projectId": "c", "name": "Other"},
+        ],
+        ["Shared Name"],
+    ) == {"a", "b"}
+    assert lookup_project_ids_by_name(projects, []) == set()
+    assert lookup_project_ids_by_name(projects, None) == set()
+
+    with caplog.at_level("WARNING"):
+        assert lookup_project_ids_by_name(projects, ["not a project"]) == set()
+    assert "not a project" in caplog.text
+
+
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
@@ -798,7 +824,7 @@ def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
     )
 
     assert run_metrics == {
-        "forest_expedition": {
+        "Forest Expedition": {
             "observations_fetched": 3,
             "attachments_failed": 0,
         }
@@ -1047,6 +1073,7 @@ def test_missing_attachments_geojson_created(
         assert "1 observation(s) affected" in error_msg
         assert "missing_attachments.geojson" in error_msg
         assert "per_project_stats=" in error_msg
+        assert '"Forest Expedition"' in error_msg
         assert '"attachments_failed": 1' in error_msg
 
     # Check that the missing attachments GeoJSON file was created despite the error
@@ -1093,7 +1120,7 @@ def test_no_missing_attachments_geojson_when_all_succeed(
     )
 
     assert run_metrics == {
-        "forest_expedition": {
+        "Forest Expedition": {
             "observations_fetched": 3,
             "attachments_failed": 0,
         }
