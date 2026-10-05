@@ -7,13 +7,18 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import requests
 
 from f.common_logic.date_utils import calculate_cutoff_date
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as existing_db_table_name,  # Windmill dynamic select
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -173,10 +178,14 @@ def main(
     source: str | None,
     slug: str | None,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
     bounding_box: str | list | None = None,
     max_months_lookback: int | None = None,
+    destination_action: Literal[
+        "Use existing dataset", "Create new dataset"
+    ] = "Create new dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """
     Fetch public iNaturalist observations for a project, user, and/or bounding
@@ -192,8 +201,9 @@ def main(
         must be provided.
     db : postgresql
         Database connection configuration.
-    db_table_name : str
-        Database table name and datalake subdirectory.
+    db_table_name : str, optional
+        New table name and datalake subdirectory. Used when
+        ``destination_action`` is ``"Create new dataset"``.
     attachment_root : str
         Root directory for persisted files.
     bounding_box : str or list, optional
@@ -202,7 +212,16 @@ def main(
     max_months_lookback : int, optional
         If set, only observations on or after the first day of the cutoff
         month are fetched (iNaturalist ``d1``). Same meaning as GFW.
+    destination_action : str
+        ``"Use existing dataset"`` or ``"Create new dataset"``.
+    existing_db_table_name : str, optional
+        Public table to append to. Used when ``destination_action`` is
+        ``"Use existing dataset"``.
     """
+    table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
+
     source = _optional_text(source)
     slug = _optional_text(slug)
     bbox = parse_bounding_box(bounding_box)
@@ -220,7 +239,7 @@ def main(
             )
         if source == "project":
             project_id = slug
-            project = download_project_metadata(slug, db_table_name, attachment_root)
+            project = download_project_metadata(slug, table_name, attachment_root)
             if project:
                 logger.info(
                     "Fetched project metadata for '%s' (id=%s)",
@@ -250,7 +269,7 @@ def main(
     write_observations(
         observations,
         db,
-        db_table_name,
+        table_name,
         attachment_root,
         project_id=project_id,
         user_id=user_id,
