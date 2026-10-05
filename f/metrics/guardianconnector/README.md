@@ -6,18 +6,19 @@ This script generates metrics for Guardian Connector services based on provided 
 
 - All parameters are optional: the script will only collect metrics for services where the required parameters are provided. This allows flexible monitoring of only the services you need.
 
-- This script will create the `guardianconnector` database if it doesn't exist. This is done in case the database is not already created by another resource on the stack, like GuardianConnector Explorer.
+- This script will create the `guardianconnector` database if it doesn't exist. This is done in case the database is not already created by another resource on the stack, like Guardian Connector Explorer.
 
 - The intended usage of this script is to be scheduled to run once a month, so it can be used to accumulate metrics data about usage over time. We recommend using a cron job like `0 0 3 1 * *` (1st day of the month at 3:00 AM).
 
 ## Metrics Collected
 
 ### 1. CoMapeo
+
 - `project_count`: Number of projects on the CoMapeo server
 - `data_size_mb`: Size of pulled CoMapeo data on the datalake (in MB)
 
 > [!NOTE]
-> 
+>
 > The data size measurement looks at the `{attachment_root}/comapeo` directory on the datalake, **not the CoMapeo server's Docker volume**, as Windmill doesn't have mounted access to Docker volumes. This serves as a proxy metric based on the pulled data stored locally, and therefore assumes that a [`comapeo_pull`](../../connectors/comapeo/README.md) script has been run to pull the CoMapeo project data to the datalake.
 
 ### 2. Warehouse
@@ -34,7 +35,7 @@ This script generates metrics for Guardian Connector services based on provided 
 > We gather metrics on `mapeo` and `alerts` data because these datasets are part of core, commonly used workflows in Guardian Connector. The [CoMapeo](../../connectors/comapeo/README.md) and the [Alerts](../../connectors/alerts/README.md) ingestion scripts create tables with these names by default (although the table names can be overridden via configuration).
 >
 > This is not the case for other connectors, such as KoboToolbox, where table names and schemas are more variable and not as standardized across deployments.
-> 
+>
 > We also gather metrics on `mapeo` specifically because both legacy Mapeo and CoMapeo datasets may coexist in the same data warehouse. Using the `mapeo` namespace allows us to aggregate metrics across both variants where applicable.
 >
 > There is a small risk of false positives if these namespaces are used for unrelated datasets (e.g., `survey_alerts_case_management` or `kobotoolbox_competicion_yo_mapeo_el_mundo`). But until we have more robust metadata and dataset classification practices, this heuristic approach is the most practical option, and the likelihood of such false positives at this time is considered low.
@@ -65,9 +66,10 @@ This script generates metrics for Guardian Connector services based on provided 
 
 ## Auth0 Integration
 
-The Auth0 metrics feature uses the Auth0 Management API to collect user and session statistics. 
+The Auth0 metrics feature uses the Auth0 Management API to collect user and session statistics.
 
 To use this feature:
+
 1. Create an Auth0 Machine-to-Machine (M2M) application in your Auth0 dashboard
 2. Authorize it for the Auth0 Management API
 3. Grant the `read:users` and `read:stats` scopes to the application
