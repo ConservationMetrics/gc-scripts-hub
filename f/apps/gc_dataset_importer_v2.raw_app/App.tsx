@@ -695,6 +695,9 @@ export default function App() {
             {strings.reviewHeading}
           </h2>
           {!preview && <p className="lede">{strings.reviewDescription}</p>}
+          {preview && !success && (
+            <p className="lede">{strings.reviewProposedChanges}</p>
+          )}
           <dl className="review-summary">
             <div>
               <dt>{strings.stepGoal}</dt>

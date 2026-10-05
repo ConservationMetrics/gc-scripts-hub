@@ -53,6 +53,7 @@
   "policyExisting": "Existing records win; matching rows stay unchanged.",
   "reviewHeading": "Review import",
   "reviewDescription": "Generate a preview before writing to the dataset.",
+  "reviewProposedChanges": "Please review these proposed changes carefully. They will be applied when you click Confirm.",
   "reviewSource": "Source",
   "reviewFormat": "Detected format",
   "reviewZip": "Files in this archive are appended in archive order. Rows are not matched or deduplicated.",
