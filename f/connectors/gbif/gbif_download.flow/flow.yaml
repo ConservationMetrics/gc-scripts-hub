@@ -1,4 +1,4 @@
-summary: 'GBIF: Download occurrences'
+summary: "GBIF: Download occurrences"
 description: >-
   Downloads GBIF occurrence records for an area and saves them to PostgreSQL.
   Use it for a first download or to update existing data. GBIF can take time to
@@ -27,7 +27,7 @@ value:
         modules:
           - id: delay
             sleep:
-              expr: 'flow_input.iter.index === 0 ? 0 : 60'
+              expr: "flow_input.iter.index === 0 ? 0 : 60"
               type: javascript
             value:
               type: identity
@@ -78,7 +78,7 @@ value:
             type: javascript
       continue_on_error: false
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
     - gbif_account
@@ -96,7 +96,7 @@ schema:
       type: string
       description: >-
         Area to download as `[[west, south], [east, north]]`. The area must be
-        no larger than approximately 15,000 km2. Find these values with Mapbox
+        no larger than approximately 35,000 km2. Find these values with Mapbox
         Location Helper: https://labs.mapbox.com/location-helper
     db:
       type: object
@@ -107,7 +107,7 @@ schema:
       description: >-
         Table name for occurrence records and the download folder. The last
         import time is saved in `{name}__metadata`.
-      pattern: '^.{1,53}$'
+      pattern: "^.{1,53}$"
     gbif_account:
       type: object
       description: GBIF account with a username (not email address) and password.
