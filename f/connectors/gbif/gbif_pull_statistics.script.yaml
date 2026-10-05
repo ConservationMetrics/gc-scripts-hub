@@ -1,0 +1,39 @@
+summary: "GBIF: Save occurrence statistics"
+description: >-
+  Counts dataset, publisher, year, species, and basis-of-record values for
+  every occurrence GBIF indexes in an area, and replaces that table. This is a
+  separate connector script from `GBIF: Download occurrences`, which downloads 
+  all individual occurrences and saves them to a database table.
+lock: "!inline f/connectors/gbif/gbif_pull_statistics.script.lock"
+kind: script
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  order:
+    - bounding_box
+    - db
+    - db_table_name
+  properties:
+    bounding_box:
+      type: string
+      description: >-
+        Area to summarize as `[[west, south], [east, north]]`. The area must be
+        no larger than approximately 35,000 km2. Find these values with Mapbox
+        Location Helper: https://labs.mapbox.com/location-helper
+      default: null
+    db:
+      type: object
+      description: PostgreSQL database where the statistics table is saved.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: string
+      description: >-
+        Table where counts are saved, with columns `facet`, `key`, `label`, and `count`.
+      default: null
+      originalType: string
+      pattern: "^.{1,63}$"
+  required:
+    - bounding_box
+    - db
+    - db_table_name

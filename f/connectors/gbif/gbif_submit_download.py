@@ -13,7 +13,7 @@ from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.geo_utils import bounding_box_to_wkt
 
 _API = "https://api.gbif.org/v1/occurrence/download"
-_MAX_AREA_KM2 = 15_000
+_MAX_AREA_KM2 = 35_000
 _MAX_WAIT_SECONDS = 24 * 60 * 60
 
 
