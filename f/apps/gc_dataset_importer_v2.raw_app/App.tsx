@@ -12,6 +12,7 @@ import {
   mergeIcon,
   syncIcon,
 } from "./assets/goal-icons";
+import strings from "./strings.json";
 import { backend } from "./wmill";
 
 type Goal = "create" | "append" | "merge" | "sync";
@@ -68,29 +69,34 @@ const goals: Array<{
   {
     id: "create",
     icon: createIcon,
-    label: "Create",
-    description: "a new dataset from this import.",
+    label: strings.createLabel,
+    description: strings.createDescription,
   },
   {
     id: "append",
     icon: appendIcon,
-    label: "Append",
-    description: "every incoming record to an existing dataset.",
+    label: strings.appendLabel,
+    description: strings.appendDescription,
   },
   {
     id: "merge",
     icon: mergeIcon,
-    label: "Merge",
-    description:
-      "records into an existing dataset and preserve unmatched records.",
+    label: strings.mergeLabel,
+    description: strings.mergeDescription,
   },
   {
     id: "sync",
     icon: syncIcon,
-    label: "Sync",
-    description: "an existing dataset, including removal of absent records.",
+    label: strings.syncLabel,
+    description: strings.syncDescription,
   },
 ];
+
+function format(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (placeholder, key: string) =>
+    values[key] === undefined ? placeholder : String(values[key]),
+  );
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -125,10 +131,7 @@ function responseMessage(value: unknown): string | undefined {
   return undefined;
 }
 
-function message(
-  error: unknown,
-  fallback = "Something went wrong. Try again.",
-) {
+function message(error: unknown, fallback = strings.errorGeneric) {
   if (isRecord(error)) {
     const fromBody = responseMessage(error.body);
     if (fromBody) return fromBody;
@@ -145,12 +148,11 @@ function message(
 function filePayload(file: File) {
   return new Promise<{ data: string; name: string }>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () =>
-      reject(new Error("The selected file could not be read."));
+    reader.onerror = () => reject(new Error(strings.errorReadFile));
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") {
-        reject(new Error("The selected file could not be read."));
+        reject(new Error(strings.errorReadFile));
         return;
       }
       resolve({ data: result.split(",", 2)[1], name: file.name });
@@ -186,7 +188,7 @@ export default function App() {
     try {
       setDatasets(await backend.list_datasets());
     } catch (reason) {
-      setDatasetsError(message(reason, "We could not load the dataset list."));
+      setDatasetsError(message(reason, strings.errorLoadDatasets));
     } finally {
       setDatasetsLoading(false);
     }
@@ -201,9 +203,7 @@ export default function App() {
       })
       .catch((reason) => {
         if (active) {
-          setDatasetsError(
-            message(reason, "We could not load the dataset list."),
-          );
+          setDatasetsError(message(reason, strings.errorLoadDatasets));
         }
       })
       .finally(() => {
@@ -235,7 +235,7 @@ export default function App() {
         .catch((reason) => {
           if (!active) return;
           setNameChecking(false);
-          setError(message(reason, "We could not check this dataset name."));
+          setError(message(reason, strings.errorCheckName));
         });
     }, 350);
     return () => {
@@ -247,11 +247,13 @@ export default function App() {
   const target = targetTable;
   const needsIdentity = goal === "merge" || goal === "sync";
   const steps: Array<{ id: Step; label: string }> = [
-    { id: "goal", label: "Goal" },
-    { id: "dataset", label: "Dataset" },
-    { id: "upload", label: "Upload" },
-    ...(needsIdentity ? [{ id: "identity" as Step, label: "Identity" }] : []),
-    { id: "review", label: "Review" },
+    { id: "goal", label: strings.stepGoal },
+    { id: "dataset", label: strings.stepDataset },
+    { id: "upload", label: strings.stepUpload },
+    ...(needsIdentity
+      ? [{ id: "identity" as Step, label: strings.stepIdentity }]
+      : []),
+    { id: "review", label: strings.stepReview },
   ];
   const currentIndex = steps.findIndex((item) => item.id === step);
 
@@ -304,12 +306,16 @@ export default function App() {
     const extension = nextFile.name.split(".").pop()?.toLowerCase() ?? "";
     if (!acceptedExtensions.includes(extension)) {
       clearUpload();
-      setError(`Choose a supported file (${acceptedExtensions.join(", ")}).`);
+      setError(
+        format(strings.errorUnsupported, {
+          formats: acceptedExtensions.join(", "),
+        }),
+      );
       return;
     }
     if (nextFile.size > MAX_SOURCE_BYTES) {
       clearUpload();
-      setError("Source uploads must not exceed 25 MiB.");
+      setError(strings.errorFileTooLarge);
       return;
     }
     setFile(nextFile);
@@ -364,12 +370,7 @@ export default function App() {
       setPreview(result);
       setStep("review");
     } catch (reason) {
-      setError(
-        message(
-          reason,
-          "We could not preview this import. Try again. If the problem persists, report it with the upload filename and selected identity fields.",
-        ),
-      );
+      setError(message(reason, strings.errorPreview));
     } finally {
       setLoading(false);
     }
@@ -381,7 +382,12 @@ export default function App() {
       goal === "sync" &&
       preview.deleted > 0 &&
       !window.confirm(
-        `Sync will delete ${preview.deleted} record${preview.deleted === 1 ? "" : "s"} from ${target}. Continue?`,
+        format(
+          preview.deleted === 1
+            ? strings.syncConfirmOne
+            : strings.syncConfirmOther,
+          { count: preview.deleted, dataset: target },
+        ),
       )
     )
       return;
@@ -417,17 +423,17 @@ export default function App() {
     preview.deleted === 0 &&
     preview.columns_added === 0;
   const nameStatus = nameChecking
-    ? "Checking availability..."
+    ? strings.nameChecking
     : nameAvailable === true
-      ? `This name is available as ${targetTable}.`
+      ? format(strings.nameAvailable, { dataset: targetTable })
       : nameAvailable === false
-        ? "A dataset with this name already exists."
+        ? strings.nameUnavailable
         : "";
 
   return (
     <main className="app-shell">
       <header>
-        <h1>Dataset importer</h1>
+        <h1>{strings.appTitle}</h1>
       </header>
 
       {error && (
@@ -444,9 +450,13 @@ export default function App() {
             ref={headingRef}
             tabIndex={-1}
           >
-            What's your goal?
+            {strings.goalHeading}
           </h2>
-          <div aria-label="Import goal" className="goal-grid" role="radiogroup">
+          <div
+            aria-label={strings.goalAriaLabel}
+            className="goal-grid"
+            role="radiogroup"
+          >
             {goals.map((option) => (
               <label
                 className={`goal-card ${goal === option.id ? "selected" : ""}`}
@@ -471,13 +481,11 @@ export default function App() {
       {step === "dataset" && (
         <section aria-labelledby="step-heading">
           <h2 id="step-heading" ref={headingRef} tabIndex={-1}>
-            {goal === "create"
-              ? "Name your new dataset"
-              : "Select target dataset"}
+            {goal === "create" ? strings.nameHeading : strings.datasetHeading}
           </h2>
           {goal === "create" ? (
             <label className="field">
-              Dataset name
+              {strings.datasetNameLabel}
               <input
                 aria-describedby="dataset-name-status"
                 aria-invalid={nameAvailable === false}
@@ -489,7 +497,7 @@ export default function App() {
                   setTargetTable("");
                   clearUpload();
                 }}
-                placeholder="Bird observations"
+                placeholder={strings.datasetPlaceholder}
                 value={datasetName}
               />
               {datasetName && (
@@ -511,7 +519,7 @@ export default function App() {
             </label>
           ) : (
             <label className="field">
-              Dataset
+              {strings.stepDataset}
               <select
                 disabled={datasetsLoading}
                 onChange={(event) => {
@@ -521,7 +529,9 @@ export default function App() {
                 value={targetTable}
               >
                 <option value="">
-                  {datasetsLoading ? "Loading datasets..." : "Choose a dataset"}
+                  {datasetsLoading
+                    ? strings.datasetsLoading
+                    : strings.datasetChoose}
                 </option>
                 {datasets.map((dataset) => (
                   <option key={dataset} value={dataset}>
@@ -530,7 +540,7 @@ export default function App() {
                 ))}
               </select>
               {!datasetsLoading && datasets.length === 0 && !datasetsError && (
-                <small>No compatible datasets are available.</small>
+                <small>{strings.datasetsEmpty}</small>
               )}
               {datasetsError && (
                 <small className="invalid" role="alert">
@@ -543,7 +553,7 @@ export default function App() {
                   onClick={() => void loadDatasets()}
                   type="button"
                 >
-                  Retry dataset list
+                  {strings.actionRetryDatasets}
                 </button>
               )}
             </label>
@@ -554,13 +564,9 @@ export default function App() {
       {step === "upload" && (
         <section aria-labelledby="step-heading">
           <h2 id="step-heading" ref={headingRef} tabIndex={-1}>
-            Upload your data
+            {strings.uploadHeading}
           </h2>
-          <p className="lede">
-            CSV uploads can be tab-delimited. JSON uploads can contain arrays or
-            CyberTracker backups. XML uploads must be SMART patrol exports. ZIP
-            archives can contain a Shapefile or supported files.
-          </p>
+          <p className="lede">{strings.uploadDescription}</p>
           <label
             className={`dropzone ${dragging ? "dragging" : ""}`}
             onDragEnter={(event) => {
@@ -581,26 +587,27 @@ export default function App() {
               }}
               type="file"
             />
-            <strong>
-              {file ? file.name : "Drop a file here, or click to browse"}
-            </strong>
+            <strong>{file ? file.name : strings.fileDrop}</strong>
             <span>
               {file ? (
-                `${(file.size / 1024 / 1024).toFixed(2)} MiB`
+                format(strings.fileSize, {
+                  size: (file.size / 1024 / 1024).toFixed(2),
+                })
               ) : (
                 <>
-                  Supported formats: {acceptedExtensions.join(", ")}. <br />
-                  Maximum source size: 25 MiB. GeoPackages must contain one
-                  spatial layer.
+                  {format(strings.uploadFormats, {
+                    formats: acceptedExtensions.join(", "),
+                  })}{" "}
+                  <br />
+                  {strings.uploadLimits}
                 </>
               )}
             </span>
           </label>
           <p>
-            To upload media attachments, such as photos, use File Browser. See
-            the{" "}
+            {strings.uploadMedia}{" "}
             <a href="https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer">
-              documentation
+              {strings.uploadDocumentation}
             </a>
             .
           </p>
@@ -610,30 +617,20 @@ export default function App() {
       {step === "identity" && needsIdentity && staged && (
         <section aria-labelledby="step-heading">
           <h2 id="step-heading" ref={headingRef} tabIndex={-1}>
-            Choose record identity
+            {strings.identityHeading}
           </h2>
-          <p className="lede">
-            Choose one to three columns to match rows in your file to existing
-            records. For example, use a record ID, or a combination of site and
-            observation date. All selected values must match for two rows to
-            count as the same record.
-          </p>
+          <p className="lede">{strings.identityDescription}</p>
+          <p>{strings.identityUnique}</p>
           <p>
-            Choose values that stay the same when a record is updated. Their
-            combination must be unique for each record in both your file and the
-            dataset.
-          </p>
-          <p>
-            Matching rows follow the update policy below. Uploaded rows without
-            a match are added as new records.{" "}
-            {goal === "sync"
-              ? "Sync also deletes existing records that have no match in your file."
-              : "Merge keeps existing records that have no match in your file."}
+            {strings.identityMatching}{" "}
+            {goal === "sync" ? strings.identitySync : strings.identityMerge}
           </p>
           <div className="identity-fields">
             {[0, 1, 2].map((position) => (
               <select
-                aria-label={`Identity field ${position + 1}`}
+                aria-label={format(strings.identityField, {
+                  number: position + 1,
+                })}
                 disabled={position > identity.length}
                 key={position}
                 onChange={(event) => {
@@ -646,8 +643,8 @@ export default function App() {
               >
                 <option value="">
                   {position === 0
-                    ? "Choose a field"
-                    : "Add another field (optional)"}
+                    ? strings.identityChoose
+                    : strings.identityAdd}
                 </option>
                 {staged.fields
                   .filter(
@@ -663,7 +660,7 @@ export default function App() {
             ))}
           </div>
           <fieldset>
-            <legend>Update policy</legend>
+            <legend>{strings.policyLabel}</legend>
             <label>
               <input
                 checked={policy === "imported"}
@@ -674,7 +671,7 @@ export default function App() {
                 }}
                 type="radio"
               />{" "}
-              Imported records win, including empty values.
+              {strings.policyImported}
             </label>
             <label>
               <input
@@ -686,7 +683,7 @@ export default function App() {
                 }}
                 type="radio"
               />{" "}
-              Existing records win; matching rows stay unchanged.
+              {strings.policyExisting}
             </label>
           </fieldset>
         </section>
@@ -695,45 +692,41 @@ export default function App() {
       {step === "review" && (
         <section aria-labelledby="step-heading">
           <h2 id="step-heading" ref={headingRef} tabIndex={-1}>
-            Review import
+            {strings.reviewHeading}
           </h2>
-          {!preview && (
-            <p className="lede">
-              Generate a preview before writing to the dataset.
-            </p>
-          )}
+          {!preview && <p className="lede">{strings.reviewDescription}</p>}
           <dl className="review-summary">
             <div>
-              <dt>Goal</dt>
-              <dd>{goal}</dd>
+              <dt>{strings.stepGoal}</dt>
+              <dd>{goals.find((option) => option.id === goal)?.label}</dd>
             </div>
             <div>
-              <dt>Dataset</dt>
+              <dt>{strings.stepDataset}</dt>
               <dd>{target}</dd>
             </div>
             <div>
-              <dt>Source</dt>
+              <dt>{strings.reviewSource}</dt>
               <dd>{file?.name}</dd>
             </div>
             {staged && (
               <div>
-                <dt>Detected format</dt>
+                <dt>{strings.reviewFormat}</dt>
                 <dd>{staged.source_format}</dd>
               </div>
             )}
             {needsIdentity && identity.length > 0 && (
               <div>
-                <dt>Identity</dt>
+                <dt>{strings.stepIdentity}</dt>
                 <dd>{identity.join(" + ")}</dd>
               </div>
             )}
             {needsIdentity && (
               <div>
-                <dt>Update policy</dt>
+                <dt>{strings.policyLabel}</dt>
                 <dd>
                   {policy === "imported"
-                    ? "Imported records win"
-                    : "Existing records win"}
+                    ? strings.policyImportedSummary
+                    : strings.policyExistingSummary}
                 </dd>
               </div>
             )}
@@ -747,28 +740,32 @@ export default function App() {
             <div className="review-grid">
               <Metric
                 kind="deleted"
-                label="Rows deleted"
+                label={strings.metricDeleted}
                 value={preview.deleted}
               />
               <Metric
                 kind="updated"
-                label="Rows updated"
+                label={strings.metricUpdated}
                 value={preview.updated}
               />
-              <Metric kind="added" label="Rows added" value={preview.added} />
+              <Metric
+                kind="added"
+                label={strings.metricAdded}
+                value={preview.added}
+              />
               <Metric
                 kind="columns"
-                label="Columns added"
+                label={strings.metricColumns}
                 value={preview.columns_added}
               />
               <Metric
                 kind="unchanged"
-                label="Unchanged records"
+                label={strings.metricUnchanged}
                 value={preview.unchanged}
               />
               <Metric
                 kind="total"
-                label="Final record count"
+                label={strings.metricTotal}
                 value={preview.final_count}
               />
             </div>
@@ -779,40 +776,53 @@ export default function App() {
                 className={`notice ${preview.geometry_invalid > 0 ? "warning" : "neutral"}`}
                 role="status"
               >
-                {preview.geometry_valid} of{" "}
-                {preview.geometry_valid + preview.geometry_invalid} imported
-                records include valid map geometry.
-                {preview.geometry_invalid > 0 &&
-                  ` ${preview.geometry_invalid} imported record${preview.geometry_invalid === 1 ? " has" : "s have"} no valid map geometry.`}
+                {format(strings.geometryValid, {
+                  valid: preview.geometry_valid,
+                  total: preview.geometry_valid + preview.geometry_invalid,
+                })}
+                {preview.geometry_invalid > 0 && (
+                  <>
+                    {" "}
+                    {format(
+                      preview.geometry_invalid === 1
+                        ? strings.geometryInvalidOne
+                        : strings.geometryInvalidOther,
+                      { count: preview.geometry_invalid },
+                    )}
+                  </>
+                )}
               </div>
             )}
           {preview && goal === "sync" && preview.deleted > 0 && (
             <div className="notice warning" role="status">
-              Sync will permanently delete {preview.deleted} unmatched record
-              {preview.deleted === 1 ? "" : "s"} from {target}.
+              {format(
+                preview.deleted === 1
+                  ? strings.syncWarningOne
+                  : strings.syncWarningOther,
+                { count: preview.deleted, dataset: target },
+              )}
             </div>
           )}
           {staged?.source_format === "zip" && goal === "create" && (
             <div className="notice neutral" role="status">
-              Files in this archive are appended in archive order. Rows are not
-              matched or deduplicated.
+              {strings.reviewZip}
             </div>
           )}
           {isNoop && (
             <div className="notice neutral" role="status">
-              This import makes no dataset changes.
+              {strings.reviewNoChanges}
             </div>
           )}
           {success && (
             <div aria-live="polite" className="notice success" role="status">
-              Import applied successfully.
+              {strings.reviewSuccess}
             </div>
           )}
         </section>
       )}
 
       <footer>
-        <ol className="progress" aria-label="Import progress">
+        <ol className="progress" aria-label={strings.progressAriaLabel}>
           {steps.map((item, index) => (
             <li
               aria-current={step === item.id ? "step" : undefined}
@@ -833,7 +843,7 @@ export default function App() {
             }}
             type="button"
           >
-            Back
+            {strings.actionBack}
           </button>
           {step === "goal" && (
             <button
@@ -842,7 +852,7 @@ export default function App() {
               onClick={() => setStep("dataset")}
               type="button"
             >
-              Next
+              {strings.actionNext}
             </button>
           )}
           {step === "dataset" && (
@@ -852,7 +862,7 @@ export default function App() {
               onClick={() => setStep("upload")}
               type="button"
             >
-              Next
+              {strings.actionNext}
             </button>
           )}
           {step === "upload" && (
@@ -862,7 +872,7 @@ export default function App() {
               onClick={stage}
               type="button"
             >
-              {loading ? "Staging..." : "Stage upload"}
+              {loading ? strings.actionStaging : strings.actionStage}
             </button>
           )}
           {step === "identity" && (
@@ -872,7 +882,7 @@ export default function App() {
               onClick={makePreview}
               type="button"
             >
-              {loading ? "Calculating..." : "Preview changes"}
+              {loading ? strings.actionCalculating : strings.actionPreview}
             </button>
           )}
           {step === "review" && !preview && (
@@ -882,7 +892,7 @@ export default function App() {
               onClick={makePreview}
               type="button"
             >
-              {loading ? "Calculating..." : "Preview changes"}
+              {loading ? strings.actionCalculating : strings.actionPreview}
             </button>
           )}
           {step === "review" && preview && !success && (
@@ -892,12 +902,12 @@ export default function App() {
               onClick={confirm}
               type="button"
             >
-              {loading ? "Importing..." : "Confirm import"}
+              {loading ? strings.actionImporting : strings.actionConfirm}
             </button>
           )}
           {step === "review" && success && (
             <button className="primary" onClick={resetImport} type="button">
-              Import another dataset
+              {strings.actionAnother}
             </button>
           )}
         </div>

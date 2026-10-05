@@ -16,6 +16,13 @@ Complete feature spec with acceptance criteria was written to [./SPEC.md](./SPEC
 Successful sources are stored under
 `/persistent-storage/datalake/<dataset>`.
 
+## Editing app text
+
+UI labels, instructions, and fallback errors live in [`strings.json`](./strings.json).
+Keep named placeholders such as `{dataset}` and `{count}` when editing messages.
+Singular and plural messages have separate entries. Backend validation messages
+are displayed as returned by the importer.
+
 ## Supported uploads
 
 - CSV, JSON arrays, GeoJSON, GPX, KML, single-layer GeoPackage, XLS, XLSX
