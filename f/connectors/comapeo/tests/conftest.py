@@ -29,7 +29,7 @@ def comapeoserver_observations(mocked_responses):
 
     server_url = "http://comapeo.example.org"
     access_token = "MapYourWorldTogether!"
-    comapeo_project_blocklist = ["river_mapping"]
+    comapeo_project_blocklist = ["River Mapping"]
     project_id = "forest_expedition"
 
     mocked_responses.get(
