@@ -94,9 +94,11 @@ job timeout longer than the 30-minute default.
 
 ## `gbif_pull_statistics`
 
-`gbif_pull_statistics` takes the same style of bounding box and writes facet
-counts into `db_table_name` itself. The name can be at most 63 characters. The
-area must be approximately 35,000 km2 or smaller.
+`gbif_pull_statistics` takes the same style of bounding box and replaces one
+table with facet counts. **Dataset** is `use_existing_dataset` or
+`create_new_dataset` (default). The form shows these as "Use existing dataset"
+and "Create new dataset". A new name can be at most 63 characters. The area
+must be approximately 35,000 km2 or smaller.
 
 Each row is one facet value. `key` is the GBIF identifier and `label` is the
 display name, so two datasets, publishers, or species that share a title stay

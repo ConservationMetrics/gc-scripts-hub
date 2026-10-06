@@ -8,6 +8,7 @@ import pytest
 import responses
 from psycopg import connect, sql
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.gbif import gbif_pull_statistics
 from f.connectors.gbif.tests.assets import server_responses
 
@@ -65,7 +66,12 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
             "VALUES ('dataset', 'stale', 'Stale dataset', 1)"
         )
         calls_after_first_run = len(mocked_responses.calls)
-        gbif_pull_statistics.main(bounds, pg_database, "gbif_occurrences")
+        gbif_pull_statistics.main(
+            bounds,
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="gbif_occurrences",
+        )
         cursor.execute("SELECT count(*) FROM gbif_occurrences WHERE key = 'stale'")
         assert cursor.fetchone()[0] == 0
         _assert_import_timestamp(cursor, "statistics_imported_at")
@@ -213,6 +219,16 @@ def test_statistics_rejects_oversized_bounds_before_request(
     with pytest.raises(ValueError):
         gbif_pull_statistics.main([[0, 0], [2, 2]], pg_database, "gbif_occurrences")
     assert not mocked_responses.calls
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        gbif_pull_statistics.main(
+            [[-55.03, 3.23], [-54.12, 3.67]],
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )
 
 
 @pytest.mark.parametrize("name", ["a" * 64, "bad/name", "", "bad\\name"])
