@@ -50,10 +50,14 @@ schema:
       description: >-
         Write into a table that already exists, or create a new one.
         Choosing an existing dataset avoids a typo creating a second table.
-      default: Create new dataset
+      default: create_new_dataset
+      disableCreate: true
       enum:
-        - Use existing dataset
-        - Create new dataset
+        - use_existing_dataset
+        - create_new_dataset
+      enumLabels:
+        use_existing_dataset: Use existing dataset
+        create_new_dataset: Create new dataset
       originalType: enum
       title: Dataset
     existing_db_table_name:
@@ -65,7 +69,7 @@ schema:
       default: null
       format: dynselect-existing_db_table_name
       nullable: true
-      showExpr: "fields.destination_action == 'Use existing dataset'"
+      showExpr: "fields.destination_action == 'use_existing_dataset'"
       title: Existing dataset
     db_table_name:
       type: string
@@ -76,7 +80,7 @@ schema:
       nullable: true
       originalType: string
       pattern: '^.{1,54}$'
-      showExpr: "fields.destination_action != 'Use existing dataset'"
+      showExpr: "fields.destination_action != 'use_existing_dataset'"
       title: New dataset name
     project_slug:
       type: string

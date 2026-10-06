@@ -138,8 +138,8 @@ def fetch_tables_from_postgres(db_connection_string: str):
         return []
 
 
-USE_EXISTING_DATASET = "Use existing dataset"
-CREATE_NEW_DATASET = "Create new dataset"
+USE_EXISTING_DATASET = "use_existing_dataset"
+CREATE_NEW_DATASET = "create_new_dataset"
 # Companion tables written beside a dataset; not valid pull targets.
 _SIDECAR_TABLE_SUFFIXES = ("__columns", "__labels", "__metadata")
 _DB_CONN_KEYS = frozenset({"dbname", "user", "host", "port"})
@@ -188,7 +188,8 @@ def resolve_db_table_name(
         return name
     if destination_action != CREATE_NEW_DATASET:
         raise ValueError(
-            "destination_action must be 'Use existing dataset' or 'Create new dataset'."
+            "destination_action must be "
+            f"{USE_EXISTING_DATASET!r} or {CREATE_NEW_DATASET!r}."
         )
     name = _nonempty(db_table_name)
     if name is None or len(name) > 54:

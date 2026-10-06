@@ -188,8 +188,8 @@ def main(
     bounding_box: str | list | None = None,
     max_months_lookback: int | None = None,
     destination_action: Literal[
-        "Use existing dataset", "Create new dataset"
-    ] = "Create new dataset",
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """
@@ -208,7 +208,7 @@ def main(
         Database connection configuration.
     db_table_name : str, optional
         New table name and datalake subdirectory. Used when
-        ``destination_action`` is ``"Create new dataset"``.
+        ``destination_action`` is ``"create_new_dataset"``.
     attachment_root : str
         Root directory for persisted files.
     bounding_box : str or list, optional
@@ -218,10 +218,11 @@ def main(
         If set, only observations on or after the first day of the cutoff
         month are fetched (iNaturalist ``d1``). Same meaning as GFW.
     destination_action : str
-        ``"Use existing dataset"`` or ``"Create new dataset"``.
+        ``"use_existing_dataset"`` or ``"create_new_dataset"``. The form
+        shows these as "Use existing dataset" and "Create new dataset".
     existing_db_table_name : str, optional
         Public table to append to. Used when ``destination_action`` is
-        ``"Use existing dataset"``.
+        ``"use_existing_dataset"``.
     """
     table_name = resolve_db_table_name(
         db, destination_action, db_table_name, existing_db_table_name

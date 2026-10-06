@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 import psycopg
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.inaturalist.inaturalist_pull import (
     _OBSERVATION_FIELDS,
     _encode_fields,
@@ -569,7 +570,7 @@ def test_use_existing_dataset_requires_a_real_table(pg_database):
             None,
             None,
             pg_database,
-            destination_action="Use existing dataset",
+            destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )
 
@@ -586,7 +587,7 @@ def test_use_existing_dataset_writes_to_that_table(
         "project",
         inaturalist_project_server.project_id,
         pg_database,
-        destination_action="Use existing dataset",
+        destination_action=USE_EXISTING_DATASET,
         existing_db_table_name=table_name,
         attachment_root=tmp_path / "datalake",
     )

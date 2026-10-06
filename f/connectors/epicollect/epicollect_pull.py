@@ -42,8 +42,8 @@ def main(
     client_secret: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
     destination_action: Literal[
-        "Use existing dataset", "Create new dataset"
-    ] = "Create new dataset",
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """

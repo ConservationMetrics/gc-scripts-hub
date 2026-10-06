@@ -27,7 +27,7 @@ Project metadata still uses **API v1** (`/projects/{slug}`). v2's projects endpo
 
 Either `slug` or `bounding_box` must be provided.
 
-- **destination_action** — `"Use existing dataset"` or `"Create new dataset"` (default). Shown in the form as **Dataset**.
+- **destination_action** — `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset" under **Dataset**.
 - **existing_db_table_name** — public tables on `db`, offered as a dynamic select when using an existing dataset. Sidecar tables (`__columns`, `__labels`, `__metadata`) are omitted.
 - **db_table_name** — new table name when creating a dataset. At most 54 characters. Also the datalake subdirectory.
 
