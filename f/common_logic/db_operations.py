@@ -123,10 +123,15 @@ def create_database_if_not_exists(db: postgresql, dbname: str):
                 return False
 
 
-def fetch_tables_from_postgres(db_connection_string: str):
+def fetch_tables_from_postgres(
+    db_connection_string: str, *, connect_timeout: int | None = None
+):
     """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
+    connect_kwargs = {"autocommit": True}
+    if connect_timeout is not None:
+        connect_kwargs["connect_timeout"] = connect_timeout
     try:
-        with connect(db_connection_string, autocommit=True) as conn:
+        with connect(db_connection_string, **connect_kwargs) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
                     SELECT table_name FROM information_schema.tables
@@ -162,7 +167,9 @@ def existing_db_table_name(db: postgresql | None = None, **_):
         return []
     return [
         {"value": name, "label": name}
-        for name in sorted(fetch_tables_from_postgres(conninfo(db)))
+        for name in sorted(
+            fetch_tables_from_postgres(conninfo(db), connect_timeout=10)
+        )
         if not name.endswith(_SIDECAR_TABLE_SUFFIXES)
     ]
 

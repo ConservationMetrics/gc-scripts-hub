@@ -168,5 +168,5 @@ schema:
     )
 
 
-    def existing_db_table_name(db=None, **_):
+    def existing_db_table_name(db=None):
         return list_dataset_tables(db)

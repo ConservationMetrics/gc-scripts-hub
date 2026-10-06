@@ -10,7 +10,7 @@ schema:
     - db
     - alerts_statistics
     - instance_slug
-    - db_table_name
+    - existing_db_table_name
     - twilio_message_template
   properties:
     alerts_statistics:
@@ -26,8 +26,7 @@ schema:
         Database whose public tables are listed for the dataset picker.
       default: null
       format: resource-postgresql
-      nullable: true
-    db_table_name:
+    existing_db_table_name:
       type: object
       description: >-
         Existing public table the alerts dashboard link points at. The list
@@ -54,7 +53,8 @@ schema:
       default: null
       format: resource-twilio_message_template
   required:
+    - db
     - alerts_statistics
     - instance_slug
-    - db_table_name
+    - existing_db_table_name
     - twilio_message_template
