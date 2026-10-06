@@ -2,7 +2,9 @@ from datetime import datetime
 from unittest.mock import patch
 
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.globalforestwatch.gfw_alerts import (
     main,
     prepare_gfw_metadata,
@@ -263,3 +265,16 @@ def test_max_months_lookback_e2e(
             for year, month in months:
                 assert year == 2025
                 assert month >= 7  # July or later
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            {"api_key": "x"},
+            "[]",
+            "gfw_integrated_alerts",
+            1,
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

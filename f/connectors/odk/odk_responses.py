@@ -6,11 +6,16 @@
 import logging
 import tempfile
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from pyodk.client import Client
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
@@ -59,13 +64,25 @@ default_project_id = {odk["default_project_id"]}
     return Path(temp_file.name)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     odk: odk,
     form_id: str,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
+    destination_action: Literal[
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     config_path = get_temp_config(odk)
 
     try:

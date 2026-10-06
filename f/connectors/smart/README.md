@@ -12,6 +12,8 @@ SMART Desktop is a desktop application that serves as the central database for i
 
 This script imports patrol XML data exported from SMART Desktop, extracting observations with full context (patrol, leg, day, waypoint metadata) and saving them to a PostgreSQL database. Each observation includes inherited contextual information such as patrol team, transport type, waypoint coordinates, and observation attributes.
 
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset". Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+
 The XML file is also saved to the project folder for reference and can be used to re-import the data later.
 
 > [!TIP]

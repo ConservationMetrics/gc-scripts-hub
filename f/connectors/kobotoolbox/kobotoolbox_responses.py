@@ -7,11 +7,18 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import requests
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    StructuredDBWriter,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
 
@@ -26,13 +33,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     kobotoolbox: kobotoolbox,
     form_id: str,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
+    destination_action: Literal[
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     kobo_server_base_url = kobotoolbox["server_url"]
     kobo_api_key = kobotoolbox["api_key"]
 

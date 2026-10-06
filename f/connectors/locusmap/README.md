@@ -2,6 +2,8 @@
 
 This script imports data from a Locus Map export file into a database table. It reads a file containing spatial data, transforms the data into a structured format, and inserts it into a PostgreSQL database table. Additionally, it downloads any attachments associated with the spatial data and saves them to a specified directory. Optionally, it then delete the export file.
 
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset". Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+
 Locus Map exports data as a CSV, KML, and GPX. If attachments are included, then the export will be as a ZIP file compressing the spatial data file together with a directory containing the attachment files. (It is also possible to export data as a DXF or Ov2 file, but these are not commonly used formats, so this script does not intend to support them.)
 
 The envisioned way to use this script is:

@@ -4,23 +4,39 @@
 import csv
 import logging
 from pathlib import Path
+from typing import Literal
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    StructuredDBWriter,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
-    db_table_name: str,
-    csv_path: str,
+    db_table_name: str | None = None,
+    csv_path: str | None = None,
     attachment_root: str = "/persistent-storage/datalake/",
     delete_csv_file: bool = False,
     id_column: str = None,
     use_mapping_table: bool = False,
     reverse_properties_separated_by: str | None = None,
     sep_policy: str = "remove",
+    destination_action: Literal["use_existing_dataset", "create_new_dataset"]
+    | None = None,
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """
     Import CSV data into PostgreSQL table.
@@ -29,8 +45,9 @@ def main(
     ----------
     db : postgresql
         Database connection object.
-    db_table_name : str
-        Name of the database table to create/insert into.
+    db_table_name : str, optional
+        Name of the database table to create/insert into. Resolved from
+        ``destination_action`` when that argument is set.
     csv_path : str
         Path to the CSV file to import.
     attachment_root : str
@@ -45,7 +62,16 @@ def main(
         Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
     sep_policy : str, optional
         Forwarded to ``StructuredDBWriter``. See StructuredDBWriter documentation for more details.
+    destination_action : str, optional
+        ``use_existing_dataset`` or ``create_new_dataset``. Omitted by scripts
+        that already resolved the table name.
+    existing_db_table_name : str, optional
+        Public table to write into when using an existing dataset.
     """
+    if destination_action is not None:
+        db_table_name = resolve_db_table_name(
+            db, destination_action, db_table_name, existing_db_table_name
+        )
     csv_path = Path(attachment_root) / Path(csv_path)
     transformed_csv_data = transform_csv_data(csv_path, id_column)
 

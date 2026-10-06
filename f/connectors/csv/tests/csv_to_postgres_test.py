@@ -1,5 +1,7 @@
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.csv.csv_to_postgres import main, transform_csv_data
 
 csv_fixture_path = "f/connectors/csv/tests/assets/"
@@ -147,3 +149,13 @@ def test_script_with_mapping_table_and_key_reversal(pg_database, tmp_path):
                 "WHERE original_column = 'meta/instanceID'"
             )
             assert cursor.fetchone() == ("instanceID__meta",)
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            pg_database,
+            csv_path="data.csv",
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

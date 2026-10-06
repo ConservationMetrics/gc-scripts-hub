@@ -2,6 +2,8 @@
 
 This script fetches form metadata and survey submissions from the KoboToolbox REST API.  Field translations are extracted from metadata and written to a PostgreSQL `labels` lookup table. The structured part of survey submissions are written to a PostgreSQL table, while media attachments are downloaded to disk in a specified directory. Form metadata is also saved to disk as a JSON file.
 
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset". Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+
 ## Webhooks
 
 The script can leverage [Windmill Webhooks](https://www.windmill.dev/docs/core_concepts/webhooks) to receive survey submissions from KoboToolbox, using KoboToolbox's [REST services](https://support.kobotoolbox.org/rest_services.html).

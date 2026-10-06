@@ -8,10 +8,16 @@ import logging
 import shutil
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from lxml import etree
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -19,25 +25,38 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
-    db_table_name: str,
-    locusmap_export_path: str,
+    db_table_name: str | None = None,
+    locusmap_export_path: str | None = None,
     attachment_root: str = "/persistent-storage/datalake/",
+    destination_action: Literal[
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
-    storage_path = Path(attachment_root) / db_table_name
-
-    if Path(locusmap_export_path).suffix.lower() in [".zip", ".kmz"]:
+    export_path = Path(locusmap_export_path or "")
+    if export_path.suffix.lower() in [".zip", ".kmz"]:
         locusmap_data_path, locusmap_attachments_path = extract_locusmap_archive(
             locusmap_export_path
         )
     else:
-        locusmap_data_path = Path(locusmap_export_path)
+        locusmap_data_path = export_path
         if locusmap_data_path.suffix.lower() not in [".kml", ".gpx", ".csv"]:
             raise ValueError(
                 "Unsupported file format. Only CSV, GPX, and KML are supported."
             )
         locusmap_attachments_path = None
+
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
+    storage_path = Path(attachment_root) / db_table_name
 
     # TODO: transform to GeoJSON
     geojson = transform_locusmap_data(locusmap_data_path)

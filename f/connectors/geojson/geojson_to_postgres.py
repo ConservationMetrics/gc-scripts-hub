@@ -5,22 +5,42 @@ import json
 import logging
 import uuid
 from pathlib import Path
+from typing import Literal
 
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    StructuredDBWriter,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
-    db_table_name: str,
-    geojson_path: str,
+    db_table_name: str | None = None,
+    geojson_path: str | None = None,
     attachment_root: str = "/persistent-storage/datalake/",
     delete_geojson_file: bool = False,
     reverse_properties_separated_by: str | None = None,
     sep_policy: str = "remove",
+    destination_action: Literal["use_existing_dataset", "create_new_dataset"]
+    | None = None,
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
+    if destination_action is not None:
+        db_table_name = resolve_db_table_name(
+            db, destination_action, db_table_name, existing_db_table_name
+        )
     geojson_path = Path(attachment_root) / Path(geojson_path)
     transformed_geojson_data = transform_geojson_data(geojson_path)
 
