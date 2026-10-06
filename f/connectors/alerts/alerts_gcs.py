@@ -14,6 +14,7 @@ import logging
 import uuid
 from io import StringIO
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 from google.cloud import storage as gcs
@@ -22,13 +23,28 @@ from PIL import Image
 from psycopg import sql
 
 from f.common_logic.date_utils import calculate_cutoff_date
-from f.common_logic.db_operations import StructuredDBWriter, conninfo, postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    StructuredDBWriter,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 
 # type names that refer to Windmill Resources
 gcp_service_account = dict
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Leaves room for the `{name}__metadata` table.
+_MAX_DATASET_NAME_LENGTH = 53
+
+
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
 
 
 def main(
@@ -37,13 +53,25 @@ def main(
     alerts_provider: str,
     territory_id: int,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     destination_path: str = "/persistent-storage/datalake/change_detection/alerts",
     max_months_lookback: int = None,
+    destination_action: Literal[
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """
     Wrapper around _main() that instantiates the GCP client.
     """
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
+    if len(db_table_name) > _MAX_DATASET_NAME_LENGTH:
+        raise ValueError(
+            "db_table_name must be a table name of at most "
+            f"{_MAX_DATASET_NAME_LENGTH} characters."
+        )
     gcp_credential = Credentials.from_service_account_info(gcp_service_acct)
     storage_client = gcs.Client(
         credentials=gcp_credential, project=gcp_service_acct["project_id"]

@@ -35,9 +35,9 @@ before running downloads.
   filters GBIF's `LAST_INTERPRETED` date, not the observation date. Omit it for
   an initial backfill.
 - **`db`** — PostgreSQL resource for the occurrence table.
-- **`db_table_name`** — Destination table name and datalake subdirectory.
-  The name can be at most 53 characters. The last import time is saved in
-  `{db_table_name}__metadata`.
+- **`destination_action`** — `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset".
+- **`existing_db_table_name`** — public tables on `db`, offered when using an existing dataset. Sidecar tables (`__columns`, `__labels`, `__metadata`) are omitted.
+- **`db_table_name`** — new table name and datalake subdirectory. At most 53 characters, so `{db_table_name}__metadata` still fits. The last import time is saved there.
 - **`attachment_root`** — Directory for downloaded files. Defaults to
   `/persistent-storage/datalake`.
 
