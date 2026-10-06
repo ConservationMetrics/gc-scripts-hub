@@ -15,7 +15,7 @@ import requests
 from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.db_operations import (
     DynSelect_existing_db_table_name,
-    existing_db_table_name as existing_db_table_name,  # Windmill dynamic select
+    existing_db_table_name as list_dataset_tables,
     postgresql,
     resolve_db_table_name,
 )
@@ -172,6 +172,11 @@ def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | No
     if parsed["swlng"] >= parsed["nelng"]:
         raise ValueError("bounding_box swlng must be less than nelng.")
     return parsed
+
+
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
 
 
 def main(
