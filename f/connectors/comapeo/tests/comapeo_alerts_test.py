@@ -117,3 +117,13 @@ def test_continues_on_project_failure_then_raises(
         and succeeding_project in call.request.url
     ]
     assert len(posts_to_succeeding) == 2  # both alerts posted to the succeeding project
+
+
+def test_missing_dataset_raises_before_posting(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            pg_database,
+            {"server_url": "http://comapeo.example.org", "access_token": "x"},
+            ["forest_expedition"],
+            "missing_dataset",
+        )

@@ -7,6 +7,14 @@ from typing import TypedDict
 
 from twilio.rest import Client as TwilioClient
 
+from f.common_logic.db_operations import (
+    USE_EXISTING_DATASET,
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
+
 
 # https://hub.windmill.dev/resource_types/274/twilio_message_template
 class twilio_message_template(TypedDict):
@@ -22,12 +30,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     alerts_statistics: dict,
     instance_slug: str,
-    db_table_name: str,
+    db_table_name: DynSelect_existing_db_table_name,
     twilio_message_template: twilio_message_template,
+    db: postgresql | None = None,
 ):
+    if isinstance(db, dict):
+        db_table_name = resolve_db_table_name(
+            db, USE_EXISTING_DATASET, selected_table=db_table_name
+        )
     send_twilio_message(
         twilio_message_template, alerts_statistics, instance_slug, db_table_name
     )

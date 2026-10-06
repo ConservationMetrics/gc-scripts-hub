@@ -35,11 +35,15 @@ schema:
       default: null
       format: resource-postgresql
     db_table_name:
-      type: string
-      description: The name of the database table where alerts data is stored.
+      type: object
+      description: >-
+        Existing public table to read alerts from. The list refreshes from
+        `db` and omits connector sidecar tables (`__columns`, `__labels`,
+        `__metadata`).
       default: alerts
-      originalType: string
-      pattern: '^.{1,54}$'
+      format: dynselect-existing_db_table_name
+      nullable: true
+      title: Dataset
   required:
     - db
     - comapeo

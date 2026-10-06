@@ -7,6 +7,7 @@ schema:
   $schema: 'https://json-schema.org/draft/2020-12/schema'
   type: object
   order:
+    - db
     - alerts_statistics
     - instance_slug
     - db_table_name
@@ -19,12 +20,23 @@ schema:
         description of alerts.
       default: null
       properties: {}
-    db_table_name:
-      type: string
-      description: The name of the database table where alerts are stored.
+    db:
+      type: object
+      description: >-
+        Database whose public tables are listed for the dataset picker.
       default: null
-      originalType: string
-      pattern: '^.{1,53}$'
+      format: resource-postgresql
+      nullable: true
+    db_table_name:
+      type: object
+      description: >-
+        Existing public table the alerts dashboard link points at. The list
+        refreshes from `db` and omits connector sidecar tables (`__columns`,
+        `__labels`, `__metadata`).
+      default: null
+      format: dynselect-existing_db_table_name
+      nullable: true
+      title: Dataset
     instance_slug:
       type: string
       description: >-

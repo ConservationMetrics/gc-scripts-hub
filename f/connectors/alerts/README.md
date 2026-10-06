@@ -49,7 +49,7 @@ Currently, we are assuming there to be only four raster images for each change d
 
 # `alerts_twilio`: Send a Twilio Message 
 
-This script leverages Twilio to send a WhatsApp message to recipients with a summary of the latest processed alerts. Below is the message template, with values from an `alerts_statistics` object:
+This script leverages Twilio to send a WhatsApp message to recipients with a summary of the latest processed alerts. The dashboard link uses a dataset chosen from the public tables on `db`. Sidecar tables (`__columns`, `__labels`, `__metadata`) are omitted. Below is the message template, with values from an `alerts_statistics` object:
 
 ```javascript
 `${total_alerts} new change detection alert(s) have been published on your alerts dashboard for the date of ${date}. The following activities have been detected in your region: ${description_alerts}. Visit your alerts dashboard here: https://explorer.${community_slug}.guardianconnector.net/alerts/alerts. If you are using CoMapeo with an archive server enabled, you can receive the alerts by synchronizing.`
