@@ -188,7 +188,7 @@ def main(
     bounding_box: str | list | None = None,
     max_months_lookback: int | None = None,
     destination_action: Literal[
-        "use_existing_dataset", "create_new_dataset"
+        "create_new_dataset", "use_existing_dataset"
     ] = "create_new_dataset",
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):

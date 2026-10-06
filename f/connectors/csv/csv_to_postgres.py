@@ -34,7 +34,7 @@ def main(
     use_mapping_table: bool = False,
     reverse_properties_separated_by: str | None = None,
     sep_policy: str = "remove",
-    destination_action: Literal["use_existing_dataset", "create_new_dataset"]
+    destination_action: Literal["create_new_dataset", "use_existing_dataset"]
     | None = None,
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):

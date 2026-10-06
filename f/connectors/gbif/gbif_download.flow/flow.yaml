@@ -118,11 +118,11 @@ schema:
       default: create_new_dataset
       disableCreate: true
       enum:
-        - use_existing_dataset
         - create_new_dataset
+        - use_existing_dataset
       enumLabels:
-        use_existing_dataset: Use existing dataset
         create_new_dataset: Create new dataset
+        use_existing_dataset: Use existing dataset
       title: Dataset
     existing_db_table_name:
       type: object

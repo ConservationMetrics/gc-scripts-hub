@@ -76,7 +76,7 @@ def main(
     date_until: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
     destination_action: Literal[
-        "use_existing_dataset", "create_new_dataset"
+        "create_new_dataset", "use_existing_dataset"
     ] = "create_new_dataset",
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
