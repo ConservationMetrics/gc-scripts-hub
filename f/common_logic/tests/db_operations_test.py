@@ -93,6 +93,28 @@ def test_resolve_db_table_name_returns_new_name(mock_db_dict):
     )
 
 
+def test_resolve_db_table_name_rejects_an_existing_name(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE observations (_id text)")
+
+    with pytest.raises(ValueError, match="already exists"):
+        resolve_db_table_name(
+            mock_db_dict, CREATE_NEW_DATASET, db_table_name="observations"
+        )
+
+
+def test_resolve_db_table_name_rejects_existing_name_case_variation(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE observations (_id text)")
+
+    with pytest.raises(ValueError, match="Dataset 'observations' already exists"):
+        resolve_db_table_name(
+            mock_db_dict, CREATE_NEW_DATASET, db_table_name="Observations"
+        )
+
+
 def test_resolve_db_table_name_rejects_unknown_action(mock_db_dict):
     with pytest.raises(ValueError, match="destination_action"):
         resolve_db_table_name(mock_db_dict, "nope", db_table_name="fresh")

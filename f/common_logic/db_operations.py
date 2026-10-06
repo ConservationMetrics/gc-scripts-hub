@@ -177,7 +177,8 @@ def resolve_db_table_name(
 
     ``destination_action`` is ``USE_EXISTING_DATASET`` or ``CREATE_NEW_DATASET``.
     An existing dataset must already be a public table. A new name must be
-    non-empty and at most 54 characters.
+    non-empty and at most 54 characters. It is lowercased, matching
+    ``StructuredDBWriter``, and must not already be a public table.
     """
     if destination_action == USE_EXISTING_DATASET:
         name = _nonempty(selected_table)
@@ -195,6 +196,12 @@ def resolve_db_table_name(
     if name is None or len(name) > 54:
         raise ValueError(
             "db_table_name must be a non-empty table name of at most 54 characters."
+        )
+    name = name.lower()
+    if check_if_table_exists(conninfo(db), name):
+        raise ValueError(
+            f"Dataset '{name}' already exists. "
+            'Choose "Use existing dataset" or enter another name.'
         )
     return name
 
