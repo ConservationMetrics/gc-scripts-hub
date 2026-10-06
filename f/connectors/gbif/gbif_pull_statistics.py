@@ -1,0 +1,371 @@
+# requirements:
+# psycopg[binary]
+# pyproj
+# requests
+
+"""Save GBIF occurrence facet counts for an area into PostgreSQL."""
+
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from typing import NamedTuple
+from urllib.parse import quote
+
+import requests
+from psycopg import connect, sql
+
+from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.geo_utils import bounding_box_to_wkt
+
+_API = "https://api.gbif.org/v1"
+_FACET_LIMIT = 1000
+_HEADERS = {
+    "Accept": "application/json",
+    "User-Agent": (
+        "Guardian Connector GBIF connector "
+        "(https://github.com/ConservationMetrics/gc-scripts-hub)"
+    ),
+}
+_MAX_AREA_KM2 = 35_000
+_MAX_TABLE_NAME_LENGTH = 63
+_STATISTICS_IMPORTED_AT = "statistics_imported_at"
+_REGISTRY_FIELDS = {
+    "dataset": "title",
+    "organization": "title",
+    "species": "scientificName",
+}
+_REGISTRY_TIMEOUT = (5, 20)
+_REGISTRY_WORKERS = 8
+_SEARCH_TIMEOUT = (10, 120)
+
+
+def _configure_logging() -> None:
+    """Send each log line out immediately so a slow GBIF call is visible."""
+    logging.basicConfig(level=logging.INFO)
+    for handler in logging.getLogger().handlers:
+        if getattr(handler, "_flushes_each_record", False):
+            continue
+        emit = handler.emit
+
+        def flushing_emit(record, emit=emit, handler=handler):
+            emit(record)
+            handler.flush()
+
+        handler.emit = flushing_emit
+        handler._flushes_each_record = True
+
+
+_configure_logging()
+logger = logging.getLogger(__name__)
+
+
+class _Facet(NamedTuple):
+    name: str
+    parameter: str
+    registry: str | None
+
+
+_FACETS = (
+    _Facet("dataset", "datasetKey", "dataset"),
+    _Facet("publisher", "publishingOrg", "organization"),
+    _Facet("year", "year", None),
+    _Facet("species", "speciesKey", "species"),
+    _Facet("basis_of_record", "basisOfRecord", None),
+)
+
+
+def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
+    """Replace one table with GBIF facet counts for a bounding box.
+
+    Parameters
+    ----------
+    bounding_box : list or str
+        ``[[west, south], [east, north]]`` in longitude/latitude order.
+    db : postgresql
+        Database connection resource.
+    db_table_name : str
+        Statistics table. Rows use columns ``facet``, ``key``, ``label``,
+        and ``count``.
+    """
+    table_name = _validate_table_name(db_table_name)
+    logger.info("Starting GBIF statistics for %s.", table_name)
+    wkt = bounding_box_to_wkt(bounding_box, max_area_km2=_MAX_AREA_KM2)
+    logger.info("GBIF statistics geometry: %s", wkt)
+    occurrence_count, tables = _collect(wkt)
+    summary = {
+        "occurrence_count": occurrence_count,
+        **{facet.name: len(rows) for facet, rows in tables},
+    }
+    logger.info(
+        "GBIF statistics found %d occurrences: %s.",
+        occurrence_count,
+        {name: summary[name] for name in summary if name != "occurrence_count"},
+    )
+    _replace_statistics(db, table_name, tables)
+    logger.info("Finished GBIF statistics for %s.", table_name)
+    return summary
+
+
+def _validate_table_name(db_table_name: str) -> str:
+    """Return a lowercase table name PostgreSQL can store."""
+    if (
+        not isinstance(db_table_name, str)
+        or not db_table_name
+        or len(db_table_name) > _MAX_TABLE_NAME_LENGTH
+        or "/" in db_table_name
+        or "\\" in db_table_name
+    ):
+        raise ValueError(
+            "db_table_name must be a non-empty table name of at most "
+            f"{_MAX_TABLE_NAME_LENGTH} characters."
+        )
+    return db_table_name.lower()
+
+
+def _collect(wkt: str) -> tuple[int, list[tuple[_Facet, list[tuple]]]]:
+    """Fetch every facet, then resolve dataset, publisher, and species names."""
+    with ThreadPoolExecutor(max_workers=len(_FACETS)) as executor:
+        pages = list(
+            executor.map(lambda facet: _facet_counts(wkt, facet.parameter), _FACETS)
+        )
+    occurrence_counts = [count for count, _entries in pages]
+    if len(set(occurrence_counts)) > 1:
+        logger.warning(
+            "GBIF occurrence counts differed across facet queries: %s.",
+            occurrence_counts,
+        )
+    lookups = list(
+        dict.fromkeys(
+            (facet.registry, name)
+            for facet, (_count, entries) in zip(_FACETS, pages, strict=True)
+            if facet.registry
+            for name, _entry_count in entries
+        )
+    )
+    logger.info("Resolving %d GBIF registry names.", len(lookups))
+    resolved = _resolve_names(lookups)
+    return max(occurrence_counts, default=0), [
+        (facet, _rows(facet, entries, resolved))
+        for facet, (_count, entries) in zip(_FACETS, pages, strict=True)
+    ]
+
+
+def _facet_counts(wkt: str, facet: str) -> tuple[int, list[tuple[str, int]]]:
+    """Page one occurrence facet until GBIF runs out of values."""
+    collected: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    offset = 0
+    occurrence_count = 0
+    while True:
+        logger.info("Requesting GBIF %s facet at offset %d.", facet, offset)
+        response = requests.get(
+            f"{_API}/occurrence/search",
+            params={
+                "geometry": wkt,
+                "limit": 0,
+                "facet": facet,
+                "facetLimit": _FACET_LIMIT,
+                "facetOffset": offset,
+            },
+            headers=_HEADERS,
+            timeout=_SEARCH_TIMEOUT,
+        )
+        if not response.ok:
+            logger.error(
+                "GBIF %s facet request failed: HTTP %s.",
+                facet,
+                response.status_code,
+            )
+        response.raise_for_status()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RuntimeError("GBIF occurrence search returned invalid JSON.") from exc
+        if not isinstance(payload, dict):
+            raise TypeError("GBIF occurrence search returned invalid JSON.")
+        if offset == 0:
+            count = payload.get("count")
+            occurrence_count = (
+                count if isinstance(count, int) and not isinstance(count, bool) else 0
+            )
+        batch = _facet_batch(payload)
+        fresh = []
+        for item in batch:
+            parsed = _facet_entry(item)
+            # A repeated page means facetOffset was ignored. Stop rather than loop.
+            if parsed is None or parsed[0] in seen:
+                continue
+            seen.add(parsed[0])
+            fresh.append(parsed)
+        collected.extend(fresh)
+        logger.info(
+            "GBIF %s facet offset %d returned %d values (%d collected).",
+            facet,
+            offset,
+            len(fresh),
+            len(collected),
+        )
+        if len(batch) < _FACET_LIMIT or not fresh:
+            return occurrence_count, collected
+        offset += _FACET_LIMIT
+
+
+def _facet_batch(payload: dict) -> list:
+    facets = payload.get("facets") or []
+    if not facets:
+        return []
+    first = facets[0]
+    if not isinstance(first, dict):
+        raise TypeError("GBIF occurrence search returned an invalid facet page.")
+    counts = first.get("counts") or []
+    if not isinstance(counts, list):
+        raise TypeError("GBIF occurrence search returned an invalid facet page.")
+    return counts
+
+
+def _facet_entry(item: object) -> tuple[str, int] | None:
+    if not isinstance(item, dict):
+        return None
+    name = item.get("name")
+    count = item.get("count")
+    if (
+        not isinstance(name, str)
+        or isinstance(count, bool)
+        or not isinstance(count, int)
+        or count < 0
+    ):
+        return None
+    name = name.strip()
+    if not name:
+        return None
+    return name, count
+
+
+def _resolve_names(lookups: list[tuple[str, str]]) -> dict[tuple[str, str], str]:
+    """Resolve Registry titles and scientific names, skipping failed lookups."""
+    if not lookups:
+        return {}
+    resolved: dict[tuple[str, str], str] = {}
+    total = len(lookups)
+    with ThreadPoolExecutor(max_workers=min(_REGISTRY_WORKERS, total)) as pool:
+        names = pool.map(lambda lookup: _registry_name(*lookup), lookups)
+        for index, (lookup, name) in enumerate(
+            zip(lookups, names, strict=True), start=1
+        ):
+            if name:
+                resolved[lookup] = name
+            if index == 1 or index == total or index % 50 == 0:
+                logger.info("Resolved %d of %d GBIF registry names.", index, total)
+    return resolved
+
+
+def _registry_name(kind: str, key: str) -> str | None:
+    """Return one Registry label, or ``None`` when the lookup does not succeed."""
+    field = _REGISTRY_FIELDS[kind]
+    try:
+        response = requests.get(
+            f"{_API}/{kind}/{quote(key, safe='')}",
+            headers=_HEADERS,
+            timeout=_REGISTRY_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        logger.info("Could not resolve GBIF %s %s: %s", kind, key, exc)
+        return None
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        logger.info("GBIF %s %s returned no %s.", kind, key, field)
+        return None
+    return value.strip()
+
+
+def _rows(
+    facet: _Facet,
+    entries: list[tuple[str, int]],
+    resolved: dict[tuple[str, str], str],
+) -> list[tuple[str, str, str | None, int]]:
+    """Build sorted ``(facet, key, label, count)`` rows.
+
+    ``key`` is the GBIF facet value. ``label`` is the Registry title or
+    scientific name, and stays empty when that lookup fails or the facet has
+    no Registry record.
+    """
+    rows = []
+    unresolved = 0
+    for key, count in entries:
+        if facet.name == "year" and not key.isdigit():
+            logger.warning("Skipping GBIF year facet value %r.", key)
+            continue
+        label = resolved.get((facet.registry, key)) if facet.registry else None
+        if facet.registry and not label:
+            unresolved += 1
+        rows.append((facet.name, key, label, count))
+    if unresolved:
+        logger.warning(
+            "GBIF %s statistics left %d of %d names unresolved.",
+            facet.name,
+            unresolved,
+            len(entries),
+        )
+    if facet.name == "year":
+        rows.sort(key=lambda row: -int(row[1]))
+    else:
+        rows.sort(key=lambda row: (-row[3], row[2] or "", row[1]))
+    return rows
+
+
+def _replace_statistics(
+    db: postgresql, table_name: str, tables: list[tuple[_Facet, list[tuple]]]
+) -> None:
+    """Replace the statistics table in one transaction."""
+    rows = [row for _facet, facet_rows in tables for row in facet_rows]
+    logger.info("Replacing GBIF statistics table %s.", table_name)
+    with (
+        connect(conninfo(db), autocommit=True) as connection,
+        connection.transaction(),
+        connection.cursor() as cursor,
+    ):
+        written = _replace_table(cursor, table_name, rows)
+    logger.info("Saved %d GBIF statistics rows to %s.", written, table_name)
+
+
+def _replace_table(
+    cursor, table_name: str, rows: list[tuple[str, str, str | None, int]]
+) -> int:
+    """Replace facet rows and stamp ``statistics_imported_at``."""
+    table = sql.Identifier(table_name)
+    cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
+    _create_statistics_table(cursor, table)
+    if rows:
+        with cursor.copy(
+            sql.SQL("COPY {} (facet, key, label, count) FROM STDIN").format(table)
+        ) as copy:
+            for row in rows:
+                copy.write_row(row)
+    _insert_marker(cursor, table, _STATISTICS_IMPORTED_AT, _timestamp())
+    return len(rows) + 1
+
+
+def _create_statistics_table(cursor, table: sql.Identifier) -> None:
+    cursor.execute(
+        sql.SQL(
+            "CREATE TABLE {} ("
+            "facet TEXT NOT NULL, key TEXT NOT NULL, label TEXT, count BIGINT)"
+        ).format(table)
+    )
+
+
+def _insert_marker(cursor, table: sql.Identifier, facet: str, key: str) -> None:
+    cursor.execute(
+        sql.SQL(
+            "INSERT INTO {} (facet, key, label, count) VALUES (%s, %s, NULL, NULL)"
+        ).format(table),
+        (facet, key),
+    )
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
