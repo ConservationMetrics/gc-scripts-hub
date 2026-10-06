@@ -11,7 +11,7 @@ schema:
   type: object
   order:
     - db
-    - db_table_name
+    - existing_db_table_name
     - storage_path
   properties:
     db:
@@ -19,11 +19,15 @@ schema:
       description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
-    db_table_name:
-      type: string
-      description: The name of the database table to export to GeoJSON.
+    existing_db_table_name:
+      type: object
+      description: >-
+        Existing public table to export. The list refreshes from `db` and
+        omits connector sidecar tables (`__columns`, `__labels`, `__metadata`).
       default: null
-      originalType: string
+      format: dynselect-existing_db_table_name
+      nullable: true
+      title: Dataset
     storage_path:
       type: string
       description: >-
@@ -33,4 +37,4 @@ schema:
       originalType: string
   required:
     - db
-    - db_table_name
+    - existing_db_table_name
