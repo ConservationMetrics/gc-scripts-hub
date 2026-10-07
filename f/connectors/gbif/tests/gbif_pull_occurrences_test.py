@@ -8,6 +8,7 @@ import pytest
 import responses
 from psycopg import connect, sql
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.gbif import (
     gbif_check_download,
     gbif_pull_occurrences,
@@ -188,7 +189,12 @@ def test_pull_imports_and_upserts_enriched_real_archive(
         responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
     )
     gbif_pull_occurrences.main(
-        server_responses.DOWNLOAD_KEY, pg_database, "gbif_occurrences", str(tmp_path)
+        server_responses.DOWNLOAD_KEY,
+        pg_database,
+        "gbif_occurrences",
+        str(tmp_path),
+        destination_action=USE_EXISTING_DATASET,
+        existing_db_table_name="gbif_occurrences",
     )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         cursor.execute(
@@ -363,6 +369,16 @@ def test_convert_rejects_missing_multiple_or_header_only_members(
             zipped.writestr(member, "gbifID\tdecimalLongitude\n")
     with pytest.raises(ValueError, match=message):
         gbif_pull_occurrences._convert_archive(archive, tmp_path / "invalid.csv")
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        gbif_pull_occurrences.main(
+            server_responses.DOWNLOAD_KEY,
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )
 
 
 def test_pull_retains_empty_download_without_creating_an_occurrence_table(

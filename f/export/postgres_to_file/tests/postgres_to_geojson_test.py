@@ -7,9 +7,9 @@ def test_script_e2e(pg_database, database_mock_data, tmp_path):
     asset_storage = tmp_path / "datalake/export"
 
     main(
-        pg_database,
-        "comapeo_data",
-        asset_storage,
+        db=pg_database,
+        db_table_name="comapeo_data",
+        storage_path=asset_storage,
     )
 
     with open(asset_storage / "comapeo_data.geojson") as f:

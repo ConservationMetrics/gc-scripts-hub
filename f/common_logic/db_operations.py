@@ -123,10 +123,15 @@ def create_database_if_not_exists(db: postgresql, dbname: str):
                 return False
 
 
-def fetch_tables_from_postgres(db_connection_string: str):
+def fetch_tables_from_postgres(
+    db_connection_string: str, *, connect_timeout: int | None = None
+):
     """Fetch all table names from the public schema of the PostgreSQL database. Returns a list of table names."""
+    connect_kwargs = {"autocommit": True}
+    if connect_timeout is not None:
+        connect_kwargs["connect_timeout"] = connect_timeout
     try:
-        with connect(db_connection_string, autocommit=True) as conn:
+        with connect(db_connection_string, **connect_kwargs) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
                     SELECT table_name FROM information_schema.tables
@@ -136,6 +141,74 @@ def fetch_tables_from_postgres(db_connection_string: str):
     except Exception as e:
         logger.error(f"Error fetching tables: {e}")
         return []
+
+
+USE_EXISTING_DATASET = "use_existing_dataset"
+CREATE_NEW_DATASET = "create_new_dataset"
+# Companion tables written beside a dataset; not valid pull targets.
+_SIDECAR_TABLE_SUFFIXES = ("__columns", "__labels", "__metadata")
+_DB_CONN_KEYS = frozenset({"dbname", "user", "host", "port"})
+
+# Windmill dynamic select: the alias suffix is the function Windmill calls,
+# and that function name must match the script argument.
+DynSelect_existing_db_table_name = str
+# Readers and exports keep the argument name `db_table_name` so a saved
+# schedule payload still matches.
+DynSelect_db_table_name = str
+
+
+def _nonempty(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Public dataset tables on ``db``, for a Windmill dynamic select."""
+    if not isinstance(db, dict) or not _DB_CONN_KEYS <= db.keys():
+        return []
+    return [
+        {"value": name, "label": name}
+        for name in sorted(
+            fetch_tables_from_postgres(conninfo(db), connect_timeout=10)
+        )
+        if not name.endswith(_SIDECAR_TABLE_SUFFIXES)
+    ]
+
+
+def resolve_db_table_name(
+    db: postgresql,
+    destination_action: str,
+    db_table_name: str | None = None,
+    selected_table: str | None = None,
+) -> str:
+    """Return the table to write, from an existing dataset or a typed name.
+
+    ``destination_action`` is ``USE_EXISTING_DATASET`` or ``CREATE_NEW_DATASET``.
+    An existing dataset must already be a public table. A typed name must be
+    non-empty and at most 54 characters. It is lowercased, matching
+    ``StructuredDBWriter``. Creates the dataset if needed; updates it if it
+    already exists.
+    """
+    if destination_action == USE_EXISTING_DATASET:
+        name = _nonempty(selected_table)
+        if name is None:
+            raise ValueError("Select an existing dataset.")
+        if not check_if_table_exists(conninfo(db), name):
+            raise ValueError(f"Dataset '{name}' does not exist.")
+        return name
+    if destination_action != CREATE_NEW_DATASET:
+        raise ValueError(
+            "destination_action must be "
+            f"{USE_EXISTING_DATASET!r} or {CREATE_NEW_DATASET!r}."
+        )
+    name = _nonempty(db_table_name)
+    if name is None or len(name) > 54:
+        raise ValueError(
+            "db_table_name must be a non-empty table name of at most 54 characters."
+        )
+    return name.lower()
 
 
 def fetch_data_from_postgres(db_connection_string: str, table_name: str):

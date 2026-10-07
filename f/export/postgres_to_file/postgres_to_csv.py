@@ -3,15 +3,27 @@ from pathlib import Path
 
 from psycopg import connect, sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import (
+    USE_EXISTING_DATASET,
+    DynSelect_db_table_name,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def db_table_name(db: postgresql | None = None):
+    """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
-    db_table_name: str,
+    db_table_name: DynSelect_db_table_name,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
     """
@@ -26,11 +38,14 @@ def main(
     db : postgresql
         The PostgreSQL database connection object.
     db_table_name : str
-        The name of the table to export.
+        The public table to export.
     storage_path : str, optional
         The directory path where the CSV file will be saved. Defaults to
         "/persistent-storage/datalake/export".
     """
+    db_table_name = resolve_db_table_name(
+        db, USE_EXISTING_DATASET, selected_table=db_table_name
+    )
     out_path = Path(storage_path) / f"{db_table_name}.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -5,11 +5,16 @@
 import logging
 import os
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import requests
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -24,13 +29,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     arcgis_account: arcgis_account,
     feature_layer_url: str,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
+    destination_action: Literal[
+        "create_new_dataset", "use_existing_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     storage_path = Path(attachment_root) / db_table_name
 
     arcgis_token = get_arcgis_token(arcgis_account)

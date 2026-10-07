@@ -3,6 +3,7 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.smart.smart_patrols import main, parse_smart_patrol_xml
 
 
@@ -278,4 +279,14 @@ def test_missing_xml_file(pg_database, tmp_path):
             db=pg_database,
             db_table_name="smart_patrol_test",
             attachment_root=str(asset_storage),
+        )
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            "SMART_000006_001.xml",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
         )

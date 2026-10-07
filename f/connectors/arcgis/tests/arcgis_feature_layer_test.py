@@ -1,5 +1,7 @@
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.arcgis.arcgis_feature_layer import (
     main,
 )
@@ -43,3 +45,14 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
 
             cursor.execute("SELECT g__coordinates FROM my_arcgis_data LIMIT 1")
             assert cursor.fetchone()[0] == "[-73.965355, 40.782865]"
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            {"username": "u", "password": "p"},
+            "https://example.test/layer",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

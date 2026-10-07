@@ -17,6 +17,8 @@ schema:
     - bounding_box
     - max_months_lookback
     - db
+    - destination_action
+    - existing_db_table_name
     - db_table_name
     - attachment_root
   properties:
@@ -32,12 +34,42 @@ schema:
       description: A database connection for storing tabular data.
       default: null
       format: resource-postgresql
+    destination_action:
+      type: string
+      description: >-
+        Write into a table that already exists, or create a new one.
+      default: create_new_dataset
+      disableCreate: true
+      enum:
+        - create_new_dataset
+        - use_existing_dataset
+      enumLabels:
+        create_new_dataset: Enter dataset name
+        use_existing_dataset: Use existing dataset
+      originalType: enum
+      title: Dataset
+    existing_db_table_name:
+      type: object
+      description: >-
+        Existing table to write into; also used as the datalake subdirectory. 
+        The list refreshes from `db` and omits connector sidecar tables 
+        (`__columns`, `__labels`, `__metadata`).
+      default: null
+      format: dynselect-existing_db_table_name
+      nullable: true
+      showExpr: "fields.destination_action == 'use_existing_dataset'"
+      title: Existing dataset
     db_table_name:
       type: string
-      description: The name of the database table where observations will be stored.
+      description: >-
+        Creates the dataset if needed; updates it if it already exists.
+        Also used as the datalake subdirectory.
       default: null
+      nullable: true
       originalType: string
       pattern: "^.{1,54}$"
+      showExpr: "fields.destination_action != 'use_existing_dataset'"
+      title: Dataset name
     bounding_box:
       type: string
       description: >-
@@ -80,4 +112,3 @@ schema:
       originalType: string
   required:
     - db
-    - db_table_name

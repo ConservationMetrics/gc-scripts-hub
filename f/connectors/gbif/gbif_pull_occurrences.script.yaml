@@ -10,6 +10,8 @@ schema:
   order:
     - download_key
     - db
+    - destination_action
+    - existing_db_table_name
     - db_table_name
     - attachment_root
   properties:
@@ -23,14 +25,43 @@ schema:
       description: PostgreSQL database where occurrence records are saved.
       default: null
       format: resource-postgresql
+    destination_action:
+      type: string
+      description: >-
+        Enter a dataset name, or choose an existing dataset.
+        Creates the dataset if needed; updates it if it already exists.
+      default: create_new_dataset
+      disableCreate: true
+      enum:
+        - create_new_dataset
+        - use_existing_dataset
+      enumLabels:
+        create_new_dataset: Enter dataset name
+        use_existing_dataset: Use existing dataset
+      originalType: enum
+      title: Dataset
+    existing_db_table_name:
+      type: object
+      description: >-
+        Existing table to write into; also used as the datalake subdirectory.
+        The list refreshes from `db` and omits connector sidecar tables
+        (`__columns`, `__labels`, `__metadata`).
+      default: null
+      format: dynselect-existing_db_table_name
+      nullable: true
+      showExpr: "fields.destination_action == 'use_existing_dataset'"
+      title: Existing dataset
     db_table_name:
       type: string
       description: >-
-        Table name. This is also used as the download folder name. The last
-        import time is saved in `{name}__metadata`.
+        Creates the dataset if needed; updates it if it already exists.
+        Also used as the download folder. The last import time is saved in `{name}__metadata`.
       default: null
+      nullable: true
       originalType: string
       pattern: '^.{1,53}$'
+      showExpr: "fields.destination_action != 'use_existing_dataset'"
+      title: Dataset name
     download_key:
       type: string
       description: ID assigned to the download by GBIF.
@@ -39,4 +70,3 @@ schema:
   required:
     - download_key
     - db
-    - db_table_name

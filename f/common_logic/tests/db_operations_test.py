@@ -1,11 +1,16 @@
 import psycopg
+import pytest
 
 from f.common_logic.db_operations import (
+    CREATE_NEW_DATASET,
+    USE_EXISTING_DATASET,
     StructuredDBWriter,
     check_if_table_exists,
     conninfo,
     create_database_if_not_exists,
+    existing_db_table_name,
     fetch_tables_from_postgres,
+    resolve_db_table_name,
     summarize_new_rows_updates_and_columns,
 )
 from f.common_logic.identifier_utils import normalize_identifier
@@ -26,6 +31,97 @@ def test_fetch_tables_from_postgres(mock_db_connection):
     assert isinstance(tables, list)
     for writer in writers:
         assert writer.table_name in tables
+
+
+def test_existing_db_table_name_without_db():
+    assert existing_db_table_name(None) == []
+    assert existing_db_table_name() == []
+    assert existing_db_table_name(None, slug="lake") == []
+
+
+def test_existing_db_table_name_skips_sidecar_tables(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE kept_dataset (_id text)")
+            cur.execute("CREATE TABLE kept_dataset__columns (_id text)")
+            cur.execute("CREATE TABLE kept_dataset__labels (_id text)")
+            cur.execute("CREATE TABLE kept_dataset__metadata (_id text)")
+
+    values = {option["value"] for option in existing_db_table_name(mock_db_dict)}
+    assert "kept_dataset" in values
+    assert "kept_dataset__columns" not in values
+    assert "kept_dataset__labels" not in values
+    assert "kept_dataset__metadata" not in values
+
+
+def test_resolve_db_table_name_requires_an_existing_table(mock_db_dict):
+    with pytest.raises(ValueError, match="does not exist"):
+        resolve_db_table_name(
+            mock_db_dict, USE_EXISTING_DATASET, selected_table="missing_dataset"
+        )
+
+
+def test_resolve_db_table_name_requires_a_selection(mock_db_dict):
+    with pytest.raises(ValueError, match="Select an existing dataset"):
+        resolve_db_table_name(mock_db_dict, USE_EXISTING_DATASET, selected_table="  ")
+
+
+def test_resolve_db_table_name_returns_existing_table(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE kept_dataset (_id text PRIMARY KEY)")
+
+    assert (
+        resolve_db_table_name(
+            mock_db_dict, USE_EXISTING_DATASET, selected_table="kept_dataset"
+        )
+        == "kept_dataset"
+    )
+
+
+def test_resolve_db_table_name_requires_a_new_name(mock_db_dict):
+    with pytest.raises(ValueError, match="db_table_name"):
+        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name="  ")
+    with pytest.raises(ValueError, match="db_table_name"):
+        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name="x" * 55)
+
+
+def test_resolve_db_table_name_returns_new_name(mock_db_dict):
+    assert (
+        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name=" fresh ")
+        == "fresh"
+    )
+
+
+def test_resolve_db_table_name_accepts_an_existing_name(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE observations (_id text)")
+
+    assert (
+        resolve_db_table_name(
+            mock_db_dict, CREATE_NEW_DATASET, db_table_name="observations"
+        )
+        == "observations"
+    )
+
+
+def test_resolve_db_table_name_lowercases_an_existing_name(mock_db_dict):
+    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE observations (_id text)")
+
+    assert (
+        resolve_db_table_name(
+            mock_db_dict, CREATE_NEW_DATASET, db_table_name="Observations"
+        )
+        == "observations"
+    )
+
+
+def test_resolve_db_table_name_rejects_unknown_action(mock_db_dict):
+    with pytest.raises(ValueError, match="destination_action"):
+        resolve_db_table_name(mock_db_dict, "nope", db_table_name="fresh")
 
 
 def test_check_if_table_exists(mock_db_connection):

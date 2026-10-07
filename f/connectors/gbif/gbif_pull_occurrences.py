@@ -15,12 +15,19 @@ from datetime import datetime, timezone
 from itertools import zip_longest
 from pathlib import Path
 from time import monotonic
+from typing import Literal
 from urllib.parse import quote
 
 import requests
 from psycopg import connect, sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.common_logic.identifier_utils import camel_to_snake
 from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
@@ -39,11 +46,20 @@ _MAX_TABLE_NAME_LENGTH = 63 - len(_METADATA_SUFFIX)
 logger = logging.getLogger(__name__)
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     download_key: str,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
+    destination_action: Literal[
+        "create_new_dataset", "use_existing_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ) -> dict:
     """Fetch one successful GBIF archive and import its TSV occurrences as CSV.
 
@@ -57,16 +73,21 @@ def main(
         Destination table and datalake subdirectory name.
     attachment_root : str
         Root directory for retained archives, CSV, and provenance metadata.
+    destination_action : str
+        ``use_existing_dataset`` or ``create_new_dataset``.
+    existing_db_table_name : str, optional
+        Public table to write into when using an existing dataset.
     """
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     if (
-        not isinstance(db_table_name, str)
-        or not db_table_name
-        or len(db_table_name) > _MAX_TABLE_NAME_LENGTH
+        len(db_table_name) > _MAX_TABLE_NAME_LENGTH
         or "/" in db_table_name
         or "\\" in db_table_name
     ):
         raise ValueError(
-            "db_table_name must be a non-empty table name of at most "
+            "db_table_name must be a table name of at most "
             f"{_MAX_TABLE_NAME_LENGTH} characters."
         )
     metadata = _metadata(download_key)
