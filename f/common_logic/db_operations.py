@@ -149,9 +149,12 @@ CREATE_NEW_DATASET = "create_new_dataset"
 _SIDECAR_TABLE_SUFFIXES = ("__columns", "__labels", "__metadata")
 _DB_CONN_KEYS = frozenset({"dbname", "user", "host", "port"})
 
-# Windmill dynamic select: import this alias and `existing_db_table_name`
-# into a connector script. The alias suffix is the function Windmill calls.
+# Windmill dynamic select: the alias suffix is the function Windmill calls,
+# and that function name must match the script argument.
 DynSelect_existing_db_table_name = str
+# Readers and exports keep the argument name `db_table_name` so a saved
+# schedule payload still matches.
+DynSelect_db_table_name = str
 
 
 def _nonempty(value: str | None) -> str | None:

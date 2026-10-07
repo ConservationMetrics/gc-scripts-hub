@@ -3,7 +3,7 @@ import logging
 
 from f.common_logic.db_operations import (
     USE_EXISTING_DATASET,
-    DynSelect_existing_db_table_name,
+    DynSelect_db_table_name,
     conninfo,
     existing_db_table_name as list_dataset_tables,
     fetch_data_from_postgres,
@@ -16,18 +16,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def existing_db_table_name(db: postgresql | None = None):
+def db_table_name(db: postgresql | None = None):
     """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
     return list_dataset_tables(db)
 
 
 def main(
     db: postgresql,
-    existing_db_table_name: DynSelect_existing_db_table_name,
+    db_table_name: DynSelect_db_table_name,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
     db_table_name = resolve_db_table_name(
-        db, USE_EXISTING_DATASET, selected_table=existing_db_table_name
+        db, USE_EXISTING_DATASET, selected_table=db_table_name
     )
     data = fetch_data_from_postgres(conninfo(db), db_table_name)
 

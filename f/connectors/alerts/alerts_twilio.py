@@ -7,7 +7,7 @@ from typing import TypedDict
 
 from f.common_logic.db_operations import (
     USE_EXISTING_DATASET,
-    DynSelect_existing_db_table_name,
+    DynSelect_db_table_name,
     existing_db_table_name as list_dataset_tables,
     postgresql,
     resolve_db_table_name,
@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def existing_db_table_name(db: postgresql | None = None):
+def db_table_name(db: postgresql | None = None):
     """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
     return list_dataset_tables(db)
 
@@ -36,14 +36,13 @@ def existing_db_table_name(db: postgresql | None = None):
 def main(
     alerts_statistics: dict,
     instance_slug: str,
-    existing_db_table_name: DynSelect_existing_db_table_name,
+    db_table_name: DynSelect_db_table_name,
     twilio_message_template: twilio_message_template,
     db: postgresql | None = None,
 ):
-    db_table_name = existing_db_table_name
     if isinstance(db, dict):
         db_table_name = resolve_db_table_name(
-            db, USE_EXISTING_DATASET, selected_table=existing_db_table_name
+            db, USE_EXISTING_DATASET, selected_table=db_table_name
         )
     send_twilio_message(
         twilio_message_template, alerts_statistics, instance_slug, db_table_name

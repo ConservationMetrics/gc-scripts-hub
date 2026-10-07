@@ -10,7 +10,7 @@ schema:
     - db
     - alerts_statistics
     - instance_slug
-    - existing_db_table_name
+    - db_table_name
     - twilio_message_template
   properties:
     alerts_statistics:
@@ -26,14 +26,14 @@ schema:
         Database whose public tables are listed for the dataset picker.
       default: null
       format: resource-postgresql
-    existing_db_table_name:
+    db_table_name:
       type: object
       description: >-
         Existing public table the alerts dashboard link points at. The list
         refreshes from `db` and omits connector sidecar tables (`__columns`,
         `__labels`, `__metadata`).
       default: null
-      format: dynselect-existing_db_table_name
+      format: dynselect-db_table_name
       nullable: true
       title: Dataset
     instance_slug:
@@ -56,5 +56,5 @@ schema:
     - db
     - alerts_statistics
     - instance_slug
-    - existing_db_table_name
+    - db_table_name
     - twilio_message_template

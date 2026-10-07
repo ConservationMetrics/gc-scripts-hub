@@ -53,7 +53,7 @@ value:
           db:
             type: javascript
             expr: flow_input.db
-          existing_db_table_name:
+          db_table_name:
             type: javascript
             expr: >-
               flow_input.destination_action == 'use_existing_dataset' ?
@@ -77,7 +77,7 @@ value:
           db:
             type: javascript
             expr: flow_input.db
-          existing_db_table_name:
+          db_table_name:
             type: javascript
             expr: results.a.db_table_name
           twilio_message_template:

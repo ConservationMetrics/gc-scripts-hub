@@ -66,10 +66,10 @@ def fake_alerts_table(pg_database):
 
 def test_script_e2e(comapeoserver_alerts, pg_database, fake_alerts_table):
     main(
-        pg_database,
-        comapeoserver_alerts.comapeo_server,
-        ["forest_expedition", "river_mapping"],
-        "fake_alerts",
+        db=pg_database,
+        comapeo=comapeoserver_alerts.comapeo_server,
+        comapeo_projects=["forest_expedition", "river_mapping"],
+        db_table_name="fake_alerts",
     )
 
     expected_alerts = set(a.alert_id for a in fake_alerts_table)
@@ -104,10 +104,10 @@ def test_continues_on_project_failure_then_raises(
 
     with pytest.raises(RuntimeError, match="broken_project"):
         main(
-            pg_database,
-            {"server_url": server_url, "access_token": access_token},
-            [failing_project, succeeding_project],
-            "fake_alerts",
+            db=pg_database,
+            comapeo={"server_url": server_url, "access_token": access_token},
+            comapeo_projects=[failing_project, succeeding_project],
+            db_table_name="fake_alerts",
         )
 
     posts_to_succeeding = [
@@ -122,8 +122,8 @@ def test_continues_on_project_failure_then_raises(
 def test_missing_dataset_raises_before_posting(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            pg_database,
-            {"server_url": "http://comapeo.example.org", "access_token": "x"},
-            ["forest_expedition"],
-            "missing_dataset",
+            db=pg_database,
+            comapeo={"server_url": "http://comapeo.example.org", "access_token": "x"},
+            comapeo_projects=["forest_expedition"],
+            db_table_name="missing_dataset",
         )
