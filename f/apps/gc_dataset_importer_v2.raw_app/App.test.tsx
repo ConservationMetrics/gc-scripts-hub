@@ -55,7 +55,10 @@ async function chooseExistingGoal(goal: "Append" | "Merge" | "Sync") {
   await waitFor(() => expect(mockedBackend.stage_import).toHaveBeenCalled());
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("Dataset importer", () => {
   beforeEach(() => {
@@ -284,6 +287,9 @@ describe("Dataset importer", () => {
   ])(
     "shows the preview failure reason from a rejected request (%j)",
     async (reason) => {
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementationOnce(() => {});
       mockedBackend.preview_import.mockRejectedValueOnce(reason);
       render(<App />);
       await waitFor(() =>
@@ -302,6 +308,10 @@ describe("Dataset importer", () => {
       expect(alert).not.toHaveTextContent("Traceback");
       expect(alert).not.toHaveTextContent("importer.py");
       expect(screen.getByLabelText("Identity field 1")).toHaveValue("code");
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+        "Failed to preview import",
+        reason,
+      );
     },
   );
 
@@ -369,9 +379,11 @@ describe("Dataset importer", () => {
   });
 
   it("forces a new preview after a stale confirmation", async () => {
-    mockedBackend.apply_import.mockRejectedValue(
-      new Error("The target changed. Review the import again."),
-    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementationOnce(() => {});
+    const reason = new Error("The target changed. Review the import again.");
+    mockedBackend.apply_import.mockRejectedValue(reason);
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
     await chooseExistingGoal("Append");
@@ -385,6 +397,10 @@ describe("Dataset importer", () => {
     expect(
       screen.getByRole("button", { name: "Preview changes" }),
     ).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      "Failed to apply import",
+      reason,
+    );
   });
 
   it("clears the journey after a successful import", async () => {
