@@ -21,7 +21,9 @@ never match. Merge can retain existing duplicates and incomplete identities;
 Sync deletes **every unmatched row in the entire selected table**, including
 records from other sources, even when Existing records win is selected.
 
-The identity dropdown and review show the actual source-to-stored field mapping.
+The identity dropdown shows the actual source-to-stored field mapping. After
+generating a preview, expand **Field mappings** to see uploaded fields and stored
+columns in a table. The table is collapsed by default and scrolls for large uploads.
 Uploaded `_id` normally maps to `source_id`; it does not select the target's
 internal Postgres `_id`. Colliding source fields keep distinct stored names.
 Imports do not repair missing identities, backfill source IDs, or deduplicate

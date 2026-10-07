@@ -144,7 +144,7 @@ IDENTITY:
   4: Record identity selections refer to dataset fields through the column-name map, so matching is not affected by source-column sanitization.
   5: For geojson, top level `feature.id` is included, alongside fields in `feature.properties`
   6: Every selected component is required in every uploaded row; all one to three components must match for two identities to be equal.
-  7: Display actual source-to-stored mappings in dropdown labels and the review summary, for example `_id → source_id`; selection values remain original source names.
+  7: Display actual source-to-stored mappings in identity dropdown labels, for example `_id → source_id`; selection values remain original source names.
   7-1: Explain that uploaded `_id` does not select the target's internal Postgres `_id`; reuse actual mappings and preserve collision handling.
   
 POLICY:
@@ -195,6 +195,7 @@ REVIEW:
   5: If the dataset or my preview changes before I confirm, the import is stopped and I must review it again
   6: Confirming the same import more than once does not import the data twice, including already successful imports with old-rule previews.
   7: Counts include every affected row, rather than distinct identity groups.
+  7-1: After a preview is generated, field mappings are available in a table of uploaded fields and stored columns behind a collapsed-by-default toggle. Do not display the full mapping list in the initial review summary. Long field names wrap and large mapping tables scroll within a bounded area.
   8: Pending Merge and Sync previews generated under older identity rules or without a version marker require another review before any target changes; staged sessions can be reviewed again while valid.
 ```
 

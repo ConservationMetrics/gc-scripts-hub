@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -471,14 +472,54 @@ describe("Dataset importer", () => {
       import_id: "import-1",
       update_policy: "imported",
     });
+    const toggle = screen.getByText("Field mappings");
+    const details = toggle.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
     expect(
-      screen.getByText("Source → stored fields").nextSibling,
-    ).toHaveTextContent(
-      "_id → source_id_002, source_id, Bird Name → Bird_Name",
-    );
+      screen.getByRole("table", { name: "Field mappings" }),
+    ).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(details).toHaveAttribute("open");
+    const table = screen.getByRole("table", { name: "Field mappings" });
+    expect(
+      within(table).getByRole("columnheader", { name: "Uploaded field" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("columnheader", { name: "Stored column" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("row", { name: "_id source_id_002" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("row", { name: "source_id source_id" }),
+    ).toBeVisible();
+    expect(
+      within(table).getByRole("row", { name: "Bird Name Bird_Name" }),
+    ).toBeVisible();
+    fireEvent.click(toggle);
+    expect(details).not.toHaveAttribute("open");
     expect(
       screen.getByText("_id → source_id_002", { selector: "dd" }),
     ).toBeVisible();
+  });
+
+  it("shows mappings only after generating the review", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Append");
+    await screen.findByRole("button", { name: "Preview changes" });
+    expect(screen.queryByText("Field mappings")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("table", { hidden: true }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    await screen.findByRole("button", { name: "Confirm import" });
+    const toggle = screen.getByText("Field mappings");
+    expect(toggle.closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(toggle);
+    expect(screen.getByRole("table", { name: "Field mappings" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.queryByText("Field mappings")).not.toBeInTheDocument();
   });
 
   it("explains Sync deletions and empty ordinary field policy", async () => {

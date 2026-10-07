@@ -722,12 +722,6 @@ export default function App() {
                 <dd>{staged.source_format}</dd>
               </div>
             )}
-            {staged && (
-              <div>
-                <dt>{strings.reviewMapping}</dt>
-                <dd>{staged.fields.map(fieldLabel).join(", ")}</dd>
-              </div>
-            )}
             {needsIdentity && identity.length > 0 && (
               <div>
                 <dt>{strings.stepIdentity}</dt>
@@ -783,6 +777,29 @@ export default function App() {
                 value={preview.final_count}
               />
             </div>
+          )}
+          {preview && staged && staged.fields.length > 0 && (
+            <details className="field-mappings">
+              <summary>{strings.reviewMapping}</summary>
+              <div className="field-mappings-scroll">
+                <table aria-label={strings.reviewMapping}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{strings.mappingSource}</th>
+                      <th scope="col">{strings.mappingStored}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staged.fields.map((field) => (
+                      <tr key={field}>
+                        <td>{field}</td>
+                        <td>{staged.source_mapping[field]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           )}
           {preview?.geometry_valid !== undefined &&
             preview.geometry_invalid !== undefined && (

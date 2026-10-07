@@ -87,5 +87,7 @@
   "errorUnsupported": "Choose a supported file ({formats}).",
   "progressAriaLabel": "Import progress",
   "identitySourceId": "Uploaded _id is stored separately using the mapping shown below. Selecting it does not select the target’s internal Postgres _id.",
-  "reviewMapping": "Source → stored fields"
+  "reviewMapping": "Field mappings",
+  "mappingSource": "Uploaded field",
+  "mappingStored": "Stored column"
 }
