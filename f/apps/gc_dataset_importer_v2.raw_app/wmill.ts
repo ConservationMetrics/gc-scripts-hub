@@ -1,48 +1,80 @@
 // THIS FILE IS READ-ONLY
 // AND GENERATED AUTOMATICALLY FROM YOUR RUNNABLES
 
-type Goal = "create" | "append" | "merge" | "sync";
-type Policy = "imported" | "existing";
-
-type StagedImport = {
-  fields: string[];
-  geometry_warning?: string;
-  import_id: string;
-  record_count: number;
-  source_format: string;
-};
-
-type ValidationFailure = { validation_error: string };
-
-type Preview = {
-  added: number;
-  columns_added: number;
-  deleted: number;
-  final_count: number;
-  geometry_invalid?: number;
-  geometry_valid?: number;
-  unchanged: number;
-  updated: number;
-  preview_id: string;
-};
-
 export declare const backend: {
-  list_datasets: () => Promise<string[]>;
-  check_dataset_name: (args: {
-    dataset_name: string;
-  }) => Promise<{ available: boolean; table_name: string }>;
-  stage_import: (args: {
-    goal: Goal;
-    target_table: string;
-    uploaded_file: { data: string; name: string };
-  }) => Promise<StagedImport | ValidationFailure>;
-  preview_import: (args: {
-    import_id: string;
-    identity_fields: string[];
-    update_policy: Policy;
-  }) => Promise<Preview | ValidationFailure>;
   apply_import: (args: {
     import_id: string;
     preview_id: string;
-  }) => Promise<{ success: boolean }>;
+  }) => Promise<any>;
+  check_dataset_name: (args: { dataset_name: string }) => Promise<any>;
+  list_datasets: (args: {}) => Promise<any>;
+  preview_import: (args: {
+    import_id: string;
+    identity_fields?: any;
+    update_policy?: string;
+  }) => Promise<any>;
+  stage_import: (args: {
+    uploaded_file: any;
+    goal: string;
+    target_table: string;
+  }) => Promise<any>;
 };
+
+export declare const backendAsync: {
+  apply_import: (args: {
+    import_id: string;
+    preview_id: string;
+  }) => Promise<string>;
+  check_dataset_name: (args: { dataset_name: string }) => Promise<string>;
+  list_datasets: (args: {}) => Promise<string>;
+  preview_import: (args: {
+    import_id: string;
+    identity_fields?: any;
+    update_policy?: string;
+  }) => Promise<string>;
+  stage_import: (args: {
+    uploaded_file: any;
+    goal: string;
+    target_table: string;
+  }) => Promise<string>;
+};
+
+export type Job = {
+  type: "QueuedJob" | "CompletedJob";
+  id: string;
+  created_at: number;
+  started_at: number | undefined;
+  duration_ms: number;
+  success: boolean;
+  args: any;
+  result: any;
+};
+
+/**
+ * Execute a job and wait for it to complete and return the completed job
+ * @param id
+ */
+export declare function waitJob(id: string): Promise<Job>;
+
+/**
+ * Get a job by id and return immediately with the current state of the job
+ * @param id
+ */
+export declare function getJob(id: string): Promise<Job>;
+
+export type StreamUpdate = {
+  new_result_stream?: string;
+  stream_offset?: number;
+};
+
+/**
+ * Stream job results using SSE. Calls onUpdate for each stream update,
+ * and resolves with the final result when the job completes.
+ * @param id - The job ID to stream
+ * @param onUpdate - Optional callback for stream updates with new_result_stream data
+ * @returns Promise that resolves with the final job result
+ */
+export declare function streamJob(
+  id: string,
+  onUpdate?: (data: StreamUpdate) => void,
+): Promise<any>;

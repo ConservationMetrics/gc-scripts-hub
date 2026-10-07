@@ -41,6 +41,13 @@ MAX_EXPANDED_BYTES = 100 * 1024 * 1024
 MAX_COLUMNS = 150
 MAX_ARCHIVE_MEMBERS = 1000
 SESSION_TTL = timedelta(hours=24)
+IDENTITY_RULES_VERSION = 2
+MAX_ERROR_ORDINALS = 10
+# Include Unicode whitespace that PostgreSQL's locale-dependent space class omits.
+IDENTITY_BLANK_PATTERN = (
+    "^[[:space:]\x1c-\x1f\x85\u00a0\u1680\u2000-\u200a"
+    "\u2028\u2029\u202f\u205f\u3000]*$"
+)
 VALID_GOALS = {"create", "append", "merge", "sync"}
 VALID_POLICIES = {"imported", "existing"}
 COORDINATE_PAIRS = (
@@ -1155,6 +1162,7 @@ def stage_import(db, uploaded_file, goal, target_table):
         "source_format": source_format,
         "record_count": len(rows),
         "fields": list(mapping),
+        "source_mapping": mapping,
     }
     if geometry_warning:
         result["geometry_warning"] = geometry_warning
@@ -1285,16 +1293,110 @@ def _identity_stored(source_mapping, selected):
     return [source_mapping[field] for field in selected]
 
 
-def _identity_condition(identity_columns, staged_alias="s", target_alias="t"):
+def _identity_value(column, alias, *, staged=False):
+    if staged:
+        return sql.SQL("{}.payload ->> {}").format(
+            sql.Identifier(alias), sql.Literal(column)
+        )
+    return sql.Identifier(alias, column)
+
+
+def _identity_complete(identity_columns, alias, *, staged=False):
+    # Test completeness without changing the stored text used for equality.
     return sql.SQL(" AND ").join(
-        sql.SQL("({}.payload ->> {} IS NOT DISTINCT FROM {}.{})").format(
-            sql.Identifier(staged_alias),
-            sql.Literal(column),
-            sql.Identifier(target_alias),
-            sql.Identifier(column),
+        sql.SQL("COALESCE(({}) !~ {}, FALSE)").format(
+            _identity_value(column, alias, staged=staged),
+            sql.Literal(IDENTITY_BLANK_PATTERN),
         )
         for column in identity_columns
     )
+
+
+def _identity_condition(identity_columns, staged_alias="s", target_alias="t"):
+    return sql.SQL(" AND ").join(
+        [
+            _identity_complete(identity_columns, staged_alias, staged=True),
+            _identity_complete(identity_columns, target_alias),
+            *[
+                sql.SQL("({}) = {}").format(
+                    _identity_value(column, staged_alias, staged=True),
+                    _identity_value(column, target_alias),
+                )
+                for column in identity_columns
+            ],
+        ]
+    )
+
+
+def _validate_identities(cursor, import_id, table_name, mapping, selected):
+    identity_columns = _identity_stored(mapping, selected)
+    target_columns = _target_columns(cursor, table_name)
+    if any(column not in target_columns for column in identity_columns):
+        raise ImportValidationError(
+            "Selected identity fields do not exist in the target dataset."
+        )
+    for field, column in zip(selected, identity_columns):
+        cursor.execute(
+            sql.SQL(
+                "SELECT s.row_ordinal FROM {}.import_rows s "
+                "WHERE s.import_id = %s AND NOT ({}) ORDER BY s.row_ordinal LIMIT %s"
+            ).format(
+                sql.Identifier(SCHEMA),
+                _identity_complete([column], "s", staged=True),
+            ),
+            (import_id, MAX_ERROR_ORDINALS + 1),
+        )
+        ordinals = [row[0] for row in cursor.fetchall()]
+        if ordinals:
+            affected = ", ".join(map(str, ordinals[:MAX_ERROR_ORDINALS]))
+            if len(ordinals) > MAX_ERROR_ORDINALS:
+                affected += ", …"
+            raise ImportValidationError(
+                f"Incomplete uploaded identity in selected field '{field}' at "
+                f"staged record ordinal(s): {affected}. Every selected identity "
+                "field must be present and cannot be null, empty, or whitespace-only."
+            )
+    identity_expr = sql.SQL(", ").join(
+        _identity_value(column, "s", staged=True) for column in identity_columns
+    )
+    cursor.execute(
+        sql.SQL(
+            "SELECT 1 FROM {}.import_rows s WHERE s.import_id = %s "
+            "GROUP BY {} HAVING count(*) > 1 LIMIT 1"
+        ).format(sql.Identifier(SCHEMA), identity_expr),
+        (import_id,),
+    )
+    if cursor.fetchone():
+        raise ImportValidationError(
+            "Duplicate uploaded identity combinations were found. "
+            "Uploaded identity combinations must be unique."
+        )
+    target_expr = sql.SQL(", ").join(
+        _identity_value(column, "t") for column in identity_columns
+    )
+    cursor.execute(
+        sql.SQL(
+            "SELECT 1 FROM (SELECT {} FROM {} t WHERE {} "
+            "GROUP BY {} HAVING count(*) > 1) t "
+            "WHERE EXISTS (SELECT 1 FROM {}.import_rows s "
+            "WHERE s.import_id = %s AND {}) LIMIT 1"
+        ).format(
+            target_expr,
+            _quoted_table(table_name),
+            _identity_complete(identity_columns, "t"),
+            target_expr,
+            sql.Identifier(SCHEMA),
+            _identity_condition(identity_columns),
+        ),
+        (import_id,),
+    )
+    if cursor.fetchone():
+        raise ImportValidationError(
+            "Multiple existing records in the target dataset match an uploaded "
+            "identity. Matching target identity combinations must be unambiguous "
+            "under either update policy."
+        )
+    return identity_columns
 
 
 def preview_import(db, import_id, identity_fields=None, update_policy="imported"):
@@ -1348,14 +1450,9 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
                 + ", ".join(incompatible)
             )
         if goal in {"merge", "sync"} and staged_count > 0:
-            identity_columns = _identity_stored(mapping, identity_fields or [])
-            missing_target = [
-                column for column in identity_columns if column not in target_columns
-            ]
-            if missing_target:
-                raise ImportValidationError(
-                    "Selected identity fields do not exist in the target dataset."
-                )
+            identity_columns = _validate_identities(
+                cursor, import_id, table_name, mapping, identity_fields or []
+            )
         else:
             identity_columns = []
         if (
@@ -1366,34 +1463,6 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
             raise ImportValidationError("The final dataset would exceed 150 columns.")
         if goal in {"create", "sync"} and staged_count == 0:
             raise ImportValidationError("Create and Sync imports cannot be empty.")
-        if identity_columns:
-            identity_expr = sql.SQL(", ").join(
-                sql.SQL("payload ->> {}").format(sql.Literal(column))
-                for column in identity_columns
-            )
-            cursor.execute(
-                sql.SQL(
-                    "SELECT 1 FROM {}.import_rows WHERE import_id = %s GROUP BY {} HAVING count(*) > 1 LIMIT 1"
-                ).format(sql.Identifier(SCHEMA), identity_expr),
-                (import_id,),
-            )
-            if cursor.fetchone():
-                raise ImportValidationError(
-                    "Duplicate record identities were found in the import."
-                )
-            target_expr = sql.SQL(", ").join(
-                sql.Identifier(column) for column in identity_columns
-            )
-            cursor.execute(
-                sql.SQL(
-                    "SELECT 1 FROM {} GROUP BY {} HAVING count(*) > 1 LIMIT 1"
-                ).format(_quoted_table(table_name), target_expr)
-            )
-            if cursor.fetchone():
-                raise ImportValidationError(
-                    "Duplicate record identities were found in the target dataset."
-                )
-
         additions = updates = deleted = unchanged = 0
         new_columns = (
             len(set(stored_columns) - set(target_columns)) if staged_count > 0 else 0
@@ -1482,6 +1551,7 @@ def preview_import(db, import_id, identity_fields=None, update_policy="imported"
         preview_id = uuid.uuid4()
         preview = {
             "preview_id": str(preview_id),
+            "identity_rules_version": IDENTITY_RULES_VERSION,
             "source_count": staged_count,
             "identity_fields": identity_fields or [],
             "update_policy": update_policy,
@@ -1631,6 +1701,13 @@ def apply_import(db, import_id, preview_id):
                 raise ImportValidationError(
                     "This preview is no longer current. Review again."
                 )
+            if (
+                goal in {"merge", "sync"}
+                and preview.get("identity_rules_version") != IDENTITY_RULES_VERSION
+            ):
+                raise ImportValidationError(
+                    "Identity rules changed since this preview. Review the import again."
+                )
             cursor.execute(
                 sql.SQL(
                     "SELECT source_name, source_data FROM {}.import_sessions WHERE import_id = %s"
@@ -1667,6 +1744,10 @@ def apply_import(db, import_id, preview_id):
                     raise ImportValidationError(
                         "The target dataset changed after review. Review the import again."
                     )
+            if goal in {"merge", "sync"} and not empty_noop:
+                _validate_identities(
+                    cursor, import_id, table_name, mapping, preview["identity_fields"]
+                )
             if not empty_noop:
                 for column in stored_columns:
                     if column not in target_columns:

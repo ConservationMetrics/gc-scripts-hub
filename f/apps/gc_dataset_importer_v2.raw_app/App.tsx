@@ -23,6 +23,7 @@ type MetricKind =
 
 type StagedImport = {
   fields: string[];
+  source_mapping: Record<string, string>;
   geometry_warning?: string;
   import_id: string;
   record_count: number;
@@ -181,7 +182,7 @@ export default function App() {
     setDatasetsLoading(true);
     setDatasetsError(undefined);
     try {
-      setDatasets(await backend.list_datasets());
+      setDatasets(await backend.list_datasets({}));
     } catch (reason) {
       setDatasetsError(message(reason, strings.errorLoadDatasets));
     } finally {
@@ -192,7 +193,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
     backend
-      .list_datasets()
+      .list_datasets({})
       .then((result) => {
         if (active) setDatasets(result);
       })
@@ -411,6 +412,11 @@ export default function App() {
 
   const canMoveDataset =
     goal === "create" ? nameAvailable === true : Boolean(targetTable);
+  function fieldLabel(field: string) {
+    const stored = staged?.source_mapping[field];
+    return stored && stored !== field ? `${field} → ${stored}` : field;
+  }
+
   const canPreviewIdentity = Boolean(
     staged && (staged.record_count === 0 || identity.length > 0),
   );
@@ -619,6 +625,7 @@ export default function App() {
           </h2>
           <p className="lede">{strings.identityDescription}</p>
           <p>{strings.identityUnique}</p>
+          {staged.fields.includes("_id") && <p>{strings.identitySourceId}</p>}
           <p>
             {strings.identityMatching}{" "}
             {goal === "sync" ? strings.identitySync : strings.identityMerge}
@@ -651,7 +658,7 @@ export default function App() {
                   )
                   .map((field) => (
                     <option key={field} value={field}>
-                      {field}
+                      {fieldLabel(field)}
                     </option>
                   ))}
               </select>
@@ -715,10 +722,16 @@ export default function App() {
                 <dd>{staged.source_format}</dd>
               </div>
             )}
+            {staged && (
+              <div>
+                <dt>{strings.reviewMapping}</dt>
+                <dd>{staged.fields.map(fieldLabel).join(", ")}</dd>
+              </div>
+            )}
             {needsIdentity && identity.length > 0 && (
               <div>
                 <dt>{strings.stepIdentity}</dt>
-                <dd>{identity.join(" + ")}</dd>
+                <dd>{identity.map(fieldLabel).join(" + ")}</dd>
               </div>
             )}
             {needsIdentity && (

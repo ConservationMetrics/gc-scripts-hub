@@ -1,7 +1,7 @@
 {
   "scripts": {
     "format:check": "prettier --check assets/*.ts assets.d.ts App.tsx App.test.tsx strings.json index.tsx index.css wmill.ts eslint.config.mjs tsconfig.json vitest.config.mts package.json",
-    "lint": "eslint assets/*.ts assets.d.ts App.tsx App.test.tsx index.tsx wmill.ts vitest.config.mts",
+    "lint": "eslint assets/*.ts assets.d.ts App.tsx App.test.tsx index.tsx vitest.config.mts",
     "lint:windmill": "cd .. && wmill app lint gc_dataset_importer_v2.raw_app",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -132,7 +132,7 @@ ZIP:
 
 ## Record identity
 
-This step is required for users who selected Sync or Merge. The user must manually select one or more fields to define row identity. Preselecting candidate identifiers is out of scope for now. Validation of selected identifiers is also out of scope for now.
+This step is required for users who selected Sync or Merge. The user must manually select one or more fields to define row identity. Preselecting candidate identifiers is out of scope for now. Prevalidation during field selection is out of scope; complete and unique uploaded identities and unambiguous matches are validated during preview and again at import time.
 
 The user is also invited to select an “Update Policy” (either 'Imported records win' or 'Existing records win')
 
@@ -143,11 +143,15 @@ IDENTITY:
   3: I can select a maximum of 3 fields
   4: Record identity selections refer to dataset fields through the column-name map, so matching is not affected by source-column sanitization.
   5: For geojson, top level `feature.id` is included, alongside fields in `feature.properties`
+  6: Every selected component is required in every uploaded row; all one to three components must match for two identities to be equal.
+  7: Display actual source-to-stored mappings in dropdown labels and the review summary, for example `_id → source_id`; selection values remain original source names.
+  7-1: Explain that uploaded `_id` does not select the target's internal Postgres `_id`; reuse actual mappings and preserve collision handling.
   
 POLICY:
 	1: I must select from two options; 'Imported records win' or 'Existing records win'
 	2: The default selection is 'Imported records win'
 	3: User education / help text explains the difference between the two
+  4: Existing records win controls matching rows only; it does not prevent Sync deletions or additions.
 ```
 
 **Design Hints**
@@ -162,9 +166,17 @@ The final step calculates a preview of what will change if the upload is accepte
 
 ```yaml
 VALIDATION:
-  1: If I try to 'Sync' or 'Create' with an empty dataset import, an error is thrown.
-  2: If I try to 'Append' or 'Merge' with an empty dataset import, it's a noop (no changes).
-  3: If my chosen identity columns contain duplicates (in input dataset or in source dataset), I am shown a helpful error.
+  1: Empty Create and Sync imports are rejected.
+  2: Empty Append and Merge imports are no-ops.
+  3: For nonempty Merge and Sync imports, every uploaded record must contain a complete selected identity.
+  3-1: An identity is incomplete if any selected field is missing, null, empty, or whitespace-only.
+  4: Duplicate uploaded identity combinations are rejected for Merge and Sync.
+  5: Duplicate target identity combinations are rejected only when they match an uploaded record.
+  5-1: This rule applies under both update policies.
+  6: Numeric zero and boolean false are valid; literal strings "null" and "undefined" are populated text. JSON undefined is unsupported; omitted properties are missing fields.
+  7: Apply identity rules after existing parsing, preserving converter behavior including Excel text trimming. Equality uses existing stored text without new trimming, case folding, or timestamp conversion.
+  8: Errors identify the original selected field and bounded staged ordinals for incomplete identities, without record contents. Validation failures cause no target changes.
+  9: Create and Append perform no identity matching or new identity validation.
 
 ```
 
@@ -181,7 +193,9 @@ REVIEW:
   3: If after the final confirmation, an import error is encountered, it is surfaced in the UI
   4: After input, I am invited to 'Import another dataset' which clears state and brings me back to step 1
   5: If the dataset or my preview changes before I confirm, the import is stopped and I must review it again
-  6: Confirming the same import more than once does not import the data twice
+  6: Confirming the same import more than once does not import the data twice, including already successful imports with old-rule previews.
+  7: Counts include every affected row, rather than distinct identity groups.
+  8: Pending Merge and Sync previews generated under older identity rules or without a version marker require another review before any target changes; staged sessions can be reviewed again while valid.
 ```
 
 ```yaml
@@ -198,9 +212,13 @@ MATCH:
     Existing rows without a match are retained.
   4: Columns are never removed, even if they are omitted in the imported dataset.
   4-1: An omitted column in an imported dataset is not considered a deletion; existing fields remain.
-  5: A field with a null/empty value clears any corresponding existing value, following chosen Update Policy
+  5: An ordinary field with a null/empty value clears any corresponding existing value, following chosen Update Policy
   5-1: 'Imported records' win means matching rows update with every imported field, including null/empty values; fields omitted from the import remain unchanged.
   5-2: 'Existing records' win means matching rows remain entirely unchanged.
+  6: Incomplete target identities cannot match, including blank-to-blank values.
+  7: Unmatched target duplicates and incomplete identities are retained by Merge and deleted by Sync. Merge may retain duplicates; neither mode deduplicates retained records.
+  8: Sync applies to the entire selected table, including records from other sources.
+  9: Matching target duplicates are errors even if other values are identical.
 ```
 
 **Design Hints**
@@ -237,6 +255,8 @@ LIMITS:
     4-1: If source column mapping does not exist for a dataset, it is created
     4-2: If two source column names would become the same stored column name, both fields are imported as distinct columns and stay distinct on later imports.
     4-3: If a dataset already has a column-name map, imports reuse it so the same fields stay connected
+    4-4: Internal Postgres `_id` is separate from uploaded `_id`, normally stored as `source_id`; existing mappings and collisions may produce another stored name.
+    4-5: Imports do not repair missing identities or automatically backfill source IDs.
     5: Nested or multi-value source fields are retained as structured text
     6: Imports are all-or-nothing, if it fails, no data is written to the target dataset
 ```

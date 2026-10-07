@@ -26,6 +26,7 @@ const mockedBackend = vi.mocked(backend);
 
 const stagedImport = {
   fields: ["code", "note"],
+  source_mapping: { code: "code", note: "note" },
   import_id: "import-1",
   record_count: 1,
   source_format: "csv",
@@ -245,11 +246,11 @@ describe("Dataset importer", () => {
     );
   });
 
-  it("shows preview validation messages returned by Windmill", async () => {
-    mockedBackend.preview_import.mockResolvedValue({
-      validation_error:
-        "Duplicate record identities were found in the target dataset.",
-    });
+  it.each([
+    "Incomplete uploaded identity in selected field 'code' at staged record ordinal(s): 2. Every selected identity field must be present and cannot be null, empty, or whitespace-only.",
+    "Multiple existing records in the target dataset match an uploaded identity. Matching target identity combinations must be unambiguous under either update policy.",
+  ])("shows preview identity validation: %s", async (validation_error) => {
+    mockedBackend.preview_import.mockResolvedValue({ validation_error });
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
     await chooseExistingGoal("Merge");
@@ -259,8 +260,10 @@ describe("Dataset importer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Duplicate record identities were found in the target dataset.",
+      validation_error,
     );
+    expect(screen.getByLabelText("Identity field 1")).toHaveValue("code");
+    expect(mockedBackend.apply_import).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -351,7 +354,17 @@ describe("Dataset importer", () => {
   });
 
   it("requires identity and confirms destructive Sync explicitly", async () => {
-    const destructivePreview = { ...preview, deleted: 3, final_count: 1 };
+    const destructivePreview = {
+      ...preview,
+      added: 0,
+      deleted: 13,
+      unchanged: 3,
+      final_count: 3,
+    };
+    mockedBackend.stage_import.mockResolvedValue({
+      ...stagedImport,
+      record_count: 3,
+    });
     mockedBackend.preview_import.mockResolvedValue(destructivePreview);
     const confirmation = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App />);
@@ -364,11 +377,17 @@ describe("Dataset importer", () => {
     });
     expect(screen.getByLabelText("Identity field 2")).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
-    await screen.findByText(/permanently delete 3 unmatched records/);
+    await screen.findByText(/permanently delete 13 unmatched records/);
+    expect(screen.getByText("Rows deleted").previousSibling).toHaveTextContent(
+      "13",
+    );
+    expect(
+      screen.getByText("Final record count").previousSibling,
+    ).toHaveTextContent("3");
     fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
 
     expect(confirmation).toHaveBeenCalledWith(
-      "Sync will delete 3 records from observations. Continue?",
+      "Sync will delete 13 records from observations. Continue?",
     );
     await waitFor(() =>
       expect(mockedBackend.apply_import).toHaveBeenCalledWith({
@@ -402,6 +421,125 @@ describe("Dataset importer", () => {
       "Failed to apply import",
       reason,
     );
+  });
+
+  it("displays actual mappings and submits original source names", async () => {
+    mockedBackend.stage_import.mockResolvedValue({
+      ...stagedImport,
+      fields: ["_id", "source_id", "Bird Name"],
+      source_mapping: {
+        _id: "source_id_002",
+        source_id: "source_id",
+        "Bird Name": "Bird_Name",
+      },
+    });
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Merge");
+    expect(
+      screen.getAllByRole("option", { name: "_id → source_id_002" })[0],
+    ).toHaveValue("_id");
+    expect(screen.getAllByRole("option", { name: "source_id" })[0]).toHaveValue(
+      "source_id",
+    );
+    expect(
+      screen.getAllByRole("option", { name: "Bird Name → Bird_Name" })[0],
+    ).toHaveValue("Bird Name");
+    expect(
+      screen.getByText(/does not select the target’s internal Postgres _id/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        /Every selected field must be present in every uploaded record/,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Uploaded identity combinations must be unique/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        /including incomplete identities and existing duplicates/,
+      ),
+    ).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Identity field 1"), {
+      target: { value: "_id" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    await screen.findByRole("button", { name: "Confirm import" });
+    expect(mockedBackend.preview_import).toHaveBeenCalledWith({
+      identity_fields: ["_id"],
+      import_id: "import-1",
+      update_policy: "imported",
+    });
+    expect(
+      screen.getByText("Source → stored fields").nextSibling,
+    ).toHaveTextContent(
+      "_id → source_id_002, source_id, Bird Name → Bird_Name",
+    );
+    expect(
+      screen.getByText("_id → source_id_002", { selector: "dd" }),
+    ).toBeVisible();
+  });
+
+  it("explains Sync deletions and empty ordinary field policy", async () => {
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Sync");
+    expect(
+      screen.getByText(
+        /Sync deletes every unmatched row in the entire selected table/,
+      ),
+    ).toHaveTextContent("records from other sources");
+    expect(
+      screen.getByText(/Existing records win does not prevent these deletions/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/including empty ordinary field values/),
+    ).toBeVisible();
+  });
+
+  it("allows re-review after an old-rule preview is rejected", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockedBackend.apply_import.mockRejectedValueOnce(
+      new Error(
+        "Identity rules changed since this preview. Review the import again.",
+      ),
+    );
+    render(<App />);
+    await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
+    await chooseExistingGoal("Merge");
+    fireEvent.change(screen.getByLabelText("Identity field 1"), {
+      target: { value: "code" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm import" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Identity rules changed",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Confirm import" }),
+    ).not.toBeInTheDocument();
+    mockedBackend.preview_import.mockResolvedValueOnce({
+      ...preview,
+      preview_id: "preview-current",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm import" }),
+    );
+    await screen.findByText("Import applied successfully.");
+    expect(mockedBackend.preview_import).toHaveBeenLastCalledWith({
+      identity_fields: ["code"],
+      import_id: "import-1",
+      update_policy: "imported",
+    });
+    expect(mockedBackend.apply_import).toHaveBeenLastCalledWith({
+      import_id: "import-1",
+      preview_id: "preview-current",
+    });
+    expect(mockedBackend.stage_import).toHaveBeenCalledTimes(1);
   });
 
   it("clears the journey after a successful import", async () => {

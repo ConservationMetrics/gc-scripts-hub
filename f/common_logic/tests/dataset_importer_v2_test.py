@@ -388,38 +388,6 @@ def test_existing_wins_preserves_matches_and_adds_new_rows(mock_db_connection):
     }
 
 
-def test_sync_uses_null_safe_identity_and_deletes_only_absent_records(
-    mock_db_connection,
-):
-    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
-        cursor.execute(
-            'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT, note TEXT)'
-        )
-        cursor.execute(
-            'INSERT INTO "public"."observations" VALUES (%s, %s, %s)',
-            ("one", None, "keep"),
-        )
-        cursor.execute(
-            'INSERT INTO "public"."observations" VALUES (%s, %s, %s)',
-            ("two", "B", "delete"),
-        )
-
-    staged = stage_import(
-        mock_db_connection,
-        upload("update.csv", "code,note\n,changed\n"),
-        "sync",
-        "observations",
-    )
-    preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
-    assert preview["deleted"] == 1
-    assert preview["updated"] == 1
-    confirm(mock_db_connection, staged, preview)
-    assert [
-        (row["code"], row["note"])
-        for row in table_rows(mock_db_connection, "observations")
-    ] == [(None, "changed")]
-
-
 def test_duplicate_identity_is_rejected_before_writes(mock_db_connection):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
@@ -431,12 +399,18 @@ def test_duplicate_identity_is_rejected_before_writes(mock_db_connection):
         "merge",
         "observations",
     )
-    with pytest.raises(ImportValidationError, match="Duplicate record identities"):
+    with pytest.raises(
+        ImportValidationError, match="Uploaded identity combinations must be unique"
+    ):
         preview_import(mock_db_connection, staged["import_id"], ["code"])
     assert table_rows(mock_db_connection, "observations") == []
 
 
-def test_duplicate_composite_identity_in_target_is_rejected(mock_db_connection):
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+def test_duplicate_composite_identity_in_target_is_rejected(
+    mock_db_connection, goal, policy
+):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
             'CREATE TABLE "public"."people" (_id TEXT PRIMARY KEY, first_name TEXT, last_name TEXT)'
@@ -448,7 +422,7 @@ def test_duplicate_composite_identity_in_target_is_rejected(mock_db_connection):
     staged = stage_import(
         mock_db_connection,
         upload("people.csv", "first_name,last_name\nAda,Lovelace\n"),
-        "merge",
+        goal,
         "people",
     )
 
@@ -457,7 +431,10 @@ def test_duplicate_composite_identity_in_target_is_rejected(mock_db_connection):
             mock_db_connection,
             staged["import_id"],
             ["first_name", "last_name"],
+            policy,
         )
+
+    assert len(table_rows(mock_db_connection, "people")) == 2
 
 
 @pytest.mark.parametrize(
@@ -551,7 +528,8 @@ def test_geojson_rejects_geometry_collections_during_staging(
     assert check_dataset_name(mock_db_connection, "mixed_geometries")["available"] is True
 
 
-def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection):
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection, goal):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
             'CREATE TABLE "public"."observations" (_id TEXT PRIMARY KEY, code TEXT)'
@@ -562,7 +540,7 @@ def test_confirmation_rejects_a_target_changed_after_review(mock_db_connection):
     staged = stage_import(
         mock_db_connection,
         upload("update.csv", "code\nB\n"),
-        "merge",
+        goal,
         "observations",
     )
     preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
@@ -1380,12 +1358,30 @@ def test_uploaded_id_and_source_id_are_kept_as_distinct_data(mock_db_connection)
         "create",
         "observations",
     )
+    assert staged["source_mapping"] == {
+        "_id": "source_id",
+        "source_id": "source_id_001",
+    }
     preview = preview_import(mock_db_connection, staged["import_id"])
     confirm(mock_db_connection, staged, preview)
 
     row = table_rows(mock_db_connection, "observations")[0]
     assert row["source_id"] == "external-id"
     assert row["source_id_001"] == "source-value"
+
+    merged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "_id,source_id\nexternal-id,updated\n"),
+        "merge",
+        "observations",
+    )
+    assert merged["source_mapping"] == staged["source_mapping"]
+    review = preview_import(mock_db_connection, merged["import_id"], ["_id"])
+    assert review["updated"] == 1 and review["added"] == 0
+    confirm(mock_db_connection, merged, review)
+    result = table_rows(mock_db_connection, "observations")[0]
+    assert result["_id"] == row["_id"]
+    assert result["source_id_001"] == "updated"
 
 
 def test_append_maps_legacy_name_to_existing_physical_column(mock_db_connection):
@@ -1830,3 +1826,361 @@ def test_concurrent_confirmation_is_idempotent(
 
     assert results[0] == results[1]
     assert len(table_rows(mock_db_connection, "observations")) == 1
+
+
+def identity_target(db, records):
+    with psycopg.connect(db) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "CREATE TABLE public.identities (_id TEXT PRIMARY KEY, code TEXT, part TEXT, note TEXT)"
+        )
+        cursor.executemany(
+            "INSERT INTO public.identities VALUES (%s, %s, %s, %s)", records
+        )
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize(
+    "filename,contents,fields,ordinal",
+    [
+        ("rows.json", '[{"code":"ok"},{"note":"private"}]', ["code"], 2),
+        ("rows.json", '[{"code":null,"note":"private"}]', ["code"], 1),
+        ("rows.json", '[{"code":"","note":"private"}]', ["code"], 1),
+        ("rows.json", '[{"code":" \\t\\n","note":"private"}]', ["code"], 1),
+        ("rows.csv", "code,note\n,private\n", ["code"], 1),
+        (
+            "rows.json",
+            json.dumps([{"code": "\u00a0\u202f\u0085\u2003"}]),
+            ["code"],
+            1,
+        ),
+        ("rows.json", '[{"code":"ok","part":null}]', ["code", "part"], 1),
+    ],
+)
+def test_incomplete_upload_rejected_without_target_changes(
+    mock_db_connection, goal, filename, contents, fields, ordinal
+):
+    identity_target(mock_db_connection, [("internal", None, None, "unchanged")])
+    before = table_rows(mock_db_connection, "identities")
+    staged = stage_import(
+        mock_db_connection, upload(filename, contents), goal, "identities"
+    )
+    with pytest.raises(
+        ImportValidationError, match="Incomplete uploaded identity"
+    ) as error:
+        preview_import(mock_db_connection, staged["import_id"], fields)
+    assert f"selected field '{fields[-1]}'" in str(error.value)
+    assert f"ordinal(s): {ordinal}." in str(error.value)
+    assert "private" not in str(error.value)
+    assert table_rows(mock_db_connection, "identities") == before
+
+
+def test_incomplete_error_uses_original_field_and_bounded_ordinals(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "CREATE TABLE public.identities (_id TEXT PRIMARY KEY, source_id TEXT)"
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.json", json.dumps([{"_id": None, "note": "private"}] * 20)),
+        "merge",
+        "identities",
+    )
+    with pytest.raises(ImportValidationError) as error:
+        preview_import(mock_db_connection, staged["import_id"], ["_id"])
+    assert "selected field '_id'" in str(error.value)
+    assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, …" in str(error.value)
+    assert "11" not in str(error.value) and "private" not in str(error.value)
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+def test_populated_identity_values_use_exact_stored_text(
+    mock_db_connection, goal, policy
+):
+    values = [0, False, "null", "undefined", " A ", "A", "a"]
+    stored = ["0", "false", "null", "undefined", " A ", "A", "a"]
+    identity_target(
+        mock_db_connection,
+        [(str(i), value, None, "old") for i, value in enumerate(stored)],
+    )
+    staged = stage_import(
+        mock_db_connection,
+        upload(
+            "rows.json",
+            json.dumps([{"code": value, "note": ""} for value in values]),
+        ),
+        goal,
+        "identities",
+    )
+    review = preview_import(mock_db_connection, staged["import_id"], ["code"], policy)
+    assert review["added"] == review["deleted"] == 0
+    assert review["updated"] == (len(values) if policy == "imported" else 0)
+    confirm(mock_db_connection, staged, review)
+    assert {row["code"] for row in table_rows(mock_db_connection, "identities")} == set(
+        stored
+    )
+
+    assert {
+        row["note"] for row in table_rows(mock_db_connection, "identities")
+    } == ({""} if policy == "imported" else {"old"})
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+@pytest.mark.parametrize("composite", [False, True])
+def test_matching_target_duplicates_rejected_even_when_identical(
+    mock_db_connection, goal, policy, composite
+):
+    identity_target(
+        mock_db_connection, [("one", "A", "X", "same"), ("two", "A", "X", "same")]
+    )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,part,note\nA,X,same\n"),
+        goal,
+        "identities",
+    )
+    before = table_rows(mock_db_connection, "identities")
+    with pytest.raises(
+        ImportValidationError,
+        match="Multiple existing records.*match an uploaded identity",
+    ):
+        preview_import(
+            mock_db_connection,
+            staged["import_id"],
+            ["code", "part"] if composite else ["code"],
+            policy,
+        )
+    assert table_rows(mock_db_connection, "identities") == before
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+def test_unmatched_duplicates_and_incomplete_targets_follow_goal(
+    mock_db_connection, goal, policy
+):
+    records = [
+        ("matched", "A", "X", "old"),
+        ("dup1", "B", "X", "old"),
+        ("dup2", "B", "X", "old"),
+    ]
+    records += [
+        (f"blank{i}", value, "X", "old")
+        for i, value in enumerate([None, None, "", "", " \t\n", " \t\n", "\u00a0", "\u202f"])
+    ]
+    # One missing component makes even an otherwise populated target identity incomplete.
+    records += [("missing-part", "A", None, "old")]
+    identity_target(mock_db_connection, records)
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,part,note\nA,X,new\nC,X,added\n"),
+        goal,
+        "identities",
+    )
+    review = preview_import(
+        mock_db_connection, staged["import_id"], ["code", "part"], policy
+    )
+    assert review["deleted"] == (len(records) - 1 if goal == "sync" else 0)
+    assert review["added"] == 1
+    assert review["updated"] == (1 if policy == "imported" else 0)
+    confirm(mock_db_connection, staged, review)
+    rows = table_rows(mock_db_connection, "identities")
+    assert (
+        len(rows)
+        == review["final_count"]
+        == (2 if goal == "sync" else len(records) + 1)
+    )
+    assert next(row for row in rows if row["_id"] == "matched")["note"] == (
+        "new" if policy == "imported" else "old"
+    )
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+def test_unique_combinations_allow_repeated_components(mock_db_connection, goal):
+    identity_target(
+        mock_db_connection,
+        [
+            ("one", "A", "X", "old"),
+            ("two", "A", "Y", "old"),
+            ("three", "B", "X", "old"),
+        ],
+    )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,part,note\nA,X,new\nA,Y,new\nB,X,new\n"),
+        goal,
+        "identities",
+    )
+    review = preview_import(mock_db_connection, staged["import_id"], ["code", "part"])
+    assert review["updated"] == 3 and review["added"] == review["deleted"] == 0
+    confirm(mock_db_connection, staged, review)
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+def test_duplicate_uploaded_combinations_rejected(mock_db_connection, goal):
+    identity_target(mock_db_connection, [])
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,part\nA,X\nA,X\n"),
+        goal,
+        "identities",
+    )
+    with pytest.raises(
+        ImportValidationError, match="Uploaded identity combinations must be unique"
+    ):
+        preview_import(mock_db_connection, staged["import_id"], ["code", "part"])
+    assert table_rows(mock_db_connection, "identities") == []
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+def test_no_matches_adds_upload_and_keeps_or_deletes_target(
+    mock_db_connection, goal, policy
+):
+    identity_target(
+        mock_db_connection, [("one", "B", None, "old"), ("two", "B", None, "old")]
+    )
+    staged = stage_import(
+        mock_db_connection, upload("rows.csv", "code,note\nA,new\n"), goal, "identities"
+    )
+    review = preview_import(mock_db_connection, staged["import_id"], ["code"], policy)
+    assert review["added"] == 1 and review["updated"] == 0
+    assert review["deleted"] == (2 if goal == "sync" else 0)
+    confirm(mock_db_connection, staged, review)
+    assert (
+        len(table_rows(mock_db_connection, "identities"))
+        == review["final_count"]
+        == (1 if goal == "sync" else 3)
+    )
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+@pytest.mark.parametrize("field,stored", [("_id", "source_id"), ("_uuid", "_uuid")])
+def test_sixteen_target_rows_three_uploaded_kobo_records(
+    mock_db_connection, goal, policy, field, stored
+):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            psycopg.sql.SQL(
+                "CREATE TABLE public.kobo (_id TEXT PRIMARY KEY, {} TEXT, note TEXT)"
+            ).format(psycopg.sql.Identifier(stored))
+        )
+        cursor.executemany(
+            "INSERT INTO public.kobo VALUES (%s, %s, %s)",
+            [(f"internal-{i}", str(i) if i < 3 else None, "old") for i in range(16)],
+        )
+    contents = json.dumps([{field: str(i), "note": "new"} for i in range(3)])
+    for iteration in range(2):
+        staged = stage_import(
+            mock_db_connection, upload("kobo.json", contents), goal, "kobo"
+        )
+        assert staged["source_mapping"][field] == stored
+        review = preview_import(
+            mock_db_connection, staged["import_id"], [field], policy
+        )
+        assert review["deleted"] == (13 if goal == "sync" and iteration == 0 else 0)
+        assert review["updated"] == (
+            3 if policy == "imported" and iteration == 0 else 0
+        )
+        assert review["added"] == review["columns_added"] == 0
+        assert review["unchanged"] == (16 if goal == "merge" else 3) - review[
+            "updated"
+        ]
+        first = confirm(mock_db_connection, staged, review)
+        assert confirm(mock_db_connection, staged, review) == first
+        rows = table_rows(mock_db_connection, "kobo")
+        assert len(rows) == review["final_count"] == (16 if goal == "merge" else 3)
+        assert len({row["_id"] for row in rows}) == len(rows)
+        for i in range(3):
+            row = next(row for row in rows if row[stored] == str(i))
+            assert row["_id"] == f"internal-{i}"
+            assert row["note"] == ("new" if policy == "imported" else "old")
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+@pytest.mark.parametrize("marker", [None, 1])
+def test_pending_old_rule_preview_requires_review_again(
+    mock_db_connection, goal, marker, importer_datalake
+):
+    identity_target(mock_db_connection, [("one", "A", None, "old")])
+    staged = stage_import(
+        mock_db_connection, upload("rows.csv", "code,note\nA,new\n"), goal, "identities"
+    )
+    review = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        old = dict(review)
+        old.pop("identity_rules_version")
+        if marker is not None:
+            old["identity_rules_version"] = marker
+        cursor.execute(
+            "UPDATE dataset_importer_v2.import_sessions SET preview = %s WHERE import_id = %s",
+            (json.dumps(old), staged["import_id"]),
+        )
+    before = table_rows(mock_db_connection, "identities")
+    with pytest.raises(
+        ImportValidationError, match="Identity rules changed.*Review the import again"
+    ):
+        confirm(mock_db_connection, staged, review)
+    assert table_rows(mock_db_connection, "identities") == before
+    assert not list(importer_datalake.rglob("*.csv"))
+    current = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    assert current["identity_rules_version"] == importer.IDENTITY_RULES_VERSION
+    assert confirm(mock_db_connection, staged, current)["success"]
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            "UPDATE dataset_importer_v2.import_sessions SET preview = preview - 'identity_rules_version' WHERE import_id = %s",
+            (staged["import_id"],),
+        )
+    assert confirm(mock_db_connection, staged, current)["success"]
+    assert len(table_rows(mock_db_connection, "identities")) == 1
+
+
+@pytest.mark.parametrize("mutation", ["incomplete", "duplicate"])
+def test_apply_revalidates_staged_identities_under_target_lock(
+    mock_db_connection, mutation
+):
+    identity_target(mock_db_connection, [("one", "A", None, "old")])
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,note\nA,new\n"),
+        "sync",
+        "identities",
+    )
+    review = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        if mutation == "incomplete":
+            cursor.execute(
+                "UPDATE dataset_importer_v2.import_rows SET payload = payload - 'code' WHERE import_id = %s",
+                (staged["import_id"],),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO dataset_importer_v2.import_rows SELECT import_id, 2, payload FROM dataset_importer_v2.import_rows WHERE import_id = %s",
+                (staged["import_id"],),
+            )
+    before = table_rows(mock_db_connection, "identities")
+    with pytest.raises(
+        ImportValidationError,
+        match="Incomplete uploaded identity|Uploaded identity combinations must be unique",
+    ):
+        confirm(mock_db_connection, staged, review)
+    assert table_rows(mock_db_connection, "identities") == before
+
+
+@pytest.mark.parametrize("goal", ["create", "append"])
+def test_create_append_ignore_incomplete_and_duplicate_identities(
+    mock_db_connection, goal
+):
+    if goal == "append":
+        identity_target(mock_db_connection, [])
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.json", '[{"code":null},{"code":null},{"code":"A"},{"code":"A"}]'),
+        goal,
+        "identities",
+    )
+    review = preview_import(mock_db_connection, staged["import_id"])
+    assert review["added"] == 4
+    confirm(mock_db_connection, staged, review)
+    assert len(table_rows(mock_db_connection, "identities")) == 4
