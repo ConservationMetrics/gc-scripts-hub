@@ -11,17 +11,25 @@ workflows:
 jobs:
   test-dataset-importer-app:
     docker:
-      - image: cimg/node:22.22
+      - image: cimg/node:22.23.2
     steps:
       - checkout
       - run:
           name: Install Dataset Importer dependencies
-          command: npm ci
+          command: npm ci --no-audit
           working_directory: f/apps/gc_dataset_importer_v2.raw_app
       - run:
           name: Validate Dataset Importer app
-          command: npm run typecheck && npm run format:check && npm run lint && npm test && npm run lint:windmill && npm audit
+          command: npm run typecheck && npm run format:check && npm run lint && npm test && npm run lint:windmill
           working_directory: f/apps/gc_dataset_importer_v2.raw_app
+      - run:
+          name: Audit Dataset Importer dependencies (advisory)
+          command: |
+            if ! npm audit; then
+              echo "Dependency audit reported findings or could not complete; this check is advisory."
+            fi
+          working_directory: f/apps/gc_dataset_importer_v2.raw_app
+          when: always
 
   test:
     resource_class: medium

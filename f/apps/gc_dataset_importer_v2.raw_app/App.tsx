@@ -19,12 +19,7 @@ type Goal = "create" | "append" | "merge" | "sync";
 type Policy = "imported" | "existing";
 type Step = "dataset" | "goal" | "identity" | "review" | "upload";
 type MetricKind =
-  | "added"
-  | "columns"
-  | "deleted"
-  | "total"
-  | "unchanged"
-  | "updated";
+  "added" | "columns" | "deleted" | "total" | "unchanged" | "updated";
 
 type StagedImport = {
   fields: string[];
