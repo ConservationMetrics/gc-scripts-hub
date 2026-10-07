@@ -347,6 +347,7 @@ export default function App() {
       setIdentity([]);
       setStep(needsIdentity ? "identity" : "review");
     } catch (reason) {
+      console.error("Failed to stage import", reason);
       setError(message(reason));
     } finally {
       setLoading(false);
@@ -370,6 +371,7 @@ export default function App() {
       setPreview(result);
       setStep("review");
     } catch (reason) {
+      console.error("Failed to preview import", reason);
       setError(message(reason, strings.errorPreview));
     } finally {
       setLoading(false);
@@ -403,6 +405,7 @@ export default function App() {
       }
       setSuccess(true);
     } catch (reason) {
+      console.error("Failed to apply import", reason);
       setError(message(reason));
       if (message(reason).toLowerCase().includes("review"))
         setPreview(undefined);
