@@ -347,7 +347,9 @@ def _parse_csv(contents):
             if not values:
                 continue
             if len(values) != len(headers):
-                raise ImportValidationError("CSV rows must match the header column count.")
+                raise ImportValidationError(
+                    "Invalid file. CSV rows must match the header column count."
+                )
             rows.append(
                 {
                     key: (None if value == "" else value)

@@ -136,7 +136,10 @@ def test_zip_detects_gbif_tab_delimited_csv():
 
 
 def test_csv_still_rejects_inconsistent_row_width():
-    with pytest.raises(ImportValidationError, match="header column count"):
+    with pytest.raises(
+        ImportValidationError,
+        match=r"^Invalid file\. CSV rows must match the header column count\.$",
+    ):
         importer._parse_csv(b"species,count\nheron,2\nibis\n")
 
 

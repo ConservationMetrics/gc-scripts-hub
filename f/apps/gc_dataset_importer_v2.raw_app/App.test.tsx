@@ -204,14 +204,15 @@ describe("Dataset importer", () => {
 
   it("shows validation messages returned by Windmill", async () => {
     mockedBackend.stage_import.mockResolvedValue({
-      validation_error: "CSV rows must match the header column count.",
+      validation_error:
+        "Invalid file. CSV rows must match the header column count.",
     });
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());
     await chooseExistingGoal("Append");
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "CSV rows must match the header column count.",
+      "Invalid file. CSV rows must match the header column count.",
     );
   });
 
