@@ -1,3 +1,11 @@
+# extra_requirements:
+# filetype==1.2.0
+# fiona==1.10.1
+# lxml==6.0.2
+# openpyxl==3.1.5
+# xlrd==2.0.2
+# pandas==3.0.1
+
 from f.common_logic.dataset_importer_v2 import ImportValidationError, stage_import
 
 
