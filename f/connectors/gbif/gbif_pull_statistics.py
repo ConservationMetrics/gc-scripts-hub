@@ -105,8 +105,9 @@ def main(
     db : postgresql
         Database connection resource.
     db_table_name : str, optional
-        New statistics table. Used when ``destination_action`` is
-        ``create_new_dataset``.
+        Statistics table name. Used when ``destination_action`` is
+        ``create_new_dataset``. Creates the dataset if needed; updates it
+        if it already exists.
     destination_action : str
         ``use_existing_dataset`` or ``create_new_dataset``.
     existing_db_table_name : str, optional
@@ -140,10 +141,11 @@ def _choose_table_name(
     db_table_name: str | None,
     selected_table: str | None,
 ) -> str:
-    """Return the statistics table, from an existing dataset or a new name.
+    """Return the statistics table, from an existing dataset or a typed name.
 
-    A new name is lowercased and must not already be a public table. An
-    existing dataset must already be one. Either way the table is replaced.
+    A typed name is lowercased. Creates the dataset if needed; updates it if
+    it already exists. An existing dataset must already be a public table.
+    Either way the table is replaced.
     """
     if destination_action == USE_EXISTING_DATASET:
         name = _validate_table_name(selected_table, lowercase=False)
@@ -155,13 +157,7 @@ def _choose_table_name(
             "destination_action must be "
             f"{USE_EXISTING_DATASET!r} or {CREATE_NEW_DATASET!r}."
         )
-    name = _validate_table_name(db_table_name)
-    if check_if_table_exists(conninfo(db), name):
-        raise ValueError(
-            f"Dataset '{name}' already exists. "
-            'Choose "Use existing dataset" or enter another name.'
-        )
-    return name
+    return _validate_table_name(db_table_name)
 
 
 def _validate_table_name(db_table_name: str | None, *, lowercase: bool = True) -> str:

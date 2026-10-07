@@ -183,12 +183,13 @@ def resolve_db_table_name(
     db_table_name: str | None = None,
     selected_table: str | None = None,
 ) -> str:
-    """Return the table to write, from an existing dataset or a new name.
+    """Return the table to write, from an existing dataset or a typed name.
 
     ``destination_action`` is ``USE_EXISTING_DATASET`` or ``CREATE_NEW_DATASET``.
-    An existing dataset must already be a public table. A new name must be
+    An existing dataset must already be a public table. A typed name must be
     non-empty and at most 54 characters. It is lowercased, matching
-    ``StructuredDBWriter``, and must not already be a public table.
+    ``StructuredDBWriter``. Creates the dataset if needed; updates it if it
+    already exists.
     """
     if destination_action == USE_EXISTING_DATASET:
         name = _nonempty(selected_table)
@@ -207,13 +208,7 @@ def resolve_db_table_name(
         raise ValueError(
             "db_table_name must be a non-empty table name of at most 54 characters."
         )
-    name = name.lower()
-    if check_if_table_exists(conninfo(db), name):
-        raise ValueError(
-            f"Dataset '{name}' already exists. "
-            'Choose "Use existing dataset" or enter another name.'
-        )
-    return name
+    return name.lower()
 
 
 def fetch_data_from_postgres(db_connection_string: str, table_name: str):

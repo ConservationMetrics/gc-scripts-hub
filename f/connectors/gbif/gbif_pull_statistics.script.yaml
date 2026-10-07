@@ -31,15 +31,15 @@ schema:
     destination_action:
       type: string
       description: >-
-        Replace a table that already exists, or create a new one.
-        Choosing an existing dataset avoids a typo creating a second table.
+        Enter a dataset name, or choose an existing dataset.
+        Creates the dataset if needed; updates it if it already exists.
       default: create_new_dataset
       disableCreate: true
       enum:
         - create_new_dataset
         - use_existing_dataset
       enumLabels:
-        create_new_dataset: Create new dataset
+        create_new_dataset: Enter dataset name
         use_existing_dataset: Use existing dataset
       originalType: enum
       title: Dataset
@@ -57,14 +57,14 @@ schema:
     db_table_name:
       type: string
       description: >-
-        Name of the new table. Counts are saved with columns `facet`, `key`,
-        `label`, and `count`.
+        Creates the dataset if needed; updates it if it already exists.
+        Counts are saved with columns `facet`, `key`, `label`, and `count`.
       default: null
       nullable: true
       originalType: string
       pattern: "^.{1,63}$"
       showExpr: "fields.destination_action != 'use_existing_dataset'"
-      title: New dataset name
+      title: Dataset name
   required:
     - bounding_box
     - db

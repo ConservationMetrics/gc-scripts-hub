@@ -11,7 +11,7 @@ To create a backup from the mobile app, open the menu and go to **Settings → D
 > [!TIP]
 > Once you have the file, you can use the `cybertracker_observations_from_backup.py` script, or the [GC Dataset Importer](https://docs.guardianconnector.net/reference/gc-toolkit/gc-scripts-hub/dataset-importer) to import the data into Guardian Connector.
 
-**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset". Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
 
 ## Backup archive contents
 

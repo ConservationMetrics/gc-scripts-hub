@@ -113,15 +113,15 @@ schema:
     destination_action:
       type: string
       description: >-
-        Write into a table that already exists, or create a new one.
-        Choosing an existing dataset avoids a typo creating a second table.
+        Enter a dataset name, or choose an existing dataset.
+        Creates the dataset if needed; updates it if it already exists.
       default: create_new_dataset
       disableCreate: true
       enum:
         - create_new_dataset
         - use_existing_dataset
       enumLabels:
-        create_new_dataset: Create new dataset
+        create_new_dataset: Enter dataset name
         use_existing_dataset: Use existing dataset
       title: Dataset
     existing_db_table_name:
@@ -138,12 +138,12 @@ schema:
     db_table_name:
       type: string
       description: >-
-        Name of the new table for occurrence records and the download folder.
-        The last import time is saved in `{name}__metadata`.
+        Creates the dataset if needed; updates it if it already exists.
+        Also used as the download folder. The last import time is saved in `{name}__metadata`.
       nullable: true
       pattern: "^.{1,53}$"
       showExpr: "fields.destination_action != 'use_existing_dataset'"
-      title: New dataset name
+      title: Dataset name
     gbif_account:
       type: object
       description: GBIF account with a username (not email address) and password.

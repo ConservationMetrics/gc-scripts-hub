@@ -207,8 +207,9 @@ def main(
     db : postgresql
         Database connection configuration.
     db_table_name : str, optional
-        New table name and datalake subdirectory. Used when
-        ``destination_action`` is ``"create_new_dataset"``.
+        Table name and datalake subdirectory. Used when
+        ``destination_action`` is ``"create_new_dataset"``. Creates the
+        dataset if needed; updates it if it already exists.
     attachment_root : str
         Root directory for persisted files.
     bounding_box : str or list, optional
@@ -219,7 +220,7 @@ def main(
         month are fetched (iNaturalist ``d1``). Same meaning as GFW.
     destination_action : str
         ``"use_existing_dataset"`` or ``"create_new_dataset"``. The form
-        shows these as "Use existing dataset" and "Create new dataset".
+        shows these as "Use existing dataset" and "Enter dataset name".
     existing_db_table_name : str, optional
         Public table to append to. Used when ``destination_action`` is
         ``"use_existing_dataset"``.

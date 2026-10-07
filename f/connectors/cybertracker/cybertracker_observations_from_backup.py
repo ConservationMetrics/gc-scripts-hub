@@ -53,7 +53,8 @@ def main(
     db : postgresql
         Database connection configuration.
     db_table_name : str, optional
-        New table name when ``destination_action`` is ``create_new_dataset``.
+        Table name when ``destination_action`` is ``create_new_dataset``.
+        Creates the dataset if needed; updates it if it already exists.
     attachment_root : str
         Root directory for persistent storage.
     destination_action : str

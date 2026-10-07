@@ -35,7 +35,7 @@ before running downloads.
   filters GBIF's `LAST_INTERPRETED` date, not the observation date. Omit it for
   an initial backfill.
 - **`db`** — PostgreSQL resource for the occurrence table.
-- **`destination_action`** — `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Create new dataset".
+- **`destination_action`** — `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists.
 - **`existing_db_table_name`** — public tables on `db`, offered when using an existing dataset. Sidecar tables (`__columns`, `__labels`, `__metadata`) are omitted.
 - **`db_table_name`** — new table name and datalake subdirectory. At most 53 characters, so `{db_table_name}__metadata` still fits. The last import time is saved there.
 - **`attachment_root`** — Directory for downloaded files. Defaults to
@@ -97,7 +97,7 @@ job timeout longer than the 30-minute default.
 `gbif_pull_statistics` takes the same style of bounding box and replaces one
 table with facet counts. **Dataset** is `use_existing_dataset` or
 `create_new_dataset` (default). The form shows these as "Use existing dataset"
-and "Create new dataset". A new name can be at most 63 characters. The area
+and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. A new name can be at most 63 characters. The area
 must be approximately 35,000 km2 or smaller.
 
 Each row is one facet value. `key` is the GBIF identifier and `label` is the

@@ -18,7 +18,7 @@ This script reads a CSV file and inserts its contents into a PostgreSQL table, t
 
 * `csv_path`: Path to the CSV file to import
 * `destination_action`: `use_existing_dataset` or `create_new_dataset` (default when the script is run from its form). Existing datasets are chosen from the public tables on `db`.
-* `db_table_name`: Name of the new PostgreSQL table. At most 54 characters. Other scripts that call this one can keep passing a table name and omit `destination_action`.
+* `db_table_name`: Creates the dataset if needed; updates it if it already exists. At most 54 characters. Other scripts that call this one can keep passing a table name and omit `destination_action`.
 * `id_column` (optional): Name of existing CSV column to use as primary key
 * `delete_csv_file` (optional): Whether to delete the CSV file after import
 * `attachment_root` (optional): Root directory where CSV file is located

@@ -16,7 +16,7 @@ This script reads a GeoJSON file and inserts its contents into a PostgreSQL tabl
 
 ### Parameters
 
-**Dataset** is `use_existing_dataset` or `create_new_dataset` (default when the script is run from its form). Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters. Other scripts that call this one can keep passing a table name and omit `destination_action`.
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default when the script is run from its form). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. A typed name is at most 54 characters. Other scripts that call this one can keep passing a table name and omit `destination_action`.
 
 ### Notes
 * The data is inserted as flat text fields — no geometry types or JSONB columns are used.
