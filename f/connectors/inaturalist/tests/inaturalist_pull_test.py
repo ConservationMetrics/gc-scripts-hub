@@ -131,7 +131,7 @@ def _assert_bbox_params(params: dict[str, str], bbox: dict[str, float]) -> None:
 
 
 def test_transform_keys_are_in_field_spec():
-    assert _TRANSFORM_READS <= _field_spec_paths(_OBSERVATION_FIELDS)
+    assert _TRANSFORM_READS <= _field_spec_paths(spec=_OBSERVATION_FIELDS)
 
 
 def test_project_e2e(inaturalist_project_server, pg_database, tmp_path):
@@ -139,10 +139,10 @@ def test_project_e2e(inaturalist_project_server, pg_database, tmp_path):
     table_name = "inat_observations"
 
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        table_name,
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -266,10 +266,10 @@ def test_user_e2e(inaturalist_user_server, pg_database, tmp_path):
     table_name = "inat_user_obs"
 
     main(
-        "user",
-        inaturalist_user_server.username,
-        pg_database,
-        table_name,
+        source="user",
+        slug=inaturalist_user_server.username,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -299,10 +299,10 @@ def test_pagination(inaturalist_project_server_paginated, pg_database, tmp_path)
     table_name = "inat_paginated"
 
     main(
-        "project",
-        inaturalist_project_server_paginated.project_id,
-        pg_database,
-        table_name,
+        source="project",
+        slug=inaturalist_project_server_paginated.project_id,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -324,10 +324,10 @@ def test_project_e2e__no_observations(
     table_name = "inat_no_obs"
 
     main(
-        "project",
-        inaturalist_project_server_empty.project_id,
-        pg_database,
-        table_name,
+        source="project",
+        slug=inaturalist_project_server_empty.project_id,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -346,10 +346,10 @@ def test_user_e2e__no_observations(
     table_name = "inat_user_empty"
 
     main(
-        "user",
-        inaturalist_user_server_empty.username,
-        pg_database,
-        table_name,
+        source="user",
+        slug=inaturalist_user_server_empty.username,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -364,16 +364,16 @@ def test_user_e2e__no_observations(
 def test_invalid_source(pg_database, tmp_path):
     with pytest.raises(ValueError, match="Invalid source"):
         main(
-            "not-a-source",
-            "anything",
-            pg_database,
-            "inat_bad",
+            source="not-a-source",
+            slug="anything",
+            db=pg_database,
+            db_table_name="inat_bad",
             attachment_root=tmp_path / "datalake",
         )
 
 
 def test_download_observations(mocked_responses, inaturalist_observations_server):
-    observations = download_observations({"project_id": PROJECT_ID})
+    observations = download_observations(filter_params={"project_id": PROJECT_ID})
     assert len(observations) == OBSERVATION_COUNT
     assert observations[0]["id"] == PRIMARY_OBSERVATION_ID
 
@@ -382,14 +382,14 @@ def test_download_observations(mocked_responses, inaturalist_observations_server
     assert queries[0]["project_id"] == [PROJECT_ID]
     assert queries[0]["order_by"] == ["id"]
     assert queries[0]["order"] == ["asc"]
-    assert queries[0]["fields"] == [_encode_fields(_OBSERVATION_FIELDS)]
+    assert queries[0]["fields"] == [_encode_fields(spec=_OBSERVATION_FIELDS)]
     assert "id_above" not in queries[0]
 
 
 def test_download_observations_pagination(
     mocked_responses, inaturalist_observations_server_paginated
 ):
-    observations = download_observations({"project_id": PROJECT_ID})
+    observations = download_observations(filter_params={"project_id": PROJECT_ID})
     ids = [observation["id"] for observation in observations]
     assert ids == sorted(ids)
     assert len(ids) == OBSERVATION_COUNT
@@ -401,12 +401,12 @@ def test_download_observations_pagination(
 
 
 def test_download_observations_empty(inaturalist_observations_server_empty):
-    assert download_observations({"project_id": PROJECT_ID}) == []
+    assert download_observations(filter_params={"project_id": PROJECT_ID}) == []
 
 
 def test_download_observations_stuck_cursor(inaturalist_stuck_cursor_server):
     with pytest.raises(RuntimeError, match="Pagination cursor did not advance"):
-        download_observations({"project_id": PROJECT_ID})
+        download_observations(filter_params={"project_id": PROJECT_ID})
 
 
 def test_iter_media():
@@ -423,7 +423,7 @@ def test_iter_media():
             ],
         }
     ]
-    assert list(_iter_media(observations)) == [
+    assert list(_iter_media(observations=observations)) == [
         ("https://example.com/photos/1/original.jpg", "1.jpg"),
         ("https://static.inaturalist.org/sounds/10.m4a", "10.m4a"),
     ]
@@ -431,7 +431,7 @@ def test_iter_media():
 
 def test_iter_media_fixture():
     media = {
-        filename: url for url, filename in _iter_media(_load_observations()["results"])
+        filename: url for url, filename in _iter_media(observations=_load_observations()["results"])
     }
     assert media[PRIMARY_PHOTO_FILENAME] == (
         "https://inaturalist-open-data.s3.amazonaws.com/photos/9408078/original.jpg"
@@ -444,10 +444,10 @@ def test_slug_only_omits_bbox_params(
     inaturalist_project_server, mocked_responses, pg_database, tmp_path
 ):
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        "inat_slug_only",
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name="inat_slug_only",
         attachment_root=tmp_path / "datalake",
     )
     params = _first_observation_params(mocked_responses)
@@ -460,10 +460,10 @@ def test_slug_with_empty_bbox_omits_bbox_params(
     inaturalist_project_server, mocked_responses, pg_database, tmp_path
 ):
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        "inat_empty_bbox",
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name="inat_empty_bbox",
         attachment_root=tmp_path / "datalake",
         bounding_box="",
     )
@@ -478,10 +478,10 @@ def test_bbox_only_sends_bbox_params(
     asset_storage = tmp_path / "datalake"
     table_name = "inat_bbox_only"
     main(
-        None,
-        None,
-        pg_database,
-        table_name,
+        source=None,
+        slug=None,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
         bounding_box=LAKE_ACCOTINK_BBOX,
     )
@@ -501,10 +501,10 @@ def test_slug_and_bbox_sends_both_filters(
     inaturalist_project_server, mocked_responses, pg_database, tmp_path
 ):
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        "inat_slug_bbox",
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name="inat_slug_bbox",
         attachment_root=tmp_path / "datalake",
         bounding_box=LAKE_ACCOTINK_BBOX,
     )
@@ -519,10 +519,10 @@ def test_max_months_lookback_sends_d1(
 ):
     mock_datetime.now.return_value = datetime(2025, 10, 15)
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        "inat_lookback",
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name="inat_lookback",
         attachment_root=tmp_path / "datalake",
         max_months_lookback=6,
     )
@@ -535,10 +535,10 @@ def test_no_lookback_omits_d1(
     inaturalist_project_server, mocked_responses, pg_database, tmp_path
 ):
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
-        "inat_no_lookback",
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
+        db_table_name="inat_no_lookback",
         attachment_root=tmp_path / "datalake",
     )
     params = _first_observation_params(mocked_responses)
@@ -549,10 +549,10 @@ def test_bbox_json_string_sends_bbox_params(
     inaturalist_user_server, mocked_responses, pg_database, tmp_path
 ):
     main(
-        None,
-        None,
-        pg_database,
-        "inat_bbox_json",
+        source=None,
+        slug=None,
+        db=pg_database,
+        db_table_name="inat_bbox_json",
         attachment_root=tmp_path / "datalake",
         bounding_box="""
         [
@@ -567,9 +567,9 @@ def test_bbox_json_string_sends_bbox_params(
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            None,
-            None,
-            pg_database,
+            source=None,
+            slug=None,
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )
@@ -584,9 +584,9 @@ def test_use_existing_dataset_writes_to_that_table(
             cur.execute(f"CREATE TABLE {table_name} (_id text PRIMARY KEY)")
 
     main(
-        "project",
-        inaturalist_project_server.project_id,
-        pg_database,
+        source="project",
+        slug=inaturalist_project_server.project_id,
+        db=pg_database,
         destination_action=USE_EXISTING_DATASET,
         existing_db_table_name=table_name,
         attachment_root=tmp_path / "datalake",
@@ -602,10 +602,10 @@ def test_use_existing_dataset_writes_to_that_table(
 def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
     with pytest.raises(ValueError, match="Either `slug` or `bounding_box`"):
         main(
-            None,
-            None,
-            pg_database,
-            "inat_none",
+            source=None,
+            slug=None,
+            db=pg_database,
+            db_table_name="inat_none",
             attachment_root=tmp_path / "datalake",
         )
 
@@ -613,10 +613,10 @@ def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
 def test_incomplete_bbox_raises(pg_database, tmp_path):
     with pytest.raises(ValueError, match="exactly two"):
         main(
-            None,
-            None,
-            pg_database,
-            "inat_incomplete_bbox",
+            source=None,
+            slug=None,
+            db=pg_database,
+            db_table_name="inat_incomplete_bbox",
             attachment_root=tmp_path / "datalake",
             bounding_box="[[-77.22182, 38.79260]]",
         )
@@ -646,10 +646,10 @@ def test_incomplete_bbox_raises(pg_database, tmp_path):
 def test_invalid_bbox_raises(pg_database, tmp_path, bbox, match):
     with pytest.raises(ValueError, match=match):
         main(
-            None,
-            None,
-            pg_database,
-            "inat_bad_bbox",
+            source=None,
+            slug=None,
+            db=pg_database,
+            db_table_name="inat_bad_bbox",
             attachment_root=tmp_path / "datalake",
             bounding_box=bbox,
         )
@@ -679,7 +679,7 @@ def test_transform_with_location():
             ],
         }
     ]
-    result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
+    result = transform_observations_to_geojson(observations=observations, project_id=PROJECT_ID)
 
     feature = result["features"][0]
     props = feature["properties"]
@@ -705,7 +705,7 @@ def test_transform_user_id():
             "photos": [],
         }
     ]
-    result = transform_observations_to_geojson(observations, user_id=USERNAME)
+    result = transform_observations_to_geojson(observations=observations, user_id=USERNAME)
     props = result["features"][0]["properties"]
     assert props["user_id"] == USERNAME
     assert "project_id" not in props
@@ -726,7 +726,7 @@ def test_transform_no_location():
             "photos": [],
         }
     ]
-    result = transform_observations_to_geojson(observations, project_id=PROJECT_ID)
+    result = transform_observations_to_geojson(observations=observations, project_id=PROJECT_ID)
 
     feature = result["features"][0]
     assert feature["geometry"] is None
@@ -740,7 +740,7 @@ def test_transform_photo_filenames():
         for o in _load_observations()["results"]
         if o["id"] == MULTI_PHOTO_OBSERVATION_ID
     )
-    props = transform_observations_to_geojson([observation])["features"][0][
+    props = transform_observations_to_geojson(observations=[observation])["features"][0][
         "properties"
     ]
     filenames = props["photo_filenames"].split(", ")
@@ -753,9 +753,9 @@ def test_transform_photo_filenames():
 def test_transform_description_empty_vs_null():
     by_id = {o["id"]: o for o in _load_observations()["results"]}
     empty = transform_observations_to_geojson(
-        [by_id[EMPTY_DESCRIPTION_OBSERVATION_ID]]
+        observations=[by_id[EMPTY_DESCRIPTION_OBSERVATION_ID]],
     )["features"][0]["properties"]
-    missing = transform_observations_to_geojson([by_id[NEEDS_ID_OBSERVATION_ID]])[
+    missing = transform_observations_to_geojson(observations=[by_id[NEEDS_ID_OBSERVATION_ID]])[
         "features"
     ][0]["properties"]
     assert empty["description"] == ""

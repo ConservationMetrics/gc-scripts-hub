@@ -11,15 +11,15 @@ def test_calculate_cutoff_date_with_lookback(mock_datetime):
     mock_datetime.now.return_value = datetime(2025, 10, 15)
 
     # 6 months back from October 2025 should be April 2025
-    result = calculate_cutoff_date(6)
+    result = calculate_cutoff_date(max_months_lookback=6)
     assert result == (2025, 4)
 
     # 12 months back should be October 2024
-    result = calculate_cutoff_date(12)
+    result = calculate_cutoff_date(max_months_lookback=12)
     assert result == (2024, 10)
 
     # 1 month back should be September 2025
-    result = calculate_cutoff_date(1)
+    result = calculate_cutoff_date(max_months_lookback=1)
     assert result == (2025, 9)
 
 
@@ -30,12 +30,12 @@ def test_calculate_cutoff_date_cross_year(mock_datetime):
     mock_datetime.now.return_value = datetime(2025, 2, 15)
 
     # 6 months back from February 2025 should be August 2024
-    result = calculate_cutoff_date(6)
+    result = calculate_cutoff_date(max_months_lookback=6)
     assert result == (2024, 8)
 
 
 def test_calculate_cutoff_date_with_none():
     """Test calculate_cutoff_date with None returns None"""
-    result = calculate_cutoff_date(None)
+    result = calculate_cutoff_date(max_months_lookback=None)
     assert result is None
 

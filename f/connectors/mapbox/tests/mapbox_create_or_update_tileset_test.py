@@ -52,16 +52,16 @@ def _assert_create_source_tileset_and_publish(
     access_token = source.mapbox["access_token"]
 
     expected_source = server_responses.mapbox_tileset_source_create_response(
-        username,
-        source.tileset_id,
+        username=username,
+        tileset_id=source.tileset_id,
     )
     expected_tileset = server_responses.mapbox_create_tileset_response(
-        username,
-        source.tileset_id,
+        username=username,
+        tileset_id=source.tileset_id,
     )
     expected_publish = server_responses.mapbox_publish_response(
-        username,
-        source.tileset_id,
+        username=username,
+        tileset_id=source.tileset_id,
     )
     assert result == {
         "action": "create",
@@ -75,30 +75,30 @@ def _assert_create_source_tileset_and_publish(
     )
     assert get_call.request.method == "GET"
     assert get_call.request.url == server_responses.mapbox_tileset_get_url(
-        f"{username}.{source.tileset_id}",
-        access_token,
+        tileset_full_id=f"{username}.{source.tileset_id}",
+        access_token=access_token,
     )
     assert create_source_call.request.method == "POST"
     assert create_source_call.request.url == (
         server_responses.mapbox_tileset_source_create_url(
-            username,
-            source.tileset_id,
-            access_token,
+            username=username,
+            tileset_id=source.tileset_id,
+            access_token=access_token,
         )
     )
     assert create_tileset_call.request.method == "POST"
     assert create_tileset_call.request.url == (
         server_responses.mapbox_create_tileset_url(
-            username,
-            source.tileset_id,
-            access_token,
+            username=username,
+            tileset_id=source.tileset_id,
+            access_token=access_token,
         )
     )
     assert publish_call.request.method == "POST"
     assert publish_call.request.url == server_responses.mapbox_publish_url(
-        username,
-        source.tileset_id,
-        access_token,
+        username=username,
+        tileset_id=source.tileset_id,
+        access_token=access_token,
     )
 
     return create_source_call, create_tileset_call
@@ -111,10 +111,12 @@ def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source)
     access_token = source.mapbox["access_token"]
 
     expected_source = server_responses.mapbox_tileset_source_replace_response(
-        username, source.tileset_id
+        username=username,
+        tileset_id=source.tileset_id,
     )
     expected_publish = server_responses.mapbox_publish_response(
-        username, source.tileset_id
+        username=username,
+        tileset_id=source.tileset_id,
     )
     assert result == {
         "action": "update",
@@ -125,20 +127,20 @@ def _assert_replace_and_publish(mocked_responses, result, mapbox_tileset_source)
     get_call, replace_call, publish_call = mocked_responses.calls[-3:]
     assert get_call.request.method == "GET"
     assert get_call.request.url == server_responses.mapbox_tileset_get_url(
-        f"{username}.{source.tileset_id}",
-        access_token,
+        tileset_full_id=f"{username}.{source.tileset_id}",
+        access_token=access_token,
     )
     assert replace_call.request.method == "PUT"
     assert replace_call.request.url == server_responses.mapbox_tileset_source_url(
-        username,
-        source.tileset_id,
-        access_token,
+        username=username,
+        tileset_id=source.tileset_id,
+        access_token=access_token,
     )
     assert publish_call.request.method == "POST"
     assert publish_call.request.url == server_responses.mapbox_publish_url(
-        username,
-        source.tileset_id,
-        access_token,
+        username=username,
+        tileset_id=source.tileset_id,
+        access_token=access_token,
     )
 
     return replace_call
@@ -212,13 +214,15 @@ def test_replace_tileset_source_409_conflict(tmp_path, mocked_responses):
 
     # Register Get tileset endpoint (tileset exists)
     tileset_full_id = f"{username}.{tileset_id}"
-    get_url = server_responses.mapbox_tileset_get_url(tileset_full_id, access_token)
-    get_body = server_responses.mapbox_tileset_get_response(tileset_full_id)
+    get_url = server_responses.mapbox_tileset_get_url(tileset_full_id=tileset_full_id, access_token=access_token)
+    get_body = server_responses.mapbox_tileset_get_response(tileset_full_id=tileset_full_id)
     mocked_responses.get(get_url, json=get_body, status=200)
 
     # Register PUT response with 409 Conflict (this is what we're testing)
     replace_url = server_responses.mapbox_tileset_source_url(
-        username, tileset_id, access_token
+        username=username,
+        tileset_id=tileset_id,
+        access_token=access_token,
     )
     mocked_responses.put(replace_url, status=409)
 

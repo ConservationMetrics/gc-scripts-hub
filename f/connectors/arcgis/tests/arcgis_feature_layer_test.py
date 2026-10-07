@@ -11,11 +11,11 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        arcgis_server.account,
-        arcgis_server.feature_layer_url,
-        pg_database,
-        "my_arcgis_data",
-        asset_storage,
+        arcgis_account=arcgis_server.account,
+        feature_layer_url=arcgis_server.feature_layer_url,
+        db=pg_database,
+        db_table_name="my_arcgis_data",
+        attachment_root=asset_storage,
     )
 
     # Attachments are saved to disk
@@ -50,9 +50,9 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            {"username": "u", "password": "p"},
-            "https://example.test/layer",
-            pg_database,
+            arcgis_account={"username": "u", "password": "p"},
+            feature_layer_url="https://example.test/layer",
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )

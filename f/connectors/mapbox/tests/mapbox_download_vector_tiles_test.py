@@ -37,7 +37,11 @@ def _register_tile(
     body: bytes = b"fake-pbf",
 ):
     url = server_responses.mapbox_vector_tile_url(
-        TILESET, tile.z, tile.x, tile.y, ACCESS_TOKEN
+        tileset=TILESET,
+        z=tile.z,
+        x=tile.x,
+        y=tile.y,
+        access_token=ACCESS_TOKEN,
     )
     mocked_responses.get(
         url,
@@ -306,7 +310,7 @@ def test_reconstruct_features_merges_by_column():
         },
     ]
 
-    reconstructed = _reconstruct_features(features, "id")
+    reconstructed = _reconstruct_features(features=features, column="id")
     assert len(reconstructed) == 2
     by_id = [
         f for f in reconstructed if (f.get("properties") or {}).get("id") == "road-1"

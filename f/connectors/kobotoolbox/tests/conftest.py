@@ -31,7 +31,10 @@ def _paginated_data_callback(request):
     start = int(query_params.get("start", [0])[0])
 
     response_data = server_responses.kobo_form_submissions(
-        server_url, form_id, limit=limit, start=start
+        uri=server_url,
+        form_id=form_id,
+        limit=limit,
+        start=start,
     )
 
     return (200, {}, json.dumps(response_data))
@@ -47,7 +50,10 @@ def _paginated_nested_data_callback(request):
     start = int(query_params.get("start", [0])[0])
 
     response_data = server_responses.kobo_nested_form_submissions(
-        server_url, server_responses.nested_form_id, limit=limit, start=start
+        uri=server_url,
+        form_id=server_responses.nested_form_id,
+        limit=limit,
+        start=start,
     )
 
     return (200, {}, json.dumps(response_data))
@@ -84,7 +90,7 @@ def _build_koboserver_fixture(metadata):
 
 @pytest.fixture
 def koboserver(mocked_responses):
-    metadata = server_responses.kobo_form(server_url, form_id, form_name)
+    metadata = server_responses.kobo_form(uri=server_url, form_id=form_id, form_name=form_name)
 
     _register_common_mocks(mocked_responses, form_id, metadata)
 
@@ -93,7 +99,7 @@ def koboserver(mocked_responses):
 
 @pytest.fixture
 def koboserver_no_translations(mocked_responses):
-    metadata = server_responses.kobo_form(server_url, form_id, form_name)
+    metadata = server_responses.kobo_form(uri=server_url, form_id=form_id, form_name=form_name)
     metadata["content"]["translations"] = [None]
 
     _register_common_mocks(mocked_responses, form_id, metadata)
@@ -104,7 +110,7 @@ def koboserver_no_translations(mocked_responses):
 @pytest.fixture
 def koboserver_no_submissions(mocked_responses):
     """Fixture whose form has valid metadata but zero submissions."""
-    metadata = server_responses.kobo_form(server_url, form_id, form_name)
+    metadata = server_responses.kobo_form(uri=server_url, form_id=form_id, form_name=form_name)
 
     mocked_responses.get(
         f"{server_url}/api/v2/assets/{form_id}/",
@@ -124,7 +130,7 @@ def koboserver_no_submissions(mocked_responses):
 @pytest.fixture
 def koboserver_with_pagination(mocked_responses):
     """Fixture with many submissions to test pagination (3 pages with limit=1)."""
-    metadata = server_responses.kobo_form(server_url, form_id, form_name)
+    metadata = server_responses.kobo_form(uri=server_url, form_id=form_id, form_name=form_name)
 
     _register_common_mocks(mocked_responses, form_id, metadata)
 
@@ -135,7 +141,7 @@ def koboserver_with_pagination(mocked_responses):
 def koboserver_nested(mocked_responses):
     """Fixture with repeat groups and field-list dict payloads for flattening tests."""
     nested_id = server_responses.nested_form_id
-    metadata = server_responses.kobo_form_nested(server_url, nested_id)
+    metadata = server_responses.kobo_form_nested(uri=server_url, form_id=nested_id)
 
     mocked_responses.get(
         f"{server_url}/api/v2/assets/{nested_id}/",
