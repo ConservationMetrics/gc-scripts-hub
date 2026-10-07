@@ -52,7 +52,7 @@
   "policyImported": "Imported records win, including empty values.",
   "policyExisting": "Existing records win; matching rows stay unchanged.",
   "reviewHeading": "Review import",
-  "reviewDescription": "Generate a preview before writing to the dataset.",
+  "reviewDescription": "Click 'Preview Changes' below to generate a summary. This is a safe preview; your data will not be altered yet.",
   "reviewProposedChanges": "Please review these proposed changes carefully. They will be applied when you click Confirm.",
   "reviewSource": "Source",
   "reviewFormat": "Detected format",
