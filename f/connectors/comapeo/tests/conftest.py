@@ -34,29 +34,29 @@ def comapeoserver_observations(mocked_responses):
 
     mocked_responses.get(
         f"{server_url}/projects",
-        json=server_responses.comapeo_projects(server_url),
+        json=server_responses.comapeo_projects(uri=server_url),
         status=200,
     )
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/observation",
-        json=server_responses.comapeo_project_observations(server_url, project_id),
+        json=server_responses.comapeo_project_observations(uri=server_url, project_id=project_id),
         status=200,
     )
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/track",
-        json=server_responses.comapeo_project_tracks(server_url, project_id),
+        json=server_responses.comapeo_project_tracks(uri=server_url, project_id=project_id),
         status=200,
     )
     # Mock batch preset endpoint
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/preset",
-        json=server_responses.comapeo_all_presets(server_url, project_id),
+        json=server_responses.comapeo_all_presets(uri=server_url, project_id=project_id),
         status=200,
     )
     # Mock batch field endpoint
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/field",
-        json=server_responses.comapeo_all_fields(server_url, project_id),
+        json=server_responses.comapeo_all_fields(uri=server_url, project_id=project_id),
         status=200,
     )
     # Mock photo attachments
@@ -85,7 +85,9 @@ def comapeoserver_observations(mocked_responses):
     for preset in server_responses.SAMPLE_PRESETS:
         preset_doc_id = preset["docId"]
         preset_response = server_responses.comapeo_preset(
-            server_url, project_id, preset_doc_id
+            uri=server_url,
+            project_id=project_id,
+            preset_doc_id=preset_doc_id,
         )
         mocked_responses.get(
             f"{server_url}/projects/{project_id}/preset/{preset_doc_id}",

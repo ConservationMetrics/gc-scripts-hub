@@ -19,7 +19,7 @@ def test_fetch_project(earthindex_server):
     session = requests.Session()
     session.headers.update({"Authorization": f"Bearer {earthindex_server['api_key']}"})
 
-    project = fetch_project(session, earthindex_server["project_id"])
+    project = fetch_project(session=session, project_id=earthindex_server["project_id"])
 
     assert project["title"] == "Springfield mapping"
     assert project["id"] == SAMPLE_PROJECT["id"]
@@ -30,7 +30,7 @@ def test_fetch_layer_points(earthindex_server):
     session.headers.update({"Authorization": f"Bearer {earthindex_server['api_key']}"})
 
     layer_id = SAMPLE_PROJECT["layers"][0]["id"]
-    points = fetch_layer_points(session, earthindex_server["project_id"], layer_id)
+    points = fetch_layer_points(session=session, project_id=earthindex_server["project_id"], layer_id=layer_id)
 
     assert points["type"] == "FeatureCollection"
     assert len(points["features"]) == len(SAMPLE_POINTS["features"])
@@ -41,7 +41,12 @@ def test_format_features_as_geojson():
     project_title = SAMPLE_PROJECT["title"]
     layer_id = SAMPLE_PROJECT["layers"][0]["id"]
 
-    result = format_features_as_geojson(SAMPLE_POINTS, project_id, project_title, layer_id)
+    result = format_features_as_geojson(
+        points_geojson=SAMPLE_POINTS,
+        project_id=project_id,
+        project_title=project_title,
+        layer_id=layer_id,
+    )
 
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == len(SAMPLE_POINTS["features"])
@@ -57,7 +62,10 @@ def test_format_features_as_geojson():
 
 def test_format_features_as_geojson_empty():
     result = format_features_as_geojson(
-        {"features": []}, "proj-1", "Empty Project", "layer-1"
+        points_geojson={"features": []},
+        project_id="proj-1",
+        project_title="Empty Project",
+        layer_id="layer-1",
     )
 
     assert result == {"type": "FeatureCollection", "features": []}
@@ -67,11 +75,11 @@ def test_script_e2e(earthindex_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        earthindex_server["api_key"],
-        earthindex_server["project_id"],
-        pg_database,
-        "earthindex",
-        asset_storage,
+        api_key=earthindex_server["api_key"],
+        project_id=earthindex_server["project_id"],
+        db=pg_database,
+        db_table_prefix="earthindex",
+        attachment_root=asset_storage,
     )
 
     # Project JSON is saved to disk
@@ -129,11 +137,11 @@ def test_no_layers_skips_processing(earthindex_server_no_layers, pg_database, tm
     asset_storage = tmp_path / "datalake"
 
     main(
-        earthindex_server_no_layers["api_key"],
-        earthindex_server_no_layers["project_id"],
-        pg_database,
-        "earthindex",
-        asset_storage,
+        api_key=earthindex_server_no_layers["api_key"],
+        project_id=earthindex_server_no_layers["project_id"],
+        db=pg_database,
+        db_table_prefix="earthindex",
+        attachment_root=asset_storage,
     )
 
     # Project JSON is still saved

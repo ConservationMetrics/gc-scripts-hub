@@ -24,7 +24,7 @@ def test_transform_df_column_name_collision():
     df = pd.DataFrame({"SomeColumn": [1, 2, 3], "Some_Column": [4, 5, 6]})
 
     with pytest.raises(ValueError, match="Column name collision detected"):
-        _transform_df(df)
+        _transform_df(df=df)
 
 
 @pytest.fixture

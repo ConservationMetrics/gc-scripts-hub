@@ -22,7 +22,7 @@ def mock_db_connection(_postgres_instance):
     """Connection string for psycopg-style usage."""
     dsn = _postgres_instance.dsn()
     dsn["dbname"] = dsn.pop("database")
-    return conninfo(dsn)
+    return conninfo(db=dsn)
 
 
 @pytest.fixture

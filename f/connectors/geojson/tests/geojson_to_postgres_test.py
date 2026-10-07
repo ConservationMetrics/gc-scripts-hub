@@ -12,7 +12,13 @@ geojson_fixture_path = "f/connectors/geojson/tests/assets/"
 
 
 def test_script_e2e(pg_database):
-    main(pg_database, "my_geojson_data", "data.geojson", geojson_fixture_path, False)
+    main(
+        db=pg_database,
+        db_table_name="my_geojson_data",
+        geojson_path="data.geojson",
+        attachment_root=geojson_fixture_path,
+        delete_geojson_file=False,
+    )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
@@ -91,7 +97,7 @@ def test_transform_geojson_data_with_missing_ids():
 
     try:
         # Transform the data
-        transformed_data = transform_geojson_data(temp_path)
+        transformed_data = transform_geojson_data(geojson_path=temp_path)
 
         # Check that we have 2 features
         assert len(transformed_data) == 2
@@ -139,7 +145,7 @@ def test_transform_geojson_data_all_missing_ids():
 
     try:
         # Transform the data
-        transformed_data = transform_geojson_data(temp_path)
+        transformed_data = transform_geojson_data(geojson_path=temp_path)
 
         # Check that we have 3 features
         assert len(transformed_data) == 3
@@ -178,8 +184,8 @@ def test_transform_geojson_data_random_uuids():
 
     try:
         # Transform the data twice
-        transformed_data_1 = transform_geojson_data(temp_path)
-        transformed_data_2 = transform_geojson_data(temp_path)
+        transformed_data_1 = transform_geojson_data(geojson_path=temp_path)
+        transformed_data_2 = transform_geojson_data(geojson_path=temp_path)
 
         # Check that different random UUIDs are generated each time
         assert len(transformed_data_1) == 1
@@ -202,7 +208,7 @@ def test_transform_geojson_data_random_uuids():
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            pg_database,
+            db=pg_database,
             geojson_path="data.geojson",
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",

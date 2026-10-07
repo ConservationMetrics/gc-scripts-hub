@@ -18,9 +18,9 @@ def test_script_e2e(epicollect_server, pg_database, tmp_path):
     table_name = "ec5_responses"
 
     main(
-        epicollect_server.project_slug,
-        pg_database,
-        table_name,
+        project_slug=epicollect_server.project_slug,
+        db=pg_database,
+        db_table_name=table_name,
         client_id=epicollect_server.client_id,
         client_secret=epicollect_server.client_secret,
         attachment_root=asset_storage,
@@ -97,9 +97,9 @@ def test_pagination(epicollect_server_paginated, pg_database, tmp_path):
     table_name = "ec5_paginated"
 
     main(
-        epicollect_server_paginated.project_slug,
-        pg_database,
-        table_name,
+        project_slug=epicollect_server_paginated.project_slug,
+        db=pg_database,
+        db_table_name=table_name,
         client_id=epicollect_server_paginated.client_id,
         client_secret=epicollect_server_paginated.client_secret,
         attachment_root=asset_storage,
@@ -134,9 +134,9 @@ def test_script_e2e__no_entries(epicollect_server_empty, pg_database, tmp_path):
 
     # A zero-entry pull must not raise
     main(
-        epicollect_server_empty.project_slug,
-        pg_database,
-        table_name,
+        project_slug=epicollect_server_empty.project_slug,
+        db=pg_database,
+        db_table_name=table_name,
         client_id=epicollect_server_empty.client_id,
         client_secret=epicollect_server_empty.client_secret,
         attachment_root=asset_storage,
@@ -168,7 +168,7 @@ def test_transform_no_location():
             },
         }
     ]
-    result = transform_epicollect_entries(entries, form_name="Test Form")
+    result = transform_epicollect_entries(entries=entries, form_name="Test Form")
 
     assert result[0]["_id"] == "abc-001"
     assert result[0]["data_source"] == "EpiCollect5"
@@ -190,7 +190,7 @@ def test_transform_with_location():
             },
         }
     ]
-    result = transform_epicollect_entries(entries)
+    result = transform_epicollect_entries(entries=entries)
 
     assert result[0]["g__type"] == "Point"
     assert result[0]["g__coordinates"] == [-74.072, 4.711]
@@ -212,9 +212,9 @@ def test_public_project_photo_url_normalized(
     table_name = "ec5_public"
 
     main(
-        epicollect_public_server.project_slug,
-        pg_database,
-        table_name,
+        project_slug=epicollect_public_server.project_slug,
+        db=pg_database,
+        db_table_name=table_name,
         attachment_root=asset_storage,
     )
 
@@ -234,7 +234,7 @@ def test_public_project_photo_url_normalized(
 def test_transform_ec5_uuid_renamed():
     """ec5_uuid is renamed to _id."""
     entries = [{"ec5_uuid": "test-uuid-123", "title": "Test"}]
-    result = transform_epicollect_entries(entries)
+    result = transform_epicollect_entries(entries=entries)
 
     assert result[0]["_id"] == "test-uuid-123"
     assert "ec5_uuid" not in result[0]

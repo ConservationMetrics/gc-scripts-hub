@@ -14,8 +14,8 @@ def test_sanitize_sql_message__spaces_become_underscores():
     """Dataset Importer keeps word spaces as _ and reverses group/question paths."""
     message = {"Basic information/Are you married?": "yes"}
     sql_message, mapping = sanitize_sql_message(
-        message,
-        {},
+        message=message,
+        column_renames={},
         reverse_properties_separated_by="/",
         str_replace=[("/", "__"), ("$", "__")],
         sep_policy="underscore",
@@ -37,7 +37,10 @@ def test_sanitize_sql_message():
     global_mapping = {"x": "X"}
 
     sql_message, updated_global_mapping = sanitize_sql_message(
-        message, global_mapping, "/", [("/", "__")]
+        message=message,
+        column_renames=global_mapping,
+        reverse_properties_separated_by="/",
+        str_replace=[("/", "__")],
     )
     assert sql_message == {
         "col1": 1,
@@ -62,7 +65,7 @@ def test_sanitize_sql_message__kobo_metadata_columns():
         "__version__": "abc123",
         "_uuid": "11111111-1111-1111-1111-111111111111",
     }
-    sql_message, mapping = sanitize_sql_message(message, {})
+    sql_message, mapping = sanitize_sql_message(message=message, column_renames={})
     assert sql_message == message
     assert mapping == {
         "_status": "_status",
@@ -80,7 +83,7 @@ def test_sanitize_sql_message__dollar_prefixed_comapeo_metadata():
         "$createdAt": "2026-05-13",
         "notes": "hello",
     }
-    sql_message, mapping = sanitize_sql_message(message, {})
+    sql_message, mapping = sanitize_sql_message(message=message, column_renames={})
     assert sql_message == {
         "__id": "abc",
         "__categoryId": "hash123",
@@ -100,7 +103,7 @@ def test_sanitize_sql_message__dollar_prefixed_comapeo_metadata():
 def test_sanitize_sql_message__same_letters():
     message = {"foo[bar]test": 1, "foo{bar}test": 2}
 
-    sql_message, _ = sanitize_sql_message(message, {}, maxlen=12)
+    sql_message, _ = sanitize_sql_message(message=message, column_renames={}, maxlen=12)
     assert sql_message == {
         "foobartest": 1,
         "foobarte_001": 2,
@@ -116,7 +119,7 @@ def test_sanitize_sql_message__column_names__long():
         "x": 5,
     }
 
-    sql_message, updated_global_mapping = sanitize_sql_message(message, {}, maxlen=7)
+    sql_message, updated_global_mapping = sanitize_sql_message(message=message, column_renames={}, maxlen=7)
     print(sql_message)
     assert sql_message == {
         "column1": 1,
@@ -141,7 +144,7 @@ def test_sanitize_sql_message__with_nesting():
         "url": "gopher://example.net",
     }
 
-    sql_message, _ = sanitize_sql_message(message, {})
+    sql_message, _ = sanitize_sql_message(message=message, column_renames={})
     assert sql_message == {
         "group1": '{"group2": {"question": "How ya doin?"}}',
         "url": "gopher://example.net",
@@ -152,20 +155,20 @@ def test_camel_to_snake():
     """Test camel_to_snake function focusing on edge cases and regex behavior."""
 
     # Core regex pattern testing - cases that aren't covered by normalize_identifier
-    assert camel_to_snake("") == ""
-    assert camel_to_snake("a") == "a"
-    assert camel_to_snake("A") == "a"
-    assert camel_to_snake("1") == "1"
-    assert camel_to_snake("123") == "123"
+    assert camel_to_snake(name="") == ""
+    assert camel_to_snake(name="a") == "a"
+    assert camel_to_snake(name="A") == "a"
+    assert camel_to_snake(name="1") == "1"
+    assert camel_to_snake(name="123") == "123"
 
     # Leading/trailing underscores preserved (unique to camel_to_snake)
-    assert camel_to_snake("_CamelCase") == "_camel_case"
-    assert camel_to_snake("CamelCase_") == "camel_case_"
-    assert camel_to_snake("_CamelCase_") == "_camel_case_"
+    assert camel_to_snake(name="_CamelCase") == "_camel_case"
+    assert camel_to_snake(name="CamelCase_") == "camel_case_"
+    assert camel_to_snake(name="_CamelCase_") == "_camel_case_"
 
     # Complex uppercase sequence transitions (XMLHttp pattern)
-    assert camel_to_snake("XMLHttpRequest") == "xml_http_request"
-    assert camel_to_snake("HTTPSConnection") == "https_connection"
+    assert camel_to_snake(name="XMLHttpRequest") == "xml_http_request"
+    assert camel_to_snake(name="HTTPSConnection") == "https_connection"
 
 
 def test_normalize_and_snakecase_keys():
@@ -199,7 +202,7 @@ def test_normalize_and_snakecase_keys():
         "a_very_long_key_name_that_exceeds_the_sixty_three_character_l_2": 11,
     }
 
-    result = normalize_and_snakecase_keys(input_dict, special_case_keys)
+    result = normalize_and_snakecase_keys(dictionary=input_dict, special_case_keys=special_case_keys)
 
     assert result == expected_output, f"Expected {expected_output}, but got {result}"
 
@@ -207,25 +210,25 @@ def test_normalize_and_snakecase_keys():
 def test_normalize_identifier_default_params():
     """Test default parameters and core functionality."""
 
-    assert normalize_identifier("kebab-case") == "kebab_case"
-    assert normalize_identifier("123project") == "_123project"
-    assert normalize_identifier("") == "_"
-    assert normalize_identifier("!@#$%") == "_"
-    assert normalize_identifier("___name___") == "___name___"
-    assert normalize_identifier("_id") == "_id"
-    assert normalize_identifier("_status", make_snake=False) == "_status"
-    assert normalize_identifier("__version__", make_snake=False) == "__version__"
-    assert normalize_identifier("This is my dataset, ok?") == "this_is_my_dataset_ok"
-    assert normalize_identifier("Foo bar baz") == "foo_bar_baz"
-    assert normalize_identifier("Summary of results (Q1)") == "summary_of_results_q1"
-    assert normalize_identifier("2024 field survey data") == "_2024_field_survey_data"
-    assert normalize_identifier("Location 1 / Sector B") == "location_1___sector_b"
-    assert normalize_identifier("Foo bar's dataset!") == "foo_bars_dataset"
-    assert normalize_identifier("Table: Foo Bar 2") == "table_foo_bar_2"
-    assert normalize_identifier("Results - Phase 1") == "results___phase_1"
+    assert normalize_identifier(name="kebab-case") == "kebab_case"
+    assert normalize_identifier(name="123project") == "_123project"
+    assert normalize_identifier(name="") == "_"
+    assert normalize_identifier(name="!@#$%") == "_"
+    assert normalize_identifier(name="___name___") == "___name___"
+    assert normalize_identifier(name="_id") == "_id"
+    assert normalize_identifier(name="_status", make_snake=False) == "_status"
+    assert normalize_identifier(name="__version__", make_snake=False) == "__version__"
+    assert normalize_identifier(name="This is my dataset, ok?") == "this_is_my_dataset_ok"
+    assert normalize_identifier(name="Foo bar baz") == "foo_bar_baz"
+    assert normalize_identifier(name="Summary of results (Q1)") == "summary_of_results_q1"
+    assert normalize_identifier(name="2024 field survey data") == "_2024_field_survey_data"
+    assert normalize_identifier(name="Location 1 / Sector B") == "location_1___sector_b"
+    assert normalize_identifier(name="Foo bar's dataset!") == "foo_bars_dataset"
+    assert normalize_identifier(name="Table: Foo Bar 2") == "table_foo_bar_2"
+    assert normalize_identifier(name="Results - Phase 1") == "results___phase_1"
     assert (
         normalize_identifier(
-            "this is a very, very, very long dataset name that will get truncated safely"
+            name="this is a very, very, very long dataset name that will get truncated safely",
         )
         == "this_is_a_very_very_very_long_dataset_name_that_will_get_trunca"
     )
@@ -235,14 +238,14 @@ def test_normalize_identifier_maxlen_param():
     """Test maxlen parameter with various length strings."""
     # Test default maxlen (63)
     long_string = "this_is_a_very_long_identifier_name_that_exceeds_default_limit_test"
-    result = normalize_identifier(long_string)
+    result = normalize_identifier(name=long_string)
     assert len(result) <= 63
     assert result == "this_is_a_very_long_identifier_name_that_exceeds_default_limit_"
 
     # Test custom maxlen
-    assert normalize_identifier("hello_world", maxlen=5) == "hello"
-    assert normalize_identifier("test", maxlen=10) == "test"
-    assert normalize_identifier("a", maxlen=1) == "a"
+    assert normalize_identifier(name="hello_world", maxlen=5) == "hello"
+    assert normalize_identifier(name="test", maxlen=10) == "test"
+    assert normalize_identifier(name="a", maxlen=1) == "a"
 
     # Test maxlen=0 edge case
     pytest_raises(ValueError, normalize_identifier, "test", maxlen=0)
@@ -251,17 +254,17 @@ def test_normalize_identifier_maxlen_param():
 def test_normalize_identifier_make_snake_param():
     """Test make_snake parameter for CamelCase conversion."""
     # Test with make_snake=True (default) - just one example
-    assert normalize_identifier("CamelCaseString") == "camel_case_string"
+    assert normalize_identifier(name="CamelCaseString") == "camel_case_string"
 
     # Test with make_snake=False - focus on the parameter behavior
     assert (
-        normalize_identifier("CamelCaseString", make_snake=False) == "CamelCaseString"
+        normalize_identifier(name="CamelCaseString", make_snake=False) == "CamelCaseString"
     )
-    assert normalize_identifier("XMLHttpRequest", make_snake=False) == "XMLHttpRequest"
+    assert normalize_identifier(name="XMLHttpRequest", make_snake=False) == "XMLHttpRequest"
 
     # Test interaction with special characters - this is unique to normalize_identifier
     assert (
-        normalize_identifier("Camel-Case.String", make_snake=False)
+        normalize_identifier(name="Camel-Case.String", make_snake=False)
         == "Camel_Case_String"
     )
 
@@ -269,72 +272,72 @@ def test_normalize_identifier_make_snake_param():
 def test_normalize_identifier_ensure_leading_alpha_param():
     """Test ensure_leading_alpha parameter."""
     # Test with ensure_leading_alpha=True (default)
-    assert normalize_identifier("123name") == "_123name"
-    assert normalize_identifier("") == "_"
-    assert normalize_identifier("!@#$%") == "_"
+    assert normalize_identifier(name="123name") == "_123name"
+    assert normalize_identifier(name="") == "_"
+    assert normalize_identifier(name="!@#$%") == "_"
 
     # Test with ensure_leading_alpha=False
-    assert normalize_identifier("123name", ensure_leading_alpha=False) == "123name"
-    assert normalize_identifier("", ensure_leading_alpha=False) == "_"
-    assert normalize_identifier("!@#$%", ensure_leading_alpha=False) == "_"
+    assert normalize_identifier(name="123name", ensure_leading_alpha=False) == "123name"
+    assert normalize_identifier(name="", ensure_leading_alpha=False) == "_"
+    assert normalize_identifier(name="!@#$%", ensure_leading_alpha=False) == "_"
 
     # Test strings that already start with alpha - should be unchanged
-    assert normalize_identifier("valid_name") == "valid_name"
-    assert normalize_identifier("_underscore") == "_underscore"
+    assert normalize_identifier(name="valid_name") == "valid_name"
+    assert normalize_identifier(name="_underscore") == "_underscore"
 
 
 def test_normalize_identifier_sep_policy_param():
     """Test sep_policy parameter for separator handling."""
     # Test with sep_policy="underscore" (default)
-    assert normalize_identifier("hello world") == "hello_world"
-    assert normalize_identifier("file-name") == "file_name"
-    assert normalize_identifier("path/to/file") == "path_to_file"
-    assert normalize_identifier("data.table") == "data_table"
+    assert normalize_identifier(name="hello world") == "hello_world"
+    assert normalize_identifier(name="file-name") == "file_name"
+    assert normalize_identifier(name="path/to/file") == "path_to_file"
+    assert normalize_identifier(name="data.table") == "data_table"
     assert (
-        normalize_identifier("mixed-name with_spaces/and.dots")
+        normalize_identifier(name="mixed-name with_spaces/and.dots")
         == "mixed_name_with_spaces_and_dots"
     )
 
     # Test with sep_policy="remove"
-    assert normalize_identifier("hello world", sep_policy="remove") == "helloworld"
-    assert normalize_identifier("file-name", sep_policy="remove") == "filename"
-    assert normalize_identifier("path/to/file", sep_policy="remove") == "pathtofile"
-    assert normalize_identifier("data.table", sep_policy="remove") == "datatable"
+    assert normalize_identifier(name="hello world", sep_policy="remove") == "helloworld"
+    assert normalize_identifier(name="file-name", sep_policy="remove") == "filename"
+    assert normalize_identifier(name="path/to/file", sep_policy="remove") == "pathtofile"
+    assert normalize_identifier(name="data.table", sep_policy="remove") == "datatable"
     assert (
-        normalize_identifier("mixed-name with_spaces/and.dots", sep_policy="remove")
+        normalize_identifier(name="mixed-name with_spaces/and.dots", sep_policy="remove")
         == "mixednamewith_spacesanddots"
     )
 
     # Test with multiple consecutive separators
     assert (
-        normalize_identifier("hello   world", sep_policy="underscore")
+        normalize_identifier(name="hello   world", sep_policy="underscore")
         == "hello___world"
     )
     assert (
-        normalize_identifier("hello---world", sep_policy="underscore")
+        normalize_identifier(name="hello---world", sep_policy="underscore")
         == "hello___world"
     )
     assert (
-        normalize_identifier("hello...world", sep_policy="underscore")
+        normalize_identifier(name="hello...world", sep_policy="underscore")
         == "hello___world"
     )
-    assert normalize_identifier("hello   world", sep_policy="remove") == "helloworld"
-    assert normalize_identifier("hello---world", sep_policy="remove") == "helloworld"
+    assert normalize_identifier(name="hello   world", sep_policy="remove") == "helloworld"
+    assert normalize_identifier(name="hello---world", sep_policy="remove") == "helloworld"
 
 
 def test_normalize_identifier_unicode_handling():
     """Test Unicode character handling and accent removal."""
     # Latin accents strip to ASCII
-    assert normalize_identifier("Vigilância Ambiental") == "vigilancia_ambiental"
-    assert normalize_identifier("naïve café") == "naive_cafe"
-    assert normalize_identifier("résumé") == "resume"
-    assert normalize_identifier("Müller") == "muller"
+    assert normalize_identifier(name="Vigilância Ambiental") == "vigilancia_ambiental"
+    assert normalize_identifier(name="naïve café") == "naive_cafe"
+    assert normalize_identifier(name="résumé") == "resume"
+    assert normalize_identifier(name="Müller") == "muller"
 
     # Non-Latin scripts are preserved (not collapsed to "_")
-    assert normalize_identifier("สำรวจใหม่") == "สำรวจใหม่"
-    assert normalize_identifier("อีเห็น") == "อีเห็น"
-    assert normalize_identifier("野外调查") == "野外调查"
-    assert normalize_identifier("สำรวจ ใหม่!") == "สำรวจ_ใหม่"
+    assert normalize_identifier(name="สำรวจใหม่") == "สำรวจใหม่"
+    assert normalize_identifier(name="อีเห็น") == "อีเห็น"
+    assert normalize_identifier(name="野外调查") == "野外调查"
+    assert normalize_identifier(name="สำรวจ ใหม่!") == "สำรวจ_ใหม่"
 
 
 def test_sanitize_sql_message__non_latin_column_names():
@@ -345,7 +348,7 @@ def test_sanitize_sql_message__non_latin_column_names():
         "สำรวจใหม่": "new survey",
         "notes": "ok",
     }
-    sql_message, mapping = sanitize_sql_message(message, {})
+    sql_message, mapping = sanitize_sql_message(message=message, column_renames={})
     assert sql_message == {
         "_id": "obs-1",
         "อีเห็น": "sighting",
@@ -362,14 +365,17 @@ def test_normalize_identifier_complex_combinations():
     """Test complex combinations of all parameters."""
     # Test combination: accents + maxlen + snake_case
     long_accented = "VigilânciaAmbientalDaRegiãoMetropolitana"
-    result = normalize_identifier(long_accented, maxlen=25)
+    result = normalize_identifier(name=long_accented, maxlen=25)
     assert result == "vigilancia_ambiental_da_r"
     assert len(result) <= 25
 
     # Test combination: numeric start + separators + policy interaction
     numeric_mixed = "123-my file.name"
     result = normalize_identifier(
-        numeric_mixed, make_snake=False, ensure_leading_alpha=True, sep_policy="remove"
+        name=numeric_mixed,
+        make_snake=False,
+        ensure_leading_alpha=True,
+        sep_policy="remove",
     )
     assert result == "_123myfilename"
 
@@ -377,35 +383,35 @@ def test_normalize_identifier_complex_combinations():
 def test_normalize_identifier_edge_cases():
     """Test edge cases and boundary conditions."""
     # Empty string
-    assert normalize_identifier("") == "_"
-    assert normalize_identifier("", ensure_leading_alpha=False) == "_"
+    assert normalize_identifier(name="") == "_"
+    assert normalize_identifier(name="", ensure_leading_alpha=False) == "_"
 
     # Only special characters
-    assert normalize_identifier("!@#$%^&*()") == "_"
-    assert normalize_identifier("!@#$%^&*()") == "_"
+    assert normalize_identifier(name="!@#$%^&*()") == "_"
+    assert normalize_identifier(name="!@#$%^&*()") == "_"
 
     # Only separators
-    assert normalize_identifier("---...///") == "_"
-    assert normalize_identifier("   ", sep_policy="remove") == "_"
+    assert normalize_identifier(name="---...///") == "_"
+    assert normalize_identifier(name="   ", sep_policy="remove") == "_"
 
     # Only underscores
-    assert normalize_identifier("___") == "_"
-    assert normalize_identifier("___name___") == "___name___"
+    assert normalize_identifier(name="___") == "_"
+    assert normalize_identifier(name="___name___") == "___name___"
 
     # Very short maxlen
-    assert normalize_identifier("test", maxlen=1) == "t"
-    assert normalize_identifier("test", maxlen=2) == "te"
+    assert normalize_identifier(name="test", maxlen=1) == "t"
+    assert normalize_identifier(name="test", maxlen=2) == "te"
 
     # Maxlen with ensure_leading_alpha
-    assert normalize_identifier("123", maxlen=2, ensure_leading_alpha=True) == "_1"
-    assert normalize_identifier("123", maxlen=1, ensure_leading_alpha=True) == "_"
+    assert normalize_identifier(name="123", maxlen=2, ensure_leading_alpha=True) == "_1"
+    assert normalize_identifier(name="123", maxlen=1, ensure_leading_alpha=True) == "_"
 
 
 def test_slugify_empty_and_unicode():
-    assert slugify(None) == "unnamed"
-    assert slugify("") == "unnamed"
-    assert slugify("Hello World!") == "hello-world"
-    assert slugify("Café", allow_unicode=False) == "cafe"
+    assert slugify(value=None) == "unnamed"
+    assert slugify(value="") == "unnamed"
+    assert slugify(value="Hello World!") == "hello-world"
+    assert slugify(value="Café", allow_unicode=False) == "cafe"
 
 
 def test_validate_identifier_mapbox_tileset_id():
@@ -424,7 +430,7 @@ def test_validate_identifier_mapbox_tileset_id():
         "hello--world",  # Double hyphen (allowed by regex)
     ]
     for tileset_id in valid_ids:
-        assert validate_identifier(tileset_id, type="mapbox_tileset_id") is True
+        assert validate_identifier(value=tileset_id, type="mapbox_tileset_id") is True
 
     """Test that invalid tileset IDs raise ValueError."""
     invalid_cases = [
@@ -438,4 +444,4 @@ def test_validate_identifier_mapbox_tileset_id():
         ("x" * 33, "too long (33 chars)"),
     ]
     for tileset_id, description in invalid_cases:
-        assert validate_identifier(tileset_id, type="mapbox_tileset_id") is False
+        assert validate_identifier(value=tileset_id, type="mapbox_tileset_id") is False
