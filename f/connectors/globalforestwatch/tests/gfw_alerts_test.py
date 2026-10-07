@@ -24,13 +24,13 @@ def test_script_e2e(
 
     # Fetch alerts from last 22 months (roughly equivalent to 2024-01-01 start)
     main(
-        gfw_server.gfw_api,
-        "[[[-73.9731, 40.7644], [-73.9819, 40.7681], [-73.9580, 40.8003], [-73.9493, 40.7967], [-73.9731, 40.7644]]]",
-        "gfw_integrated_alerts",
-        22,  # ~22 months covers from Dec 2023 to Oct 2025
-        pg_database,
-        "gfw_alerts",
-        asset_storage,
+        gfw=gfw_server.gfw_api,
+        bounding_box="[[[-73.9731, 40.7644], [-73.9819, 40.7681], [-73.9580, 40.8003], [-73.9493, 40.7967], [-73.9731, 40.7644]]]",
+        type_of_alert="gfw_integrated_alerts",
+        max_months_lookback=22,
+        db=pg_database,
+        db_table_name="gfw_alerts",
+        attachment_root=asset_storage,
     )
 
     # GeoJSON file is saved to disk
@@ -114,13 +114,13 @@ def test_metadata_daily_tracking(
 
     # Run with 5 months lookback (should create ~135 days of metadata: Jan 1 - May 15)
     main(
-        gfw_server.gfw_api,
-        "[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
-        "nasa_viirs_fire_alerts",
-        5,  # 5 months back from May 15 = Jan 1
-        pg_database,
-        "gfw_daily_test",
-        asset_storage,
+        gfw=gfw_server.gfw_api,
+        bounding_box="[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
+        type_of_alert="nasa_viirs_fire_alerts",
+        max_months_lookback=5,
+        db=pg_database,
+        db_table_name="gfw_daily_test",
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -205,14 +205,22 @@ def test_max_months_lookback_metadata_filtering(mock_datetime_utils, mock_dateti
     ]
 
     # 22 months lookback - processes from ~Dec 2023 to now
-    prepared_all = prepare_gfw_metadata(alerts, "nasa_viirs_fire_alerts", 22)
+    prepared_all = prepare_gfw_metadata(
+        alerts=alerts,
+        type_of_alert="nasa_viirs_fire_alerts",
+        max_months_lookback=22,
+    )
     # Should have ~685 days (Dec 1, 2023 to Oct 15, 2025)
     assert len(prepared_all) >= 680
 
     # 6 months lookback - only process last 6+ months
     # With mocked date Oct 15, 2025: cutoff is April 2025, so start is April 1, 2025
     # Days: April (30) + May (31) + June (30) + July (31) + Aug (31) + Sep (30) + Oct (15) = 198
-    prepared_filtered = prepare_gfw_metadata(alerts, "nasa_viirs_fire_alerts", 6)
+    prepared_filtered = prepare_gfw_metadata(
+        alerts=alerts,
+        type_of_alert="nasa_viirs_fire_alerts",
+        max_months_lookback=6,
+    )
     assert len(prepared_filtered) == 198
 
     # Verify only recent months are included
@@ -238,13 +246,13 @@ def test_max_months_lookback_e2e(
     # Run with 3 months lookback - should query API from July 1, 2025
     # and create ~107 days of metadata (July 1 - Oct 15, 2025)
     main(
-        gfw_server.gfw_api,
-        "[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
-        "nasa_viirs_fire_alerts",
-        3,  # 3 months lookback
-        pg_database,
-        "gfw_lookback_test",
-        asset_storage,
+        gfw=gfw_server.gfw_api,
+        bounding_box="[[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]",
+        type_of_alert="nasa_viirs_fire_alerts",
+        max_months_lookback=3,
+        db=pg_database,
+        db_table_name="gfw_lookback_test",
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -270,11 +278,11 @@ def test_max_months_lookback_e2e(
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            {"api_key": "x"},
-            "[]",
-            "gfw_integrated_alerts",
-            1,
-            pg_database,
+            gfw={"api_key": "x"},
+            bounding_box="[]",
+            type_of_alert="gfw_integrated_alerts",
+            max_months_lookback=1,
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )

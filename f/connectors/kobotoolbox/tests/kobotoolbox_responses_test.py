@@ -36,7 +36,7 @@ def test_extract_form_labels__survey_question_name_is_none():
         }
     }
 
-    rows = extract_form_labels(metadata)
+    rows = extract_form_labels(form_metadata=metadata)
     survey = _label_rows_by(rows=rows, type="survey", name="tree_height")
     assert len(survey) == 1
     assert survey[0]["question_name"] is None
@@ -65,7 +65,7 @@ def test_extract_form_labels__choice_scoped_to_question():
         }
     }
 
-    rows = extract_form_labels(metadata)
+    rows = extract_form_labels(form_metadata=metadata)
     choices = _label_rows_by(rows=rows, type="choices", name="shade")
     assert len(choices) == 1
     assert choices[0]["question_name"] == "I_like_this_tree_because"
@@ -105,7 +105,7 @@ def test_extract_form_labels__disambiguates_reused_choice_names():
         }
     }
 
-    rows = extract_form_labels(metadata)
+    rows = extract_form_labels(form_metadata=metadata)
     knowledge = _label_rows_by(
         rows=rows, type="choices", name="2", question_name="Traditional_knowledge"
     )
@@ -143,7 +143,7 @@ def test_extract_form_labels__shared_list_duplicates_per_question():
         }
     }
 
-    rows = extract_form_labels(metadata)
+    rows = extract_form_labels(form_metadata=metadata)
     choices = _label_rows_by(rows=rows, type="choices", name="yes")
     assert {row["question_name"] for row in choices} == {
         "condition_a",
@@ -175,7 +175,7 @@ def test_extract_form_labels__multilang_includes_question_name():
         }
     }
 
-    rows = extract_form_labels(metadata)
+    rows = extract_form_labels(form_metadata=metadata)
     en = _label_rows_by(
         rows=rows, type="choices", name="shade", language="en"
     )
@@ -195,11 +195,11 @@ def test_script_e2e(koboserver, pg_database, tmp_path):
     table_name = "kobo_responses"
 
     main(
-        koboserver.account,
-        koboserver.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        kobotoolbox=koboserver.account,
+        form_id=koboserver.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     # Attachments are saved to disk
@@ -327,11 +327,11 @@ def test_script_e2e__no_translations(koboserver_no_translations, pg_database, tm
     table_name = "kobo_no_translations"
 
     main(
-        koboserver_no_translations.account,
-        koboserver_no_translations.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        kobotoolbox=koboserver_no_translations.account,
+        form_id=koboserver_no_translations.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -361,11 +361,11 @@ def test_script_e2e__no_submissions(koboserver_no_submissions, pg_database, tmp_
 
     # A zero-submission pull must not raise
     main(
-        koboserver_no_submissions.account,
-        koboserver_no_submissions.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        kobotoolbox=koboserver_no_submissions.account,
+        form_id=koboserver_no_submissions.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     # No CSV artifact is written when there are no submissions
@@ -389,7 +389,7 @@ def test_transform_kobotoolbox_form_data_from_csv():
         data = [dict(row) for row in reader]
 
     form_name = "Test Form"
-    result = transform_kobotoolbox_form_data(data, form_name)
+    result = transform_kobotoolbox_form_data(form_data=data, form_name=form_name)
 
     for submission in result:
         assert submission["dataset_name"] == form_name
@@ -407,11 +407,11 @@ def test_pagination(koboserver_with_pagination, pg_database, tmp_path):
     table_name = "kobo_pagination_test"
 
     main(
-        koboserver_with_pagination.account,
-        koboserver_with_pagination.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        kobotoolbox=koboserver_with_pagination.account,
+        form_id=koboserver_with_pagination.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     # Verify all submissions were fetched and stored
@@ -442,7 +442,7 @@ def test_flatten_kobotoolbox_submission__repeat_group():
             },
         ],
     }
-    result = flatten_kobotoolbox_submission(submission)
+    result = flatten_kobotoolbox_submission(submission=submission)
 
     assert "household_members" not in result
     assert result["household_members/1/group_fixture_member_1_name"] == "Person One"
@@ -458,7 +458,7 @@ def test_flatten_kobotoolbox_submission__field_list_dict():
             "dwelling_counts/group_fixture_house/group_fixture_house_children": "1",
         },
     }
-    result = flatten_kobotoolbox_submission(submission)
+    result = flatten_kobotoolbox_submission(submission=submission)
 
     assert "dwelling_counts" not in result
     assert result["dwelling_counts/1/group_fixture_house_adults"] == "2"
@@ -477,7 +477,7 @@ def test_flatten_kobotoolbox_submission__preserves_system_fields():
         "summary_counts/adults": "2",
         "household_members": [],
     }
-    result = flatten_kobotoolbox_submission(submission)
+    result = flatten_kobotoolbox_submission(submission=submission)
 
     assert result["_id"] == 1
     assert result["_geolocation"] == [10.0, 20.0]
@@ -519,7 +519,7 @@ def test_flatten_kobotoolbox_submission__deeply_nested_repeat():
             },
         ],
     }
-    result = flatten_kobotoolbox_submission(submission)
+    result = flatten_kobotoolbox_submission(submission=submission)
 
     assert "first_group" not in result
     # Nothing should remain as a nested container once fully flattened.
@@ -540,11 +540,11 @@ def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
     table_name = "kobo_nested_repeats"
 
     main(
-        koboserver_nested.account,
-        koboserver_nested.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        kobotoolbox=koboserver_nested.account,
+        form_id=koboserver_nested.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -576,9 +576,9 @@ def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            {"server_url": "https://example.test", "api_key": "x"},
-            "form",
-            pg_database,
+            kobotoolbox={"server_url": "https://example.test", "api_key": "x"},
+            form_id="form",
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )

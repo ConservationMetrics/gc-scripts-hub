@@ -36,7 +36,7 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
         connect(**pg_database, autocommit=True) as connection,
         connection.cursor() as cursor,
     ):
-        result = gbif_pull_statistics.main(bounds, pg_database, "GBIF_Occurrences")
+        result = gbif_pull_statistics.main(bounding_box=bounds, db=pg_database, db_table_name="GBIF_Occurrences")
         assert result == {
             "occurrence_count": 856,
             "dataset": 6,
@@ -67,8 +67,8 @@ def _run_excerpt_import(mocked_responses, pg_database, statistics_snapshot, boun
         )
         calls_after_first_run = len(mocked_responses.calls)
         gbif_pull_statistics.main(
-            bounds,
-            pg_database,
+            bounding_box=bounds,
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="gbif_occurrences",
         )
@@ -98,7 +98,9 @@ def test_statistics_pages_through_facet_results(
     monkeypatch.setattr(gbif_pull_statistics, "_FACET_LIMIT", 2)
     _register_snapshot(mocked_responses, statistics_snapshot)
     gbif_pull_statistics.main(
-        statistics_snapshot["bounds"], pg_database, "gbif_occurrences"
+        bounding_box=statistics_snapshot["bounds"],
+        db=pg_database,
+        db_table_name="gbif_occurrences",
     )
     offsets = [
         int(parse_qs(urlparse(call.request.url).query)["facetOffset"][0])
@@ -139,7 +141,9 @@ def test_statistics_keeps_keys_when_registry_lookup_fails(
         logging.WARNING, logger="f.connectors.gbif.gbif_pull_statistics"
     ):
         gbif_pull_statistics.main(
-            [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
+            bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+            db=pg_database,
+            db_table_name="gbif_occurrences",
         )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         assert _fetch_facet(cursor, "gbif_occurrences", "dataset") == [
@@ -179,7 +183,9 @@ def test_statistics_stops_when_a_facet_page_repeats(
     mocked_responses.add_callback(responses.GET, _SEARCH_URL, callback=search)
     mocked_responses.add_callback(responses.GET, _REGISTRY_URL, callback=registry)
     gbif_pull_statistics.main(
-        [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
+        bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+        db=pg_database,
+        db_table_name="gbif_occurrences",
     )
     assert calls["datasetKey"] == 2
     assert calls["speciesKey"] == 1
@@ -199,7 +205,7 @@ def test_statistics_creates_an_empty_table_for_an_empty_area(
     }
     _register_snapshot(mocked_responses, empty)
     table_name = "A" * gbif_pull_statistics._MAX_TABLE_NAME_LENGTH
-    result = gbif_pull_statistics.main(empty["bounds"], pg_database, table_name)
+    result = gbif_pull_statistics.main(bounding_box=empty["bounds"], db=pg_database, db_table_name=table_name)
     assert result["occurrence_count"] == 0
     assert result["species"] == 0
     statistics = table_name.lower()
@@ -217,15 +223,15 @@ def test_statistics_rejects_oversized_bounds_before_request(
     mocked_responses, pg_database
 ):
     with pytest.raises(ValueError):
-        gbif_pull_statistics.main([[0, 0], [2, 2]], pg_database, "gbif_occurrences")
+        gbif_pull_statistics.main(bounding_box=[[0, 0], [2, 2]], db=pg_database, db_table_name="gbif_occurrences")
     assert not mocked_responses.calls
 
 
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         gbif_pull_statistics.main(
-            [[-55.03, 3.23], [-54.12, 3.67]],
-            pg_database,
+            bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )
@@ -234,7 +240,7 @@ def test_use_existing_dataset_requires_a_real_table(pg_database):
 @pytest.mark.parametrize("name", ["a" * 64, "bad/name", "", "bad\\name"])
 def test_statistics_rejects_invalid_table_names(mocked_responses, pg_database, name):
     with pytest.raises(ValueError, match="db_table_name"):
-        gbif_pull_statistics.main([[-55.03, 3.23], [-54.12, 3.67]], pg_database, name)
+        gbif_pull_statistics.main(bounding_box=[[-55.03, 3.23], [-54.12, 3.67]], db=pg_database, db_table_name=name)
     assert not mocked_responses.calls
 
 
@@ -312,7 +318,9 @@ def test_statistics_keeps_distinct_keys_that_share_a_label(
     }
     _register_snapshot(mocked_responses, snapshot)
     gbif_pull_statistics.main(
-        [[-55.03, 3.23], [-54.12, 3.67]], pg_database, "gbif_occurrences"
+        bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+        db=pg_database,
+        db_table_name="gbif_occurrences",
     )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
         assert _fetch_facet(cursor, "gbif_occurrences", "dataset") == [

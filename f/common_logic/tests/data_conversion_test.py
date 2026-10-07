@@ -68,7 +68,7 @@ def _assert_osmand_property(props, key, expected_value=None):
 
 
 def test_read_data__mapeo_geojson(mapeo_geojson_file):
-    result, output_format = convert_data([str(mapeo_geojson_file)], "geojson")
+    result, output_format = convert_data(file_paths=[str(mapeo_geojson_file)], file_format="geojson")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
@@ -83,7 +83,7 @@ def test_read_data__mapeo_geojson(mapeo_geojson_file):
 
 def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
     """Test reading of OSM Overpass GeoJSON data."""
-    result, output_format = convert_data([str(osm_overpass_geojson_file)], "geojson")
+    result, output_format = convert_data(file_paths=[str(osm_overpass_geojson_file)], file_format="geojson")
     assert output_format == "geojson"
 
     # Root-level structure validation
@@ -166,7 +166,8 @@ def test_convert_data__osm_overpass_geojson(osm_overpass_geojson_file):
 def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_file):
     """Test that GeoJSON files with null geometry features are accepted."""
     result, output_format = convert_data(
-        [str(geojson_with_null_geometry_file)], "geojson"
+        file_paths=[str(geojson_with_null_geometry_file)],
+        file_format="geojson",
     )
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
@@ -194,28 +195,28 @@ def test_convert_data__geojson_with_null_geometry(geojson_with_null_geometry_fil
 
 def test_convert_data__empty_geojson(empty_geojson_file):
     with pytest.raises(ValueError, match="GeoJSON contains no features"):
-        convert_data([str(empty_geojson_file)], "geojson")
+        convert_data(file_paths=[str(empty_geojson_file)], file_format="geojson")
 
 
 def test_convert_data__geojson_with_missing_properties(
     geojson_with_missing_properties_file,
 ):
     with pytest.raises(ValueError, match="missing properties"):
-        convert_data([str(geojson_with_missing_properties_file)], "geojson")
+        convert_data(file_paths=[str(geojson_with_missing_properties_file)], file_format="geojson")
 
 
 def test_convert_data__geojson_with_invalid_geometry(
     geojson_with_invalid_geometry_file,
 ):
     with pytest.raises(ValueError, match="invalid geometry coordinates"):
-        convert_data([str(geojson_with_invalid_geometry_file)], "geojson")
+        convert_data(file_paths=[str(geojson_with_invalid_geometry_file)], file_format="geojson")
 
 
 def test_convert_data__geojson_with_invalid_top_level(
     geojson_with_invalid_top_level_structure_file,
 ):
     with pytest.raises(ValueError, match="must be a FeatureCollection object"):
-        convert_data([str(geojson_with_invalid_top_level_structure_file)], "geojson")
+        convert_data(file_paths=[str(geojson_with_invalid_top_level_structure_file)], file_format="geojson")
 
 
 def test_to_geojson__point():
@@ -224,7 +225,7 @@ def test_to_geojson__point():
         ["1", "Alpha", "5.0", "-59.0"],
         ["2", "Bravo", "6.0", "-58.0"],
     ]
-    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
+    result = to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
     assert result["type"] == "FeatureCollection"
     assert len(result["features"]) == 2
 
@@ -248,7 +249,7 @@ def test_to_geojson__non_point_coords_produce_null_geometry():
         ["trail", "not-a-number", "-59.0"],
         ["area", "5.0", ""],
     ]
-    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
+    result = to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
     assert all(f["geometry"] is None for f in result["features"])
 
 
@@ -257,7 +258,7 @@ def test_to_geojson__fallback_row_number_id():
         ["name", "lat", "lon"],
         ["X", "2.0", "1.0"],
     ]
-    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
+    result = to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["id"] == "1"
 
 
@@ -267,7 +268,7 @@ def test_to_geojson__missing_coord_col():
         ValueError,
         match="Coordinate columns 'lat' and/or 'lon' not found in headers",
     ):
-        to_geojson(rows, longitude_col="lon", latitude_col="lat")
+        to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
 
 
 def test_to_geojson__missing_coord_col_param():
@@ -276,7 +277,7 @@ def test_to_geojson__missing_coord_col_param():
         ValueError,
         match="latitude_col and longitude_col are required for tabular → GeoJSON conversion",
     ):
-        to_geojson(rows)
+        to_geojson(rows=rows)
 
 
 def test_to_geojson__invalid_json_coords_produces_null_geometry():
@@ -284,7 +285,7 @@ def test_to_geojson__invalid_json_coords_produces_null_geometry():
         ["name", "lat", "lon"],
         ["A", "not-a-number", "3.0"],
     ]
-    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
+    result = to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["geometry"] is None
 
 
@@ -293,20 +294,22 @@ def test_to_geojson__empty_coordinate_produces_null_geometry():
         ["name", "lat", "lon"],
         ["A", "", ""],
     ]
-    result = to_geojson(rows, longitude_col="lon", latitude_col="lat")
+    result = to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
     assert result["features"][0]["geometry"] is None
 
 
 def test_to_geojson__header_only():
     rows = [["name", "lat", "lon"]]
     with pytest.raises(ValueError, match="at least one data row"):
-        to_geojson(rows, longitude_col="lon", latitude_col="lat")
+        to_geojson(rows=rows, longitude_col="lon", latitude_col="lat")
 
 
 def test_convert_data__geojson_explicit_same_as_default(mapeo_geojson_file):
     """Explicit output_format matching the default is a no-op."""
     result, output_format = convert_data(
-        [str(mapeo_geojson_file)], "geojson", output_format="geojson"
+        file_paths=[str(mapeo_geojson_file)],
+        file_format="geojson",
+        output_format="geojson",
     )
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
@@ -316,7 +319,7 @@ def test_convert_data__geojson_explicit_same_as_default(mapeo_geojson_file):
 
 
 def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
-    result, output_format = convert_data([str(locusmap_points_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(locusmap_points_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
     _validate_geojson_structure(result, len(result["features"]))  # At least 2 waypoints
     assert len(result["features"]) >= 2
@@ -341,7 +344,7 @@ def test_convert_data__locusmap_points_gpx(locusmap_points_gpx_file):
 
 
 def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
-    result, output_format = convert_data([str(locusmap_tracks_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(locusmap_tracks_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
 
     # Root-level sanity checks
@@ -398,7 +401,7 @@ def test_convert_data__locusmap_tracks_gpx(locusmap_tracks_gpx_file):
 
 
 def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
-    result, output_format = convert_data([str(garmin_sample_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(garmin_sample_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
     _validate_geojson_structure(result, len(result["features"]))
     assert len(result["features"]) > 2
@@ -441,7 +444,7 @@ def test_convert_data__garmin_sample_gpx(garmin_sample_gpx_file):
 
 def test_convert_data__gpx_with_duplicate_names(gpx_with_duplicate_names_file):
     """Waypoints sharing a <name> must still receive distinct feature ids."""
-    result, output_format = convert_data([str(gpx_with_duplicate_names_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(gpx_with_duplicate_names_file)], file_format="gpx")
     assert output_format == "geojson"
 
     features = result["features"]
@@ -467,7 +470,7 @@ def test_convert_data__gpx_with_duplicate_names(gpx_with_duplicate_names_file):
 
 def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
     """Test conversion of OSM Overpass GPX data with waypoints."""
-    result, output_format = convert_data([str(osm_overpass_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(osm_overpass_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
 
     # Root-level structure validation
@@ -524,7 +527,7 @@ def test_convert_data__osm_overpass_gpx(osm_overpass_gpx_file):
 
 def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
     """Test conversion of OsmAnd notes GPX data with photo attachments."""
-    result, output_format = convert_data([str(osmand_notes_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(osmand_notes_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
 
     # Root-level structure validation
@@ -583,7 +586,7 @@ def test_convert_data__osmand_notes_gpx(osmand_notes_gpx_file):
 
 def test_convert_data__osmand_poi_gpx(osmand_poi_gpx_file):
     """Test conversion of OsmAnd POI GPX data with comprehensive metadata."""
-    result, output_format = convert_data([str(osmand_poi_gpx_file)], "gpx")
+    result, output_format = convert_data(file_paths=[str(osmand_poi_gpx_file)], file_format="gpx")
     assert output_format == "geojson"
 
     # Root-level structure validation
@@ -686,8 +689,8 @@ def test_osmand_data_consistency_across_formats(
     osmand_notes_gpx_file, osmand_poi_gpx_file
 ):
     """Test that OsmAnd GPX data is consistently parsed with all extensions captured."""
-    notes_result, notes_format = convert_data([str(osmand_notes_gpx_file)], "gpx")
-    poi_result, poi_format = convert_data([str(osmand_poi_gpx_file)], "gpx")
+    notes_result, notes_format = convert_data(file_paths=[str(osmand_notes_gpx_file)], file_format="gpx")
+    poi_result, poi_format = convert_data(file_paths=[str(osmand_poi_gpx_file)], file_format="gpx")
 
     assert notes_format == "geojson"
     assert poi_format == "geojson"
@@ -721,7 +724,7 @@ def test_osmand_data_consistency_across_formats(
 
 
 def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
-    result, output_format = convert_data([str(locusmap_points_kml_file)], "kml")
+    result, output_format = convert_data(file_paths=[str(locusmap_points_kml_file)], file_format="kml")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
 
@@ -734,7 +737,7 @@ def test_convert_data__locusmap_points_kml(locusmap_points_kml_file):
 
 
 def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
-    result, output_format = convert_data([str(locusmap_tracks_kml_file)], "kml")
+    result, output_format = convert_data(file_paths=[str(locusmap_tracks_kml_file)], file_format="kml")
     assert output_format == "geojson"
 
     # Root-level structure check
@@ -797,7 +800,7 @@ def test_convert_data__locusmap_tracks_kml(locusmap_tracks_kml_file):
 
 def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
     """Test conversion of OSM Overpass KML data with ExtendedData."""
-    result, output_format = convert_data([str(osm_overpass_kml_file)], "kml")
+    result, output_format = convert_data(file_paths=[str(osm_overpass_kml_file)], file_format="kml")
     assert output_format == "geojson"
 
     # Root-level structure validation
@@ -896,7 +899,7 @@ def test_convert_data__osm_overpass_kml(osm_overpass_kml_file):
 
 
 def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
-    result, output_format = convert_data([str(googleearth_sample_kml_file)], "kml")
+    result, output_format = convert_data(file_paths=[str(googleearth_sample_kml_file)], file_format="kml")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
@@ -942,7 +945,7 @@ def test_convert_data__googleearth_sample_kml(googleearth_sample_kml_file):
 
 
 def test_convert_data__gc_alerts_kml(alerts_kml_file):
-    result, output_format = convert_data([str(alerts_kml_file)], "kml")
+    result, output_format = convert_data(file_paths=[str(alerts_kml_file)], file_format="kml")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 2)
 
@@ -962,7 +965,7 @@ def test_convert_data__gc_alerts_kml(alerts_kml_file):
 
 def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
     with pytest.raises(ValueError, match="No valid features found in input file"):
-        convert_data([str(kml_with_missing_geometry_file)], "kml")
+        convert_data(file_paths=[str(kml_with_missing_geometry_file)], file_format="kml")
 
 
 # --- SMART patrol XML tests ---
@@ -970,7 +973,7 @@ def test_convert_data__kml_missing_geometry(kml_with_missing_geometry_file):
 
 def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
     """Test conversion of SMART patrol XML to GeoJSON format."""
-    result, output_format = convert_data([str(smart_patrol_sample_xml_file)], "smart")
+    result, output_format = convert_data(file_paths=[str(smart_patrol_sample_xml_file)], file_format="smart")
     assert output_format == "geojson"
 
     # Validate GeoJSON structure
@@ -1058,7 +1061,7 @@ def test_convert_data__smart_patrol_xml(smart_patrol_sample_xml_file):
 
 
 def test_read_data__kobotoolbox_csv(kobotoolbox_csv_file):
-    result, output_format = convert_data([str(kobotoolbox_csv_file)], "csv")
+    result, output_format = convert_data(file_paths=[str(kobotoolbox_csv_file)], file_format="csv")
     assert output_format == "csv"
 
     headers = result[0]
@@ -1078,12 +1081,12 @@ def test_read_data__csv_only_headers(tmp_path):
     file = tmp_path / "only_headers.csv"
     file.write_text("start,location,comment\n")
     with pytest.raises(ValueError, match="no data"):
-        convert_data([str(file)], "csv")
+        convert_data(file_paths=[str(file)], file_format="csv")
 
 
 def test_convert_data__csv_default_still_csv(kobotoolbox_csv_file):
     """Backward compat: convert_data without output_format still returns CSV."""
-    result, output_format = convert_data([str(kobotoolbox_csv_file)], "csv")
+    result, output_format = convert_data(file_paths=[str(kobotoolbox_csv_file)], file_format="csv")
     assert output_format == "csv"
     assert isinstance(result, list)
     assert isinstance(result[0], list)
@@ -1094,8 +1097,8 @@ def test_convert_data__csv_to_geojson(tmp_path):
     csv_file = tmp_path / "spatial.csv"
     csv_file.write_text("_id,name,lat,lon\n1,Alpha,5.0,-59.0\n2,Bravo,6.0,-58.0\n")
     result, output_format = convert_data(
-        [str(csv_file)],
-        "csv",
+        file_paths=[str(csv_file)],
+        file_format="csv",
         output_format="geojson",
         longitude_col="lon",
         latitude_col="lat",
@@ -1114,14 +1117,14 @@ def test_convert_data__csv_to_geojson(tmp_path):
 
 def test_convert_data__kobotoolbox_empty_csv(kobotoolbox_empty_submission_csv_file):
     with pytest.raises(ValueError, match="no data"):
-        convert_data([str(kobotoolbox_empty_submission_csv_file)], "csv")
+        convert_data(file_paths=[str(kobotoolbox_empty_submission_csv_file)], file_format="csv")
 
 
 # --- Excel tests ---
 
 
 def test_convert_data__kobotoolbox_xlsx(kobotoolbox_excel_file):
-    result, output_format = convert_data([str(kobotoolbox_excel_file)], "xlsx")
+    result, output_format = convert_data(file_paths=[str(kobotoolbox_excel_file)], file_format="xlsx")
     assert output_format == "csv"
     headers = result[0]
     assert "What community are you from?" in headers
@@ -1154,7 +1157,7 @@ def test_convert_data__xlsx_preserves_integer_and_explicit_decimals(tmp_path):
     ws["D4"] = "5.0"
     wb.save(path)
 
-    result, output_format = convert_data([str(path)], "xlsx")
+    result, output_format = convert_data(file_paths=[str(path)], file_format="xlsx")
     assert output_format == "csv"
     assert result == [
         ["id", "count", "score", "note"],
@@ -1169,7 +1172,7 @@ def test_convert_data__csv_preserves_written_number_text(tmp_path):
     path = tmp_path / "numbers.csv"
     path.write_text("id,count,score\n1,42,3.14\n2,42.0,1.50\n")
 
-    result, output_format = convert_data([str(path)], "csv")
+    result, output_format = convert_data(file_paths=[str(path)], file_format="csv")
     assert output_format == "csv"
     assert result == [
         ["id", "count", "score"],
@@ -1182,7 +1185,7 @@ def test_convert_data__kobotoolbox_multiple_sheets_xlsx(
     kobotoolbox_multiple_sheets_excel_file,
 ):
     with pytest.raises(ValueError, match="only single-sheet files are supported"):
-        convert_data([str(kobotoolbox_multiple_sheets_excel_file)], "xlsx")
+        convert_data(file_paths=[str(kobotoolbox_multiple_sheets_excel_file)], file_format="xlsx")
 
 
 # --- JSON tests ---
@@ -1191,7 +1194,7 @@ def test_convert_data__kobotoolbox_multiple_sheets_xlsx(
 def test_convert_data__json(tmp_path):
     file = tmp_path / "test.json"
     file.write_text('[{"a": 1, "b": 2}, {"a": 3}]')
-    result, output_format = convert_data([str(file)], "json")
+    result, output_format = convert_data(file_paths=[str(file)], file_format="json")
     assert output_format == "csv"
     assert result == [["a", "b"], ["1", "2"], ["3", ""]]
 
@@ -1200,7 +1203,7 @@ def test_convert_data__json_empty(tmp_path):
     file = tmp_path / "test_empty.json"
     file.write_text("[]")
     with pytest.raises(ValueError, match="JSON file contains no records"):
-        convert_data([str(file)], "json")
+        convert_data(file_paths=[str(file)], file_format="json")
 
 
 def test_convert_data__json_with_utf8_bom(tmp_path):
@@ -1220,9 +1223,9 @@ def test_convert_data__json_with_utf8_bom(tmp_path):
         encoding="utf-8",
     )
 
-    assert detect_structured_data_type([str(path)]) == "json"
+    assert detect_structured_data_type(file_paths=[str(path)]) == "json"
 
-    result, output_format = convert_data([str(path)], "json")
+    result, output_format = convert_data(file_paths=[str(path)], file_format="json")
     assert output_format == "csv"
     assert result == [
         ["extra", "id", "name"],
@@ -1249,9 +1252,9 @@ def test_convert_data__geojson_with_utf8_bom(tmp_path):
     }
     path.write_text("\ufeff" + json.dumps(geojson), encoding="utf-8")
 
-    assert detect_structured_data_type([str(path)]) == "geojson"
+    assert detect_structured_data_type(file_paths=[str(path)]) == "geojson"
 
-    result, output_format = convert_data([str(path)], "geojson")
+    result, output_format = convert_data(file_paths=[str(path)], file_format="geojson")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 1)
     assert result["features"][0]["properties"]["name"] == "bom_point"
@@ -1259,9 +1262,9 @@ def test_convert_data__geojson_with_utf8_bom(tmp_path):
 
 def test_convert_data__cybertracker_json_fixture():
     assert _CYBERTRACKER_FIXTURE.is_file()
-    assert detect_structured_data_type([str(_CYBERTRACKER_FIXTURE)]) == "cybertracker"
+    assert detect_structured_data_type(file_paths=[str(_CYBERTRACKER_FIXTURE)]) == "cybertracker"
 
-    result, output_format = convert_data([str(_CYBERTRACKER_FIXTURE)], "cybertracker")
+    result, output_format = convert_data(file_paths=[str(_CYBERTRACKER_FIXTURE)], file_format="cybertracker")
     assert output_format == "geojson"
     _validate_geojson_structure(result, 3)
 
@@ -1279,11 +1282,12 @@ def test_osm_data_consistency_across_formats(
     osm_overpass_gpx_file, osm_overpass_geojson_file, osm_overpass_kml_file
 ):
     """Test that the same OSM data is consistent across GPX, GeoJSON, and KML formats."""
-    gpx_result, gpx_format = convert_data([str(osm_overpass_gpx_file)], "gpx")
+    gpx_result, gpx_format = convert_data(file_paths=[str(osm_overpass_gpx_file)], file_format="gpx")
     geojson_result, geojson_format = convert_data(
-        [str(osm_overpass_geojson_file)], "geojson"
+        file_paths=[str(osm_overpass_geojson_file)],
+        file_format="geojson",
     )
-    kml_result, kml_format = convert_data([str(osm_overpass_kml_file)], "kml")
+    kml_result, kml_format = convert_data(file_paths=[str(osm_overpass_kml_file)], file_format="kml")
 
     assert gpx_format == "geojson"
     assert geojson_format == "geojson"
@@ -1358,7 +1362,7 @@ def test_osm_data_consistency_across_formats(
 
 
 def test_convert_data__shapefile(shapefile_paths):
-    result, output_format = convert_data(shapefile_paths, "shapefile")
+    result, output_format = convert_data(file_paths=shapefile_paths, file_format="shapefile")
     assert output_format == "geojson"
     _validate_geojson_structure(result, len(result["features"]))
 
@@ -1373,13 +1377,13 @@ def test_convert_data__shapefile(shapefile_paths):
 
 
 def test_detect_structured_data_type__geopackage(geopackage_file):
-    result = detect_structured_data_type([str(geopackage_file)])
+    result = detect_structured_data_type(file_paths=[str(geopackage_file)])
     assert result == "geopackage"
 
 
 def test_convert_data__geopackage(geopackage_file):
     """Test conversion of a multi-layer GeoPackage to GeoJSON."""
-    result, output_format = convert_data([str(geopackage_file)], "geopackage")
+    result, output_format = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
     assert output_format == "geojson"
 
     # 36 apiary (Point) + 18 area (Polygon) + 1 track (LineString) = 55 spatial features
@@ -1397,7 +1401,7 @@ def test_convert_data__geopackage(geopackage_file):
 
 def test_convert_data__geopackage_geometry_types(geopackage_file):
     """Test that all spatial layer geometry types are preserved."""
-    result, _ = convert_data([str(geopackage_file)], "geopackage")
+    result, _ = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
 
     geom_types = {f["geometry"]["type"] for f in result["features"]}
     assert "Point" in geom_types
@@ -1407,7 +1411,7 @@ def test_convert_data__geopackage_geometry_types(geopackage_file):
 
 def test_convert_data__geopackage_properties(geopackage_file):
     """Test that properties from spatial layers are preserved with __geopackage_layer."""
-    result, _ = convert_data([str(geopackage_file)], "geopackage")
+    result, _ = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
 
     # Check an apiary feature (Point layer)
     apiary_features = [
@@ -1442,7 +1446,7 @@ def test_convert_data__geopackage_properties(geopackage_file):
 
 def test_convert_data__geopackage___geopackage_layer(geopackage_file):
     """Test that every feature carries the originating layer name."""
-    result, _ = convert_data([str(geopackage_file)], "geopackage")
+    result, _ = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
 
     sources = {f["properties"]["__geopackage_layer"] for f in result["features"]}
     assert sources == {"apiary", "area", "tracks"}
@@ -1450,7 +1454,7 @@ def test_convert_data__geopackage___geopackage_layer(geopackage_file):
 
 def test_convert_data__geopackage_skips_non_spatial(geopackage_file):
     """Test that non-spatial layers (Reviews, Pollen_Consumption) are excluded."""
-    result, _ = convert_data([str(geopackage_file)], "geopackage")
+    result, _ = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
 
     for feature in result["features"]:
         assert feature["geometry"] is not None
@@ -1462,7 +1466,7 @@ def test_convert_data__geopackage_skips_non_spatial(geopackage_file):
 
 def test_convert_data__geopackage_null_properties_stripped(geopackage_file):
     """Test that None-valued properties are excluded from output."""
-    result, _ = convert_data([str(geopackage_file)], "geopackage")
+    result, _ = convert_data(file_paths=[str(geopackage_file)], file_format="geopackage")
 
     for feature in result["features"]:
         for value in feature["properties"].values():
@@ -1478,7 +1482,7 @@ def test_read_geopackage__empty(tmp_path):
     with fiona.open(gpkg_path, "w", driver="GPKG", schema=schema) as _:
         pass  # create empty layer
     with pytest.raises(ValueError, match="No valid features found in GeoPackage"):
-        read_geopackage(gpkg_path)
+        read_geopackage(path=gpkg_path)
 
 
 # --- Error handling tests ---
@@ -1486,10 +1490,10 @@ def test_read_geopackage__empty(tmp_path):
 
 def test_convert_data__unsupported():
     with pytest.raises(ValueError):
-        convert_data("/fake/path.foo", "foo")
+        convert_data(file_paths="/fake/path.foo", file_format="foo")
 
 
 def test_convert_data__unsupported_conversion(mapeo_geojson_file):
     """Requesting an unsupported cross-format conversion raises ValueError."""
     with pytest.raises(ValueError, match="Unsupported conversion"):
-        convert_data([str(mapeo_geojson_file)], "geojson", output_format="csv")
+        convert_data(file_paths=[str(mapeo_geojson_file)], file_format="geojson", output_format="csv")

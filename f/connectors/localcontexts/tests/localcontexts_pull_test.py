@@ -14,7 +14,7 @@ def test_transform_labels_for_db():
     project_data = server_responses.SAMPLE_PROJECT
     normalized_title = "guardian_connector_lc_labels"
 
-    result = transform_labels_for_db(project_data, normalized_title)
+    result = transform_labels_for_db(project_data=project_data, normalized_title=normalized_title)
 
     # Should have 2 BC labels + 3 TK labels = 5 total
     assert len(result) == 5
@@ -89,9 +89,9 @@ def test_script_e2e(localcontexts_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        localcontexts_server.localcontexts_project,
-        pg_database,
-        asset_storage,
+        localcontexts=localcontexts_server.localcontexts_project,
+        db=pg_database,
+        attachment_root=asset_storage,
     )
 
     # Check that project.json was saved
@@ -180,7 +180,11 @@ def test_project_with_no_labels(empty_project_server, pg_database, tmp_path):
     """Test handling of a project with no labels."""
     asset_storage = tmp_path / "datalake"
 
-    main(empty_project_server.localcontexts_project, pg_database, asset_storage)
+    main(
+        localcontexts=empty_project_server.localcontexts_project,
+        db=pg_database,
+        attachment_root=asset_storage,
+    )
 
     # Project JSON should still be saved
     project_json_path = (
@@ -207,7 +211,11 @@ def test_skipped_attachments(localcontexts_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     # Run once
-    main(localcontexts_server.localcontexts_project, pg_database, asset_storage)
+    main(
+        localcontexts=localcontexts_server.localcontexts_project,
+        db=pg_database,
+        attachment_root=asset_storage,
+    )
 
     labels_dir = (
         asset_storage / "localcontexts" / "guardian_connector_lc_labels" / "labels"
@@ -220,7 +228,11 @@ def test_skipped_attachments(localcontexts_server, pg_database, tmp_path):
     bc_provenance_path.write_bytes(b"modified content")
 
     # Run again
-    main(localcontexts_server.localcontexts_project, pg_database, asset_storage)
+    main(
+        localcontexts=localcontexts_server.localcontexts_project,
+        db=pg_database,
+        attachment_root=asset_storage,
+    )
 
     # File should not be overwritten
     modified_content = bc_provenance_path.read_bytes()

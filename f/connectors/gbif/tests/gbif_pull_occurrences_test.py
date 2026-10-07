@@ -29,9 +29,9 @@ def test_submit_uses_basic_auth_and_last_interpreted_predicate(
         body=server_responses.DOWNLOAD_KEY,
     )
     result = gbif_submit_download.main(
-        {"username": "account", "password": "secret"},
-        [[-55.03, 3.23], [-54.12, 3.67]],
-        2,
+        gbif_account={"username": "account", "password": "secret"},
+        bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+        max_months_lookback=2,
     )
     request = mocked_responses.calls[0].request
     assert request.headers["Authorization"].startswith("Basic ")
@@ -46,7 +46,8 @@ def test_submit_uses_basic_auth_and_last_interpreted_predicate(
 def test_submit_rejects_oversized_bounds_before_request(mocked_responses):
     with pytest.raises(ValueError):
         gbif_submit_download.main(
-            {"username": "u", "password": "p"}, [[0, 0], [2, 2]]
+            gbif_account={"username": "u", "password": "p"},
+            bounding_box=[[0, 0], [2, 2]],
         )
     assert not mocked_responses.calls
 
@@ -56,11 +57,11 @@ def test_check_known_pending_and_success_statuses(mocked_responses, status):
     mocked_responses.add(
         responses.GET,
         f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
-        json=server_responses.metadata(status),
+        json=server_responses.metadata(status=status),
     )
     result = gbif_check_download.main(
-        server_responses.DOWNLOAD_KEY,
-        (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        download_key=server_responses.DOWNLOAD_KEY,
+        deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
     )
     assert result["succeeded"] is (status == "SUCCEEDED")
 
@@ -72,19 +73,20 @@ def test_check_terminal_or_unknown_status_fails(mocked_responses, status):
     mocked_responses.add(
         responses.GET,
         f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
-        json=server_responses.metadata(status),
+        json=server_responses.metadata(status=status),
     )
     with pytest.raises(RuntimeError):
         gbif_check_download.main(
-            server_responses.DOWNLOAD_KEY,
-            (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         )
 
 
 def test_check_deadline_fails_without_http(mocked_responses):
     with pytest.raises(TimeoutError):
         gbif_check_download.main(
-            server_responses.DOWNLOAD_KEY, "2000-01-01T00:00:00+00:00"
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline="2000-01-01T00:00:00+00:00",
         )
     assert not mocked_responses.calls
 
@@ -98,8 +100,8 @@ def test_check_marks_transient_http_failures_retryable(mocked_responses, status)
     )
     with pytest.raises(RuntimeError, match="retryable"):
         gbif_check_download.main(
-            server_responses.DOWNLOAD_KEY,
-            (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         )
 
 
@@ -108,7 +110,7 @@ def test_real_archive_conversion_has_852_rows_and_preserves_geometry(
 ):
     archive = tmp_path / "fixture.zip"
     archive.write_bytes(archive_bytes)
-    csv_path, count = gbif_pull_occurrences._convert_archive(archive, tmp_path / "converted.csv")
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "converted.csv")
     assert count == 852
     rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
     assert len(rows) == 852
@@ -135,10 +137,10 @@ def test_pull_imports_and_upserts_enriched_real_archive(
     )
     with caplog.at_level(logging.INFO, logger="f.connectors.gbif.gbif_pull_occurrences"):
         result = gbif_pull_occurrences.main(
-            server_responses.DOWNLOAD_KEY,
-            pg_database,
-            "gbif_occurrences",
-            str(tmp_path),
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
+            db_table_name="gbif_occurrences",
+            attachment_root=str(tmp_path),
         )
     assert result["record_count"] == 852
     destination = tmp_path / "gbif_occurrences"
@@ -189,10 +191,10 @@ def test_pull_imports_and_upserts_enriched_real_archive(
         responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
     )
     gbif_pull_occurrences.main(
-        server_responses.DOWNLOAD_KEY,
-        pg_database,
-        "gbif_occurrences",
-        str(tmp_path),
+        download_key=server_responses.DOWNLOAD_KEY,
+        db=pg_database,
+        db_table_name="gbif_occurrences",
+        attachment_root=str(tmp_path),
         destination_action=USE_EXISTING_DATASET,
         existing_db_table_name="gbif_occurrences",
     )
@@ -215,7 +217,7 @@ def test_convert_rejects_missing_and_duplicate_ids(tmp_path):
         with zipfile.ZipFile(archive, "w") as zipped:
             zipped.writestr("occurrences.csv", data)
         with pytest.raises(ValueError):
-            gbif_pull_occurrences._convert_archive(archive, tmp_path / f"{name}.csv")
+            gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / f"{name}.csv")
 
 
 def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
@@ -225,7 +227,7 @@ def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
             "occurrences.csv",
             "gbifID\tdecimalLongitude\tdecimalLatitude\tspecies\n1\tbad\t2\tTest\n",
         )
-    csv_path, count = gbif_pull_occurrences._convert_archive(archive, tmp_path / "coordinates.csv")
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "coordinates.csv")
     assert count == 1
     row = next(csv.DictReader(csv_path.open(encoding="utf-8")))
     assert row["decimal_longitude"] == "bad"
@@ -239,7 +241,7 @@ def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
     [("181", "0"), ("0", "-91"), ("nan", "0"), ("0", "inf")],
 )
 def test_coordinates_rejects_invalid_wgs84_values(longitude, latitude):
-    assert gbif_pull_occurrences._coordinates(longitude, latitude) is None
+    assert gbif_pull_occurrences._coordinates(longitude=longitude, latitude=latitude) is None
 
 
 def test_convert_treats_literal_quotes_as_tsv_data(tmp_path):
@@ -249,7 +251,7 @@ def test_convert_treats_literal_quotes_as_tsv_data(tmp_path):
             "occurrences.csv",
             'gbifID\tverbatimScientificName\n1\t"unmatched quote\n2\tsecond record\n',
         )
-    csv_path, count = gbif_pull_occurrences._convert_archive(archive, tmp_path / "quotes.csv")
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "quotes.csv")
     assert count == 2
     rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
     assert [row["gbif_id"] for row in rows] == ["1", "2"]
@@ -261,7 +263,7 @@ def test_convert_rejects_headers_that_collide_after_snake_case_conversion(tmp_pa
     with zipfile.ZipFile(archive, "w") as zipped:
         zipped.writestr("occurrences.csv", "gbifID\tgbif_id\n1\t1\n")
     with pytest.raises(ValueError, match="conflict"):
-        gbif_pull_occurrences._convert_archive(archive, tmp_path / "colliding-headers.csv")
+        gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "colliding-headers.csv")
 
 
 def test_enrich_csv_resolves_each_distinct_registry_key_once(
@@ -285,7 +287,7 @@ def test_enrich_csv_resolves_each_distinct_registry_key_once(
         json={"title": " Cornell Lab of Ornithology "},
     )
 
-    summary = gbif_pull_occurrences._enrich_csv(source, tmp_path / "enriched.csv")
+    summary = gbif_pull_occurrences._enrich_csv(source_path=source, output_path=tmp_path / "enriched.csv")
 
     rows = list(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
     assert len(mocked_responses.calls) == 2
@@ -321,7 +323,7 @@ def test_enrich_csv_keeps_keys_when_registry_lookup_fails(
     )
 
     with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
-        summary = gbif_pull_occurrences._enrich_csv(source, tmp_path / "enriched.csv")
+        summary = gbif_pull_occurrences._enrich_csv(source_path=source, output_path=tmp_path / "enriched.csv")
 
     row = next(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
     assert row["dataset_key"] == server_responses.DATASET_KEY
@@ -347,7 +349,8 @@ def test_registry_enrichment_stops_at_deadline(monkeypatch, caplog):
 
     with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
         dataset_titles, publishing_org_titles = gbif_pull_occurrences._resolve_registry_titles(
-            {"dataset-1", "dataset-2"}, {"organization-1", "organization-2"}
+            dataset_keys={"dataset-1", "dataset-2"},
+            publishing_org_keys={"organization-1", "organization-2"},
         )
 
     assert set(dataset_titles) == {"dataset-1"}
@@ -368,14 +371,14 @@ def test_convert_rejects_missing_multiple_or_header_only_members(
         for member in members:
             zipped.writestr(member, "gbifID\tdecimalLongitude\n")
     with pytest.raises(ValueError, match=message):
-        gbif_pull_occurrences._convert_archive(archive, tmp_path / "invalid.csv")
+        gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "invalid.csv")
 
 
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         gbif_pull_occurrences.main(
-            server_responses.DOWNLOAD_KEY,
-            pg_database,
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )
@@ -395,7 +398,10 @@ def test_pull_retains_empty_download_without_creating_an_occurrence_table(
         responses.GET, server_responses.ARCHIVE_URL, body=archive.read_bytes()
     )
     result = gbif_pull_occurrences.main(
-        server_responses.DOWNLOAD_KEY, pg_database, "empty_gbif", str(tmp_path)
+        download_key=server_responses.DOWNLOAD_KEY,
+        db=pg_database,
+        db_table_name="empty_gbif",
+        attachment_root=str(tmp_path),
     )
     assert result["record_count"] == 0
     assert (tmp_path / "empty_gbif" / f"{server_responses.DOWNLOAD_KEY}.json").is_file()

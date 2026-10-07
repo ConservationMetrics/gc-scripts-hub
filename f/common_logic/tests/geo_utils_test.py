@@ -28,7 +28,7 @@ def test_geojson_to_line_delimited_feature_collection(tmp_path):
     }
     source.write_text(json.dumps(feature_collection), encoding="utf-8")
 
-    ld_path = geojson_to_line_delimited(source)
+    ld_path = geojson_to_line_delimited(source_path=source)
 
     assert ld_path.is_file()
     assert str(ld_path).endswith(".geojson.ld")
@@ -49,7 +49,7 @@ def test_geojson_to_line_delimited_single_object(tmp_path):
     }
     source.write_text(json.dumps(feature), encoding="utf-8")
 
-    ld_path = geojson_to_line_delimited(source)
+    ld_path = geojson_to_line_delimited(source_path=source)
 
     lines = ld_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
@@ -58,8 +58,8 @@ def test_geojson_to_line_delimited_single_object(tmp_path):
 
 def test_bounding_box_to_wkt_accepts_list_and_json():
     expected = "POLYGON((-55.03 3.23,-54.12 3.23,-54.12 3.67,-55.03 3.67,-55.03 3.23))"
-    assert bounding_box_to_wkt([[-55.03, 3.23], [-54.12, 3.67]]) == expected
-    assert bounding_box_to_wkt(json.dumps([[-55.03, 3.23], [-54.12, 3.67]])) == expected
+    assert bounding_box_to_wkt(bounding_box=[[-55.03, 3.23], [-54.12, 3.67]]) == expected
+    assert bounding_box_to_wkt(bounding_box=json.dumps([[-55.03, 3.23], [-54.12, 3.67]])) == expected
 
 
 def test_bounding_box_to_wkt_rejects_invalid_bounds():
@@ -76,34 +76,34 @@ def test_bounding_box_to_wkt_rejects_invalid_bounds():
     ]
     for bounds in invalid:
         try:
-            bounding_box_to_wkt(bounds)
+            bounding_box_to_wkt(bounding_box=bounds)
         except ValueError:
             continue
         raise AssertionError(f"Expected invalid bounds to fail: {bounds}")
 
 
 def test_bounding_box_to_wkt_area_limit_uses_geodesic_area():
-    assert bounding_box_to_wkt([[0, 0], [0.89, 0.89]], max_area_km2=10_000)
+    assert bounding_box_to_wkt(bounding_box=[[0, 0], [0.89, 0.89]], max_area_km2=10_000)
     try:
-        bounding_box_to_wkt([[0, 0], [1, 1]], max_area_km2=10_000)
+        bounding_box_to_wkt(bounding_box=[[0, 0], [1, 1]], max_area_km2=10_000)
     except ValueError:
         pass
     else:
         raise AssertionError("Expected area above 10,000 km2 to fail")
-    bounding_box_to_wkt([[0, 70], [1, 71]], max_area_km2=10_000)
-    assert bounding_box_to_wkt([[0, 0], [1, 1]], max_area_km2=12_350)
+    bounding_box_to_wkt(bounding_box=[[0, 70], [1, 71]], max_area_km2=10_000)
+    assert bounding_box_to_wkt(bounding_box=[[0, 0], [1, 1]], max_area_km2=12_350)
 
 
 def test_bounding_box_to_wkt_preserves_close_coordinate_precision():
-    wkt = bounding_box_to_wkt([[-122.12346, 45.0], [-122.12344, 45.00002]])
+    wkt = bounding_box_to_wkt(bounding_box=[[-122.12346, 45.0], [-122.12344, 45.00002]])
     assert "-122.12346 45.0,-122.12344 45.0" in wkt
     assert "-122.12344 45.00002,-122.12346 45.00002" in wkt
 
 
 def test_is_valid_longitude_latitude_rejects_non_finite_and_out_of_range_values():
-    assert is_valid_longitude_latitude(-180, -90)
-    assert is_valid_longitude_latitude(180, 90)
-    assert not is_valid_longitude_latitude(float("nan"), 0)
-    assert not is_valid_longitude_latitude(0, float("inf"))
-    assert not is_valid_longitude_latitude(-180.1, 0)
-    assert not is_valid_longitude_latitude(0, 90.1)
+    assert is_valid_longitude_latitude(longitude=-180, latitude=-90)
+    assert is_valid_longitude_latitude(longitude=180, latitude=90)
+    assert not is_valid_longitude_latitude(longitude=float("nan"), latitude=0)
+    assert not is_valid_longitude_latitude(longitude=0, latitude=float("inf"))
+    assert not is_valid_longitude_latitude(longitude=-180.1, latitude=0)
+    assert not is_valid_longitude_latitude(longitude=0, latitude=90.1)

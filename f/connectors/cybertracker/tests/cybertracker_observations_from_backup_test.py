@@ -22,7 +22,7 @@ from f.connectors.cybertracker.cybertracker_observations_from_backup import (
     ],
 )
 def test_looks_like_uid(value, expected):
-    assert _looks_like_uid(value) is expected
+    assert _looks_like_uid(value=value) is expected
 
 
 def test_normalize_field_value_skips_list_of_dashed_uuids_like_hex32():
@@ -33,11 +33,11 @@ def test_normalize_field_value_skips_list_of_dashed_uuids_like_hex32():
         "90056d9b-5164-4094-bb0e-bceb1554bcc2",
         "bcd9f6c7-9f41-4466-bef9-cae764297de5",
     ]
-    assert _normalize_field_value(key, child_ids) is None
+    assert _normalize_field_value(raw_key=key, value=child_ids) is None
 
 
 def test_parse_cybertracker_json__feature_collection(cybertracker_json_path):
-    geojson = parse_cybertracker_json(cybertracker_json_path)
+    geojson = parse_cybertracker_json(json_path=cybertracker_json_path)
 
     assert geojson["type"] == "FeatureCollection"
     assert "features" in geojson
@@ -52,7 +52,7 @@ def test_parse_cybertracker_json__feature_collection(cybertracker_json_path):
 def test_parse_cybertracker_json__location_ping_has_geometry(cybertracker_json_path):
     """Plain ``location`` (not ``cto_location``) still yields a Point — regression for
     sessions that are observations but use the non-cto field name."""
-    geojson = parse_cybertracker_json(cybertracker_json_path)
+    geojson = parse_cybertracker_json(json_path=cybertracker_json_path)
     feat = next(
         f for f in geojson["features"] if f["id"] == "cb5e04cf13124dca9f1f1665ef059642"
     )
@@ -62,7 +62,7 @@ def test_parse_cybertracker_json__location_ping_has_geometry(cybertracker_json_p
 
 
 def test_parse_cybertracker_json__field_mapping_and_geometry(cybertracker_json_path):
-    geojson = parse_cybertracker_json(cybertracker_json_path)
+    geojson = parse_cybertracker_json(json_path=cybertracker_json_path)
     features = geojson["features"]
 
     # Forest expedition row (schema with photo_of_site + audio_recording).
@@ -100,7 +100,7 @@ def test_parse_cybertracker_json__field_mapping_and_geometry(cybertracker_json_p
 def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(
     cybertracker_json_path,
 ):
-    geojson = parse_cybertracker_json(cybertracker_json_path)
+    geojson = parse_cybertracker_json(json_path=cybertracker_json_path)
     features = geojson["features"]
 
     # Community mapping row: repeat parent holds child uids; filename comes from child.
@@ -115,8 +115,8 @@ def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            "missing.json",
-            pg_database,
+            cybertracker_observations_path="missing.json",
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )

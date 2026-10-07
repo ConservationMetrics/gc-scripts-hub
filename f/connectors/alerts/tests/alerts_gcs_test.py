@@ -33,7 +33,10 @@ def test_prepare_alerts_metadata():
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
     prepared_alerts_metadata, alert_statistics = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider", max_months_lookback=None
+        alerts_metadata=alerts_metadata,
+        territory_id=100,
+        alerts_provider="test_provider",
+        max_months_lookback=None,
     )
 
     # Check that alerts statistics is the latest month and year in the CSV
@@ -47,10 +50,16 @@ def test_metadata_id_stability():
     alerts_metadata = pd.read_csv(alerts_history_csv).to_csv(index=False)
 
     first, _ = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider", max_months_lookback=None
+        alerts_metadata=alerts_metadata,
+        territory_id=100,
+        alerts_provider="test_provider",
+        max_months_lookback=None,
     )
     second, _ = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider", max_months_lookback=None
+        alerts_metadata=alerts_metadata,
+        territory_id=100,
+        alerts_provider="test_provider",
+        max_months_lookback=None,
     )
 
     # Order shouldn't matter but just to be safe, sort by _id
@@ -64,7 +73,11 @@ def test_metadata_id_stability():
 def test_alert_id_generation(tmp_path):
     file_path = Path(assets_directory, "alert_202309900112345671.geojson")
     geojson_files = [str(file_path)]
-    prepared, _ = prepare_alerts_data(tmp_path, geojson_files, "test_provider")
+    prepared, _ = prepare_alerts_data(
+        local_directory=tmp_path,
+        geojson_files=geojson_files,
+        alerts_provider="test_provider",
+    )
 
     assert len(prepared) > 0
     for row in prepared:
@@ -123,7 +136,7 @@ def test_geometry_collection_validation(tmp_path):
     with pytest.raises(
         ValueError, match="GeometryCollection geometries are not supported"
     ):
-        prepare_alerts_data(tmp_path, geojson_files, "test_provider")
+        prepare_alerts_data(local_directory=tmp_path, geojson_files=geojson_files, alerts_provider="test_provider")
 
 
 @pytest.fixture
@@ -162,13 +175,13 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     alerts_metadata = _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -315,13 +328,13 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
     # Now, let's run the script again to check if alerts_metadata is returned (it should be None,
     # since no new alerts data or metadata has been inserted into the database)
     alerts_metadata = _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -333,13 +346,13 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     asset_storage.mkdir(parents=True, exist_ok=True)
 
     _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -349,13 +362,13 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     )
 
     _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -377,13 +390,13 @@ def test_file_update_logic(pg_database, mock_alerts_storage_client, tmp_path):
     blob.upload_from_string(new_content)
 
     _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -435,13 +448,13 @@ def test_metadata_only_scenario(
     # This should not raise an assertion error even though no files exist for territory 100
     # because metadata exists for territory 100 in alerts_history.csv
     alerts_metadata = _main(
-        mock_alerts_storage_client_metadata_only,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,  # territory_id 100 has metadata but no files
-        pg_database,
-        "fake_alerts_metadata_only",
-        asset_storage,
+        storage_client=mock_alerts_storage_client_metadata_only,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts_metadata_only",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -477,13 +490,13 @@ def test_no_files_no_metadata_scenario(
         match="No files found to download.*and no metadata found for territory_id 999",
     ):
         _main(
-            mock_alerts_storage_client_metadata_only,
-            MOCK_BUCKET_NAME,
-            "test_provider",
-            999,  # territory_id 999 has neither files nor metadata
-            pg_database,
-            "fake_alerts_no_data",
-            asset_storage,
+            storage_client=mock_alerts_storage_client_metadata_only,
+            alerts_bucket=MOCK_BUCKET_NAME,
+            alerts_provider="test_provider",
+            territory_id=999,
+            db=pg_database,
+            db_table_name="fake_alerts_no_data",
+            destination_path=asset_storage,
             max_months_lookback=None,
         )
 
@@ -518,13 +531,21 @@ def test_max_months_lookback_alerts_data_filtering(mock_datetime, tmp_path):
 
     # No lookback - process all files
     all_files = [str(old_file), str(recent_file)]
-    prepared_all, _ = prepare_alerts_data(tmp_path, all_files, "test_provider")
+    prepared_all, _ = prepare_alerts_data(
+        local_directory=tmp_path,
+        geojson_files=all_files,
+        alerts_provider="test_provider",
+    )
     assert len(prepared_all) == 2
 
     # With lookback, we'd need to filter files before calling prepare_alerts_data
     # This test verifies that prepare_alerts_data itself processes what it's given
     recent_only = [str(recent_file)]
-    prepared_filtered, _ = prepare_alerts_data(tmp_path, recent_only, "test_provider")
+    prepared_filtered, _ = prepare_alerts_data(
+        local_directory=tmp_path,
+        geojson_files=recent_only,
+        alerts_provider="test_provider",
+    )
     assert len(prepared_filtered) == 1
     assert prepared_filtered[0]["alert_id"] == "test_alert_456"
 
@@ -551,13 +572,19 @@ def test_max_months_lookback_metadata_filtering(mock_datetime):
 
     # No lookback - get all data
     prepared_all, _ = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider", max_months_lookback=None
+        alerts_metadata=alerts_metadata,
+        territory_id=100,
+        alerts_provider="test_provider",
+        max_months_lookback=None,
     )
     assert len(prepared_all) == 3
 
     # 6 months lookback - should exclude 2023 data
     prepared_filtered, _ = prepare_alerts_metadata(
-        alerts_metadata, 100, "test_provider", max_months_lookback=6
+        alerts_metadata=alerts_metadata,
+        territory_id=100,
+        alerts_provider="test_provider",
+        max_months_lookback=6,
     )
     assert len(prepared_filtered) == 2
     descriptions = {row["description_alerts"] for row in prepared_filtered}
@@ -577,13 +604,13 @@ def test_max_months_lookback_e2e(
 
     # Mock data is from 2023/09 - use 1 month lookback to filter everything
     result = _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts_filtered",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts_filtered",
+        destination_path=asset_storage,
         max_months_lookback=1,
     )
 
@@ -624,7 +651,7 @@ def test_generate_alerts_statistics_from_data():
         },
     ]
 
-    stats = _generate_alerts_statistics_from_data(prepared_data)
+    stats = _generate_alerts_statistics_from_data(prepared_alerts_data=prepared_data)
 
     assert stats is not None
     assert stats["total_alerts"] == "1"  # Only 1 alert in latest month (10/2023)
@@ -632,7 +659,7 @@ def test_generate_alerts_statistics_from_data():
     assert stats["description_alerts"] == "deforestation"
 
     # Test with no data
-    assert _generate_alerts_statistics_from_data([]) is None
+    assert _generate_alerts_statistics_from_data(prepared_alerts_data=[]) is None
 
     # Test with multiple alert types in latest month
     prepared_data_multi = [
@@ -650,7 +677,7 @@ def test_generate_alerts_statistics_from_data():
         },
     ]
 
-    stats_multi = _generate_alerts_statistics_from_data(prepared_data_multi)
+    stats_multi = _generate_alerts_statistics_from_data(prepared_alerts_data=prepared_data_multi)
     assert stats_multi["total_alerts"] == "2"
     assert stats_multi["date"] == "10/2023"
     assert "deforestation" in stats_multi["description_alerts"]
@@ -674,7 +701,7 @@ def test_generate_alerts_statistics_from_data():
         },
     ]
 
-    stats_with_day = _generate_alerts_statistics_from_data(prepared_data_with_day)
+    stats_with_day = _generate_alerts_statistics_from_data(prepared_alerts_data=prepared_data_with_day)
     assert stats_with_day is not None
     assert stats_with_day["date"] == "25/9/2023"
 
@@ -682,7 +709,7 @@ def test_generate_alerts_statistics_from_data():
 def test_choose_latest_alerts_statistics():
     """Test that _choose_latest_alerts_statistics correctly chooses the winning statistics."""
     # Both None
-    assert _choose_latest_alerts_statistics(None, None) is None
+    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=None, alerts_statistics_from_data=None) is None
 
     # Only metadata (MM/YYYY format)
     metadata_stats = {
@@ -690,7 +717,7 @@ def test_choose_latest_alerts_statistics():
         "date": "10/2023",
         "description_alerts": "test",
     }
-    assert _choose_latest_alerts_statistics(metadata_stats, None) == metadata_stats
+    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=metadata_stats, alerts_statistics_from_data=None) == metadata_stats
 
     # Only data (DD/MM/YYYY format)
     data_stats = {
@@ -698,7 +725,7 @@ def test_choose_latest_alerts_statistics():
         "date": "15/11/2023",
         "description_alerts": "other",
     }
-    assert _choose_latest_alerts_statistics(None, data_stats) == data_stats
+    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=None, alerts_statistics_from_data=data_stats) == data_stats
 
     # Data is newer - should choose data
     metadata_older = {
@@ -711,7 +738,10 @@ def test_choose_latest_alerts_statistics():
         "date": "11/2023",
         "description_alerts": "other",
     }
-    result = _choose_latest_alerts_statistics(metadata_older, data_newer)
+    result = _choose_latest_alerts_statistics(
+        alerts_statistics_from_metadata=metadata_older,
+        alerts_statistics_from_data=data_newer,
+    )
     assert result == data_newer
 
     # Same month/year - should choose metadata
@@ -725,7 +755,10 @@ def test_choose_latest_alerts_statistics():
         "date": "10/2023",
         "description_alerts": "other",
     }
-    result = _choose_latest_alerts_statistics(metadata_same, data_same)
+    result = _choose_latest_alerts_statistics(
+        alerts_statistics_from_metadata=metadata_same,
+        alerts_statistics_from_data=data_same,
+    )
     assert result == metadata_same
 
     # Metadata is newer - should choose metadata
@@ -739,7 +772,10 @@ def test_choose_latest_alerts_statistics():
         "date": "11/2023",
         "description_alerts": "other",
     }
-    result = _choose_latest_alerts_statistics(metadata_newer, data_older)
+    result = _choose_latest_alerts_statistics(
+        alerts_statistics_from_metadata=metadata_newer,
+        alerts_statistics_from_data=data_older,
+    )
     assert result == metadata_newer
 
     # DD/MM/YYYY data beats MM/YYYY metadata in the same month
@@ -753,7 +789,10 @@ def test_choose_latest_alerts_statistics():
         "date": "15/10/2023",
         "description_alerts": "other",
     }
-    result = _choose_latest_alerts_statistics(metadata_month_only, data_with_day)
+    result = _choose_latest_alerts_statistics(
+        alerts_statistics_from_metadata=metadata_month_only,
+        alerts_statistics_from_data=data_with_day,
+    )
     assert result == data_with_day
 
 
@@ -795,7 +834,9 @@ def test_alerts_statistics_from_both_sources(tmp_path):
         json.dump(test_geojson, f)
 
     prepared_data, stats = prepare_alerts_data(
-        tmp_path, [str(test_file)], "test_provider"
+        local_directory=tmp_path,
+        geojson_files=[str(test_file)],
+        alerts_provider="test_provider",
     )
 
     # Check that data is prepared correctly
@@ -833,7 +874,9 @@ def test_day_detec_absent_from_dataset(tmp_path):
         json.dump(test_geojson, f)
 
     prepared_data, stats = prepare_alerts_data(
-        tmp_path, [str(test_file)], "test_provider"
+        local_directory=tmp_path,
+        geojson_files=[str(test_file)],
+        alerts_provider="test_provider",
     )
 
     assert len(prepared_data) == 1
@@ -880,7 +923,9 @@ def test_day_detec_present_in_dataset(tmp_path):
         json.dump(test_geojson, f)
 
     prepared_data, stats = prepare_alerts_data(
-        tmp_path, [str(test_file)], "test_provider"
+        local_directory=tmp_path,
+        geojson_files=[str(test_file)],
+        alerts_provider="test_provider",
     )
 
     assert len(prepared_data) == 2
@@ -945,13 +990,13 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
 
     # First run: initial sync (both files)
     _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts_geojson_update",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts_geojson_update",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -1028,13 +1073,13 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
 
     # Second run: should detect change in first file and update it, but leave second file unchanged
     _main(
-        mock_alerts_storage_client,
-        MOCK_BUCKET_NAME,
-        "test_provider",
-        100,
-        pg_database,
-        "fake_alerts_geojson_update",
-        asset_storage,
+        storage_client=mock_alerts_storage_client,
+        alerts_bucket=MOCK_BUCKET_NAME,
+        alerts_provider="test_provider",
+        territory_id=100,
+        db=pg_database,
+        db_table_name="fake_alerts_geojson_update",
+        destination_path=asset_storage,
         max_months_lookback=None,
     )
 
@@ -1109,11 +1154,11 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            {},
-            "bucket",
-            "provider",
-            1,
-            pg_database,
+            gcp_service_acct={},
+            alerts_bucket="bucket",
+            alerts_provider="provider",
+            territory_id=1,
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )
