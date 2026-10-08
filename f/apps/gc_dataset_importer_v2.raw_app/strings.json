@@ -46,9 +46,7 @@
   "identityUnique": "Every selected column in the updated file must contain complete values, and must exist in both datasets. They cannot contain null, empty, or whitespace-only values. If multiple records share the same identity, the import will be rejected.",
   "identityField": "Identity field {number}",
   "identityNotInTarget": "Not in target dataset",
-  "identityEligibility": "Only fields already present in the target dataset can identify existing records. Other uploaded fields can still be imported as data.",
   "identityNoEligibleFields": "None of the uploaded fields map to columns in the target dataset. Merge and Sync require at least one shared identity field. Go back to choose another dataset or upload a file containing a shared field.",
-  "identityMatching": "Matching rows follow the update policy below. Uploaded rows without a match are added as new records.",
   "policyImportedSummary": "Imported records win",
   "policyExistingSummary": "Existing records win",
   "policyLabel": "Update policy",
@@ -89,7 +87,6 @@
   "errorPreview": "We could not preview this import. Try again. If the problem persists, report it with the upload filename and selected identity fields.",
   "errorUnsupported": "Choose a supported file ({formats}).",
   "progressAriaLabel": "Import progress",
-  "identitySourceId": "Uploaded _id is stored separately using the mapping shown below. Selecting it does not select the target’s internal Postgres _id.",
   "reviewMapping": "Field mappings",
   "mappingSource": "Uploaded field",
   "mappingStored": "Stored column"

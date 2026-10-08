@@ -636,9 +636,7 @@ export default function App() {
           </h2>
           <p className="lede">{strings.identityDescription}</p>
           <p>{strings.identityUnique}</p>
-          {staged.fields.includes("_id") && <p>{strings.identitySourceId}</p>}
           <p>
-            {strings.identityMatching}{" "}
             {goal === "sync" ? strings.identitySync : strings.identityMerge}
           </p>
           <div className="identity-fields">
@@ -683,7 +681,6 @@ export default function App() {
               </select>
             ))}
           </div>
-          <p>{strings.identityEligibility}</p>
           {noEligibleIdentity && (
             <p role="status">{strings.identityNoEligibleFields}</p>
           )}

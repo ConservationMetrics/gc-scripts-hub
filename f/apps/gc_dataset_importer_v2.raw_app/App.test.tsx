@@ -128,9 +128,6 @@ describe("Dataset importer", () => {
           name: "Bird Name → Bird_Name — Not in target dataset",
         }),
       ).toBeDisabled();
-      expect(
-        screen.getByText(/Other uploaded fields can still be imported/),
-      ).toBeVisible();
       fireEvent.change(first, { target: { value: "code" } });
       const second = screen.getByLabelText("Identity field 2");
       expect(
@@ -553,15 +550,12 @@ describe("Dataset importer", () => {
       screen.getAllByRole("option", { name: "Bird Name → Bird_Name" })[0],
     ).toHaveValue("Bird Name");
     expect(
-      screen.getByText(/does not select the target’s internal Postgres _id/),
-    ).toBeVisible();
-    expect(
       screen.getByText(
-        /Every selected field must be present in every uploaded record/,
+        /Every selected column in the updated file must contain complete values/,
       ),
     ).toBeVisible();
     expect(
-      screen.getByText(/Uploaded identity combinations must be unique/),
+      screen.getByText(/If multiple records share the same identity/),
     ).toBeVisible();
     expect(
       screen.getByText(
