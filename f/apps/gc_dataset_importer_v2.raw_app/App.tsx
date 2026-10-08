@@ -636,9 +636,7 @@ export default function App() {
           </h2>
           <p className="lede">{strings.identityDescription}</p>
           <p>{strings.identityUnique}</p>
-          <p>
-            {goal === "sync" ? strings.identitySync : strings.identityMerge}
-          </p>
+          {goal === "sync" && <p>{strings.identitySync}</p>}
           <div className="identity-fields">
             {[0, 1, 2].map((position) => (
               <select

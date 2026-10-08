@@ -557,11 +557,6 @@ describe("Dataset importer", () => {
     expect(
       screen.getByText(/If multiple records share the same identity/),
     ).toBeVisible();
-    expect(
-      screen.getByText(
-        /including incomplete identities and existing duplicates/,
-      ),
-    ).toBeVisible();
     fireEvent.change(screen.getByLabelText("Identity field 1"), {
       target: { value: "_id" },
     });

@@ -38,7 +38,6 @@
   "fileDrop": "Drop a file here, or click to browse",
   "fileSize": "{size} MiB",
   "identitySync": "Sync deletes every unmatched row in the entire selected table, including incomplete identities, duplicates, and records from other sources. Existing records win does not prevent these deletions.",
-  "identityMerge": "Merge keeps every unmatched target row, including incomplete identities and existing duplicates.",
   "identityChoose": "Choose a field",
   "identityAdd": "Add another field (optional)",
   "identityHeading": "Choose record identity",
