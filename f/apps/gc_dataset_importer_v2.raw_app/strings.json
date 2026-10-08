@@ -30,7 +30,7 @@
   "nameHeading": "Name your new dataset",
   "nameAvailable": "This name is available as {dataset}.",
   "uploadHeading": "Upload your data",
-  "uploadDescription": "CSV uploads can be tab-delimited. JSON uploads can contain arrays or CyberTracker backups. XML uploads must be SMART patrol exports. ZIP archives can contain a Shapefile or supported files.",
+  "uploadDescription": "The following formats are supported: CSV, Excel, JSON, GeoJSON, GeoPackage, GPX, KML, SMART XML, and ZIP.",
   "uploadLimits": "Maximum source size: 25 MiB. GeoPackages must contain one spatial layer.",
   "uploadDocumentation": "documentation",
   "uploadFormats": "Supported formats: {formats}.",
