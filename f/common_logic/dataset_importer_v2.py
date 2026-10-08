@@ -198,7 +198,7 @@ def _validate_explicit_tabular_geometry(rows):
             raise ImportValidationError(
                 "Explicit geometry contains invalid coordinates for its geometry type."
             )
-        row["g__coordinates"] = json.dumps(coordinates, separators=(",", ":"))
+        row["g__coordinates"] = json.dumps(coordinates)
 
 
 def _normalize_tabular_geometry(rows):
@@ -240,7 +240,7 @@ def _normalize_tabular_geometry(rows):
         coordinates = _point_coordinates(row[longitude_field], row[latitude_field])
         row["g__type"] = "Point" if coordinates else None
         row["g__coordinates"] = (
-            json.dumps(coordinates, separators=(",", ":")) if coordinates else None
+            json.dumps(coordinates) if coordinates else None
         )
     return rows
 
@@ -327,8 +327,26 @@ def _payload(uploaded_file):
 
 def _json_value(value):
     if isinstance(value, (dict, list)):
-        return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        return json.dumps(value)
     return value
+
+
+def _serialize_float_values(cursor, rows):
+    # The legacy writer sends native floats to PostgreSQL TEXT columns. JSONB's
+    # ->> instead retains trailing .0 and expands exponents, breaking exact matches.
+    fields = [
+        (row, key, value)
+        for row in rows
+        for key, value in row.items()
+        if isinstance(value, float)
+    ]
+    if fields:
+        cursor.execute(
+            "SELECT unnest(%s::double precision[])::text",
+            ([value for _, _, value in fields],),
+        )
+        for (row, key, _), (text,) in zip(fields, cursor.fetchall()):
+            row[key] = text
 
 
 def _parse_csv(contents):
@@ -406,9 +424,7 @@ def _geojson_rows(document):
             if not isinstance(spatial_data, (list, tuple)):
                 raise ImportValidationError("Unsupported GeoJSON geometry.")
             row["g__type"] = geometry.get("type")
-            row["g__coordinates"] = json.dumps(
-                spatial_data, separators=(",", ":")
-            )
+            row["g__coordinates"] = json.dumps(spatial_data)
         else:
             row["g__type"] = None
             row["g__coordinates"] = None
@@ -1108,6 +1124,7 @@ def stage_import(db, uploaded_file, goal, target_table, replace_import_id=None):
     import_id = uuid.uuid4()
     now = datetime.now(UTC)
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
+        _serialize_float_values(cursor, rows)
         _ensure_schema(cursor)
         _cleanup_expired(cursor, now)
         if goal == "create" and replace_import_id:

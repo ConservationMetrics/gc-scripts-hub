@@ -235,7 +235,7 @@ def test_csv_infers_gbif_point_geometry(mock_db_connection):
     confirm(mock_db_connection, staged, preview)
     row = table_rows(mock_db_connection, "gbif_points")[0]
     assert row["g__type"] == "Point"
-    assert row["g__coordinates"] == "[-54.137074,3.248835]"
+    assert row["g__coordinates"] == "[-54.137074, 3.248835]"
 
 
 @pytest.mark.parametrize(
@@ -251,7 +251,7 @@ def test_csv_recognizes_common_coordinate_aliases(headers, values):
     rows = importer._parse_csv(f"{headers}\n{values}\n".encode())
 
     assert rows[0]["g__type"] == "Point"
-    assert rows[0]["g__coordinates"] == "[-54.0,3.0]"
+    assert rows[0]["g__coordinates"] == "[-54.0, 3.0]"
 
 
 def test_csv_sets_invalid_or_missing_coordinates_to_null(mock_db_connection):
@@ -272,7 +272,7 @@ def test_csv_sets_invalid_or_missing_coordinates_to_null(mock_db_connection):
     rows = {row["id"]: row for row in table_rows(mock_db_connection, "partial_points")}
     assert (rows["valid"]["g__type"], rows["valid"]["g__coordinates"]) == (
         "Point",
-        "[-54.0,3.0]",
+        "[-54.0, 3.0]",
     )
     assert (rows["missing"]["g__type"], rows["missing"]["g__coordinates"]) == (
         None,
@@ -306,7 +306,7 @@ def test_csv_preserves_valid_explicit_geometry():
         b'id,g__type,g__coordinates\nA,Point,"[\"\"-54\"\",\"\"3\"\"]"\nB,,\n'
     )
 
-    assert rows[0]["g__coordinates"] == "[-54.0,3.0]"
+    assert rows[0]["g__coordinates"] == "[-54.0, 3.0]"
     assert rows[1]["g__type"] is None
     assert rows[1]["g__coordinates"] is None
 
@@ -400,7 +400,7 @@ def test_spatial_null_attributes_follow_update_policy(
         )
         conn.execute(
             """INSERT INTO observations VALUES
-                ('one', 'A', 'old note', '1', 'Point', '[1.0,2.0]', 'birds')"""
+                ('one', 'A', 'old note', '1', 'Point', '[1.0, 2.0]', 'birds')"""
         )
     staged = stage_import(mock_db_connection, payload, "merge", "observations")
     assert "note" in staged["fields"]
@@ -543,7 +543,7 @@ def test_geojson_preserves_geometry_and_nested_properties(mock_db_connection):
     confirm(mock_db_connection, staged, preview)
     row = table_rows(mock_db_connection, "birds")[0]
     assert row["g__type"] == "Point"
-    assert row["g__coordinates"] == "[1,2]"
+    assert row["g__coordinates"] == "[1, 2]"
     assert row["feature_id"] == "feature-123"
     assert row["tags"] == '["wetland"]'
 

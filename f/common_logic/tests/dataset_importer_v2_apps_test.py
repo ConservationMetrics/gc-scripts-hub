@@ -218,9 +218,9 @@ def test_osm_ids_and_punctuated_properties():
             {
                 "patrol_id": "patrol-001",
                 "waypoint_id": "wp-001",
-                "count": "2.0",
+                "count": "2",
                 "healthy": "true",
-                "g__coordinates": "[-58.5,5.5]",
+                "g__coordinates": "[-58.5, 5.5]",
             },
         ),
         (
@@ -238,7 +238,7 @@ def test_osm_ids_and_punctuated_properties():
             {
                 "__photos": '["53a3841fb6028ba608a085d36b1115d9.jpg"]',
                 "g__type": "Point",
-                "g__coordinates": "[-73.968285,40.785091]",
+                "g__coordinates": "[-73.968285, 40.785091]",
             },
         ),
         (
