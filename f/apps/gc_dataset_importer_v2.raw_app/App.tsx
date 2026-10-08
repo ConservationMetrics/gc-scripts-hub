@@ -637,6 +637,13 @@ export default function App() {
             </a>
             .
           </p>
+          {loading && (
+            <div
+              aria-label={strings.actionStaging}
+              className="staging-progress"
+              role="progressbar"
+            />
+          )}
         </section>
       )}
 

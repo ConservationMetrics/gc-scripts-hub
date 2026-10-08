@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -72,6 +73,40 @@ describe("Dataset importer", () => {
     mockedBackend.preview_import.mockResolvedValue(preview);
     mockedBackend.apply_import.mockResolvedValue({ success: true });
   });
+
+  it.each(["success", "validation error"])(
+    "shows an indeterminate staging bar until %s",
+    async (outcome) => {
+      let finish!: (result: unknown) => void;
+      mockedBackend.stage_import.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      render(<App />);
+      await chooseExistingGoal("Merge");
+      const progress = screen.getByRole("progressbar", { name: "Staging..." });
+      expect(progress).not.toHaveAttribute("aria-valuenow");
+      expect(screen.getByRole("button", { name: "Staging..." })).toBeDisabled();
+      await act(async () => {
+        finish(
+          outcome === "success"
+            ? stagedImport
+            : { validation_error: "Invalid file" },
+        );
+      });
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      if (outcome === "success") {
+        expect(screen.getByLabelText("Identity field 1")).toBeInTheDocument();
+      } else {
+        expect(screen.getByRole("alert")).toHaveTextContent("Invalid file");
+        expect(
+          screen.getByRole("button", { name: "Stage upload" }),
+        ).toBeEnabled();
+      }
+    },
+  );
 
   it("requires an explicit goal selection", async () => {
     render(<App />);

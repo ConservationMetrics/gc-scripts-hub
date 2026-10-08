@@ -435,3 +435,33 @@ button:disabled {
     width: 105px;
   }
 }
+
+.staging-progress {
+  background: #e8eef5;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+.staging-progress::before {
+  animation: staging-progress 1.5s ease-in-out infinite;
+  background: #1264c2;
+  border-radius: inherit;
+  content: "";
+  display: block;
+  height: 100%;
+  width: 35%;
+}
+@keyframes staging-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(286%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .staging-progress::before {
+    animation: none;
+    margin: auto;
+  }
+}
