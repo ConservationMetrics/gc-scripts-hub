@@ -60,6 +60,7 @@ def test_create_csv_stages_previews_and_applies(mock_db_connection):
     )
 
     assert staged["fields"] == ["species", "count"]
+    assert staged["eligible_identity_fields"] == []
     assert check_dataset_name(mock_db_connection, "Bird Observations") == {
         "table_name": "bird_observations",
         "available": False,
@@ -612,6 +613,40 @@ def test_create_persists_column_mapping_for_later_imports(mock_db_connection):
     }
 
 
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+def test_staging_only_offers_existing_columns_for_identity(mock_db_connection, goal):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute(
+            'CREATE TABLE public.observations (_id TEXT PRIMARY KEY, code TEXT)'
+        )
+    staged = stage_import(
+        mock_db_connection,
+        upload("rows.csv", "code,new_field,_id\nA,new,external\n"),
+        goal,
+        "observations",
+    )
+    assert staged["fields"] == ["code", "new_field", "_id"]
+    assert staged["eligible_identity_fields"] == ["code"]
+    for field in ("new_field", "_id"):
+        with pytest.raises(ImportValidationError, match="do not exist in the target"):
+            preview_import(mock_db_connection, staged["import_id"], [field])
+    preview = preview_import(mock_db_connection, staged["import_id"], ["code"])
+    assert preview["added"] == 1
+    assert preview["columns_added"] == 2
+    assert table_rows(mock_db_connection, "observations") == []
+
+
+@pytest.mark.parametrize("goal", ["merge", "sync"])
+def test_staging_succeeds_without_shared_identity_columns(mock_db_connection, goal):
+    with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
+        cursor.execute('CREATE TABLE public.observations (_id TEXT PRIMARY KEY)')
+    staged = stage_import(
+        mock_db_connection, upload("rows.csv", "code\nA\n"), goal, "observations"
+    )
+    assert staged["record_count"] == 1
+    assert staged["eligible_identity_fields"] == []
+
+
 def test_existing_column_mapping_is_used_for_identity(mock_db_connection):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
@@ -635,6 +670,7 @@ def test_existing_column_mapping_is_used_for_identity(mock_db_connection):
         "merge",
         "observations",
     )
+    assert staged["eligible_identity_fields"] == ["Bird Name", "note"]
     preview = preview_import(
         mock_db_connection, staged["import_id"], ["Bird Name"]
     )
@@ -1395,6 +1431,7 @@ def test_uploaded_id_and_source_id_are_kept_as_distinct_data(mock_db_connection)
         "observations",
     )
     assert merged["source_mapping"] == staged["source_mapping"]
+    assert merged["eligible_identity_fields"] == ["_id", "source_id"]
     review = preview_import(mock_db_connection, merged["import_id"], ["_id"])
     assert review["updated"] == 1 and review["added"] == 0
     confirm(mock_db_connection, merged, review)
@@ -1733,6 +1770,7 @@ def test_empty_append_and_merge_are_noops_without_identity(
         goal,
         "observations",
     )
+    assert staged["eligible_identity_fields"] == []
     preview = preview_import(mock_db_connection, staged["import_id"])
     assert preview["added"] == preview["updated"] == preview["deleted"] == 0
     assert preview["unchanged"] == preview["final_count"] == 1

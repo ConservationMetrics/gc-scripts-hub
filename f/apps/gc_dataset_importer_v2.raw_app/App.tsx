@@ -22,6 +22,7 @@ type MetricKind =
   "added" | "columns" | "deleted" | "total" | "unchanged" | "updated";
 
 type StagedImport = {
+  eligible_identity_fields: string[];
   fields: string[];
   source_mapping: Record<string, string>;
   geometry_warning?: string;
@@ -417,8 +418,18 @@ export default function App() {
     return stored && stored !== field ? `${field} → ${stored}` : field;
   }
 
+  const noEligibleIdentity = Boolean(
+    staged &&
+    staged.record_count > 0 &&
+    staged.eligible_identity_fields.length === 0,
+  );
   const canPreviewIdentity = Boolean(
-    staged && (staged.record_count === 0 || identity.length > 0),
+    staged &&
+    (staged.record_count === 0 ||
+      (identity.length > 0 &&
+        identity.every((field) =>
+          staged.eligible_identity_fields.includes(field),
+        ))),
   );
   const isNoop =
     preview &&
@@ -636,7 +647,7 @@ export default function App() {
                 aria-label={format(strings.identityField, {
                   number: position + 1,
                 })}
-                disabled={position > identity.length}
+                disabled={noEligibleIdentity || position > identity.length}
                 key={position}
                 onChange={(event) => {
                   const next = identity.slice(0, position);
@@ -657,13 +668,25 @@ export default function App() {
                       !identity.includes(field) || identity[position] === field,
                   )
                   .map((field) => (
-                    <option key={field} value={field}>
+                    <option
+                      disabled={
+                        !staged.eligible_identity_fields.includes(field)
+                      }
+                      key={field}
+                      value={field}
+                    >
                       {fieldLabel(field)}
+                      {!staged.eligible_identity_fields.includes(field) &&
+                        ` — ${strings.identityNotInTarget}`}
                     </option>
                   ))}
               </select>
             ))}
           </div>
+          <p>{strings.identityEligibility}</p>
+          {noEligibleIdentity && (
+            <p role="status">{strings.identityNoEligibleFields}</p>
+          )}
           <fieldset>
             <legend>{strings.policyLabel}</legend>
             <label>

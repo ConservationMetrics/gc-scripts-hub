@@ -26,6 +26,7 @@ vi.mock("./wmill", () => ({
 const mockedBackend = vi.mocked(backend);
 
 const stagedImport = {
+  eligible_identity_fields: ["code", "note"],
   fields: ["code", "note"],
   source_mapping: { code: "code", note: "note" },
   import_id: "import-1",
@@ -46,6 +47,7 @@ const preview = {
 async function chooseExistingGoal(goal: "Append" | "Merge" | "Sync") {
   fireEvent.click(screen.getByRole("radio", { name: new RegExp(goal) }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await screen.findByRole("option", { name: "observations" });
   fireEvent.change(screen.getByLabelText("Dataset"), {
     target: { value: "observations" },
   });
@@ -105,6 +107,109 @@ describe("Dataset importer", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Append/ }));
     expect(screen.queryByText("Identity")).not.toBeInTheDocument();
   });
+
+  it.each(["Merge", "Sync"] as const)(
+    "disables missing target fields and supports composite identity for %s",
+    async (goal) => {
+      mockedBackend.stage_import.mockResolvedValue({
+        ...stagedImport,
+        fields: ["code", "note", "Bird Name"],
+        source_mapping: {
+          ...stagedImport.source_mapping,
+          "Bird Name": "Bird_Name",
+        },
+      });
+      render(<App />);
+      await chooseExistingGoal(goal);
+      const first = await screen.findByLabelText("Identity field 1");
+      expect(within(first).getByRole("option", { name: "code" })).toBeEnabled();
+      expect(
+        within(first).getByRole("option", {
+          name: "Bird Name → Bird_Name — Not in target dataset",
+        }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(/Other uploaded fields can still be imported/),
+      ).toBeVisible();
+      fireEvent.change(first, { target: { value: "code" } });
+      const second = screen.getByLabelText("Identity field 2");
+      expect(
+        within(second).queryByRole("option", { name: "code" }),
+      ).not.toBeInTheDocument();
+      fireEvent.change(second, { target: { value: "note" } });
+      fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+      await screen.findByRole("button", { name: "Confirm import" });
+      expect(mockedBackend.preview_import).toHaveBeenCalledWith({
+        import_id: "import-1",
+        identity_fields: ["code", "note"],
+        update_policy: "imported",
+      });
+    },
+  );
+
+  it.each(["Merge", "Sync"] as const)(
+    "blocks %s when no uploaded fields exist in the target",
+    async (goal) => {
+      mockedBackend.stage_import.mockResolvedValue({
+        ...stagedImport,
+        eligible_identity_fields: [],
+      });
+      render(<App />);
+      await chooseExistingGoal(goal);
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "None of the uploaded fields map to columns in the target dataset",
+      );
+      for (const number of [1, 2, 3]) {
+        expect(
+          screen.getByLabelText(`Identity field ${number}`),
+        ).toBeDisabled();
+      }
+      expect(
+        screen.getByRole("button", { name: "Preview changes" }),
+      ).toBeDisabled();
+      expect(mockedBackend.preview_import).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Back" }));
+      expect(
+        screen.getByRole("button", { name: "Stage upload" }),
+      ).toBeEnabled();
+    },
+  );
+
+  it.each(["Merge", "Sync"] as const)(
+    "preserves preview validation for an empty %s upload",
+    async (goal) => {
+      mockedBackend.stage_import.mockResolvedValue({
+        ...stagedImport,
+        fields: [],
+        source_mapping: {},
+        eligible_identity_fields: [],
+        record_count: 0,
+      });
+      if (goal === "Sync")
+        mockedBackend.preview_import.mockResolvedValue({
+          validation_error: "Create and Sync imports cannot be empty.",
+        });
+      render(<App />);
+      await chooseExistingGoal(goal);
+      await screen.findByLabelText("Identity field 1");
+      expect(
+        screen.queryByText(/None of the uploaded fields map/),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Preview changes" }));
+      if (goal === "Sync") {
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+          "cannot be empty",
+        );
+      } else {
+        await screen.findByRole("button", { name: "Confirm import" });
+      }
+      expect(mockedBackend.preview_import).toHaveBeenCalledWith({
+        import_id: "import-1",
+        identity_fields: [],
+        update_policy: "imported",
+      });
+    },
+  );
 
   it("rejects an oversized file before staging", async () => {
     mockedBackend.check_dataset_name.mockResolvedValue({
@@ -428,6 +533,7 @@ describe("Dataset importer", () => {
     mockedBackend.stage_import.mockResolvedValue({
       ...stagedImport,
       fields: ["_id", "source_id", "Bird Name"],
+      eligible_identity_fields: ["_id", "source_id", "Bird Name"],
       source_mapping: {
         _id: "source_id_002",
         source_id: "source_id",

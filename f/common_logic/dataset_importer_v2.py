@@ -1151,6 +1151,9 @@ def stage_import(db, uploaded_file, goal, target_table):
         "record_count": len(rows),
         "fields": list(mapping),
         "source_mapping": mapping,
+        "eligible_identity_fields": [
+            source for source, stored in mapping.items() if stored in target_columns
+        ],
     }
     if geometry_warning:
         result["geometry_warning"] = geometry_warning
