@@ -418,6 +418,17 @@ export default function App() {
     return stored && stored !== field ? `${field} → ${stored}` : field;
   }
 
+  const sortedIdentityFields = staged
+    ? [...staged.fields].sort(
+        (left, right) =>
+          Number(staged.eligible_identity_fields.includes(right)) -
+            Number(staged.eligible_identity_fields.includes(left)) ||
+          fieldLabel(left).localeCompare(fieldLabel(right), undefined, {
+            sensitivity: "base",
+          }),
+      )
+    : [];
+
   const noEligibleIdentity = Boolean(
     staged &&
     staged.record_count > 0 &&
@@ -658,7 +669,7 @@ export default function App() {
                     ? strings.identityChoose
                     : strings.identityAdd}
                 </option>
-                {staged.fields
+                {sortedIdentityFields
                   .filter(
                     (field) =>
                       !identity.includes(field) || identity[position] === field,
