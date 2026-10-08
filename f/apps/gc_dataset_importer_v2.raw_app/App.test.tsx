@@ -268,6 +268,45 @@ describe("Dataset importer", () => {
     expect(mockedBackend.stage_import).not.toHaveBeenCalled();
   });
 
+  it("reuses the Create import after going Back to an unchanged upload", async () => {
+    mockedBackend.check_dataset_name.mockResolvedValue({
+      available: true,
+      table_name: "birds",
+    });
+    render(<App />);
+    fireEvent.click(screen.getByRole("radio", { name: /Create/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Dataset name"), {
+      target: { value: "Birds" },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText(/Drop a file here/), {
+      target: { files: [new File(["code\nA\n"], "birds.csv")] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Stage upload" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Preview changes" }),
+    );
+    await screen.findByRole("button", { name: "Confirm import" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stage upload" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm import" }),
+    );
+
+    await waitFor(() =>
+      expect(mockedBackend.apply_import).toHaveBeenCalledWith({
+        import_id: stagedImport.import_id,
+        preview_id: preview.preview_id,
+      }),
+    );
+    expect(mockedBackend.stage_import).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves prior input when navigating back", async () => {
     render(<App />);
     await waitFor(() => expect(mockedBackend.list_datasets).toHaveBeenCalled());

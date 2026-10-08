@@ -17,6 +17,7 @@ export declare const backend: {
     uploaded_file: any;
     goal: string;
     target_table: string;
+    replace_import_id?: string;
   }) => Promise<any>;
 };
 
@@ -36,6 +37,7 @@ export declare const backendAsync: {
     uploaded_file: any;
     goal: string;
     target_table: string;
+    replace_import_id?: string;
   }) => Promise<string>;
 };
 

@@ -178,6 +178,9 @@ export default function App() {
   const [success, setSuccess] = useState(false);
   const [dragging, setDragging] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const createReservation = useRef<
+    { import_id: string; target_table: string } | undefined
+  >(undefined);
 
   async function loadDatasets() {
     setDatasetsLoading(true);
@@ -224,7 +227,10 @@ export default function App() {
         .check_dataset_name({ dataset_name: datasetName })
         .then((result) => {
           if (!active) return;
-          setNameAvailable(result.available);
+          setNameAvailable(
+            result.available ||
+              result.table_name === createReservation.current?.target_table,
+          );
           setTargetTable(result.table_name);
           setNameChecking(false);
           setError(undefined);
@@ -328,6 +334,11 @@ export default function App() {
 
   async function stage() {
     if (!file || !target || !goal) return;
+    if (goal === "create" && staged) {
+      setError(undefined);
+      setStep(needsIdentity ? "identity" : "review");
+      return;
+    }
     setLoading(true);
     setError(undefined);
     try {
@@ -335,12 +346,20 @@ export default function App() {
         goal,
         target_table: target,
         uploaded_file: await filePayload(file),
+        ...(goal === "create" && createReservation.current
+          ? { replace_import_id: createReservation.current.import_id }
+          : {}),
       });
       if ("validation_error" in result) {
         setError(result.validation_error);
         return;
       }
       setStaged(result);
+      if (goal === "create")
+        createReservation.current = {
+          import_id: result.import_id,
+          target_table: target,
+        };
       setPreview(undefined);
       setIdentity([]);
       setStep(needsIdentity ? "identity" : "review");
@@ -399,6 +418,7 @@ export default function App() {
         preview_id: preview.preview_id,
       });
       if (goal === "create") {
+        createReservation.current = undefined;
         setDatasets((current) => [...new Set([...current, target])].sort());
       }
       setSuccess(true);

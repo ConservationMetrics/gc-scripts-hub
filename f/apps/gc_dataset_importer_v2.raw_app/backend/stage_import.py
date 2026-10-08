@@ -11,8 +11,14 @@
 from f.common_logic.dataset_importer_v2 import ImportValidationError, stage_import
 
 
-def main(db, uploaded_file, goal: str, target_table: str):
+def main(
+    db,
+    uploaded_file,
+    goal: str,
+    target_table: str,
+    replace_import_id: str | None = None,
+):
     try:
-        return stage_import(db, uploaded_file, goal, target_table)
+        return stage_import(db, uploaded_file, goal, target_table, replace_import_id)
     except ImportValidationError as error:
         return {"validation_error": str(error)}

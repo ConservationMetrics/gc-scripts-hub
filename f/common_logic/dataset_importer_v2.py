@@ -1087,7 +1087,7 @@ def check_dataset_name(db, dataset_name):
     }
 
 
-def stage_import(db, uploaded_file, goal, target_table):
+def stage_import(db, uploaded_file, goal, target_table, replace_import_id=None):
     """Parse and persist one source file for review without touching its target table."""
     if goal not in VALID_GOALS:
         raise ImportValidationError("Choose Create, Append, Merge, or Sync.")
@@ -1108,6 +1108,27 @@ def stage_import(db, uploaded_file, goal, target_table):
     with connect(_conninfo(db)) as conn, conn.cursor() as cursor:
         _ensure_schema(cursor)
         _cleanup_expired(cursor, now)
+        if goal == "create" and replace_import_id:
+            cursor.execute(
+                sql.SQL(
+                    "SELECT import_id FROM {}.import_sessions WHERE import_id = %s FOR UPDATE"
+                ).format(sql.Identifier(SCHEMA)),
+                (replace_import_id,),
+            )
+            cursor.execute(
+                sql.SQL(
+                    "DELETE FROM {}.dataset_registry WHERE status = 'reserved' AND source_import_id = %s RETURNING source_import_id"
+                ).format(sql.Identifier(SCHEMA)),
+                (replace_import_id,),
+            )
+            if cursor.fetchone():
+                # Keep the old session for cleanup of any interrupted archive.
+                cursor.execute(
+                    sql.SQL(
+                        "UPDATE {}.import_sessions SET status = 'invalidated' WHERE import_id = %s"
+                    ).format(sql.Identifier(SCHEMA)),
+                    (replace_import_id,),
+                )
         exists = _public_relation_exists(cursor, table_name)
         if goal == "create" and exists:
             raise ImportValidationError("A dataset with this name already exists.")
