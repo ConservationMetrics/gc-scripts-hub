@@ -1,0 +1,7 @@
+type: inline
+fields:
+  dataset_name:
+    type: user
+  db:
+    type: static
+    value: $res:f/connectors/postgresql

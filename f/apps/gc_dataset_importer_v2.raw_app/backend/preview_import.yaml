@@ -1,0 +1,11 @@
+type: inline
+fields:
+  db:
+    type: static
+    value: $res:f/connectors/postgresql
+  identity_fields:
+    type: user
+  import_id:
+    type: user
+  update_policy:
+    type: user

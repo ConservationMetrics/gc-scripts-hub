@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import xml.etree.ElementTree as ET
+from io import StringIO
 from numbers import Integral, Real
 from pathlib import Path
 
@@ -255,9 +256,9 @@ def handle_file_errors(func):
     Decorator to handle file-related errors for functions that process files.
     """
 
-    def wrapper(path: Path):
+    def wrapper(path: Path, **kwargs):
         try:
-            return func(path)
+            return func(path, **kwargs)
         except FileNotFoundError:
             raise ValueError(f"File not found: {path}")
         except ET.ParseError as e:
@@ -277,6 +278,7 @@ def convert_data(
     *,
     longitude_col: str | None = None,
     latitude_col: str | None = None,
+    preserve_null_properties: bool = False,
 ):
     """
     Parses an input file and optionally converts it to a different output format.
@@ -312,6 +314,9 @@ def convert_data(
         Name of the column containing longitude values.
     latitude_col : str, optional
         Name of the column containing latitude values.
+    preserve_null_properties : bool, optional
+        Retain explicit NULL attributes in Shapefile and GeoPackage records.
+        Defaults to False.
 
     Returns
     -------
@@ -349,9 +354,17 @@ def convert_data(
         case "smart":
             data, default_output = read_smart_xml(path), "geojson"
         case "shapefile":
-            data, default_output = read_shapefile(path), "geojson"
+            data, default_output = (
+                read_shapefile(path, preserve_null_properties=preserve_null_properties),
+                "geojson",
+            )
         case "geopackage":
-            data, default_output = read_geopackage(path), "geojson"
+            data, default_output = (
+                read_geopackage(
+                    path, preserve_null_properties=preserve_null_properties
+                ),
+                "geojson",
+            )
         case _:
             raise ValueError(f"Unsupported file format: {file_format}")
 
@@ -462,6 +475,36 @@ def to_geojson(
     return {"type": "FeatureCollection", "features": features}
 
 
+def parse_csv_rows(text: str) -> list[list[str]]:
+    """Parse CSV text using comma, semicolon (KoboToolbox), or tab delimiters.
+
+    Parameters
+    ----------
+    text : str
+        Decoded CSV contents.
+
+    Returns
+    -------
+    list[list[str]]
+        Rows including the header, without column or row-width validation.
+        Empty input returns an empty list.
+    """
+    delimiters = ",;\t"
+    try:
+        dialect = csv.Sniffer().sniff(text[:65536], delimiters=delimiters)
+    except csv.Error:
+        # Sniffing can fail on inconsistent row widths. Parse the header with
+        # each candidate so quoted delimiters do not influence the fallback.
+        delimiter = max(
+            delimiters,
+            key=lambda candidate: len(
+                next(csv.reader(StringIO(text, newline=""), delimiter=candidate), [])
+            ),
+        )
+        return list(csv.reader(StringIO(text, newline=""), delimiter=delimiter))
+    return list(csv.reader(StringIO(text, newline=""), dialect=dialect))
+
+
 @handle_file_errors
 def read_csv(path: Path):
     """
@@ -479,10 +522,7 @@ def read_csv(path: Path):
         if not header.strip():
             raise ValueError("CSV file is empty or contains only whitespace")
         f.seek(0)
-
-        # KoboToolbox uses ';'; everything else is usually ',' or tab
-        delimiter = max(",;\t", key=header.count)
-        rows = list(csv.reader(f, delimiter=delimiter))
+        rows = parse_csv_rows(f.read())
         if len(rows) <= 1:
             raise ValueError("CSV file contains no data")
         return rows
@@ -941,7 +981,7 @@ def read_smart_xml(path: Path):
 
 
 @handle_file_errors
-def read_geopackage(path: Path):
+def read_geopackage(path: Path, *, preserve_null_properties: bool = False):
     """
     Reads a GeoPackage file and returns a GeoJSON FeatureCollection.
 
@@ -949,6 +989,13 @@ def read_geopackage(path: Path):
     non-spatial tables (e.g. attribute-only relations). Features from every
     spatial layer are merged into a single FeatureCollection with a
     ``__geopackage_layer`` property recording the originating layer name.
+
+    Parameters
+    ----------
+    path : Path
+        GeoPackage file to read.
+    preserve_null_properties : bool, optional
+        Retain explicit NULL attributes. Defaults to False.
 
     Returns
     -------
@@ -968,7 +1015,7 @@ def read_geopackage(path: Path):
                 props = {
                     k: v
                     for k, v in (dict(feature["properties"]) or {}).items()
-                    if v is not None
+                    if preserve_null_properties or v is not None
                 }
                 props["__geopackage_layer"] = layer
                 features.append(
@@ -987,12 +1034,19 @@ def read_geopackage(path: Path):
 
 
 @handle_file_errors
-def read_shapefile(path: Path):
+def read_shapefile(path: Path, *, preserve_null_properties: bool = False):
     """
     Reads an ESRI shapefile and returns a GeoJSON FeatureCollection.
 
     Uses Fiona/GDAL for reliable shapefile parsing. The .shp path is expected;
     sidecar files (.dbf, .shx, .prj, .cpg, etc.) must be co-located.
+
+    Parameters
+    ----------
+    path : Path
+        Shapefile .shp file to read.
+    preserve_null_properties : bool, optional
+        Retain explicit NULL attributes. Defaults to False.
 
     Returns
     -------
@@ -1005,7 +1059,7 @@ def read_shapefile(path: Path):
             props = {
                 k: v
                 for k, v in (dict(feature["properties"]) or {}).items()
-                if v is not None
+                if preserve_null_properties or v is not None
             }
             features.append(
                 {
