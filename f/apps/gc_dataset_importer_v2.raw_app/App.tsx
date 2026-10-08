@@ -295,6 +295,7 @@ export default function App() {
   }
 
   function selectFile(nextFile?: File) {
+    if (loading) return;
     setError(undefined);
     if (!nextFile) {
       clearUpload();
@@ -597,6 +598,7 @@ export default function App() {
             className={`dropzone ${dragging ? "dragging" : ""}`}
             onDragEnter={(event) => {
               event.preventDefault();
+              if (loading) return;
               setDragging(true);
             }}
             onDragLeave={() => setDragging(false)}
@@ -607,6 +609,7 @@ export default function App() {
               accept={acceptedExtensions
                 .map((extension) => `.${extension}`)
                 .join(",")}
+              disabled={loading}
               onChange={(event) => {
                 selectFile(event.target.files?.[0]);
                 event.target.value = "";
@@ -661,7 +664,9 @@ export default function App() {
                 aria-label={format(strings.identityField, {
                   number: position + 1,
                 })}
-                disabled={noEligibleIdentity || position > identity.length}
+                disabled={
+                  loading || noEligibleIdentity || position > identity.length
+                }
                 key={position}
                 onChange={(event) => {
                   const next = identity.slice(0, position);
@@ -700,7 +705,7 @@ export default function App() {
           {noEligibleIdentity && (
             <p role="status">{strings.identityNoEligibleFields}</p>
           )}
-          <fieldset>
+          <fieldset disabled={loading}>
             <legend>{strings.policyLabel}</legend>
             <label>
               <input
