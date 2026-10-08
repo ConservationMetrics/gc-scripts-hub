@@ -516,6 +516,18 @@ def _extract_member(archive, member, destination):
 def _parse_zip(contents):
     archive, members = _safe_archive_members(contents)
     with archive, TemporaryDirectory() as directory:
+        # Validate every member before discarding operating-system metadata.
+        members = [
+            member
+            for member in members
+            if "__MACOSX" not in Path(member.filename).parts
+            and not Path(member.filename).name.startswith("._")
+            and Path(member.filename).name != ".DS_Store"
+        ]
+        if not members:
+            raise ImportValidationError(
+                "The ZIP contains no data files after excluding system metadata."
+            )
         destination = Path(directory)
         suffixes = [Path(member.filename).suffix.lower() for member in members]
         if ".shp" in suffixes:

@@ -1459,6 +1459,55 @@ def test_append_maps_legacy_name_to_existing_physical_column(mock_db_connection)
     assert row["Bird_Name"] == "Heron"
 
 
+@pytest.mark.parametrize("source", ["locusmap_favorites.gpx", "my_shapefile_data.zip"])
+def test_zip_ignores_system_metadata(source):
+    path = Path(__file__).parent / "assets" / source
+    if path.suffix == ".zip":
+        original = path.read_bytes()
+    else:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("_sample.gpx", path.read_bytes())
+        original = buffer.getvalue()
+    expected = importer._parse_zip(original)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("__MACOSX/nested/metadata", "not data")
+        archive.writestr("nested/._sample.gpx", "not GPX")
+        archive.writestr("nested/.DS_Store", "not data")
+        with zipfile.ZipFile(io.BytesIO(original)) as source_archive:
+            for member in source_archive.infolist():
+                archive.writestr(member, source_archive.read(member))
+    assert importer._parse_zip(buffer.getvalue()) == expected
+
+
+def test_zip_rejects_metadata_only_archive():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("__MACOSX/._sample.gpx", "metadata")
+    with pytest.raises(ImportValidationError, match="no data files"):
+        importer._parse_zip(buffer.getvalue())
+
+
+def test_zip_validates_metadata_paths_before_filtering():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("__MACOSX/../._sample.gpx", "metadata")
+        archive.writestr("rows.csv", "name\nHeron\n")
+    with pytest.raises(ImportValidationError, match="unsafe"):
+        importer._parse_zip(buffer.getvalue())
+
+
+def test_zip_counts_metadata_toward_expanded_size_limit(monkeypatch):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(".DS_Store", "metadata")
+        archive.writestr("rows.csv", "name\nHeron\n")
+    monkeypatch.setattr(importer, "MAX_EXPANDED_BYTES", len("name\nHeron\n"))
+    with pytest.raises(ImportValidationError, match="100 MiB"):
+        importer._parse_zip(buffer.getvalue())
+
+
 def test_zip_rejects_unsupported_members_without_staging(mock_db_connection):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
