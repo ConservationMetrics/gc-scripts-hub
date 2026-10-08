@@ -467,7 +467,9 @@ def _parse_converted_paths(file_paths):
         raise ImportValidationError("The uploaded file type is not supported.")
     try:
         converted, output_format = convert_data(
-            [str(path) for path in file_paths], detected
+            [str(path) for path in file_paths],
+            detected,
+            preserve_null_properties=True,
         )
     except (OSError, ValueError) as exc:
         if str(exc) in EMPTY_CONVERSION_ERRORS:

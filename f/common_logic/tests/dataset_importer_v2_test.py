@@ -358,6 +358,62 @@ def test_merge_preserves_omitted_values_and_imported_null_clears_them(
     }
 
 
+@pytest.mark.parametrize("source_format", ["shapefile", "geopackage"])
+@pytest.mark.parametrize("policy", ["imported", "existing"])
+def test_spatial_null_attributes_follow_update_policy(
+    mock_db_connection, tmp_path, source_format, policy
+):
+    from f.common_logic.data_conversion import convert_data
+
+    path = tmp_path / ("birds.shp" if source_format == "shapefile" else "birds.gpkg")
+    with fiona.open(
+        path,
+        "w",
+        driver="ESRI Shapefile" if source_format == "shapefile" else "GPKG",
+        schema={"geometry": "Point", "properties": {"code": "str", "note": "str"}},
+        crs="EPSG:4326",
+    ) as dataset:
+        dataset.write(
+            {
+                "geometry": {"type": "Point", "coordinates": [1, 2]},
+                "properties": {"code": "A", "note": None},
+            }
+        )
+    # Existing conversion callers still omit NULL attributes by default.
+    converted, _ = convert_data([str(path)], source_format)
+    assert "note" not in converted["features"][0]["properties"]
+    if source_format == "shapefile":
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for member in tmp_path.glob("birds.*"):
+                archive.write(member, member.name)
+        payload = upload_bytes("birds.zip", buffer.getvalue())
+    else:
+        payload = upload_bytes(path.name, path.read_bytes())
+
+    with psycopg.connect(mock_db_connection) as conn:
+        conn.execute(
+            """CREATE TABLE observations (
+                _id TEXT PRIMARY KEY, code TEXT, note TEXT, feature_id TEXT,
+                g__type TEXT, g__coordinates TEXT, __geopackage_layer TEXT
+            )"""
+        )
+        conn.execute(
+            """INSERT INTO observations VALUES
+                ('one', 'A', 'old note', '1', 'Point', '[1.0,2.0]', 'birds')"""
+        )
+    staged = stage_import(mock_db_connection, payload, "merge", "observations")
+    assert "note" in staged["fields"]
+    preview = preview_import(mock_db_connection, staged["import_id"], ["code"], policy)
+    assert preview["updated"] == (1 if policy == "imported" else 0)
+    assert preview["unchanged"] == (0 if policy == "imported" else 1)
+    assert preview["added"] == preview["columns_added"] == 0
+    confirm(mock_db_connection, staged, preview)
+    assert table_rows(mock_db_connection, "observations")[0]["note"] == (
+        None if policy == "imported" else "old note"
+    )
+
+
 def test_existing_wins_preserves_matches_and_adds_new_rows(mock_db_connection):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:
         cursor.execute(
