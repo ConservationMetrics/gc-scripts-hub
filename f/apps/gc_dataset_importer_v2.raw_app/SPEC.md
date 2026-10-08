@@ -106,7 +106,7 @@ UPLOAD:
   2-1: My OS file browser represents accepted file types (e.g. via the html `accept` property)
   3: Accepted file types are CSV, GeoJSON, GPX, GeoPackage, JSON, KML, Shapefile (.zip), XLS, XLSX, and SMART XML
   4: If I drag or upload an invalid file type, I see a helpful error
-  5: A geopackage must contain exactly one spatial layer
+  5: A GeoPackage’s spatial layers are combined into one dataset. Non-spatial tables are skipped, and each record retains its source layer in `__geopackage_layer`
   6: JSON expects a non-empty top level array of objects
   7: CyberTracker backup JSON is detected by content and converted automatically
   8: SMART patrol XML is detected by namespace and converted automatically

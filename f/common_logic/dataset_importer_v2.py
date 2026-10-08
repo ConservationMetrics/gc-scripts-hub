@@ -460,23 +460,11 @@ def _tabular_rows(data):
 
 
 def _parse_converted_paths(file_paths):
-    import fiona
-
     from f.common_logic.data_conversion import convert_data, detect_structured_data_type
 
     detected = detect_structured_data_type([str(path) for path in file_paths])
     if detected == "unsupported" or detected == "xml":
         raise ImportValidationError("The uploaded file type is not supported.")
-    if detected == "geopackage":
-        spatial_layers = []
-        for layer in fiona.listlayers(file_paths[0]):
-            with fiona.open(file_paths[0], layer=layer) as collection:
-                if collection.schema["geometry"] not in (None, "None"):
-                    spatial_layers.append(layer)
-        if len(spatial_layers) != 1:
-            raise ImportValidationError(
-                "A GeoPackage must contain exactly one spatial layer."
-            )
     try:
         converted, output_format = convert_data(
             [str(path) for path in file_paths], detected

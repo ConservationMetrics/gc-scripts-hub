@@ -1186,15 +1186,34 @@ def test_single_layer_geopackage_is_staged(mock_db_connection, tmp_path):
     assert staged["record_count"] == 1
 
 
-def test_multi_layer_geopackage_is_rejected(mock_db_connection):
+def test_multi_layer_geopackage_is_imported(mock_db_connection):
     path = Path(__file__).parent / "assets" / "datasets_bees.gpkg"
-    with pytest.raises(ImportValidationError, match="exactly one spatial layer"):
-        stage_import(
-            mock_db_connection,
-            upload_bytes(path.name, path.read_bytes()),
-            "create",
-            "geopackage_rows",
-        )
+    staged = stage_import(
+        mock_db_connection,
+        upload_bytes(path.name, path.read_bytes()),
+        "create",
+        "geopackage_rows",
+    )
+    assert staged["source_format"] == "geopackage"
+    assert staged["record_count"] == 55
+
+    preview = preview_import(mock_db_connection, staged["import_id"])
+    confirm(mock_db_connection, staged, preview)
+    rows = table_rows(mock_db_connection, "geopackage_rows")
+    assert len(rows) == 55
+    for layer, geometry_type, count in (
+        ("apiary", "Point", 36),
+        ("area", "Polygon", 18),
+        ("tracks", "LineString", 1),
+    ):
+        layer_rows = [row for row in rows if row["__geopackage_layer"] == layer]
+        assert len(layer_rows) == count
+        assert all(row["g__type"] == geometry_type for row in layer_rows)
+    assert {row["__geopackage_layer"] for row in rows} == {
+        "apiary",
+        "area",
+        "tracks",
+    }
 
 
 def test_single_sheet_xlsx_is_staged(mock_db_connection, tmp_path):
