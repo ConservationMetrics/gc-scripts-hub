@@ -24,7 +24,7 @@ def test_read_auditor2_csvs_basic(tmp_path):
         file_path = tmp_path / f"project_{key}_20250505.csv"
         file_path.write_text("col1,col2\nval1,val2", encoding="utf-8")
 
-    result = read_auditor2_csvs(tmp_path)
+    result = read_auditor2_csvs(storage_path=tmp_path)
 
     assert set(result.keys()) == set(keys)
     for table in result.values():
@@ -49,7 +49,7 @@ def test_read_auditor2_csvs_raises_on_duplicate(tmp_path):
         )
 
     with pytest.raises(ValueError, match="Multiple CSV files found matching 'labels'"):
-        read_auditor2_csvs(tmp_path)
+        read_auditor2_csvs(storage_path=tmp_path)
 
 
 def _prepare_auditor2_assets(tmp_path, with_media: bool):

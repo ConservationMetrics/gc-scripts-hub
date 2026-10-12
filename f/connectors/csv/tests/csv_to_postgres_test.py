@@ -8,7 +8,13 @@ csv_fixture_path = "f/connectors/csv/tests/assets/"
 
 
 def test_script_e2e(pg_database):
-    main(pg_database, "my_csv_data", "data.csv", csv_fixture_path, False)
+    main(
+        db=pg_database,
+        db_table_name="my_csv_data",
+        csv_path="data.csv",
+        attachment_root=csv_fixture_path,
+        delete_csv_file=False,
+    )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
@@ -60,12 +66,12 @@ def test_script_e2e(pg_database):
 
 def test_script_with_custom_id_column(pg_database):
     main(
-        pg_database,
-        "my_csv_data_custom_id",
-        "data_with_id.csv",
-        csv_fixture_path,
-        False,
-        "plot_id",
+        db=pg_database,
+        db_table_name="my_csv_data_custom_id",
+        csv_path="data_with_id.csv",
+        attachment_root=csv_fixture_path,
+        delete_csv_file=False,
+        id_column="plot_id",
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -104,7 +110,7 @@ def test_transform_csv_data__empty_cells_become_none(tmp_path):
     csv_file = tmp_path / "sparse.csv"
     csv_file.write_text("_id,name,note\n1,Alpha,\n2,,Bravo note\n")
 
-    rows = transform_csv_data(csv_file, id_column="_id")
+    rows = transform_csv_data(csv_path=csv_file, id_column="_id")
     assert rows == [
         {"_id": "1", "name": "Alpha", "note": None},
         {"_id": "2", "name": None, "note": "Bravo note"},
@@ -122,12 +128,12 @@ def test_script_with_mapping_table_and_key_reversal(pg_database, tmp_path):
     )
 
     main(
-        pg_database,
-        "form_responses",
-        "data.csv",
-        str(tmp_path),
-        False,
-        "_id",
+        db=pg_database,
+        db_table_name="form_responses",
+        csv_path="data.csv",
+        attachment_root=str(tmp_path),
+        delete_csv_file=False,
+        id_column="_id",
         use_mapping_table=True,
         reverse_properties_separated_by="/",
     )
@@ -154,7 +160,7 @@ def test_script_with_mapping_table_and_key_reversal(pg_database, tmp_path):
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            pg_database,
+            db=pg_database,
             csv_path="data.csv",
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",

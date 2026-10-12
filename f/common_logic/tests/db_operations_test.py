@@ -18,7 +18,7 @@ from f.common_logic.identifier_utils import normalize_identifier
 
 def test_fetch_tables_from_postgres(mock_db_connection):
     table_names = ["test_forms", "test_forms_2"]
-    writers = [StructuredDBWriter(mock_db_connection, name) for name in table_names]
+    writers = [StructuredDBWriter(db_connection_string=mock_db_connection, table_name=name) for name in table_names]
 
     with writers[0]._get_conn() as conn, conn.cursor() as cursor:
         for writer in writers:
@@ -26,7 +26,7 @@ def test_fetch_tables_from_postgres(mock_db_connection):
                 f"CREATE TABLE {writer.table_name} (_id VARCHAR PRIMARY KEY, field VARCHAR)"
             )
 
-    tables = fetch_tables_from_postgres(mock_db_connection)
+    tables = fetch_tables_from_postgres(db_connection_string=mock_db_connection)
 
     assert isinstance(tables, list)
     for writer in writers:
@@ -34,20 +34,20 @@ def test_fetch_tables_from_postgres(mock_db_connection):
 
 
 def test_existing_db_table_name_without_db():
-    assert existing_db_table_name(None) == []
+    assert existing_db_table_name(db=None) == []
     assert existing_db_table_name() == []
-    assert existing_db_table_name(None, slug="lake") == []
+    assert existing_db_table_name(db=None, slug="lake") == []
 
 
 def test_existing_db_table_name_skips_sidecar_tables(mock_db_dict):
-    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=mock_db_dict), autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("CREATE TABLE kept_dataset (_id text)")
             cur.execute("CREATE TABLE kept_dataset__columns (_id text)")
             cur.execute("CREATE TABLE kept_dataset__labels (_id text)")
             cur.execute("CREATE TABLE kept_dataset__metadata (_id text)")
 
-    values = {option["value"] for option in existing_db_table_name(mock_db_dict)}
+    values = {option["value"] for option in existing_db_table_name(db=mock_db_dict)}
     assert "kept_dataset" in values
     assert "kept_dataset__columns" not in values
     assert "kept_dataset__labels" not in values
@@ -57,23 +57,27 @@ def test_existing_db_table_name_skips_sidecar_tables(mock_db_dict):
 def test_resolve_db_table_name_requires_an_existing_table(mock_db_dict):
     with pytest.raises(ValueError, match="does not exist"):
         resolve_db_table_name(
-            mock_db_dict, USE_EXISTING_DATASET, selected_table="missing_dataset"
+            db=mock_db_dict,
+            destination_action=USE_EXISTING_DATASET,
+            selected_table="missing_dataset",
         )
 
 
 def test_resolve_db_table_name_requires_a_selection(mock_db_dict):
     with pytest.raises(ValueError, match="Select an existing dataset"):
-        resolve_db_table_name(mock_db_dict, USE_EXISTING_DATASET, selected_table="  ")
+        resolve_db_table_name(db=mock_db_dict, destination_action=USE_EXISTING_DATASET, selected_table="  ")
 
 
 def test_resolve_db_table_name_returns_existing_table(mock_db_dict):
-    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=mock_db_dict), autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("CREATE TABLE kept_dataset (_id text PRIMARY KEY)")
 
     assert (
         resolve_db_table_name(
-            mock_db_dict, USE_EXISTING_DATASET, selected_table="kept_dataset"
+            db=mock_db_dict,
+            destination_action=USE_EXISTING_DATASET,
+            selected_table="kept_dataset",
         )
         == "kept_dataset"
     )
@@ -81,39 +85,43 @@ def test_resolve_db_table_name_returns_existing_table(mock_db_dict):
 
 def test_resolve_db_table_name_requires_a_new_name(mock_db_dict):
     with pytest.raises(ValueError, match="db_table_name"):
-        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name="  ")
+        resolve_db_table_name(db=mock_db_dict, destination_action=CREATE_NEW_DATASET, db_table_name="  ")
     with pytest.raises(ValueError, match="db_table_name"):
-        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name="x" * 55)
+        resolve_db_table_name(db=mock_db_dict, destination_action=CREATE_NEW_DATASET, db_table_name="x" * 55)
 
 
 def test_resolve_db_table_name_returns_new_name(mock_db_dict):
     assert (
-        resolve_db_table_name(mock_db_dict, CREATE_NEW_DATASET, db_table_name=" fresh ")
+        resolve_db_table_name(db=mock_db_dict, destination_action=CREATE_NEW_DATASET, db_table_name=" fresh ")
         == "fresh"
     )
 
 
 def test_resolve_db_table_name_accepts_an_existing_name(mock_db_dict):
-    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=mock_db_dict), autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("CREATE TABLE observations (_id text)")
 
     assert (
         resolve_db_table_name(
-            mock_db_dict, CREATE_NEW_DATASET, db_table_name="observations"
+            db=mock_db_dict,
+            destination_action=CREATE_NEW_DATASET,
+            db_table_name="observations",
         )
         == "observations"
     )
 
 
 def test_resolve_db_table_name_lowercases_an_existing_name(mock_db_dict):
-    with psycopg.connect(conninfo(mock_db_dict), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=mock_db_dict), autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("CREATE TABLE observations (_id text)")
 
     assert (
         resolve_db_table_name(
-            mock_db_dict, CREATE_NEW_DATASET, db_table_name="Observations"
+            db=mock_db_dict,
+            destination_action=CREATE_NEW_DATASET,
+            db_table_name="Observations",
         )
         == "observations"
     )
@@ -121,19 +129,19 @@ def test_resolve_db_table_name_lowercases_an_existing_name(mock_db_dict):
 
 def test_resolve_db_table_name_rejects_unknown_action(mock_db_dict):
     with pytest.raises(ValueError, match="destination_action"):
-        resolve_db_table_name(mock_db_dict, "nope", db_table_name="fresh")
+        resolve_db_table_name(db=mock_db_dict, destination_action="nope", db_table_name="fresh")
 
 
 def test_check_if_table_exists(mock_db_connection):
-    writer = StructuredDBWriter(mock_db_connection, "existing_table")
+    writer = StructuredDBWriter(db_connection_string=mock_db_connection, table_name="existing_table")
 
     submissions = [
         {"_id": "1", "field": "value"},
     ]
     writer.handle_output(submissions)
 
-    assert check_if_table_exists(mock_db_connection, "existing_table")
-    assert not check_if_table_exists(mock_db_connection, "nonexistent_table")
+    assert check_if_table_exists(db_connection_string=mock_db_connection, table_name="existing_table")
+    assert not check_if_table_exists(db_connection_string=mock_db_connection, table_name="nonexistent_table")
 
 
 def test_create_database_if_not_exists(mock_db_dict):
@@ -143,16 +151,16 @@ def test_create_database_if_not_exists(mock_db_dict):
 
     # Clean up if it exists from previous test
     postgres_conn = {**mock_db_dict, "dbname": "postgres"}
-    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=postgres_conn), autocommit=True) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"DROP DATABASE IF EXISTS {test_db_name}")
 
     # Test creating the database
-    created = create_database_if_not_exists(mock_db_dict, test_db_name)
+    created = create_database_if_not_exists(db=mock_db_dict, dbname=test_db_name)
     assert created is True
 
     # Verify database exists
-    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=postgres_conn), autocommit=True) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
@@ -165,18 +173,20 @@ def test_create_database_if_not_exists(mock_db_dict):
             assert cursor.fetchone()[0] is True
 
     # Test that calling it again returns False (already exists)
-    created_again = create_database_if_not_exists(mock_db_dict, test_db_name)
+    created_again = create_database_if_not_exists(db=mock_db_dict, dbname=test_db_name)
     assert created_again is False
 
     # Clean up
-    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=postgres_conn), autocommit=True) as conn:
         with conn.cursor() as cursor:
             cursor.execute(f"DROP DATABASE {test_db_name}")
 
 
 def test_mapping_table_creation(mock_db_connection):
     writer = StructuredDBWriter(
-        mock_db_connection, "test_forms", use_mapping_table=True
+        db_connection_string=mock_db_connection,
+        table_name="test_forms",
+        use_mapping_table=True,
     )
 
     submissions = [
@@ -194,7 +204,7 @@ def test_mapping_table_creation(mock_db_connection):
 
 
 def test_no_mapping_table_creation(mock_db_connection):
-    writer = StructuredDBWriter(mock_db_connection, "test_forms")
+    writer = StructuredDBWriter(db_connection_string=mock_db_connection, table_name="test_forms")
 
     submissions = [
         {"_id": "1", "complex.field": "value1"},
@@ -218,8 +228,8 @@ def test_no_mapping_table_creation(mock_db_connection):
 
 def test_reverse_properties_handling(mock_db_connection):
     writer = StructuredDBWriter(
-        mock_db_connection,
-        "nested_data",
+        db_connection_string=mock_db_connection,
+        table_name="nested_data",
         reverse_properties_separated_by="/",
         str_replace=[("/", "__")],
     )
@@ -239,7 +249,9 @@ def test_reverse_properties_handling(mock_db_connection):
 def test_long_table_name_truncation(mock_db_connection):
     very_long_name = "this_is_an_extremely_long_table_name_that_exceeds_postgresql_limits_significantly_2023"
     writer = StructuredDBWriter(
-        mock_db_connection, very_long_name, use_mapping_table=True
+        db_connection_string=mock_db_connection,
+        table_name=very_long_name,
+        use_mapping_table=True,
     )
 
     # Verify both main and mapping table names are properly truncated
@@ -267,8 +279,8 @@ def test_truncated_table_name_retains_suffix(mock_db_connection):
     )
     suffix = "labels"
     writer = StructuredDBWriter(
-        mock_db_connection,
-        very_long_name,
+        db_connection_string=mock_db_connection,
+        table_name=very_long_name,
         suffix=suffix,
         use_mapping_table=False,
     )
@@ -286,8 +298,8 @@ def test_truncated_table_name_retains_suffix(mock_db_connection):
 
 def test_table_name_normalization_to_lowercase(mock_db_connection):
     writer = StructuredDBWriter(
-        mock_db_connection,
-        "ALL_CAPS_TABLE_NAME",
+        db_connection_string=mock_db_connection,
+        table_name="ALL_CAPS_TABLE_NAME",
         use_mapping_table=True,
     )
 
@@ -315,7 +327,7 @@ def test_table_name_normalization_to_lowercase(mock_db_connection):
 
 def test_summarize_all_new_rows(mock_db_dict):
     """Test detection of all new rows when table exists but has different data"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data
     existing_data = [
@@ -332,7 +344,9 @@ def test_summarize_all_new_rows(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 3
@@ -342,7 +356,7 @@ def test_summarize_all_new_rows(mock_db_dict):
 
 def test_summarize_all_updates(mock_db_dict):
     """Test detection of updates when all rows have existing IDs but changed values"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data
     existing_data = [
@@ -358,7 +372,9 @@ def test_summarize_all_updates(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 0
@@ -368,7 +384,7 @@ def test_summarize_all_updates(mock_db_dict):
 
 def test_summarize_new_columns(mock_db_dict):
     """Test detection of new columns in the new data"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data with basic columns
     existing_data = [
@@ -384,7 +400,9 @@ def test_summarize_new_columns(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 2
@@ -394,7 +412,7 @@ def test_summarize_new_columns(mock_db_dict):
 
 def test_summarize_mixed_scenario(mock_db_dict):
     """Test mixed scenario with new rows, updates, and new columns"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data
     existing_data = [
@@ -412,7 +430,9 @@ def test_summarize_mixed_scenario(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 2  # IDs 4 and 5
@@ -422,7 +442,7 @@ def test_summarize_mixed_scenario(mock_db_dict):
 
 def test_summarize_no_changes(mock_db_dict):
     """Test when new data is identical to existing data"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data
     existing_data = [
@@ -438,7 +458,9 @@ def test_summarize_no_changes(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 0
@@ -448,7 +470,7 @@ def test_summarize_no_changes(mock_db_dict):
 
 def test_summarize_empty_new_data(mock_db_dict):
     """Test with empty new data list"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data
     existing_data = [{"_id": "1", "name": "Alice"}]
@@ -458,7 +480,9 @@ def test_summarize_empty_new_data(mock_db_dict):
     new_data = []
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 0
@@ -478,7 +502,7 @@ def test_summarize_partial_columns_in_new_data(mock_db_dict):
 
     We only compare columns that exist in both the new data and the existing table.
     """
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data with more columns
     existing_data = [
@@ -494,7 +518,9 @@ def test_summarize_partial_columns_in_new_data(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
     )
 
     assert new_rows == 1  # ID 3
@@ -506,7 +532,7 @@ def test_summarize_partial_columns_in_new_data(mock_db_dict):
 
 def test_summarize_custom_primary_key(mock_db_dict):
     """Test using a custom primary key column instead of _id"""
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "test_dataset")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="test_dataset")
 
     # Create existing data with custom primary key
     existing_data = [
@@ -522,7 +548,10 @@ def test_summarize_custom_primary_key(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "test_dataset", new_data, primary_key="email"
+        db=mock_db_dict,
+        table_name="test_dataset",
+        new_data=new_data,
+        primary_key="email",
     )
 
     assert new_rows == 1  # charlie@example.com
@@ -544,7 +573,9 @@ def test_summarize_new_dataset_without_existing_table(mock_db_dict):
     # This should handle the case where table doesn't exist gracefully
     # by returning 0,0,0 (since table doesn't exist, no comparison is possible)
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "nonexistent_table", new_data
+        db=mock_db_dict,
+        table_name="nonexistent_table",
+        new_data=new_data,
     )
 
     # When table doesn't exist, the function currently returns based on
@@ -561,7 +592,7 @@ def test_summarize_actual_kobotoolbox_csv_reupload(mock_db_dict):
     This will verify that sanitize_sql_message produces the same column names
     that StructuredDBWriter creates in the database.
     """
-    writer = StructuredDBWriter(conninfo(mock_db_dict), "kobotoolbox_test")
+    writer = StructuredDBWriter(db_connection_string=conninfo(db=mock_db_dict), table_name="kobotoolbox_test")
 
     # Use ACTUAL column names from the user's CSV (first 3 rows)
     initial_row1 = {
@@ -635,7 +666,9 @@ def test_summarize_actual_kobotoolbox_csv_reupload(mock_db_dict):
     ]
 
     new_rows, updates, new_columns = summarize_new_rows_updates_and_columns(
-        mock_db_dict, "kobotoolbox_test", reupload_data
+        db=mock_db_dict,
+        table_name="kobotoolbox_test",
+        new_data=reupload_data,
     )
 
     assert new_rows == 2  # Frederick and Occoquan
@@ -645,10 +678,10 @@ def test_summarize_actual_kobotoolbox_csv_reupload(mock_db_dict):
 
 def test_non_latin_table_and_column_names(mock_db_connection):
     """Thai (and other non-Latin) dataset/column names must round-trip via StructuredDBWriter."""
-    table_name = normalize_identifier("สำรวจใหม่")
+    table_name = normalize_identifier(name="สำรวจใหม่")
     assert table_name == "สำรวจใหม่"
 
-    writer = StructuredDBWriter(mock_db_connection, table_name)
+    writer = StructuredDBWriter(db_connection_string=mock_db_connection, table_name=table_name)
     submissions = [
         {"_id": "1", "อีเห็น": "sighting-a", "notes": "ok"},
         {"_id": "2", "อีเห็น": "sighting-b", "notes": "ok"},

@@ -170,10 +170,10 @@ def test_get_layer_metadata(arcgis_anonymous_server, mocked_responses):
 
     session = make_session()
     metadata = get_layer_metadata(
-        session,
-        arcgis_anonymous_server.subdomain,
-        arcgis_anonymous_server.service_id,
-        arcgis_anonymous_server.feature_id,
+        session=session,
+        subdomain=arcgis_anonymous_server.subdomain,
+        service_id=arcgis_anonymous_server.service_id,
+        feature_id=arcgis_anonymous_server.feature_id,
     )
 
     assert "layers" in metadata
@@ -188,7 +188,7 @@ def test_fetch_features(arcgis_anonymous_server, mocked_responses):
     )
 
     session = make_session()
-    records = fetch_features(session, arcgis_anonymous_server.base_url, layer_index=0)
+    records = fetch_features(session=session, base_feature_url=arcgis_anonymous_server.base_url, layer_index=0)
 
     assert isinstance(records, list)
     assert len(records) == 1
@@ -203,7 +203,7 @@ def test_transform_record_geometry():
     # Web Mercator coordinates
     rec = {"OBJECTID": 1, "__geometry": {"x": -8228661.123, "y": 4972614.456}}
 
-    transform_record_geometry(rec, transformer)
+    transform_record_geometry(record=rec, transformer=transformer)
 
     assert "__geojson_geometry" in rec
     geometry = rec["__geojson_geometry"]
@@ -227,7 +227,7 @@ def test_build_geojson():
         }
     ]
 
-    geojson = build_geojson(records)
+    geojson = build_geojson(records=records)
 
     assert geojson["type"] == "FeatureCollection"
     assert len(geojson["features"]) == 1

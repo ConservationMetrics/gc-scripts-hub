@@ -28,11 +28,11 @@ from f.connectors.sensingclues.tests.assets.server_responses import (
 
 def _run(server, db, table_name, attachment_root, group_identifier=None):
     main(
-        server.username,
-        server.password,
-        group_identifier if group_identifier is not None else server.group_identifier,
-        db,
-        table_name,
+        username=server.username,
+        password=server.password,
+        group_identifier=group_identifier if group_identifier is not None else server.group_identifier,
+        db=db,
+        db_table_name=table_name,
         attachment_root=attachment_root,
     )
 
@@ -132,11 +132,11 @@ def test_invalid_group(sensingclues_server_groups_only, pg_database, tmp_path):
 def test_non_numeric_identifier(pg_database, tmp_path):
     with pytest.raises(ValueError, match="numeric"):
         main(
-            "demo",
-            "demo",
-            "GFW",
-            pg_database,
-            "sc_bad_ident",
+            username="demo",
+            password="demo",
+            group_identifier="GFW",
+            db=pg_database,
+            db_table_name="sc_bad_ident",
             attachment_root=tmp_path / "datalake",
         )
 
@@ -152,8 +152,8 @@ def test_invalid_credentials(sensingclues_server_unauthorized, pg_database, tmp_
 
 
 def test_transform_collapses_concepts_and_flattens_attributes():
-    raw = observations_page([CLUEY_GROUP])["results"]
-    features = transform_observations_to_geojson(raw)["features"]
+    raw = observations_page(groups=[CLUEY_GROUP])["results"]
+    features = transform_observations_to_geojson(results=raw)["features"]
     primary = next(f for f in features if f["id"] == PRIMARY_ENTITY_ID)
     props = primary["properties"]
 
@@ -169,8 +169,8 @@ def test_transform_collapses_concepts_and_flattens_attributes():
 
 
 def test_transform_core_fields_win_on_attribute_collision():
-    raw = observations_page([AFRICA_GROUP])["results"]
-    features = transform_observations_to_geojson(raw)["features"]
+    raw = observations_page(groups=[AFRICA_GROUP])["results"]
+    features = transform_observations_to_geojson(results=raw)["features"]
     primary = next(f for f in features if f["id"] == AFRICA_PRIMARY_ENTITY_ID)
     props = primary["properties"]
 
@@ -181,7 +181,7 @@ def test_transform_core_fields_win_on_attribute_collision():
 
 def test_transform_missing_where_omits_geometry():
     result = transform_observations_to_geojson(
-        [
+        results=[
             {
                 "id": "O-no-geo",
                 "extracted": {
@@ -209,7 +209,7 @@ def test_transform_missing_where_omits_geometry():
                     ]
                 },
             }
-        ]
+        ],
     )
     feature = result["features"][0]
     assert feature["geometry"] is None
@@ -220,10 +220,10 @@ def test_transform_missing_where_omits_geometry():
 def test_use_existing_dataset_requires_a_real_table(pg_database):
     with pytest.raises(ValueError, match="does not exist"):
         main(
-            "user",
-            "pass",
-            "1",
-            pg_database,
+            username="user",
+            password="pass",
+            group_identifier="1",
+            db=pg_database,
             destination_action=USE_EXISTING_DATASET,
             existing_db_table_name="missing_dataset",
         )

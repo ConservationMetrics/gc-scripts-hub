@@ -17,7 +17,7 @@ def test_basic_output(mock_generate_sas):
         "endpoint": "core.windows.net",
     }
 
-    commands = main(azure_blob)
+    commands = main(azure_blob=azure_blob)
 
     # Check that all destination options are present
     assert "local" in commands
@@ -61,7 +61,7 @@ def test_with_folder_path(mock_generate_sas):
         "endpoint": "core.windows.net",
     }
 
-    commands = main(azure_blob, "data/exports")
+    commands = main(azure_blob=azure_blob, folder_path="data/exports")
 
     # Check that folder path is included in URL
     expected_url = "https://testaccount.blob.core.windows.net/testcontainer/data/exports?test_sas_token"

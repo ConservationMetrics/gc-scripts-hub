@@ -22,7 +22,7 @@ def pg_database(_postgres_instance):
     dsn["dbname"] = dsn.pop("database")
 
     # Create test tables and data
-    conn_str = conninfo(dsn)
+    conn_str = conninfo(db=dsn)
     with psycopg.connect(conn_str, autocommit=True) as conn:
         with conn.cursor() as cursor:
             # Create some test tables
