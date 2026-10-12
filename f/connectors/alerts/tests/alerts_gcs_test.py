@@ -12,10 +12,12 @@ import pandas as pd
 import psycopg
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.alerts.alerts_gcs import (
     _choose_latest_alerts_statistics,
     _generate_alerts_statistics_from_data,
     _main,
+    main,
     prepare_alerts_data,
     prepare_alerts_metadata,
 )
@@ -1102,3 +1104,16 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
         assert (
             second_unchanged_feature["properties"]["alert_type"] == "deforestation"
         ), "Second GeoJSON alert_type should remain unchanged"
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            {},
+            "bucket",
+            "provider",
+            1,
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

@@ -6,6 +6,8 @@
 
 Fetches observations for one "Group" (Sensing Clues' equivalent of a project) via the [sensingcluespy](https://sensingcluespy.readthedocs.io/en/latest/) client. Saves raw JSON and GeoJSON to the datalake and writes features to PostgreSQL.
 
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+
 Each observation becomes one GeoJSON Feature. Ontology concepts collapse into `conceptLabels` / `conceptIds` lists. Form fields in `attributes` flatten into properties (core fields such as `fileName` and `tags` win on collision). Geometry comes from `Observation.where`.
 
 ### Credentials

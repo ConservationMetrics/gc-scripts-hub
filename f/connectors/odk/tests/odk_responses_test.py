@@ -2,7 +2,9 @@ import csv
 from pathlib import Path
 
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.odk.odk_responses import main, transform_odk_form_data
 
 
@@ -89,3 +91,14 @@ def test_transform_odk_form_data_from_csv():
 
     # Second submission: 38.769845, -77.207058 -> [-77.207058, 38.769845]
     assert result[1]["g__coordinates"] == [-77.207058, 38.769845]
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            {},
+            "form",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

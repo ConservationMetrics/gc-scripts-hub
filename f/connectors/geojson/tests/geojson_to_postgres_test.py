@@ -3,7 +3,9 @@ import tempfile
 from pathlib import Path
 
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.geojson.geojson_to_postgres import main, transform_geojson_data
 
 geojson_fixture_path = "f/connectors/geojson/tests/assets/"
@@ -195,3 +197,13 @@ def test_transform_geojson_data_random_uuids():
     finally:
         # Clean up
         Path(temp_path).unlink()
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            pg_database,
+            geojson_path="data.geojson",
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

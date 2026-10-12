@@ -1,8 +1,10 @@
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.cybertracker.cybertracker_observations_from_backup import (
     _looks_like_uid,
     _normalize_field_value,
+    main,
     parse_cybertracker_json,
 )
 
@@ -108,3 +110,13 @@ def test_parse_cybertracker_json__repeat_parent_uid_list_skipped(
         if "headwater spring" in f["properties"].get("type_of_sighting", "").lower()
     )
     assert feat["properties"]["photo_of_site"] == ["PHOTO_20260430_144233.jpg"]
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            "missing.json",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

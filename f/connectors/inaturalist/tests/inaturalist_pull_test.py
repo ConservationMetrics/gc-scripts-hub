@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 import psycopg
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.inaturalist.inaturalist_pull import (
     _OBSERVATION_FIELDS,
     _encode_fields,
@@ -561,6 +562,41 @@ def test_bbox_json_string_sends_bbox_params(
         """,
     )
     _assert_bbox_params(_first_observation_params(mocked_responses), LAKE_ACCOTINK_QUERY)
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            None,
+            None,
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )
+
+
+def test_use_existing_dataset_writes_to_that_table(
+    inaturalist_project_server, pg_database, tmp_path
+):
+    table_name = "inat_existing"
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"CREATE TABLE {table_name} (_id text PRIMARY KEY)")
+
+    main(
+        "project",
+        inaturalist_project_server.project_id,
+        pg_database,
+        destination_action=USE_EXISTING_DATASET,
+        existing_db_table_name=table_name,
+        attachment_root=tmp_path / "datalake",
+    )
+
+    assert (tmp_path / "datalake" / table_name / f"{table_name}.geojson").exists()
+    with psycopg.connect(autocommit=True, **pg_database) as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+            assert cur.fetchone()[0] == OBSERVATION_COUNT
 
 
 def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):

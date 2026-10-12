@@ -144,7 +144,7 @@ This endpoint retrieves the binary data of a specific icon file associated with 
 
 # `comapeo_alerts`: Post Alerts to CoMapeo API
 
-This script fetches alerts data from a database and posts it to a CoMapeo server.
+This script fetches alerts data from a database and posts it to a CoMapeo server. The alerts table is chosen from the public tables on `db`. Sidecar tables (`__columns`, `__labels`, `__metadata`) are omitted.
 
 ## Endpoints
 

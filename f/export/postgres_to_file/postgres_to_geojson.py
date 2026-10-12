@@ -1,18 +1,34 @@
 import json
 import logging
 
-from f.common_logic.db_operations import conninfo, fetch_data_from_postgres, postgresql
+from f.common_logic.db_operations import (
+    USE_EXISTING_DATASET,
+    DynSelect_db_table_name,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    fetch_data_from_postgres,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def db_table_name(db: postgresql | None = None):
+    """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
-    db_table_name: str,
+    db_table_name: DynSelect_db_table_name,
     storage_path: str = "/persistent-storage/datalake/export",
 ):
+    db_table_name = resolve_db_table_name(
+        db, USE_EXISTING_DATASET, selected_table=db_table_name
+    )
     data = fetch_data_from_postgres(conninfo(db), db_table_name)
 
     feature_collection = format_data_as_geojson(data)

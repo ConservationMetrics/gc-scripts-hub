@@ -8,13 +8,21 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 from urllib.parse import quote
 
 import requests
 from psycopg import connect, sql
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import (
+    CREATE_NEW_DATASET,
+    USE_EXISTING_DATASET,
+    DynSelect_existing_db_table_name,
+    check_if_table_exists,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+)
 from f.common_logic.geo_utils import bounding_box_to_wkt
 
 _API = "https://api.gbif.org/v1"
@@ -74,7 +82,20 @@ _FACETS = (
 )
 
 
-def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
+def existing_db_table_name(db: postgresql | None = None):
+    """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
+    return list_dataset_tables(db)
+
+
+def main(
+    bounding_box: list | str,
+    db: postgresql,
+    db_table_name: str | None = None,
+    destination_action: Literal[
+        "use_existing_dataset", "create_new_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
+) -> dict:
     """Replace one table with GBIF facet counts for a bounding box.
 
     Parameters
@@ -83,11 +104,19 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
         ``[[west, south], [east, north]]`` in longitude/latitude order.
     db : postgresql
         Database connection resource.
-    db_table_name : str
-        Statistics table. Rows use columns ``facet``, ``key``, ``label``,
-        and ``count``.
+    db_table_name : str, optional
+        Statistics table name. Used when ``destination_action`` is
+        ``create_new_dataset``. Creates the dataset if needed; updates it
+        if it already exists.
+    destination_action : str
+        ``use_existing_dataset`` or ``create_new_dataset``.
+    existing_db_table_name : str, optional
+        Public table to replace. Used when ``destination_action`` is
+        ``use_existing_dataset``.
     """
-    table_name = _validate_table_name(db_table_name)
+    table_name = _choose_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     logger.info("Starting GBIF statistics for %s.", table_name)
     wkt = bounding_box_to_wkt(bounding_box, max_area_km2=_MAX_AREA_KM2)
     logger.info("GBIF statistics geometry: %s", wkt)
@@ -106,8 +135,33 @@ def main(bounding_box: list | str, db: postgresql, db_table_name: str) -> dict:
     return summary
 
 
-def _validate_table_name(db_table_name: str) -> str:
-    """Return a lowercase table name PostgreSQL can store."""
+def _choose_table_name(
+    db: postgresql,
+    destination_action: str,
+    db_table_name: str | None,
+    selected_table: str | None,
+) -> str:
+    """Return the statistics table, from an existing dataset or a typed name.
+
+    A typed name is lowercased. Creates the dataset if needed; updates it if
+    it already exists. An existing dataset must already be a public table.
+    Either way the table is replaced.
+    """
+    if destination_action == USE_EXISTING_DATASET:
+        name = _validate_table_name(selected_table, lowercase=False)
+        if not check_if_table_exists(conninfo(db), name):
+            raise ValueError(f"Dataset '{name}' does not exist.")
+        return name
+    if destination_action != CREATE_NEW_DATASET:
+        raise ValueError(
+            "destination_action must be "
+            f"{USE_EXISTING_DATASET!r} or {CREATE_NEW_DATASET!r}."
+        )
+    return _validate_table_name(db_table_name)
+
+
+def _validate_table_name(db_table_name: str | None, *, lowercase: bool = True) -> str:
+    """Return a table name PostgreSQL can store. New names are lowercased."""
     if (
         not isinstance(db_table_name, str)
         or not db_table_name
@@ -119,7 +173,7 @@ def _validate_table_name(db_table_name: str) -> str:
             "db_table_name must be a non-empty table name of at most "
             f"{_MAX_TABLE_NAME_LENGTH} characters."
         )
-    return db_table_name.lower()
+    return db_table_name.lower() if lowercase else db_table_name
 
 
 def _collect(wkt: str) -> tuple[int, list[tuple[_Facet, list[tuple]]]]:

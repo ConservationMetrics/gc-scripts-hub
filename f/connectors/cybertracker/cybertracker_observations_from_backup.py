@@ -2,8 +2,14 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import Literal
 
-from f.common_logic.db_operations import postgresql
+from f.common_logic.db_operations import (
+    DynSelect_existing_db_table_name,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 from f.common_logic.file_operations import save_data_to_file
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
@@ -22,11 +28,20 @@ _CT_ROW_ID_UUID = re.compile(
 )
 
 
+def existing_db_table_name(db: postgresql | None = None, **_):
+    """Windmill dynamic select. Defined here so the `db` resource is resolved."""
+    return list_dataset_tables(db)
+
+
 def main(
     cybertracker_observations_path: str,
     db: postgresql,
-    db_table_name: str,
+    db_table_name: str | None = None,
     attachment_root: str = "/persistent-storage/datalake",
+    destination_action: Literal[
+        "create_new_dataset", "use_existing_dataset"
+    ] = "create_new_dataset",
+    existing_db_table_name: DynSelect_existing_db_table_name | None = None,
 ):
     """
     Parse CyberTracker (CT) JSON and save observations to database as GeoJSON.
@@ -37,11 +52,19 @@ def main(
         The path (in attachment root) to the CT JSON file to import.
     db : postgresql
         Database connection configuration.
-    db_table_name : str
-        The name of the database table where observations will be stored.
+    db_table_name : str, optional
+        Table name when ``destination_action`` is ``create_new_dataset``.
+        Creates the dataset if needed; updates it if it already exists.
     attachment_root : str
         Root directory for persistent storage.
+    destination_action : str
+        ``use_existing_dataset`` or ``create_new_dataset``.
+    existing_db_table_name : str, optional
+        Public table to write into when using an existing dataset.
     """
+    db_table_name = resolve_db_table_name(
+        db, destination_action, db_table_name, existing_db_table_name
+    )
     # Construct full path to JSON file
     json_path = Path(attachment_root) / cybertracker_observations_path
 

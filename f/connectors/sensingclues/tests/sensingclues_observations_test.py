@@ -4,6 +4,7 @@ import psycopg
 import pytest
 from sensingcluespy.src.exceptions import SCPermissionDenied
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.sensingclues.sensingclues_observations import (
     main,
     transform_observations_to_geojson,
@@ -214,3 +215,15 @@ def test_transform_missing_where_omits_geometry():
     assert feature["geometry"] is None
     assert "g__type" not in feature["properties"]
     assert "g__coordinates" not in feature["properties"]
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            "user",
+            "pass",
+            "1",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

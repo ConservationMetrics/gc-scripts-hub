@@ -2,7 +2,9 @@ import csv
 from pathlib import Path
 
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.kobotoolbox.kobotoolbox_responses import (
     extract_form_labels,
     flatten_kobotoolbox_submission,
@@ -569,3 +571,14 @@ def test_script_e2e__nested_repeats(koboserver_nested, pg_database, tmp_path):
                 f"FROM {table_name} WHERE _id = '900003'"
             )
             assert cursor.fetchone()[0] == "Jane"
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            {"server_url": "https://example.test", "api_key": "x"},
+            "form",
+            pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )
