@@ -2,7 +2,7 @@ import json
 import sys
 import types
 
-from f.connectors.alerts.alerts_twilio import main
+from f.connectors.twilio.twilio_change_detection import main
 
 
 def test_schedule_payload_keeps_db_table_name(monkeypatch):

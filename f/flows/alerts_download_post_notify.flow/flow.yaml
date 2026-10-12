@@ -1,0 +1,238 @@
+summary: 'Alerts: Download, Post, and Notify'
+description: >-
+  This flow connects three scripts: (1) Alerts: Fetch alerts from Google Cloud
+  Storage (2) CoMapeo: Post Alerts (3) Twilio: Notify of change detection alerts
+value:
+  modules:
+    - id: a
+      value:
+        type: script
+        input_transforms:
+          alerts_bucket:
+            type: javascript
+            expr: flow_input.alerts_bucket
+          alerts_provider:
+            type: javascript
+            expr: flow_input.alerts_provider
+          max_months_lookback:
+            type: javascript
+            expr: flow_input.max_months_lookback
+          db:
+            type: javascript
+            expr: flow_input.db
+          destination_action:
+            type: javascript
+            expr: flow_input.destination_action
+          existing_db_table_name:
+            type: javascript
+            expr: flow_input.existing_db_table_name
+          db_table_name:
+            type: javascript
+            expr: flow_input.db_table_name
+          destination_path:
+            type: javascript
+            expr: flow_input.destination_path
+          gcp_service_acct:
+            type: javascript
+            expr: flow_input.gcp_service_acct
+          territory_id:
+            type: javascript
+            expr: flow_input.territory_id
+        is_trigger: false
+        path: f/connectors/alerts/alerts_gcs
+    - id: b
+      value:
+        type: script
+        input_transforms:
+          comapeo:
+            type: javascript
+            expr: flow_input.comapeo
+          comapeo_projects:
+            type: javascript
+            expr: flow_input.comapeo_projects
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: >-
+              flow_input.destination_action == 'use_existing_dataset' ?
+              flow_input.existing_db_table_name :
+              (flow_input.db_table_name || '').toLowerCase()
+        is_trigger: false
+        path: f/connectors/comapeo/comapeo_alerts
+      continue_on_error: false
+      skip_if:
+        expr: '!flow_input.comapeo || !flow_input.comapeo_projects || flow_input.comapeo_projects.length === 0'
+    - id: d
+      value:
+        type: script
+        input_transforms:
+          alerts_statistics:
+            type: javascript
+            expr: results.a.alerts_statistics
+          instance_slug:
+            type: javascript
+            expr: flow_input.instance_slug
+          db:
+            type: javascript
+            expr: flow_input.db
+          db_table_name:
+            type: javascript
+            expr: results.a.db_table_name
+          twilio_message_template:
+            type: javascript
+            expr: flow_input.twilio_message_template
+        is_trigger: false
+        path: f/connectors/twilio/twilio_change_detection
+      continue_on_error: false
+      skip_if:
+        expr: '!flow_input.twilio_message_template || !flow_input.instance_slug || !results.a || !results.a.alerts_statistics || !results.a.db_table_name'
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - gcp_service_acct
+    - alerts_bucket
+    - alerts_provider
+    - max_months_lookback
+    - territory_id
+    - db
+    - destination_action
+    - existing_db_table_name
+    - db_table_name
+    - destination_path
+    - comapeo
+    - comapeo_projects
+    - instance_slug
+    - twilio_message_template
+  properties:
+    alerts_bucket:
+      type: string
+      description: The name of the Google Cloud Storage bucket where the alerts are stored.
+      default: ''
+      originalType: string
+    alerts_provider:
+      type: string
+      description: The name of the alerts provider.
+      default: null
+      originalType: string
+    max_months_lookback:
+      type: integer
+      description: >-
+        Maximum number of months to look back when processing alerts. Only alerts
+        from the last N months will be downloaded and processed. This helps bound
+        memory usage when dealing with large historical datasets. If null or not
+        specified, all historical data will be processed.
+      default: 1
+    comapeo:
+      type: object
+      description: >
+        A server URL and access token pair to connect to a CoMapeo archive
+        server.
+      format: resource-comapeo_server
+      nullable: false
+    comapeo_projects:
+      type: array
+      description: Project IDs on the CoMapeo server where the alerts will be posted.
+      default: null
+      items:
+        type: string
+      originalType: string[]
+      nullable: false
+    instance_slug:
+      type: string
+      description: >-
+        The URL slug for the instance, used to construct a link to the alerts
+        dashboard. This name is used for the instance and must be provided for
+        messages to be sent.
+      default: ''
+      originalType: string
+      nullable: false
+    db:
+      type: object
+      description: The database connection parameters for storing tabular data.
+      default: null
+      format: resource-postgresql
+    destination_action:
+      type: string
+      description: >-
+        Enter a dataset name, or choose an existing dataset.
+        Creates the dataset if needed; updates it if it already exists.
+      default: create_new_dataset
+      disableCreate: true
+      enum:
+        - create_new_dataset
+        - use_existing_dataset
+      enumLabels:
+        create_new_dataset: Enter dataset name
+        use_existing_dataset: Use existing dataset
+      title: Dataset
+    existing_db_table_name:
+      type: object
+      description: >-
+        Existing public table to write into. The list refreshes from `db`
+        and omits connector sidecar tables (`__columns`, `__labels`,
+        `__metadata`). CoMapeo and the Twilio link use this same table.
+      default: null
+      format: dynselect-existing_db_table_name
+      nullable: true
+      showExpr: "fields.destination_action == 'use_existing_dataset'"
+      title: Existing dataset
+    db_table_name:
+      type: string
+      description: >-
+        Creates the dataset if needed; updates it if it already exists.
+        CoMapeo and the Twilio link use this same table.
+      default: null
+      nullable: true
+      originalType: string
+      pattern: '^.{1,53}$'
+      showExpr: "fields.destination_action != 'use_existing_dataset'"
+      title: Dataset name
+    destination_path:
+      type: string
+      description: >-
+        A string specifying the local directory path where files will be
+        downloaded and processed.
+      default: /persistent-storage/datalake/change_detection/alerts
+      originalType: string
+    gcp_service_acct:
+      type: object
+      description: >-
+        Google Cloud service account credentials. This should reference the
+        contents of a `service.json` file provided by the alerts publisher. For
+        more information on setting up and retrieving GCP credentials, see:
+        https://cloud.google.com/docs/authentication/provide-credentials-adc#on-prem
+      format: resource-gcp_service_account
+    territory_id:
+      type: integer
+      description: >-
+        The territory ID (areas of interest) for which change detection alerts
+        will be retrieved. This ID is used to filter and process relevant
+        alerts.
+      format: ''
+    twilio_message_template:
+      type: object
+      description: >-
+        Twilio account credentials and phone numbers for sending alerts after
+        ingesting and writing alerts to the database via a Twilio message
+        content template.
+      format: resource-twilio_message_template
+      nullable: false
+  required:
+    - gcp_service_acct
+    - alerts_bucket
+    - alerts_provider
+    - max_months_lookback
+    - territory_id
+    - db
+  x-windmill-dyn-select-lang: python3
+  x-windmill-dyn-select-code: |
+    from f.common_logic.db_operations import (
+        existing_db_table_name as list_dataset_tables,
+    )
+
+
+    def existing_db_table_name(db=None):
+        return list_dataset_tables(db)
