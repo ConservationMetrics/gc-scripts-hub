@@ -1,7 +1,7 @@
 summary: 'Alerts: Download, Post, and Notify'
 description: >-
   This flow connects three scripts: (1) Alerts: Fetch alerts from Google Cloud
-  Storage (2) CoMapeo: Post Alerts (3) Alerts: Send a Twilio Message
+  Storage (2) CoMapeo: Post Alerts (3) Twilio: Notify of change detection alerts
 value:
   modules:
     - id: a
@@ -84,7 +84,7 @@ value:
             type: javascript
             expr: flow_input.twilio_message_template
         is_trigger: false
-        path: f/connectors/alerts/alerts_twilio
+        path: f/connectors/twilio/twilio_change_detection
       continue_on_error: false
       skip_if:
         expr: '!flow_input.twilio_message_template || !flow_input.instance_slug || !results.a || !results.a.alerts_statistics || !results.a.db_table_name'

@@ -1,6 +1,6 @@
-summary: 'Alerts: Send a Twilio Message'
-description: Send a Twilio WhatsApp message with a summary of the latest processed alerts.
-lock: '!inline f/connectors/alerts/alerts_twilio.script.lock'
+summary: 'Twilio: Notify of change detection alerts'
+description: Send a Twilio WhatsApp message with a summary of the latest processed change detection alerts.
+lock: '!inline f/connectors/twilio/twilio_change_detection.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
