@@ -2,11 +2,11 @@ summary: 'Gazettes: Scrape, download, process, and notify (GGMC)'
 description: >-
   This flow chains the gazettes pipeline for the GGMC gazettes site: (1)
   Gazettes: Scrape PDF links and track updates (2) Gazettes: Download PDFs
-  into a local cache (3) Gazettes: Convert PDFs to text (OCR fallback for
-  image-only PDFs) (4) Gazettes: Parse GGMC gazette texts into GeoJSON (5)
-  Gazettes: Filter detections by boundary (6) GeoJSON to Postgres (7) Alerts:
-  Send a Twilio Message. Swap module d for another site-specific parser (and
-  adjust inputs) to reuse the pipeline for other government sites.
+  into a local cache (3) Gazettes: Convert PDFs to text (4) Gazettes: Parse
+  GGMC gazette texts into GeoJSON (5) Gazettes: Filter detections by boundary
+  (6) GeoJSON to Postgres (7) Alerts: Send a Twilio Message. Swap module d for
+  another site-specific parser (and adjust inputs) to reuse the pipeline for
+  other government sites.
 value:
   modules:
     - id: a
@@ -70,9 +70,6 @@ value:
           db_table_name:
             type: javascript
             expr: flow_input.db_table_name
-          ocr_fallback:
-            type: javascript
-            expr: flow_input.ocr_fallback ?? true
         is_trigger: false
         path: f/connectors/gazettes/gazettes_pdf_to_text
       continue_on_error: false
@@ -181,7 +178,6 @@ schema:
     - destination_path
     - boundary_path
     - keep
-    - ocr_fallback
     - delete_geojson_file
     - instance_slug
     - twilio_message_template
@@ -266,14 +262,6 @@ schema:
         - intersects
         - within
         - centroid
-    ocr_fallback:
-      type: boolean
-      description: >-
-        OCR image-only/unreadable PDFs with marker during text extraction.
-        Requires marker's model weights and a local inference backend on the
-        Windmill worker (see the gazettes connector README).
-      default: true
-      originalType: boolean
     delete_geojson_file:
       type: boolean
       description: >-
