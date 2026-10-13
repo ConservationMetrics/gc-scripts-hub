@@ -2,8 +2,7 @@
 
 This folder contains a configurable pipeline that scrapes a government website
 for PDF documents, tracks which ones are new, downloads and caches them, turns
-them to text (OCR-ing image-only PDFs with marker when pypdf finds no text
-layer), parses spatial detections out of that text, filters detections to a
+them to text, parses spatial detections out of that text, filters detections to a
 territory boundary, and writes them to a database table compatible with the
 Guardian Connector explorer and WhatsApp alerting.
 
@@ -40,34 +39,10 @@ intended end-to-end flow lives in `f/connectors/gazettes_ggmc.flow`.
 - Extracts text with [pypdf](https://pypdf.readthedocs.io/) and caches it as a
   `.txt` file next to (or beside, per `text_dir`) each PDF; extraction is
   skipped when the text file is already newer than the PDF.
-- **OCR fallback:** PDFs with no text layer (scans/photos of notices) or that
-  fail to parse are OCR'd with [marker](https://github.com/datalab-to/marker),
-  used **as a pip package in-process** (`ocr_fallback=True`, the default). The
-  OCR'd markdown is cached as the same `.txt` file; entries report
-  `"method": "pypdf" | "ocr" | "cached"`.
-- **Marker worker prerequisites** (only needed when the OCR path is exercised):
-  - `marker-pdf[full]` in the script lock — declare it as a Windmill *custom
-    package* so workers don't re-resolve the torch stack per run;
-  - model weights (~several GB) download on first use — set `MODEL_DIR` /
-    `HF_HOME` to a `/persistent-storage` path on the worker so they survive;
-  - a local inference backend: on CPU hosts the `llama-server` binary
-    (llama.cpp) must be present on the worker image (GPU hosts: vLLM);
-    marker spawns the server automatically.
-  If any of these are missing, the document is recorded as a per-document
-  error on the state table without stopping the rest of the batch.
-- Set `ocr_fallback=False` to skip OCR entirely (image-only PDFs then simply
-  error).
-
-> [!WARNING]
-> **Marker model weights:** the first OCR run downloads several GB of weights
-> and starts a local inference server. Without a warm cache this can exceed
-> Windmill's job timeout and re-downloads on every cold worker. Before
-> enabling OCR in production, point `MODEL_DIR` and `HF_HOME` at a path under
-> `/persistent-storage` on the worker (e.g. via the workspace env config), and
-> keep the `marker-pdf[full]` lock declared as a custom package. On CPU-only
-> workers the `llama-server` (llama.cpp) binary must also be installed in the
-> worker image; if any prerequisite is missing, affected documents are
-> recorded as errors — the rest of the batch still processes.
+- PDFs with no extractable text layer (image-only scans) or that fail to
+  parse are recorded as per-document errors on the state table without
+  stopping the rest of the batch. Entries report `"method": "pypdf" |
+  "cached"`. (See **Future improvements** for cloud OCR of scanned PDFs.)
 
 ### `gazettes_ggmc_parse`: Parse GGMC gazette texts into GeoJSON
 
@@ -79,15 +54,16 @@ intended end-to-end flow lives in `f/connectors/gazettes_ggmc.flow`.
   builds shapely-validated polygons inside Guyana's bounds.
 - Each feature gets a **deterministic id** (`uuid5(doc_url, file_reference,
   block_index)`) so re-runs upsert instead of duplicating.
-- **Failure handling:** if any notice
-  block fails to parse, the event is logged (`PARSE FAILURE <url>: ...` with
-  the per-block `SchemaDriftError` reasons as the diagnosis), the document is
-  marked `error`/`failed` on the state table with the failing blocks in
-  `parse_notes`, and a `RuntimeError` is raised at the end of the run so the
-  Windmill run fails visibly. Successfully parsed documents in the same run
-  are still written to the data lake; extend the parser for the new shape,
-  then rerun with `include_errored=true` to reprocess failed documents with
-  zero re-download or re-extraction.
+- **Failure handling (skip and continue):** if any notice block fails to
+  parse, the event is logged (`PARSE FAILURE <url>: ...` with the per-block
+  `SchemaDriftError` reasons as the diagnosis) and the document is marked
+  `error`/`failed` on the state table with the failing blocks in
+  `parse_notes`. The broken document is skipped — the run continues with the
+  successfully parsed ones (they flow to filtering, the database, and
+  notifications as usual), and the failures are also returned in the script
+  result. Extend the parser for the new shape, then rerun with
+  `include_errored=true` to reprocess failed documents with zero re-download
+  or re-extraction.
 
 ### `gazettes_filter_by_boundary`: Filter detections by boundary
 
@@ -150,3 +126,21 @@ shape (`geojson_path` + `gazettes_statistics`).
   variables, a validator mirroring `_validate_llm_geometry`, and id-space
   merging so a fallback feature only lands where the regex parser produced
   nothing.
+- **Cloud OCR for image-only PDFs.** Scanned gazettes and photographed
+  notices have no pypdf text layer and currently error out. A cloud OCR
+  (Google Cloud Vision, AWS Textract, Azure Document Intelligence, or the
+  hosted Datalab API) would handle these without local model weights — a
+  previous in-process option (datalab-to/marker) was removed because its
+  torch/model stack (~several GB plus a local inference server) is too heavy
+  for Windmill workers. Suggested shape: an `ocr_endpoint`/credentials
+  parameter (or a new `gazettes_ocr` script) called from
+  `gazettes_pdf_to_text` in place of the error path, storing the OCR result
+  in the same cached `.txt`; validate that notice segmentation tolerates the
+  returned markdown/plain text before relying on it.
+
+## Keeping Windmill in sync
+
+The Windmill workspace is the source of truth for `f/`: run
+`wmill sync push` right after changing these scripts locally. An unpushed
+local state is silently reverted by the next `wmill sync pull` (which pulls
+whatever the workspace was last saved with).

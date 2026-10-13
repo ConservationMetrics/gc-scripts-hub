@@ -1,5 +1,4 @@
 # requirements:
-# marker-pdf[full]
 # psycopg[binary]
 # pypdf
 
@@ -22,15 +21,15 @@ def main(
     db: postgresql = None,
     db_table_name: str = None,
     text_dir: str = None,
-    ocr_fallback: bool = True,
 ):
     """Convert PDFs to plain text files, reusing cached extractions.
 
     Each PDF is extracted with pypdf to a `.txt` file (next to the PDF by
     default, or in `text_dir`). A text file that is at least as recent as its
     PDF is considered cached and extraction is skipped, so re-runs never
-    re-parse unchanged files. PDFs that yield no text layer (image-only scans)
-    or fail to parse are OCR'd with marker when `ocr_fallback` is enabled.
+    re-parse unchanged files. PDFs with no extractable text layer (image-only
+    scans) or that fail to parse are recorded as per-document errors without
+    stopping the batch.
 
     Parameters
     ----------
@@ -46,10 +45,6 @@ def main(
         updated with text extraction results.
     text_dir : str, optional
         Directory for extracted text files. Default: alongside each PDF.
-    ocr_fallback : bool, optional
-        OCR PDFs without an extractable text layer using marker (in-process
-        model inference; see module notes about model/inference prerequisites).
-        Default: True.
 
     Returns
     -------
@@ -92,41 +87,14 @@ def main(
                 _mark(conn, state_table, doc_id, "text_ready")
                 continue
 
-            extracted = None
-            pypdf_error = None
             try:
                 extracted = extract_pdf_text(pdf_path)
             except Exception as e:
-                pypdf_error = str(e)
-
-            method = "pypdf"
-            if not extracted or not extracted.strip():
-                reason = pypdf_error or "no extractable text (image-only PDF?)"
-                if not ocr_fallback:
-                    error_msg = f"Text extraction failed ({reason}); OCR fallback disabled"
-                    logger.error(f"Failed to extract text from {pdf_path}: {error_msg}")
-                    errors.append({"_id": doc_id, "url": url, "error": error_msg})
-                    _mark(conn, state_table, doc_id, "error", error=error_msg)
-                    continue
-                logger.info(
-                    f"No PDF text layer for {pdf_path.name} ({reason}); OCR fallback with marker."
-                )
-                try:
-                    extracted = ocr_pdf_to_text(pdf_path)
-                except Exception as e:
-                    error_msg = f"pypdf failed ({reason}); OCR failed ({e})"
-                    logger.error(f"Failed to extract text from {pdf_path}: {error_msg}")
-                    errors.append({"_id": doc_id, "url": url, "error": error_msg})
-                    _mark(conn, state_table, doc_id, "error", error=error_msg)
-                    continue
-                if not extracted or not extracted.strip():
-                    error_msg = f"pypdf failed ({reason}); OCR returned no text either"
-                    logger.error(f"Failed to extract text from {pdf_path}: {error_msg}")
-                    errors.append({"_id": doc_id, "url": url, "error": error_msg})
-                    _mark(conn, state_table, doc_id, "error", error=error_msg)
-                    continue
-                method = "ocr"
-                logger.info(f"OCR extraction succeeded for {pdf_path.name}")
+                error_msg = str(e)
+                logger.error(f"Failed to extract text from {pdf_path}: {error_msg}")
+                errors.append({"_id": doc_id, "url": url, "error": error_msg})
+                _mark(conn, state_table, doc_id, "error", error=error_msg)
+                continue
 
             text_path.parent.mkdir(parents=True, exist_ok=True)
             text_path.write_text(extracted, encoding="utf-8")
@@ -138,7 +106,7 @@ def main(
                     "pdf_path": str(pdf_path),
                     "text_path": str(text_path),
                     "cached": False,
-                    "method": method,
+                    "method": "pypdf",
                 }
             )
             _mark(conn, state_table, doc_id, "text_ready")
@@ -177,51 +145,6 @@ def extract_pdf_text(pdf_path: Path) -> str:
             f"No extractable text found in {pdf_path} (image-only or empty PDF)."
         )
     return text
-
-
-_MARKER_ARTIFACTS = None
-
-
-def ocr_pdf_to_text(pdf_path: Path) -> str:
-    """OCR a PDF into markdown text using marker (installed via pip).
-
-    marker runs local deep-learning inference: model weights download on first
-    use and a local inference server is spawned automatically (vLLM on NVIDIA
-    GPUs, llama.cpp's `llama-server` binary on CPU hosts). Point MODEL_DIR /
-    HF_HOME at persistent storage in the Windmill worker so weights are cached
-    across runs. The import is deferred so runs that never hit the OCR path do
-    not pay the torch import cost.
-
-    Parameters
-    ----------
-    pdf_path : pathlib.Path
-        Path to the PDF file.
-
-    Returns
-    -------
-    str
-        OCR'd document text (markdown).
-
-    Raises
-    ------
-    Exception
-        Any error from marker (missing package, unavailable inference
-        backend, conversion failure) propagates for the caller to record.
-    """
-    global _MARKER_ARTIFACTS
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-    from marker.output import text_from_rendered
-
-    if _MARKER_ARTIFACTS is None:
-        _MARKER_ARTIFACTS = create_model_dict()
-    converter = PdfConverter(
-        artifact_dict=_MARKER_ARTIFACTS,
-        config={"force_ocr": True},
-    )
-    rendered = converter(str(pdf_path))
-    text, _, _ = text_from_rendered(rendered)
-    return text or ""
 
 
 def _text_path(pdf_path: Path, text_dir: str = None) -> Path:

@@ -1,14 +1,13 @@
 summary: 'Gazettes: Scrape a site for PDF links and track updates'
-description: >-
-  Fetches a government listing page, extracts PDF document links with a
-  configurable CSS selector, and records them in a Postgres state table
+description: Fetches a government listing page, extracts PDF document links with
+  a configurable CSS selector, and records them in a Postgres state table
   (<db_table_name>__documents) so scheduled runs only process newly published
   documents. Requires requests, beautifulsoup4 and lxml.
 lock: '!inline f/connectors/gazettes/gazettes_scrape.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: https://json-schema.org/draft/2020-12/schema
   type: object
   order:
     - site_url
@@ -20,62 +19,59 @@ schema:
     - request_timeout
     - include_errored
   properties:
-    site_url:
-      type: string
-      description: >-
-        The URL of the page to scrape, e.g. https://www.ggmc.gov.gy/gazettes/
-        for the GGMC gazette listing.
-      default: https://www.ggmc.gov.gy/gazettes/
-      originalType: string
     db:
       type: object
-      description: >-
-        The database connection parameters. The scrape state is stored in a
+      description: The database connection parameters. The scrape state is stored in a
         '<db_table_name>__documents' table next to the detections.
       default: null
       format: resource-postgresql
     db_table_name:
       type: string
-      description: >-
-        Name of the detections table this source feeds. The state table name is
-        derived from it (<db_table_name>__documents).
-      default: ggmc_notices
+      description: Name of the detections table this source feeds. The state table
+        name is derived from it (<db_table_name>__documents).
+      default: null
       originalType: string
-      pattern: '^.{1,53}$'
-    pdf_selector:
-      type: string
-      description: >-
-        CSS selector used to find document links on the page. Default selects
-        anchors whose href ends in .pdf inside the page's main content area.
-      default: "#content a[href$='.pdf']"
-      originalType: string
+      pattern: ^.{1,53}$
+    include_errored:
+      type: boolean
+      description: When true, documents previously marked with status 'error' are
+        returned again so downstream scripts retry them (use after fixing a
+        parser issue).
+      default: false
+      originalType: boolean
     link_pattern:
       type: string
-      description: >-
-        Optional regex applied to the absolute URL; only matching links are
+      description: Optional regex applied to the absolute URL; only matching links are
         kept (e.g. '/gazettes/' to limit to gazette uploads on WordPress sites).
       default: null
-      originalType: string
       nullable: false
-    user_agent:
+      originalType: string
+    pdf_selector:
       type: string
-      description: User-Agent header sent with the request.
-      default: null
+      description: CSS selector used to find document links on the page. Default
+        selects anchors whose href ends in .pdf inside the page's main content
+        area.
+      default: "#content a[href$='.pdf']"
       originalType: string
-      nullable: false
     request_timeout:
       type: integer
       description: Timeout in seconds for the HTTP request.
       default: 30
       originalType: integer
-    include_errored:
-      type: boolean
-      description: >-
-        When true, documents previously marked with status 'error' are returned
-        again so downstream scripts retry them (use after fixing a parser issue).
-      default: false
-      originalType: boolean
+    site_url:
+      type: string
+      description: The URL of the page to scrape, e.g.
+        https://www.ggmc.gov.gy/gazettes/ for the GGMC gazette listing.
+      default: null
+      originalType: string
+    user_agent:
+      type: string
+      description: User-Agent header sent with the request.
+      default: null
+      nullable: false
+      originalType: string
   required:
     - site_url
     - db
     - db_table_name
+    - user_agent

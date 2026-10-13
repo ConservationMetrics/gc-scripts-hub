@@ -40,10 +40,12 @@ def main(
     """Parse GGMC gazette notice texts into GeoJSON features with the deterministic parser.
 
     For each extracted text document, notices are parsed with the deterministic
-    regex parser. If any notice block fails, the failure is logged, recorded on
-    the documents state table, and the run is failed so the parser can be
-    extended for that document shape. The merged FeatureCollection is written
-    to the data lake for downstream boundary filtering and database loading.
+    regex parser. If any notice block fails, the failure is logged and recorded
+    on the documents state table, and that document is skipped so the run
+    continues with the successfully parsed ones (reprocess failures later with
+    include_errored=true after extending the parser). The merged
+    FeatureCollection is written to the data lake for downstream boundary
+    filtering and database loading.
 
     Parameters
     ----------
@@ -69,8 +71,8 @@ def main(
             "failed": [{"url", "diagnosis"}, ...],
         }
         If any document has notice blocks the deterministic parser could not
-        handle, the state table is updated, the failures are logged, and a
-        RuntimeError is raised so the Windmill run fails visibly.
+        handle, it is logged, marked as failed on the state table, and skipped;
+        the run continues with the successfully parsed documents.
     """
     destination_path = destination_path or "/persistent-storage/datalake/gazettes"
 
@@ -92,8 +94,9 @@ def main(
         notes = {}
 
         if failed_blocks:
-            # No automatic recovery: log loudly and record the parser errors as
-            # the diagnosis on the state row, then fail the run (below).
+            # No automatic recovery: log loudly and record the parser errors
+            # as the diagnosis on the state row; this document is skipped and
+            # the run continues with the successfully parsed ones.
             logger.error(
                 f"PARSE FAILURE {doc_url}: deterministic parser failed on "
                 f"{len(failed_blocks)}/{result['notice_blocks']} notice block(s): "
@@ -151,13 +154,13 @@ def main(
     if failed:
         for entry in failed:
             logger.error(
-                f"UNRESOLVABLE DOCUMENT {entry['url']} - diagnosis: {entry['diagnosis']}"
+                f"SKIPPED DOCUMENT {entry['url']} - diagnosis: {entry['diagnosis']}"
             )
-        raise RuntimeError(
-            f"{len(failed)} document(s) could not be parsed by the deterministic parser; "
-            f"see logs and state table [{state_table}] parse_notes for the failing "
-            f"notice blocks: "
-            + "; ".join(str(e["url"]) for e in failed)
+        logger.warning(
+            f"Continuing with the successfully parsed documents; "
+            f"{len(failed)} of {len(documents)} document(s) failed and were "
+            f"marked on state table [{state_table}] for review (reprocess them "
+            f"with include_errored=true after fixing the parser)."
         )
 
     return {

@@ -143,20 +143,26 @@ def test_build_alerts_statistics_without_dates():
     )
 
 
-# ---------- failure alerting (no automatic recovery) ----------
+# ---------- failure handling: skip broken docs, keep going ----------
 
 
-def test_failed_document_logs_alerts_and_fails_run(pg_database, tmp_path):
+def test_failed_document_is_logged_skipped_and_recorded(pg_database, tmp_path):
     entry = _texts_entry(tmp_path, pg_database, "mines_notice_lt3_vertices.txt")
-    with pytest.raises(RuntimeError) as excinfo:
-        main(
-            [entry],
-            pg_database,
-            "ggmc_notices",
-            destination_path=str(tmp_path / "out"),
-        )
-    assert "could not be parsed" in str(excinfo.value)
-    assert entry["url"] in str(excinfo.value)
+    result = main(
+        [entry],
+        pg_database,
+        "ggmc_notices",
+        destination_path=str(tmp_path / "out"),
+    )
+
+    assert result["failed"] and result["failed"][0]["url"] == entry["url"]
+    assert any(
+        "under 3 boundary vertices" in d
+        for d in result["failed"][0]["diagnosis"]
+    )
+    assert result["documents"][0]["parse_status"] == "failed"
+    assert result["geojson_path"] is None
+    assert result["gazettes_statistics"] is None
 
     status, parse_status, notes, error = _get_state_row(pg_database, entry["url"])
     assert status == "error"
@@ -165,7 +171,7 @@ def test_failed_document_logs_alerts_and_fails_run(pg_database, tmp_path):
     assert error == "Unresolvable notice blocks; see parse_notes"
 
 
-def test_partially_broken_run_still_records_good_documents(pg_database, tmp_path):
+def test_run_continues_with_good_documents_when_others_fail(pg_database, tmp_path):
     good = _texts_entry(
         tmp_path, pg_database, "mines_notice_clean.txt",
         url="https://ggmc.test/ggmc_web/wp-content/uploads/2026/07/good.pdf",
@@ -174,20 +180,24 @@ def test_partially_broken_run_still_records_good_documents(pg_database, tmp_path
         tmp_path, pg_database, "mines_notice_lt3_vertices.txt",
         url="https://ggmc.test/ggmc_web/wp-content/uploads/2026/07/broken.pdf",
     )
-    with pytest.raises(RuntimeError):
-        main(
-            [good, broken],
-            pg_database,
-            "ggmc_notices",
-            destination_path=str(tmp_path / "out"),
-        )
+
+    result = main(
+        [good, broken],
+        pg_database,
+        "ggmc_notices",
+        destination_path=str(tmp_path / "out"),
+    )
+
+    # good document flows downstream despite the failure
+    assert [d["url"] for d in result["failed"]] == [broken["url"]]
+    assert result["gazettes_statistics"]["total_alerts"] == "2"
+    fc = json.loads(Path(result["geojson_path"]).read_text())
+    assert len(fc["features"]) == 2
 
     status, parse_status, _, _ = _get_state_row(pg_database, good["url"])
     assert (status, parse_status) == ("processed", "parsed")
     status, parse_status, _, _ = _get_state_row(pg_database, broken["url"])
     assert (status, parse_status) == ("error", "failed")
-    # the merged file was written before the run was failed
-    assert tmp_path.joinpath("out").exists()
 
 
 def test_llm_fallback_machinery_removed():
@@ -196,7 +206,7 @@ def test_llm_fallback_machinery_removed():
     assert not hasattr(parse_module, "LLM_SYSTEM_PROMPT")
 
 
-def test_clean_document_does_not_touch_ocr_or_llm(pg_database, tmp_path):
+def test_clean_document_parses_without_incidents(pg_database, tmp_path):
     entry = _texts_entry(tmp_path, pg_database, "mines_notice_clean.txt")
     result = main(
         [entry],

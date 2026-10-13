@@ -1,14 +1,13 @@
 summary: 'Gazettes: Filter detections by boundary'
-description: >-
-  Keeps only GeoJSON features that pass a spatial predicate (intersects by
-  default, or within/centroid) against a boundary GeoJSON file in the data
-  lake, so only detections inside the area of interest reach the database,
-  explorer, or notifications.
+description: Keeps only GeoJSON features that pass a spatial predicate
+  (intersects by default, or within/centroid) against a boundary GeoJSON file in
+  the data lake, so only detections inside the area of interest reach the
+  database, explorer, or notifications.
 lock: '!inline f/connectors/gazettes/gazettes_filter_by_boundary.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: https://json-schema.org/draft/2020-12/schema
   type: object
   order:
     - geojson_path
@@ -17,45 +16,40 @@ schema:
     - keep_null_geometry
     - output_path
   properties:
-    geojson_path:
-      type: string
-      description: >-
-        Path to the input FeatureCollection (e.g. the output of Gazettes:
-        GGMC parse).
-      default: null
-      originalType: string
     boundary_path:
       type: string
-      description: >-
-        Path to a GeoJSON file defining the area of interest (Feature,
+      description: Path to a GeoJSON file defining the area of interest (Feature,
         FeatureCollection, or bare geometry; multiple features are unioned).
+      default: null
+      originalType: string
+    geojson_path:
+      type: string
+      description: 'Path to the input FeatureCollection (e.g. the output of Gazettes:
+        GGMC parse).'
       default: null
       originalType: string
     keep:
       type: string
-      description: >-
-        Spatial predicate: 'intersects' (any overlap), 'within' (fully
-        inside), or 'centroid' (centroid inside).
+      description: "Spatial predicate: 'intersects' (any overlap), 'within' (fully
+        inside), or 'centroid' (centroid inside)."
       default: intersects
-      originalType: string
       enum:
         - intersects
         - within
         - centroid
+      originalType: string
     keep_null_geometry:
       type: boolean
-      description: >-
-        Keep features without geometry (non-spatial notices) in the output.
+      description: Keep features without geometry (non-spatial notices) in the output.
       default: true
       originalType: boolean
     output_path:
       type: string
-      description: >-
-        Where to write the filtered FeatureCollection. Default: the input
-        path with an __filtered suffix.
+      description: 'Where to write the filtered FeatureCollection. Default: the input
+        path with an __filtered suffix.'
       default: null
-      originalType: string
       nullable: false
+      originalType: string
   required:
     - geojson_path
     - boundary_path
