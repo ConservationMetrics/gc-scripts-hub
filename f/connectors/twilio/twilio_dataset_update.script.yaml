@@ -1,0 +1,96 @@
+summary: 'Twilio: Notify of new dataset records'
+description: >-
+  Send a Twilio WhatsApp message when new records are written to a dataset.
+  The content template is {{1}}; this script assembles that sentence.
+lock: '!inline f/connectors/twilio/twilio_dataset_update.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order:
+    - db
+    - data_statistics
+    - db_table_name
+    - bbox
+    - instance_slug
+    - language
+    - twilio_message_template
+  properties:
+    bbox:
+      type: string
+      description: >-
+        Optional area of interest, `[[west, south], [east, north]]` or that
+        value as JSON. When set, the message says the records were detected
+        within an area of interest of that box and written to the dataset.
+        When omitted, the message only says the records were written.
+      default: null
+      nullable: true
+      originalType: string
+    data_statistics:
+      type: object
+      description: >-
+        Summary of the write that triggered this message. `new_records` is
+        required; a value of 0 skips the send. `data_type` defaults to
+        the word for "records" in `language`. Pass a noun such as
+        "CoMapeo observations" to override it. `filter_column` and
+        `list_of_values` are optional; the "column: values" clause is left
+        out when either is missing. `list_of_values` may be a list or a
+        string.
+      default: null
+      properties: {}
+    db:
+      type: object
+      description: >-
+        Database whose public tables are listed for the dataset picker.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: object
+      description: >-
+        Existing public table named in the message and in the map link. The
+        list refreshes from `db` and omits connector sidecar tables
+        (`__columns`, `__labels`, `__metadata`).
+      default: null
+      format: dynselect-db_table_name
+      nullable: true
+      title: Dataset
+    language:
+      type: string
+      description: >-
+        Language of the fixed wording: the write sentence, the area-of-interest
+        sentence, the fallback word for `data_type`, and "View them here".
+        `data_type`, `filter_column`, and `list_of_values` are included as
+        given.
+      default: English
+      enum:
+        - English
+        - Espanol
+        - Portugues
+        - Nederlands
+        - Swahili
+        - Thai
+      originalType: string
+    instance_slug:
+      type: string
+      description: >-
+        Host for the Explorer map link, for example
+        springfield.guardianconnector.net. The link is
+        https://<instance_slug>/map/<db_table_name>. When omitted, the
+        message does not include a link.
+      default: null
+      nullable: true
+      originalType: string
+    twilio_message_template:
+      type: object
+      description: >-
+        Twilio account credentials, recipient numbers, and a content
+        template whose body is {{1}}. This script fills {{1}} with the
+        assembled sentence.
+      default: null
+      format: resource-twilio_message_template
+  required:
+    - db
+    - data_statistics
+    - db_table_name
+    - twilio_message_template
