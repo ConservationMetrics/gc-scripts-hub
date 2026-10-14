@@ -28,6 +28,7 @@ Translations are available in English, Dutch, Portuguese, and Spanish. Each lang
 **`alerts_statistics`** is the object returned by the alerts fetch script: total alerts, date, and a description of detected activities.
 
 **`twilio_message_template`** is a Windmill [`twilio_message_template`](https://hub.windmill.dev/resource_types/274/twilio_message_template) resource: account SID, auth token, origin number, recipient numbers, content template SID, and messaging service SID.
+
 # `twilio_dataset_update`: Notify of new dataset records
 
 This script sends a WhatsApp message when an upstream connector has written new rows to a dataset. CoMapeo observations and a boundary filter over a nationwide GeoJSON can both call it. The script does not query or clip geometries. A filter step counts intersecting features and passes that count here; this script writes the sentence. A count of 0 does not send.
