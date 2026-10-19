@@ -27,7 +27,6 @@
         "alert_type": "illegal_fishing",
         "area_alert_ha": 2.345,
         "basin_id": 1234567,
-        "confidence": 1,
         "count": 47,
         "date_end_t0": "2023-05-15",
         "date_end_t1": "2023-11-15",
@@ -42,6 +41,7 @@
         "satellite": "COPERNICUS/S1_GRD",
         "territory_id": 29,
         "territory_name": "imaginary_place",
+        "tier_validation": 2,
         "year_detec": "2023",
         "day_detec": "15"
       },
