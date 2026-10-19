@@ -1,7 +1,7 @@
 summary: "Twilio: Notify of new dataset records"
 description: >-
   Send a Twilio WhatsApp message when new records are written to a dataset.
-  The content template is {{1}}; this script assembles that sentence.
+  The content template is {{1}}; this script assembles that sentence. This script is included as a step in  a Flow and should not be called directly.
 lock: "!inline f/connectors/twilio/twilio_dataset_update.script.lock"
 concurrency_time_window_s: 0
 kind: script
@@ -30,13 +30,7 @@ schema:
     data_statistics:
       type: object
       description: >-
-        Summary of the write that triggered this message. `new_records` is
-        required; a value of 0 skips the send. `data_type` defaults to
-        the word for "records" in `language`. Pass a noun such as
-        "CoMapeo observations" to override it. `filter_column` and
-        `list_of_values` are optional; the "column: values" clause is left
-        out when either is missing. `list_of_values` may be a list or a
-        string.
+        Summary of the write that triggered this message, that includes variables used to construct the message body.
       default: null
       properties: {}
     db:
@@ -48,9 +42,7 @@ schema:
     db_table_name:
       type: object
       description: >-
-        Existing public table named in the message and in the map link. The
-        list refreshes from `db` and omits connector sidecar tables
-        (`__columns`, `__labels`, `__metadata`).
+        Table name of the dataset that was written to, used in the message and the map link.
       default: null
       format: dynselect-db_table_name
       nullable: true
@@ -58,10 +50,7 @@ schema:
     language:
       type: string
       description: >-
-        Language of the fixed wording: the write sentence, the area-of-interest
-        sentence, the fallback word for `data_type`, and "View them here".
-        `data_type`, `filter_column`, and `list_of_values` are included as
-        given.
+        Language for the message body.
       default: English
       enum:
         - English
@@ -74,7 +63,7 @@ schema:
     instance_slug:
       type: string
       description: >-
-        The URL slug for the instance, used to construct a link to the map.
+        The slug for the instance, used to construct the map link.
         The link is
         https://explorer.<instance_slug>.guardianconnector.net/map/<db_table_name>.
         When omitted, the message does not include a link.
@@ -85,8 +74,7 @@ schema:
       type: object
       description: >-
         Twilio account credentials, recipient numbers, and a content
-        template whose body is {{1}}. This script fills {{1}} with the
-        assembled sentence.
+        template.
       default: null
       format: resource-twilio_message_template
   required:
