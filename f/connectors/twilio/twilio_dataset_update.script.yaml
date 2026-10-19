@@ -1,12 +1,12 @@
-summary: 'Twilio: Notify of new dataset records'
+summary: "Twilio: Notify of new dataset records"
 description: >-
   Send a Twilio WhatsApp message when new records are written to a dataset.
   The content template is {{1}}; this script assembles that sentence.
-lock: '!inline f/connectors/twilio/twilio_dataset_update.script.lock'
+lock: "!inline f/connectors/twilio/twilio_dataset_update.script.lock"
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: "https://json-schema.org/draft/2020-12/schema"
   type: object
   order:
     - db
@@ -65,8 +65,8 @@ schema:
       default: English
       enum:
         - English
-        - Espanol
-        - Portugues
+        - Español
+        - Português
         - Nederlands
         - Swahili
         - Thai
@@ -74,10 +74,10 @@ schema:
     instance_slug:
       type: string
       description: >-
-        Host for the Explorer map link, for example
-        springfield.guardianconnector.net. The link is
-        https://<instance_slug>/map/<db_table_name>. When omitted, the
-        message does not include a link.
+        The URL slug for the instance, used to construct a link to the map.
+        The link is
+        https://explorer.<instance_slug>.guardianconnector.net/map/<db_table_name>.
+        When omitted, the message does not include a link.
       default: null
       nullable: true
       originalType: string

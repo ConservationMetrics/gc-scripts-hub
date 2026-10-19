@@ -8,9 +8,11 @@ from typing import TypedDict
 from f.common_logic.db_operations import (
     USE_EXISTING_DATASET,
     DynSelect_db_table_name,
-    existing_db_table_name as list_dataset_tables,
     postgresql,
     resolve_db_table_name,
+)
+from f.common_logic.db_operations import (
+    existing_db_table_name as list_dataset_tables,
 )
 
 
@@ -38,7 +40,7 @@ _PHRASES = {
         ),
         "view": "View them here: {url}",
     },
-    "Espanol": {
+    "Español": {
         "records": "registros",
         "written": "{count} {data_type} nuevos fueron escritos en {table}.",
         "area": (
@@ -47,7 +49,7 @@ _PHRASES = {
         ),
         "view": "Consúltalos aquí: {url}",
     },
-    "Portugues": {
+    "Português": {
         "records": "registros",
         "written": "{count} {data_type} novos foram escritos em {table}.",
         "area": (
@@ -78,8 +80,7 @@ _PHRASES = {
         "records": "รายการ",
         "written": "{count} {data_type} ใหม่ถูกเขียนลงใน {table}.",
         "area": (
-            "{count} {data_type} ใหม่ถูกตรวจพบในพื้นที่ที่สนใจ {area} "
-            "และถูกเขียนลงใน {table}."
+            "{count} {data_type} ใหม่ถูกตรวจพบในพื้นที่ที่สนใจ {area} และถูกเขียนลงใน {table}."
         ),
         "view": "ดูได้ที่นี่: {url}",
     },
@@ -89,6 +90,11 @@ _PHRASES = {
 def db_table_name(db: postgresql | None = None):
     """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
     return list_dataset_tables(db)
+
+
+def _initcap_first_word(text: str) -> str:
+    first, space, rest = text.partition(" ")
+    return first[:1].upper() + first[1:] + space + rest
 
 
 def _plain(value) -> str | None:
@@ -158,7 +164,7 @@ def build_dataset_update_message(
     fields = {
         "count": new_records,
         "data_type": data_type,
-        "table": db_table_name,
+        "table": f"*{db_table_name}*",
         "area": area,
     }
     message = phrases["area" if area else "written"].format(**fields)
@@ -166,11 +172,11 @@ def build_dataset_update_message(
     filter_column = _plain(data_statistics.get("filter_column"))
     values = _format_values(data_statistics.get("list_of_values"))
     if filter_column and values:
-        message += f" {filter_column}: {values}."
+        message += f" {_initcap_first_word(filter_column)}: {values}."
 
-    host = _plain(instance_slug)
-    if host:
-        url = f"https://{host}/map/{db_table_name}"
+    slug = _plain(instance_slug)
+    if slug:
+        url = f"https://explorer.{slug}.guardianconnector.net/map/{db_table_name}"
         message += f" {phrases['view'].format(url=url)}"
     return message
 
