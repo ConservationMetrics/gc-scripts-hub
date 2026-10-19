@@ -38,7 +38,7 @@ def _results_callback(request):
     options = body.get("options") or {}
     start = int(options.get("start") or 1)
     page_length = int(options.get("pageLength") or 200)
-    payload = server_responses.observations_page(groups, start=start, page_length=page_length)
+    payload = server_responses.observations_page(groups=groups, start=start, page_length=page_length)
     return (200, {}, json.dumps(payload))
 
 

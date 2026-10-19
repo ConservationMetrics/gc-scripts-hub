@@ -4,6 +4,7 @@ import uuid
 import psycopg
 import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.locusmap.locusmap import main
 
 points_fixture_path = "f/connectors/locusmap/tests/assets/points/"
@@ -19,10 +20,10 @@ def test_script_e2e_points(pg_database, tmp_path, file_format):
     asset_storage = tmp_path / "datalake"
 
     main(
-        pg_database,
-        "my_locusmap_points",
-        tmp_fixture_path,
-        asset_storage,
+        db=pg_database,
+        db_table_name="my_locusmap_points",
+        locusmap_export_path=tmp_fixture_path,
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -81,10 +82,10 @@ def test_script_e2e_points_archive(
     asset_storage = tmp_path / "datalake"
 
     main(
-        pg_database,
-        "my_locusmap_points",
-        tmp_fixture_path,
-        asset_storage,
+        db=pg_database,
+        db_table_name="my_locusmap_points",
+        locusmap_export_path=tmp_fixture_path,
+        attachment_root=asset_storage,
     )
 
     with psycopg.connect(autocommit=True, **pg_database) as conn:
@@ -115,8 +116,18 @@ def test_script_e2e_points_unsupported_format(tmp_path):
 
     with pytest.raises(ValueError):
         main(
-            {"database": "test_db"},
-            "my_locusmap_points",
-            str(tmp_fixture_path),
-            str(asset_storage),
+            db={"database": "test_db"},
+            db_table_name="my_locusmap_points",
+            locusmap_export_path=str(tmp_fixture_path),
+            attachment_root=str(asset_storage),
+        )
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            db=pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+            locusmap_export_path=str(tmp_path / "points.csv"),
         )

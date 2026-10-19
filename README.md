@@ -109,6 +109,7 @@ To maintain consistency across the repository, please follow these conventions w
 
 #### Testing Requirements
 * Always include end-to-end tests that call the script's `main` function.
+* Pass arguments by name, not position. Windmill stores a schedule's inputs as an object keyed by argument name, so a renamed parameter must fail the test instead of binding to the next argument.
 * For scripts that interact with external servers (e.g. APIs), define a mock server in `tests/conftest.py` with sample responses in `tests/assets/server_responses.py`.
 * Place all other test assets (sample files, fixtures, etc.) in `tests/assets/`.
 

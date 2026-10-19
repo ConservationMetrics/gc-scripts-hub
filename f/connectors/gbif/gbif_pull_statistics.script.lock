@@ -1,0 +1,13 @@
+# workspace-dependencies-mode: manual
+# py: 3.11
+certifi==2026.7.22
+charset-normalizer==3.5.1
+idna==3.19
+psycopg==3.3.5
+psycopg-binary==3.3.5
+pyproj==3.7.2
+python-dateutil==2.9.0.post0
+requests==2.34.2
+six==1.17.0
+typing-extensions==4.16.0
+urllib3==2.7.0

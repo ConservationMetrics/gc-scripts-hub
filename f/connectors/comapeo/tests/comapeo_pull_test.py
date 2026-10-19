@@ -11,6 +11,7 @@ from f.connectors.comapeo.comapeo_pull import (
     fetch_all_fields,
     fetch_all_presets,
     fetch_preset,
+    lookup_project_ids_by_name,
     main,
     transform_comapeo_observations,
     transform_comapeo_tracks,
@@ -34,10 +35,13 @@ def test_transform_comapeo_observations():
         "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24": "camp.png",
         "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10": "water_source.png",
     }
-    preset_mapping = build_preset_mapping(SAMPLE_PRESETS, icon_filenames)
+    preset_mapping = build_preset_mapping(presets=SAMPLE_PRESETS, icon_filenames=icon_filenames)
 
     result = transform_comapeo_observations(
-        SAMPLE_OBSERVATIONS, project_name, project_id, preset_mapping
+        observations=SAMPLE_OBSERVATIONS,
+        project_name=project_name,
+        project_id=project_id,
+        preset_mapping=preset_mapping,
     )
 
     assert len(result) == len(SAMPLE_OBSERVATIONS)
@@ -120,7 +124,7 @@ def test_transform_comapeo_tracks():
     project_name = "Forest Expedition"
     project_id = "forest_expedition"
 
-    result = transform_comapeo_tracks(SAMPLE_TRACK, project_name, project_id)
+    result = transform_comapeo_tracks(tracks=SAMPLE_TRACK, project_name=project_name, project_id=project_id)
 
     assert len(result) == len(SAMPLE_TRACK)
 
@@ -167,7 +171,7 @@ def test_transform_comapeo_tracks():
 def test_build_preset_mapping():
     """Test the preset mapping builder."""
     # Test without icon filenames
-    preset_mapping = build_preset_mapping(SAMPLE_PRESETS)
+    preset_mapping = build_preset_mapping(presets=SAMPLE_PRESETS)
 
     # Check that all presets are in the mapping
     assert len(preset_mapping) == len(SAMPLE_PRESETS)
@@ -186,7 +190,7 @@ def test_build_preset_mapping():
         camp_preset_id: "camp.png",
         "1a08db5f19640fcd22016c35e45aa04f07a3f1a8dc1293dff9fd9232fd5b9c10": "water_source.png",
     }
-    preset_mapping_with_icons = build_preset_mapping(SAMPLE_PRESETS, icon_filenames)
+    preset_mapping_with_icons = build_preset_mapping(presets=SAMPLE_PRESETS, icon_filenames=icon_filenames)
 
     # Check that icon filenames are included
     camp_data_with_icon = preset_mapping_with_icons[camp_preset_id]
@@ -220,14 +224,14 @@ def test_fetch_all_presets(mocked_responses):
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Mock the batch preset endpoint
-    presets_response = server_responses.comapeo_all_presets(server_url, project_id)
+    presets_response = server_responses.comapeo_all_presets(uri=server_url, project_id=project_id)
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/preset",
         json=presets_response,
         status=200,
     )
 
-    presets = fetch_all_presets(server_url, session, project_id)
+    presets = fetch_all_presets(server_url=server_url, session=session, project_id=project_id)
 
     assert len(presets) == len(SAMPLE_PRESETS)
     assert presets[0]["name"] == "Camp"
@@ -244,14 +248,14 @@ def test_fetch_all_fields(mocked_responses):
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Mock the fields endpoint
-    fields_response = server_responses.comapeo_all_fields(server_url, project_id)
+    fields_response = server_responses.comapeo_all_fields(uri=server_url, project_id=project_id)
     mocked_responses.get(
         f"{server_url}/projects/{project_id}/field",
         json=fields_response,
         status=200,
     )
 
-    fields = fetch_all_fields(server_url, session, project_id)
+    fields = fetch_all_fields(server_url=server_url, session=session, project_id=project_id)
 
     assert len(fields) == len(SAMPLE_FIELDS)
     # Check that field data contains expected keys
@@ -276,7 +280,7 @@ def test_download_preset_icons(mocked_responses, tmp_path):
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Get presets with icon URLs
-    presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
+    presets = server_responses.comapeo_all_presets(uri=server_url, project_id=project_id)["data"]
 
     # Mock icon downloads
     for preset in presets[:2]:  # Only mock first 2 icons
@@ -290,7 +294,7 @@ def test_download_preset_icons(mocked_responses, tmp_path):
                 content_type="image/png",
             )
 
-    stats, icon_filenames = download_preset_icons(presets[:2], project_dir, session)
+    stats, icon_filenames = download_preset_icons(presets=presets[:2], project_dir=project_dir, session=session)
 
     assert stats["skipped_icons"] == 0
     assert stats["icon_failed"] == 0
@@ -308,7 +312,7 @@ def test_download_preset_icons(mocked_responses, tmp_path):
     assert (icon_dir / "water_source.png").exists()
 
     # Test skipping existing icons
-    stats2, icon_filenames2 = download_preset_icons(presets[:2], project_dir, session)
+    stats2, icon_filenames2 = download_preset_icons(presets=presets[:2], project_dir=project_dir, session=session)
     assert stats2["skipped_icons"] == 2
     assert stats2["icon_failed"] == 0
     # Should still return icon filenames even when skipped
@@ -327,7 +331,7 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
     session.headers.update({"Authorization": f"Bearer {access_token}"})
 
     # Get presets with icon URLs
-    presets = server_responses.comapeo_all_presets(server_url, project_id)["data"]
+    presets = server_responses.comapeo_all_presets(uri=server_url, project_id=project_id)["data"]
 
     # Mock icon downloads to fail
     for preset in presets[:2]:
@@ -336,7 +340,7 @@ def test_download_preset_icons_with_failures(mocked_responses, tmp_path):
         if icon_url:
             mocked_responses.get(icon_url, status=404)
 
-    stats, icon_filenames = download_preset_icons(presets[:2], project_dir, session)
+    stats, icon_filenames = download_preset_icons(presets=presets[:2], project_dir=project_dir, session=session)
 
     assert stats["icon_failed"] == 2
     assert stats["skipped_icons"] == 0
@@ -412,7 +416,10 @@ def test_download_project_observations_with_failures(mocked_responses, tmp_path)
     )
 
     observations, stats, failed_observations_info = download_project_observations(
-        server_url, session, project_id, project_dir
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        project_dir=project_dir,
     )
 
     assert len(observations) == 2
@@ -481,7 +488,10 @@ def test_download_project_observations_with_skipped(mocked_responses, tmp_path):
     )
 
     observations, stats, failed_observations_info = download_project_observations(
-        server_url, session, project_id, project_dir
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        project_dir=project_dir,
     )
 
     assert len(observations) == 1
@@ -503,7 +513,9 @@ def test_fetch_preset(mocked_responses, tmp_path):
     # Test successful preset fetch
     preset_doc_id = "e8438f39d2130f478d72c933a6b30dd564075a57c0a0abcf48fd3dc47b4beb24"
     preset_response = server_responses.comapeo_preset(
-        server_url, project_id, preset_doc_id
+        uri=server_url,
+        project_id=project_id,
+        preset_doc_id=preset_doc_id,
     )
 
     mocked_responses.get(
@@ -513,7 +525,10 @@ def test_fetch_preset(mocked_responses, tmp_path):
     )
 
     result, skipped, failed = fetch_preset(
-        server_url, session, project_id, preset_doc_id
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        preset_doc_id=preset_doc_id,
     )
 
     assert result is not None
@@ -532,7 +547,10 @@ def test_fetch_preset(mocked_responses, tmp_path):
         status=200,
     )
     result, skipped, failed = fetch_preset(
-        server_url, session, project_id, unknown_preset_id
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        preset_doc_id=unknown_preset_id,
     )
     assert result is None
     assert skipped == 0
@@ -546,7 +564,10 @@ def test_fetch_preset(mocked_responses, tmp_path):
     )
 
     result, skipped, failed = fetch_preset(
-        server_url, session, project_id, error_preset_id
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        preset_doc_id=error_preset_id,
     )
     assert result is None
     assert skipped == 0
@@ -562,7 +583,10 @@ def test_fetch_preset(mocked_responses, tmp_path):
     )
 
     result, skipped, failed = fetch_preset(
-        server_url, session, project_id, invalid_json_preset_id
+        server_url=server_url,
+        session=session,
+        project_id=project_id,
+        preset_doc_id=invalid_json_preset_id,
     )
     assert result is None
     assert skipped == 0
@@ -592,7 +616,10 @@ def test_download_file(mocked_responses, tmp_path):
 
     existing_icon_stems = set()
     file_name, skipped, failed = download_file(
-        icon_url, session, str(icon_dir / "test_icon"), existing_icon_stems
+        url=icon_url,
+        session=session,
+        save_path=str(icon_dir / "test_icon"),
+        existing_file_stems=existing_icon_stems,
     )
 
     assert file_name == "test_icon.png"
@@ -608,7 +635,10 @@ def test_download_file(mocked_responses, tmp_path):
     existing_icon_path.write_bytes(b"existing icon data")
 
     file_name, skipped, failed = download_file(
-        icon_url, session, str(icon_dir / "existing_icon"), existing_icon_stems
+        url=icon_url,
+        session=session,
+        save_path=str(icon_dir / "existing_icon"),
+        existing_file_stems=existing_icon_stems,
     )
 
     assert file_name == "existing_icon.png"
@@ -622,7 +652,10 @@ def test_download_file(mocked_responses, tmp_path):
     mocked_responses.get(error_icon_url, status=404)
 
     file_name, skipped, failed = download_file(
-        error_icon_url, session, str(icon_dir / "error_icon"), existing_icon_stems
+        url=error_icon_url,
+        session=session,
+        save_path=str(icon_dir / "error_icon"),
+        existing_file_stems=existing_icon_stems,
     )
 
     # Filename is still returned even on failure with inferred extension from URL path
@@ -636,10 +669,10 @@ def test_download_file(mocked_responses, tmp_path):
     mocked_responses.get(server_error_url, status=500)
 
     file_name, skipped, failed = download_file(
-        server_error_url,
-        session,
-        str(icon_dir / "server_error_icon"),
-        existing_icon_stems,
+        url=server_error_url,
+        session=session,
+        save_path=str(icon_dir / "server_error_icon"),
+        existing_file_stems=existing_icon_stems,
     )
 
     # Filename is still returned even on failure with inferred extension from URL path
@@ -662,10 +695,10 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     file_name, skipped, failed = download_file(
-        no_content_type_url,
-        session,
-        str(icon_dir / "no_content_type_icon"),
-        existing_icon_stems,
+        url=no_content_type_url,
+        session=session,
+        save_path=str(icon_dir / "no_content_type_icon"),
+        existing_file_stems=existing_icon_stems,
     )
 
     # Infers .png from /icon/ in URL when Content-Type is missing
@@ -692,10 +725,10 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     file_name, skipped, failed = download_file(
-        photo_no_ct_url,
-        session,
-        str(photo_dir / "photo_no_ct"),
-        set(),
+        url=photo_no_ct_url,
+        session=session,
+        save_path=str(photo_dir / "photo_no_ct"),
+        existing_file_stems=set(),
     )
 
     # Infers .jpg from /photo/ in URL when Content-Type is missing
@@ -721,10 +754,10 @@ def test_download_file(mocked_responses, tmp_path):
     )
 
     file_name, skipped, failed = download_file(
-        audio_no_ct_url,
-        session,
-        str(photo_dir / "audio_no_ct"),
-        set(),
+        url=audio_no_ct_url,
+        session=session,
+        save_path=str(photo_dir / "audio_no_ct"),
+        existing_file_stems=set(),
     )
 
     # Infers .m4a from /audio/ in URL when Content-Type is missing
@@ -743,10 +776,10 @@ def test_download_file(mocked_responses, tmp_path):
     mocked_responses.get(photo_error_url, status=404)
 
     file_name, skipped, failed = download_file(
-        photo_error_url,
-        session,
-        str(photo_dir / "failed_photo"),
-        set(),
+        url=photo_error_url,
+        session=session,
+        save_path=str(photo_dir / "failed_photo"),
+        existing_file_stems=set(),
     )
 
     assert file_name == "failed_photo.jpg"  # .jpg inferred from /photo/ in URL
@@ -760,10 +793,10 @@ def test_download_file(mocked_responses, tmp_path):
     mocked_responses.get(audio_error_url, status=404)
 
     file_name, skipped, failed = download_file(
-        audio_error_url,
-        session,
-        str(photo_dir / "failed_audio"),
-        set(),
+        url=audio_error_url,
+        session=session,
+        save_path=str(photo_dir / "failed_audio"),
+        existing_file_stems=set(),
     )
 
     assert file_name == "failed_audio.m4a"  # .m4a inferred from /audio/ in URL
@@ -775,10 +808,10 @@ def test_download_file(mocked_responses, tmp_path):
     mocked_responses.get(generic_error_url, status=404)
 
     file_name, skipped, failed = download_file(
-        generic_error_url,
-        session,
-        str(tmp_path / "generic_file"),
-        set(),
+        url=generic_error_url,
+        session=session,
+        save_path=str(tmp_path / "generic_file"),
+        existing_file_stems=set(),
     )
 
     assert file_name == "generic_file"  # No extension since URL pattern is unrecognized
@@ -786,19 +819,45 @@ def test_download_file(mocked_responses, tmp_path):
     assert failed == 1
 
 
+def test_lookup_project_ids_by_name(caplog):
+    """Project names from GET /projects resolve to the IDs used for exclusion."""
+    projects = server_responses.comapeo_projects(uri="http://comapeo.example.org")["data"]
+
+    assert lookup_project_ids_by_name(projects=projects, names=["River Mapping"]) == {"river_mapping"}
+    assert lookup_project_ids_by_name(
+        projects=projects,
+        names=["Forest Expedition", "River Mapping"],
+    ) == {"forest_expedition", "river_mapping"}
+    # Same display name on two projects excludes both IDs.
+    assert lookup_project_ids_by_name(
+        projects=[
+            {"projectId": "a", "name": "Shared Name"},
+            {"projectId": "b", "name": "Shared Name"},
+            {"projectId": "c", "name": "Other"},
+        ],
+        names=["Shared Name"],
+    ) == {"a", "b"}
+    assert lookup_project_ids_by_name(projects=projects, names=[]) == set()
+    assert lookup_project_ids_by_name(projects=projects, names=None) == set()
+
+    with caplog.at_level("WARNING"):
+        assert lookup_project_ids_by_name(projects=projects, names=["not a project"]) == set()
+    assert "not a project" in caplog.text
+
+
 def test_script_e2e(comapeoserver_observations, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     run_metrics = main(
-        comapeoserver_observations.comapeo_server,
-        comapeoserver_observations.comapeo_project_blocklist,
-        pg_database,
-        "comapeo",
-        asset_storage,
+        comapeo=comapeoserver_observations.comapeo_server,
+        comapeo_project_blocklist=comapeoserver_observations.comapeo_project_blocklist,
+        db=pg_database,
+        db_table_prefix="comapeo",
+        attachment_root=asset_storage,
     )
 
     assert run_metrics == {
-        "forest_expedition": {
+        "Forest Expedition": {
             "observations_fetched": 3,
             "attachments_failed": 0,
         }
@@ -1032,11 +1091,11 @@ def test_missing_attachments_geojson_created(
     # Run the main script - it should raise RuntimeError due to failed attachment
     try:
         main(
-            comapeoserver_with_failing_attachments.comapeo_server,
-            comapeoserver_with_failing_attachments.comapeo_project_blocklist,
-            pg_database,
-            "comapeo",
-            asset_storage,
+            comapeo=comapeoserver_with_failing_attachments.comapeo_server,
+            comapeo_project_blocklist=comapeoserver_with_failing_attachments.comapeo_project_blocklist,
+            db=pg_database,
+            db_table_prefix="comapeo",
+            attachment_root=asset_storage,
         )
         # If we get here, test should fail - we expected a RuntimeError
         assert False, "Expected RuntimeError to be raised"
@@ -1047,6 +1106,7 @@ def test_missing_attachments_geojson_created(
         assert "1 observation(s) affected" in error_msg
         assert "missing_attachments.geojson" in error_msg
         assert "per_project_stats=" in error_msg
+        assert '"Forest Expedition"' in error_msg
         assert '"attachments_failed": 1' in error_msg
 
     # Check that the missing attachments GeoJSON file was created despite the error
@@ -1085,15 +1145,15 @@ def test_no_missing_attachments_geojson_when_all_succeed(
 
     # Run the main script (all attachments should succeed based on fixture mocks)
     run_metrics = main(
-        comapeoserver_observations.comapeo_server,
-        comapeoserver_observations.comapeo_project_blocklist,
-        pg_database,
-        "comapeo",
-        asset_storage,
+        comapeo=comapeoserver_observations.comapeo_server,
+        comapeo_project_blocklist=comapeoserver_observations.comapeo_project_blocklist,
+        db=pg_database,
+        db_table_prefix="comapeo",
+        attachment_root=asset_storage,
     )
 
     assert run_metrics == {
-        "forest_expedition": {
+        "Forest Expedition": {
             "observations_fetched": 3,
             "attachments_failed": 0,
         }

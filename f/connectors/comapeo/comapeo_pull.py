@@ -29,6 +29,7 @@ class comapeo_server(TypedDict):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class CoMapeoPullError(RuntimeError):
     """Raised when the run produces partial output plus an error.
 
@@ -67,14 +68,17 @@ def main(
 
     logger.info(f"Fetched {len(comapeo_projects)} projects.")
 
-    comapeo_projects_geojson, stats, total_failed_observations_count, per_project_stats = (
-        download_and_transform_comapeo_data(
-            server_url,
-            session,
-            comapeo_projects,
-            attachment_root,
-            db_table_prefix,
-        )
+    (
+        comapeo_projects_geojson,
+        stats,
+        total_failed_observations_count,
+        per_project_stats,
+    ) = download_and_transform_comapeo_data(
+        server_url,
+        session,
+        comapeo_projects,
+        attachment_root,
+        db_table_prefix,
     )
 
     logger.info(
@@ -133,6 +137,45 @@ def main(
     return per_project_stats
 
 
+def lookup_project_ids_by_name(projects, names):
+    """Resolve CoMapeo project names to project IDs.
+
+    Parameters
+    ----------
+    projects : list
+        The `data` array from GET /projects. Each item has `projectId` and `name`.
+    names : list
+        Project names to resolve. Matching is exact.
+
+    Returns
+    -------
+    set
+        Project IDs whose `name` is in `names`. Names that match no project are
+        omitted, and a warning is logged for each.
+    """
+    if not names:
+        return set()
+
+    wanted = set(names)
+    matched_names = set()
+    project_ids = set()
+    for project in projects:
+        name = project.get("name")
+        project_id = project.get("projectId")
+        if name in wanted and project_id:
+            matched_names.add(name)
+            project_ids.add(project_id)
+
+    unknown = wanted - matched_names
+    if unknown:
+        unknown_names = ", ".join(sorted(unknown))
+        logger.warning(
+            f"No CoMapeo project found for blocklist name(s): {unknown_names}"
+        )
+
+    return project_ids
+
+
 def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
     """
     Fetches a list of projects from the CoMapeo API, excluding any projects
@@ -145,7 +188,8 @@ def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
     session : requests.Session
         A requests session with authentication headers configured.
     comapeo_project_blocklist : list
-        A list of project IDs to be excluded from the fetched results.
+        A list of project names to exclude. Names are resolved to project IDs
+        using the /projects response.
 
     Returns
     -------
@@ -161,23 +205,21 @@ def fetch_comapeo_projects(server_url, session, comapeo_project_blocklist):
     response.raise_for_status()
     results = response.json().get("data", [])
 
-    comapeo_projects = [
+    blocked_ids = lookup_project_ids_by_name(results, comapeo_project_blocklist)
+    if blocked_ids:
+        logger.info(
+            f"Excluding projects {comapeo_project_blocklist} "
+            f"(IDs: {sorted(blocked_ids)})"
+        )
+
+    return [
         {
             "project_id": res.get("projectId"),
             "project_name": res.get("name"),
         }
         for res in results
+        if res.get("projectId") not in blocked_ids
     ]
-
-    if comapeo_project_blocklist:
-        logger.info(f"Blocked projects found: {comapeo_project_blocklist}")
-        comapeo_projects = [
-            project
-            for project in comapeo_projects
-            if project["project_id"] not in comapeo_project_blocklist
-        ]
-
-    return comapeo_projects
 
 
 def build_existing_file_set(directory):
@@ -1074,7 +1116,7 @@ def download_and_transform_comapeo_data(
         }
 
         # Aggregate statistics
-        per_project_stats[sanitized_project_name] = {
+        per_project_stats[project_name] = {
             "observations_fetched": len(observations),
             "attachments_failed": attachment_stats["attachment_failed"],
         }

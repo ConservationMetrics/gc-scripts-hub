@@ -1,5 +1,7 @@
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.arcgis.arcgis_feature_layer import (
     main,
 )
@@ -9,11 +11,11 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
     asset_storage = tmp_path / "datalake"
 
     main(
-        arcgis_server.account,
-        arcgis_server.feature_layer_url,
-        pg_database,
-        "my_arcgis_data",
-        asset_storage,
+        arcgis_account=arcgis_server.account,
+        feature_layer_url=arcgis_server.feature_layer_url,
+        db=pg_database,
+        db_table_name="my_arcgis_data",
+        attachment_root=asset_storage,
     )
 
     # Attachments are saved to disk
@@ -43,3 +45,14 @@ def test_script_e2e(arcgis_server, pg_database, tmp_path):
 
             cursor.execute("SELECT g__coordinates FROM my_arcgis_data LIMIT 1")
             assert cursor.fetchone()[0] == "[-73.965355, 40.782865]"
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            arcgis_account={"username": "u", "password": "p"},
+            feature_layer_url="https://example.test/layer",
+            db=pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

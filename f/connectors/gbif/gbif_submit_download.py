@@ -13,11 +13,11 @@ from f.common_logic.date_utils import calculate_cutoff_date
 from f.common_logic.geo_utils import bounding_box_to_wkt
 
 _API = "https://api.gbif.org/v1/occurrence/download"
-_MAX_AREA_KM2 = 15_000
+_MAX_AREA_KM2 = 35_000
 _MAX_WAIT_SECONDS = 24 * 60 * 60
 
 
-class c_gbif(TypedDict):
+class gbif(TypedDict):
     """Windmill GBIF account resource."""
 
     username: str
@@ -25,7 +25,7 @@ class c_gbif(TypedDict):
 
 
 def main(
-    gbif_account: c_gbif,
+    gbif_account: gbif,
     bounding_box: list | str,
     max_months_lookback: int | None = None,
 ) -> dict:
@@ -33,7 +33,7 @@ def main(
 
     Parameters
     ----------
-    gbif_account : c_gbif
+    gbif_account : gbif
         Resource containing a GBIF username and password.
     bounding_box : list or str
         ``[[west, south], [east, north]]`` in longitude/latitude order.

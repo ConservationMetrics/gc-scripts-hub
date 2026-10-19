@@ -2,7 +2,9 @@ import csv
 from pathlib import Path
 
 import psycopg
+import pytest
 
+from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.odk.odk_responses import main, transform_odk_form_data
 
 
@@ -11,11 +13,11 @@ def test_script_e2e(odkserver, pg_database, tmp_path):
     table_name = "odk_responses"
 
     main(
-        odkserver.config,
-        odkserver.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        odk=odkserver.config,
+        form_id=odkserver.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     # Attachments are saved to disk
@@ -50,11 +52,11 @@ def test_script_e2e__no_submissions(odkserver_no_submissions, pg_database, tmp_p
 
     # A zero-submission pull must not raise
     main(
-        odkserver_no_submissions.config,
-        odkserver_no_submissions.form_id,
-        pg_database,
-        table_name,
-        asset_storage,
+        odk=odkserver_no_submissions.config,
+        form_id=odkserver_no_submissions.form_id,
+        db=pg_database,
+        db_table_name=table_name,
+        attachment_root=asset_storage,
     )
 
     # No CSV artifact is written when there are no submissions
@@ -74,7 +76,7 @@ def test_transform_odk_form_data_from_csv():
         data = [dict(row) for row in reader]
 
     form_name = "Test Form"
-    result = transform_odk_form_data(data, form_name)
+    result = transform_odk_form_data(form_data=data, form_name=form_name)
 
     for submission in result:
         assert submission["dataset_name"] == form_name
@@ -89,3 +91,14 @@ def test_transform_odk_form_data_from_csv():
 
     # Second submission: 38.769845, -77.207058 -> [-77.207058, 38.769845]
     assert result[1]["g__coordinates"] == [-77.207058, 38.769845]
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        main(
+            odk={},
+            form_id="form",
+            db=pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )

@@ -14,6 +14,8 @@ Client ID and Secret are not required for public projects.
 
 The **project slug** appears in the project URL: `https://five.epicollect.net/project/{slug}`. It can also be found on the project's **API** tab in the web application.
 
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 54 characters and is also the datalake subdirectory.
+
 > [!NOTE]
 > Since the Client ID and Secret are project-specific, they are not bundled together in a single resource as there is no reusability of credentials across projects. Hence, for this script, we don't take advantage of Windmill resource types.
 

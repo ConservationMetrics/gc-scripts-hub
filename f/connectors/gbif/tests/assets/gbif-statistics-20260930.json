@@ -1,0 +1,188 @@
+{
+  "bounds": [
+    [
+      -55.03,
+      3.23
+    ],
+    [
+      -54.12,
+      3.67
+    ]
+  ],
+  "geometry": "POLYGON((-55.03 3.23,-54.12 3.23,-54.12 3.67,-55.03 3.67,-55.03 3.23))",
+  "occurrence_count": 856,
+  "facets": {
+    "datasetKey": [
+      {
+        "name": "191cb056-d760-4b06-a7dd-ac247a45f05d",
+        "count": 325
+      },
+      {
+        "name": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+        "count": 248
+      },
+      {
+        "name": "a1d21898-1f56-4e38-8f71-e2b821187790",
+        "count": 68
+      },
+      {
+        "name": "7a3679ef-5582-4aaa-81f0-8c2545cafc81",
+        "count": 3
+      },
+      {
+        "name": "4fa7b334-ce0d-4e88-aaae-2e0c138d049e",
+        "count": 2
+      },
+      {
+        "name": "d0318a4e-8d55-4da6-b912-e90dd6ed960b",
+        "count": 1
+      }
+    ],
+    "publishingOrg": [
+      {
+        "name": "1928bdf0-f5d2-11dc-8c12-b8a03c50a862",
+        "count": 393
+      },
+      {
+        "name": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+        "count": 248
+      },
+      {
+        "name": "da86174a-a605-43a4-a5e8-53d484152cd3",
+        "count": 3
+      },
+      {
+        "name": "e2e717bf-551a-4917-bdc9-4fa0f342c530",
+        "count": 2
+      },
+      {
+        "name": "c0d9c91a-0f83-4819-bf7e-bb5e1184eb6b",
+        "count": 1
+      }
+    ],
+    "year": [
+      {
+        "name": "2011",
+        "count": 204
+      },
+      {
+        "name": "2026",
+        "count": 195
+      },
+      {
+        "name": "2012",
+        "count": 156
+      },
+      {
+        "name": "1985",
+        "count": 68
+      },
+      {
+        "name": "1918",
+        "count": 7
+      },
+      {
+        "name": "1993",
+        "count": 5
+      },
+      {
+        "name": "2005",
+        "count": 5
+      },
+      {
+        "name": "1931",
+        "count": 1
+      }
+    ],
+    "speciesKey": [
+      {
+        "name": "2474363",
+        "count": 70
+      },
+      {
+        "name": "2436648",
+        "count": 35
+      },
+      {
+        "name": "2437577",
+        "count": 32
+      },
+      {
+        "name": "2440995",
+        "count": 26
+      },
+      {
+        "name": "2441396",
+        "count": 7
+      },
+      {
+        "name": "5420626",
+        "count": 5
+      },
+      {
+        "name": "10816285",
+        "count": 4
+      },
+      {
+        "name": "1901859",
+        "count": 3
+      },
+      {
+        "name": "2354870",
+        "count": 3
+      },
+      {
+        "name": "8805154",
+        "count": 1
+      },
+      {
+        "name": "9724339",
+        "count": 1
+      }
+    ],
+    "basisOfRecord": [
+      {
+        "name": "HUMAN_OBSERVATION",
+        "count": 728
+      },
+      {
+        "name": "PRESERVED_SPECIMEN",
+        "count": 123
+      },
+      {
+        "name": "OCCURRENCE",
+        "count": 5
+      }
+    ]
+  },
+  "names": {
+    "dataset": {
+      "191cb056-d760-4b06-a7dd-ac247a45f05d": "Données du Parc amazonien de Guyane - Données sur la chasse Parc amazonien de Guyane 2010-2012",
+      "50c9509d-22c7-4a22-a47d-8c48425ef4a7": "iNaturalist Research-grade Observations",
+      "a1d21898-1f56-4e38-8f71-e2b821187790": "CardObs : Observations naturalistes issues de l'outil CardObs-Données naturalistes de Philippe KEITH",
+      "7a3679ef-5582-4aaa-81f0-8c2545cafc81": "Pl@ntNet observations",
+      "4fa7b334-ce0d-4e88-aaae-2e0c138d049e": "EOD – eBird Observation Dataset",
+      "d0318a4e-8d55-4da6-b912-e90dd6ed960b": "Ictiologia Collection - Instituto Nacional de Pesquisas da Amazônia (INPA)"
+    },
+    "organization": {
+      "1928bdf0-f5d2-11dc-8c12-b8a03c50a862": "UAR PatriNat (OFB-MNHN-CNRS-IRD), Paris",
+      "28eb1a3f-1c15-4a95-931a-4af90ecb574d": "iNaturalist.org",
+      "da86174a-a605-43a4-a5e8-53d484152cd3": "Pl@ntNet",
+      "e2e717bf-551a-4917-bdc9-4fa0f342c530": "Cornell Lab of Ornithology",
+      "c0d9c91a-0f83-4819-bf7e-bb5e1184eb6b": "Instituto Nacional de Pesquisas da Amazônia - INPA"
+    },
+    "species": {
+      "2474363": "Psophia crepitans Linnaeus, 1758",
+      "2436648": "Alouatta seniculus (Linnaeus, 1766)",
+      "2437577": "Dasyprocta leporina (Linnaeus, 1758)",
+      "2440995": "Pecari tajacu (Linnaeus, 1758)",
+      "2441396": "Paleosuchus palpebrosus (Cuvier, 1807)",
+      "5420626": "Psidium acutangulum Mart. ex DC.",
+      "10816285": "Miconia tococa (Desr.) Michelang.",
+      "1901859": "Heteroscada reckia Hübner, 1806",
+      "2354870": "Hemiodus huraulti (Géry, 1964)",
+      "8805154": "Eadmuna guianensis Saint Laurent & Dombroskie, 2015",
+      "9724339": "Dendrobates tinctorius (Cuvier, 1797)"
+    }
+  }
+}

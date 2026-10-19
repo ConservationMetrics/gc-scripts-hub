@@ -241,7 +241,7 @@ def transform_auditor2_data(
             else:
                 row["_id"] = str(index)
 
-            # Add GuardianConnector-compliant geo fields for `sites`
+            # Add Guardian Connector-compliant geo fields for `sites`
             # (Currently, these are `g__` fields that used to
             # construct GeoJSON objects on the front end. If we
             # ever switch to using something like PostGIS, this

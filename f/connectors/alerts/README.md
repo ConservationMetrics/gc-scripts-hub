@@ -1,11 +1,8 @@
-This README introduces two scripts that live in this folder:
-
-- `alerts_gcs`: Google Cloud Alerts Change Detection Integration
-- `alerts_twilio`: Send a Twilio Message
-
 # `alerts_gcs`: Google Cloud Alerts Change Detection Integration
 
 This script fetches change detection alerts and images from a storage bucket on Google Cloud Platform. The script transforms the data for SQL compatibility and stores it in a PostgreSQL database. Additionally, it saves before-and-after images -- as TIF and JPEG -- to a specified directory.
+
+**Dataset** is `use_existing_dataset` or `create_new_dataset` (default). The form shows these as "Use existing dataset" and "Enter dataset name". Entering a name creates the dataset if needed and updates it if it already exists. Existing datasets are chosen from the public tables on `db`. A new dataset name is at most 53 characters so `{name}__metadata` still fits.
 
 **Note:** This script does not support GeoJSON files containing GeometryCollection geometries and will fail if any are detected.
 
@@ -47,12 +44,4 @@ Currently, we are assuming there to be only four raster images for each change d
     <territory_id>/<year_detec>/<month_detec>/<alert_id>/images/<sat_viz_prefix>_T0_<id>.jpg
     ...
 
-# `alerts_twilio`: Send a Twilio Message 
-
-This script leverages Twilio to send a WhatsApp message to recipients with a summary of the latest processed alerts. Below is the message template, with values from an `alerts_statistics` object:
-
-```javascript
-`${total_alerts} new change detection alert(s) have been published on your alerts dashboard for the date of ${date}. The following activities have been detected in your region: ${description_alerts}. Visit your alerts dashboard here: https://explorer.${community_slug}.guardianconnector.net/alerts/alerts. If you are using CoMapeo with an archive server enabled, you can receive the alerts by synchronizing.`
-```
-
-There are translations in English, Dutch, Portuguese, and Spanish available, with a unique content template [SID](https://www.twilio.com/docs/glossary/what-is-a-sid) for each.
+WhatsApp notification after new alerts are written is handled by [`twilio_change_detection`](../twilio/README.md). The [Alerts: Download, Post, and Notify](../../flows/alerts_download_post_notify.flow/README.md) flow runs that script after this one.

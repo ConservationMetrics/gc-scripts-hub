@@ -27,7 +27,7 @@ def test_get_directory_size(tmp_path):
     (test_dir / "file1.txt").write_bytes(b"x" * 1000)
     (test_dir / "file2.txt").write_bytes(b"y" * 2000)
 
-    size = get_directory_size(str(test_dir))
+    size = get_directory_size(directory_path=str(test_dir))
 
     assert size is not None
     assert size >= 3000  # At least the size of our files
@@ -36,7 +36,7 @@ def test_get_directory_size(tmp_path):
 def test_get_directory_size_nonexistent():
     """Test directory size function with nonexistent path."""
 
-    size = get_directory_size("/nonexistent/path")
+    size = get_directory_size(directory_path="/nonexistent/path")
 
     assert size is None
 
@@ -51,7 +51,7 @@ def test_get_directory_size_subprocess_error(mock_run, tmp_path):
     # Simulate subprocess error
     mock_run.side_effect = Exception("Command failed")
 
-    size = get_directory_size(str(test_dir))
+    size = get_directory_size(directory_path=str(test_dir))
 
     assert size is None
 
@@ -65,7 +65,7 @@ def test_get_comapeo_metrics(comapeo_server_fixture, tmp_path):
     comapeo_dir.mkdir(parents=True)
     (comapeo_dir / "test_file.txt").write_bytes(b"x" * (1024 * 1024))
 
-    result = get_comapeo_metrics(comapeo_server_fixture, str(datalake_root))
+    result = get_comapeo_metrics(comapeo=comapeo_server_fixture, attachment_root=str(datalake_root))
 
     assert "project_count" in result
     assert result["project_count"] == 3
@@ -77,9 +77,9 @@ def test_comapeo_data_size_nonexistent_path(comapeo_server_fixture, pg_database)
     """Test that the script handles nonexistent data paths gracefully."""
 
     result = main(
-        comapeo_server_fixture,
-        pg_database,
-        "/nonexistent/path",
+        comapeo=comapeo_server_fixture,
+        db=pg_database,
+        attachment_root="/nonexistent/path",
         superset_db="test",
     )
 
@@ -92,7 +92,7 @@ def test_comapeo_data_size_nonexistent_path(comapeo_server_fixture, pg_database)
 def test_get_warehouse_metrics(pg_database):
     """Test warehouse metrics collection."""
 
-    metrics = get_warehouse_metrics(pg_database)
+    metrics = get_warehouse_metrics(db=pg_database)
 
     assert "tables_total" in metrics
     assert "tables_mapeo" in metrics
@@ -109,7 +109,7 @@ def test_get_warehouse_metrics(pg_database):
 def test_get_explorer_metrics(pg_database):
     """Test explorer metrics collection."""
 
-    metrics = get_explorer_metrics(pg_database)
+    metrics = get_explorer_metrics(db=pg_database)
 
     assert "dataset_views" in metrics
     # Should have 3 records in view_config
@@ -119,7 +119,7 @@ def test_get_explorer_metrics(pg_database):
 def test_get_superset_metrics(pg_database):
     """Test Superset metrics collection."""
 
-    metrics = get_superset_metrics(pg_database)
+    metrics = get_superset_metrics(db=pg_database)
 
     assert "dashboards" in metrics
     assert "charts" in metrics
@@ -142,7 +142,7 @@ def test_get_datalake_metrics(tmp_path):
     subdir.mkdir()
     (subdir / "file3.txt").write_bytes(b"z" * (1024 * 1024))  # 1MB
 
-    metrics = get_datalake_metrics(str(datalake))
+    metrics = get_datalake_metrics(datalake_path=str(datalake))
 
     assert "file_count" in metrics
     assert "data_size_mb" in metrics
@@ -181,7 +181,7 @@ def test_get_windmill_metrics():
 
 def test_get_auth0_metrics(auth0_server_fixture):
     """Test Auth0 metrics collection."""
-    metrics = get_auth0_metrics(auth0_server_fixture)
+    metrics = get_auth0_metrics(oauth_client_credentials=auth0_server_fixture)
 
     assert "users" in metrics
     assert metrics["users"] == 52
@@ -209,7 +209,7 @@ def test_flatten_metrics():
     }
     date_str = "2026-02-18"
 
-    flattened = _flatten_metrics(metrics, date_str)
+    flattened = _flatten_metrics(metrics=metrics, date_str=date_str)
 
     # Check _id and date
     assert flattened["_id"] == "20260218"
@@ -239,13 +239,13 @@ def test_guardianconnector_full_metrics_and_db_write(
     # Create guardianconnector database for explorer metrics
 
     postgres_conn = {**pg_database, "dbname": "postgres"}
-    with psycopg.connect(conninfo(postgres_conn), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=postgres_conn), autocommit=True) as conn:
         with conn.cursor() as cursor:
             cursor.execute("CREATE DATABASE guardianconnector")
 
     # Set up the same tables in guardianconnector database
     guardianconnector_conn = {**pg_database, "dbname": "guardianconnector"}
-    with psycopg.connect(conninfo(guardianconnector_conn), autocommit=True) as conn:
+    with psycopg.connect(conninfo(db=guardianconnector_conn), autocommit=True) as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE view_config (
@@ -270,9 +270,9 @@ def test_guardianconnector_full_metrics_and_db_write(
 
     # Pass the test database name for both guardianconnector_db and superset_db
     result = main(
-        comapeo_server_fixture,
-        pg_database,
-        str(datalake_root),
+        comapeo=comapeo_server_fixture,
+        db=pg_database,
+        attachment_root=str(datalake_root),
         superset_db="test",
         oauth_client_credentials=auth0_server_fixture,
     )
@@ -318,7 +318,7 @@ def test_guardianconnector_full_metrics_and_db_write(
     assert result["auth0"]["logins"] == 412  # 275 + 95 + 42
 
     # Verify metrics were written to guardianconnector database
-    conn_str = conninfo({**pg_database, "dbname": "guardianconnector"})
+    conn_str = conninfo(db={**pg_database, "dbname": "guardianconnector"})
     with psycopg.connect(conn_str, autocommit=True) as conn:
         with conn.cursor() as cursor:
             # Check that metrics table exists

@@ -1,0 +1,424 @@
+import csv
+import json
+import logging
+import zipfile
+from datetime import datetime, timedelta, timezone
+
+import pytest
+import responses
+from psycopg import connect, sql
+
+from f.common_logic.db_operations import USE_EXISTING_DATASET
+from f.connectors.gbif import (
+    gbif_check_download,
+    gbif_pull_occurrences,
+    gbif_submit_download,
+)
+from f.connectors.gbif.tests.assets import server_responses
+
+
+def test_submit_uses_basic_auth_and_last_interpreted_predicate(
+    mocked_responses, monkeypatch
+):
+    monkeypatch.setattr(
+        gbif_submit_download, "calculate_cutoff_date", lambda _: (2026, 7)
+    )
+    mocked_responses.add(
+        responses.POST,
+        "https://api.gbif.org/v1/occurrence/download/request",
+        body=server_responses.DOWNLOAD_KEY,
+    )
+    result = gbif_submit_download.main(
+        gbif_account={"username": "account", "password": "secret"},
+        bounding_box=[[-55.03, 3.23], [-54.12, 3.67]],
+        max_months_lookback=2,
+    )
+    request = mocked_responses.calls[0].request
+    assert request.headers["Authorization"].startswith("Basic ")
+    assert b'"key": "LAST_INTERPRETED"' in request.body
+    assert b'"value": "2026-07-01"' in request.body
+    assert result["download_key"] == server_responses.DOWNLOAD_KEY
+    submitted_at = datetime.fromisoformat(result["submitted_at"])
+    deadline = datetime.fromisoformat(result["deadline"])
+    assert deadline - submitted_at == timedelta(days=1)
+
+
+def test_submit_rejects_oversized_bounds_before_request(mocked_responses):
+    with pytest.raises(ValueError):
+        gbif_submit_download.main(
+            gbif_account={"username": "u", "password": "p"},
+            bounding_box=[[0, 0], [2, 2]],
+        )
+    assert not mocked_responses.calls
+
+
+@pytest.mark.parametrize("status", ["PREPARING", "RUNNING", "SUSPENDED", "SUCCEEDED"])
+def test_check_known_pending_and_success_statuses(mocked_responses, status):
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(status=status),
+    )
+    result = gbif_check_download.main(
+        download_key=server_responses.DOWNLOAD_KEY,
+        deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+    )
+    assert result["succeeded"] is (status == "SUCCEEDED")
+
+
+@pytest.mark.parametrize(
+    "status", ["CANCELLED", "KILLED", "FAILED", "FILE_ERASED", "UNKNOWN"]
+)
+def test_check_terminal_or_unknown_status_fails(mocked_responses, status):
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(status=status),
+    )
+    with pytest.raises(RuntimeError):
+        gbif_check_download.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        )
+
+
+def test_check_deadline_fails_without_http(mocked_responses):
+    with pytest.raises(TimeoutError):
+        gbif_check_download.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline="2000-01-01T00:00:00+00:00",
+        )
+    assert not mocked_responses.calls
+
+
+@pytest.mark.parametrize("status", [429, 500])
+def test_check_marks_transient_http_failures_retryable(mocked_responses, status):
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        status=status,
+    )
+    with pytest.raises(RuntimeError, match="retryable"):
+        gbif_check_download.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            deadline=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        )
+
+
+def test_real_archive_conversion_has_852_rows_and_preserves_geometry(
+    archive_bytes, tmp_path
+):
+    archive = tmp_path / "fixture.zip"
+    archive.write_bytes(archive_bytes)
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "converted.csv")
+    assert count == 852
+    rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
+    assert len(rows) == 852
+    assert all(row["gbif_id"] == row["_id"] and row["_id"] for row in rows)
+    assert any(row["g__type"] == "Point" for row in rows)
+
+
+def test_pull_imports_and_upserts_enriched_real_archive(
+    mocked_responses, archive_bytes, pg_database, tmp_path, caplog, monkeypatch
+):
+    def registry_titles(dataset_keys, publishing_org_keys):
+        return (
+            {key: f"Dataset {key}" for key in dataset_keys},
+            {key: f"Publisher {key}" for key in publishing_org_keys},
+        )
+
+    monkeypatch.setattr(gbif_pull_occurrences, "_resolve_registry_titles", registry_titles)
+    metadata_url = (
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}"
+    )
+    mocked_responses.add(responses.GET, metadata_url, json=server_responses.metadata())
+    mocked_responses.add(
+        responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
+    )
+    with caplog.at_level(logging.INFO, logger="f.connectors.gbif.gbif_pull_occurrences"):
+        result = gbif_pull_occurrences.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
+            db_table_name="gbif_occurrences",
+            attachment_root=str(tmp_path),
+        )
+    assert result["record_count"] == 852
+    destination = tmp_path / "gbif_occurrences"
+    assert (
+        f"GBIF archive saved to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}"
+        in caplog.text
+    )
+    assert (
+        f"GBIF occurrence CSV saved to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'} (852 records)"
+        in caplog.text
+    )
+    assert (
+        f"GBIF provenance metadata saved to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}"
+        in caplog.text
+    )
+    with connect(**pg_database) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            sql.SQL("SELECT count(*) FROM {} ").format(
+                sql.Identifier("gbif_occurrences")
+            )
+        )
+        assert cursor.fetchone()[0] == 852
+        cursor.execute(
+            "SELECT dataset_key, dataset, publishing_org_key, publishing_org "
+            "FROM gbif_occurrences LIMIT 1"
+        )
+        dataset_key, dataset, publishing_org_key, publishing_org = cursor.fetchone()
+        assert dataset == f"Dataset {dataset_key}"
+        assert publishing_org == f"Publisher {publishing_org_key}"
+        first_imported_at = _observations_imported_at(cursor)
+    saved_csv = destination / f"{server_responses.DOWNLOAD_KEY}.csv"
+    saved_row = next(csv.DictReader(saved_csv.open(encoding="utf-8")))
+    assert saved_row["dataset"] == f"Dataset {saved_row['dataset_key']}"
+    assert saved_row["publishing_org"] == (
+        f"Publisher {saved_row['publishing_org_key']}"
+    )
+    provenance = json.loads(
+        (destination / f"{server_responses.DOWNLOAD_KEY}.json").read_text()
+    )
+    assert provenance["enrichment"] == {
+        "dataset_keys": 19,
+        "datasets_resolved": 19,
+        "publishing_org_keys": 15,
+        "publishing_orgs_resolved": 15,
+    }
+    mocked_responses.add(responses.GET, metadata_url, json=server_responses.metadata())
+    mocked_responses.add(
+        responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
+    )
+    gbif_pull_occurrences.main(
+        download_key=server_responses.DOWNLOAD_KEY,
+        db=pg_database,
+        db_table_name="gbif_occurrences",
+        attachment_root=str(tmp_path),
+        destination_action=USE_EXISTING_DATASET,
+        existing_db_table_name="gbif_occurrences",
+    )
+    with connect(**pg_database) as connection, connection.cursor() as cursor:
+        cursor.execute(
+            sql.SQL("SELECT count(*) FROM {} ").format(
+                sql.Identifier("gbif_occurrences")
+            )
+        )
+        assert cursor.fetchone()[0] == 852
+        assert _observations_imported_at(cursor) >= first_imported_at
+
+
+def test_convert_rejects_missing_and_duplicate_ids(tmp_path):
+    for name, data in [
+        ("missing", "gbifID\tdecimalLongitude\n\t1\n"),
+        ("duplicate", "gbifID\tdecimalLongitude\n1\t1\n1\t2\n"),
+    ]:
+        archive = tmp_path / f"{name}.zip"
+        with zipfile.ZipFile(archive, "w") as zipped:
+            zipped.writestr("occurrences.csv", data)
+        with pytest.raises(ValueError):
+            gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / f"{name}.csv")
+
+
+def test_convert_preserves_invalid_coordinates_without_geometry(tmp_path):
+    archive = tmp_path / "coordinates.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr(
+            "occurrences.csv",
+            "gbifID\tdecimalLongitude\tdecimalLatitude\tspecies\n1\tbad\t2\tTest\n",
+        )
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "coordinates.csv")
+    assert count == 1
+    row = next(csv.DictReader(csv_path.open(encoding="utf-8")))
+    assert row["decimal_longitude"] == "bad"
+    assert row["species"] == "Test"
+    assert row["g__type"] == ""
+    assert row["g__coordinates"] == ""
+
+
+@pytest.mark.parametrize(
+    ("longitude", "latitude"),
+    [("181", "0"), ("0", "-91"), ("nan", "0"), ("0", "inf")],
+)
+def test_coordinates_rejects_invalid_wgs84_values(longitude, latitude):
+    assert gbif_pull_occurrences._coordinates(longitude=longitude, latitude=latitude) is None
+
+
+def test_convert_treats_literal_quotes_as_tsv_data(tmp_path):
+    archive = tmp_path / "literal-quotes.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr(
+            "occurrences.csv",
+            'gbifID\tverbatimScientificName\n1\t"unmatched quote\n2\tsecond record\n',
+        )
+    csv_path, count = gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "quotes.csv")
+    assert count == 2
+    rows = list(csv.DictReader(csv_path.open(encoding="utf-8")))
+    assert [row["gbif_id"] for row in rows] == ["1", "2"]
+    assert rows[0]["verbatim_scientific_name"] == '"unmatched quote'
+
+
+def test_convert_rejects_headers_that_collide_after_snake_case_conversion(tmp_path):
+    archive = tmp_path / "colliding-headers.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("occurrences.csv", "gbifID\tgbif_id\n1\t1\n")
+    with pytest.raises(ValueError, match="conflict"):
+        gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "colliding-headers.csv")
+
+
+def test_enrich_csv_resolves_each_distinct_registry_key_once(
+    mocked_responses, tmp_path
+):
+    source = tmp_path / "converted.csv"
+    source.write_text(
+        "_id,dataset_key,publishing_org_key\n"
+        f"1,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n"
+        f"2,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n",
+        encoding="utf-8",
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/dataset/{server_responses.DATASET_KEY}",
+        json={"title": "eBird - EOD"},
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/organization/{server_responses.PUBLISHING_ORG_KEY}",
+        json={"title": " Cornell Lab of Ornithology "},
+    )
+
+    summary = gbif_pull_occurrences._enrich_csv(source_path=source, output_path=tmp_path / "enriched.csv")
+
+    rows = list(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
+    assert len(mocked_responses.calls) == 2
+    assert {row["dataset"] for row in rows} == {"eBird - EOD"}
+    assert {row["publishing_org"] for row in rows} == {"Cornell Lab of Ornithology"}
+    assert all(row["dataset_key"] == server_responses.DATASET_KEY for row in rows)
+    assert summary == {
+        "dataset_keys": 1,
+        "datasets_resolved": 1,
+        "publishing_org_keys": 1,
+        "publishing_orgs_resolved": 1,
+    }
+
+
+def test_enrich_csv_keeps_keys_when_registry_lookup_fails(
+    mocked_responses, tmp_path, caplog
+):
+    source = tmp_path / "converted.csv"
+    source.write_text(
+        "_id,dataset_key,publishing_org_key\n"
+        f"1,{server_responses.DATASET_KEY},{server_responses.PUBLISHING_ORG_KEY}\n",
+        encoding="utf-8",
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/dataset/{server_responses.DATASET_KEY}",
+        status=503,
+    )
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/organization/{server_responses.PUBLISHING_ORG_KEY}",
+        json={"key": server_responses.PUBLISHING_ORG_KEY},
+    )
+
+    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
+        summary = gbif_pull_occurrences._enrich_csv(source_path=source, output_path=tmp_path / "enriched.csv")
+
+    row = next(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
+    assert row["dataset_key"] == server_responses.DATASET_KEY
+    assert row["publishing_org_key"] == server_responses.PUBLISHING_ORG_KEY
+    assert row["dataset"] == ""
+    assert row["publishing_org"] == ""
+    assert summary["datasets_resolved"] == 0
+    assert summary["publishing_orgs_resolved"] == 0
+    assert "left 2 of 2 keys unresolved" in caplog.text
+
+
+def test_registry_enrichment_stops_at_deadline(monkeypatch, caplog):
+    lookup_times = iter([0, 0, 121])
+    looked_up = []
+
+    def registry_title(resource_type, key):
+        looked_up.append((resource_type, key))
+        return f"Title {key}"
+
+    monkeypatch.setattr(gbif_pull_occurrences, "_REGISTRY_WORKERS", 2)
+    monkeypatch.setattr(gbif_pull_occurrences, "monotonic", lambda: next(lookup_times))
+    monkeypatch.setattr(gbif_pull_occurrences, "_registry_title", registry_title)
+
+    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
+        dataset_titles, publishing_org_titles = gbif_pull_occurrences._resolve_registry_titles(
+            dataset_keys={"dataset-1", "dataset-2"},
+            publishing_org_keys={"organization-1", "organization-2"},
+        )
+
+    assert set(dataset_titles) == {"dataset-1"}
+    assert set(publishing_org_titles) == {"organization-1"}
+    assert len(looked_up) == 2
+    assert "reached its 120-second deadline" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("members", "message"),
+    [([], "exactly one"), (["a.csv", "b.csv"], "exactly one")],
+)
+def test_convert_rejects_missing_multiple_or_header_only_members(
+    tmp_path, members, message
+):
+    archive = tmp_path / "invalid.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        for member in members:
+            zipped.writestr(member, "gbifID\tdecimalLongitude\n")
+    with pytest.raises(ValueError, match=message):
+        gbif_pull_occurrences._convert_archive(archive=archive, output_path=tmp_path / "invalid.csv")
+
+
+def test_use_existing_dataset_requires_a_real_table(pg_database):
+    with pytest.raises(ValueError, match="does not exist"):
+        gbif_pull_occurrences.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
+            destination_action=USE_EXISTING_DATASET,
+            existing_db_table_name="missing_dataset",
+        )
+
+
+def test_pull_retains_empty_download_without_creating_an_occurrence_table(
+    mocked_responses, pg_database, tmp_path
+):
+    archive = tmp_path / "empty.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("occurrences.csv", "gbifID\tdecimalLongitude\n")
+    metadata_url = (
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}"
+    )
+    mocked_responses.add(responses.GET, metadata_url, json=server_responses.metadata())
+    mocked_responses.add(
+        responses.GET, server_responses.ARCHIVE_URL, body=archive.read_bytes()
+    )
+    result = gbif_pull_occurrences.main(
+        download_key=server_responses.DOWNLOAD_KEY,
+        db=pg_database,
+        db_table_name="empty_gbif",
+        attachment_root=str(tmp_path),
+    )
+    assert result["record_count"] == 0
+    assert (tmp_path / "empty_gbif" / f"{server_responses.DOWNLOAD_KEY}.json").is_file()
+    with connect(**pg_database) as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT to_regclass('empty_gbif')")
+        assert cursor.fetchone()[0] is None
+        _observations_imported_at(cursor, "empty_gbif")
+
+
+def _observations_imported_at(cursor, table_name="gbif_occurrences"):
+    cursor.execute(
+        sql.SQL("SELECT observations_last_imported_at FROM {}").format(
+            sql.Identifier(f"{table_name}__metadata")
+        )
+    )
+    rows = cursor.fetchall()
+    assert len(rows) == 1
+    imported_at = rows[0][0]
+    assert imported_at.tzinfo is not None
+    return imported_at

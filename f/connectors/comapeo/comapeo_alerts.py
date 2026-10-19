@@ -10,7 +10,14 @@ from typing import TypedDict
 import psycopg
 import requests
 
-from f.common_logic.db_operations import conninfo, postgresql
+from f.common_logic.db_operations import (
+    USE_EXISTING_DATASET,
+    DynSelect_db_table_name,
+    conninfo,
+    existing_db_table_name as list_dataset_tables,
+    postgresql,
+    resolve_db_table_name,
+)
 
 
 # https://hub.windmill.dev/resource_types/194/comapeo_server
@@ -23,12 +30,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def db_table_name(db: postgresql | None = None):
+    """Windmill dynamic select. Only `db` is an argument, so the picker does not wait on the other fields."""
+    return list_dataset_tables(db)
+
+
 def main(
     db: postgresql,
     comapeo: comapeo_server,
     comapeo_projects: list,
-    db_table_name: str = "alerts",
+    db_table_name: DynSelect_db_table_name,
 ):
+    db_table_name = resolve_db_table_name(
+        db, USE_EXISTING_DATASET, selected_table=db_table_name
+    )
     comapeo_server_url = comapeo["server_url"]
     comapeo_access_token = comapeo["access_token"]
     comapeo_headers = {
