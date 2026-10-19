@@ -84,6 +84,10 @@ def test_alert_id_generation(tmp_path):
         assert "_id" in row
         uuid.UUID(row["_id"])  # will raise ValueError if invalid
 
+    # Fixture uses tier_validation; confidence is omitted
+    assert prepared[0]["tier_validation"] == 2
+    assert prepared[0]["confidence"] is None
+
 
 def test_geometry_collection_validation(tmp_path):
     """Test that GeometryCollection geometries raise ValueError."""
@@ -136,7 +140,11 @@ def test_geometry_collection_validation(tmp_path):
     with pytest.raises(
         ValueError, match="GeometryCollection geometries are not supported"
     ):
-        prepare_alerts_data(local_directory=tmp_path, geojson_files=geojson_files, alerts_provider="test_provider")
+        prepare_alerts_data(
+            local_directory=tmp_path,
+            geojson_files=geojson_files,
+            alerts_provider="test_provider",
+        )
 
 
 @pytest.fixture
@@ -225,6 +233,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
                 "satellite",
                 "territory_id",
                 "territory_name",
+                "tier_validation",
                 "year_detec",
                 "day_detec",
                 "length_alert_km",
@@ -255,6 +264,7 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
                 "description_alerts",
                 "month",
                 "territory_id",
+                "tier_validation",
                 "total_alerts",
                 "type_alert",
                 "year",
@@ -286,9 +296,27 @@ def test_script_e2e(pg_database, mock_alerts_storage_client, tmp_path):
 
             # Check that the confidence field is NULL if it is not defined in the CSV
             cursor.execute(
-                "SELECT confidence FROM fake_alerts__metadata WHERE year = 2022 AND month = 12"
-            )  # This is the only row in the CSV that does not have a confidence value
+                "SELECT confidence, tier_validation FROM fake_alerts__metadata WHERE year = 2022 AND month = 12"
+            )  # This row has neither confidence nor tier_validation
+            assert cursor.fetchone() == (None, None)
+
+            # November 2023 uses tier_validation and omits the deprecated confidence field
+            cursor.execute(
+                "SELECT confidence, tier_validation FROM fake_alerts__metadata WHERE year = 2023 AND month = 11"
+            )
+            assert cursor.fetchone() == (None, 3.0)
+
+            # Confidence rows do not pick up a tier
+            cursor.execute(
+                "SELECT tier_validation FROM fake_alerts__metadata WHERE year = 2024 AND month = 1 AND confidence = 1"
+            )
             assert cursor.fetchone()[0] is None
+
+            # GeoJSON fixture uses tier_validation and omits confidence
+            cursor.execute(
+                "SELECT confidence, tier_validation FROM fake_alerts WHERE alert_id = '20230990011234567181'"
+            )
+            assert cursor.fetchone() == (None, 2.0)
 
             # Check that there is no __columns table created
             cursor.execute(
@@ -677,7 +705,9 @@ def test_generate_alerts_statistics_from_data():
         },
     ]
 
-    stats_multi = _generate_alerts_statistics_from_data(prepared_alerts_data=prepared_data_multi)
+    stats_multi = _generate_alerts_statistics_from_data(
+        prepared_alerts_data=prepared_data_multi
+    )
     assert stats_multi["total_alerts"] == "2"
     assert stats_multi["date"] == "10/2023"
     assert "deforestation" in stats_multi["description_alerts"]
@@ -701,7 +731,9 @@ def test_generate_alerts_statistics_from_data():
         },
     ]
 
-    stats_with_day = _generate_alerts_statistics_from_data(prepared_alerts_data=prepared_data_with_day)
+    stats_with_day = _generate_alerts_statistics_from_data(
+        prepared_alerts_data=prepared_data_with_day
+    )
     assert stats_with_day is not None
     assert stats_with_day["date"] == "25/9/2023"
 
@@ -709,7 +741,12 @@ def test_generate_alerts_statistics_from_data():
 def test_choose_latest_alerts_statistics():
     """Test that _choose_latest_alerts_statistics correctly chooses the winning statistics."""
     # Both None
-    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=None, alerts_statistics_from_data=None) is None
+    assert (
+        _choose_latest_alerts_statistics(
+            alerts_statistics_from_metadata=None, alerts_statistics_from_data=None
+        )
+        is None
+    )
 
     # Only metadata (MM/YYYY format)
     metadata_stats = {
@@ -717,7 +754,13 @@ def test_choose_latest_alerts_statistics():
         "date": "10/2023",
         "description_alerts": "test",
     }
-    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=metadata_stats, alerts_statistics_from_data=None) == metadata_stats
+    assert (
+        _choose_latest_alerts_statistics(
+            alerts_statistics_from_metadata=metadata_stats,
+            alerts_statistics_from_data=None,
+        )
+        == metadata_stats
+    )
 
     # Only data (DD/MM/YYYY format)
     data_stats = {
@@ -725,7 +768,12 @@ def test_choose_latest_alerts_statistics():
         "date": "15/11/2023",
         "description_alerts": "other",
     }
-    assert _choose_latest_alerts_statistics(alerts_statistics_from_metadata=None, alerts_statistics_from_data=data_stats) == data_stats
+    assert (
+        _choose_latest_alerts_statistics(
+            alerts_statistics_from_metadata=None, alerts_statistics_from_data=data_stats
+        )
+        == data_stats
+    )
 
     # Data is newer - should choose data
     metadata_older = {
@@ -1004,19 +1052,22 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
-                "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
+                "SELECT area_alert_ha, confidence, tier_validation, alert_type FROM fake_alerts_geojson_update "
                 "WHERE alert_id = '20230990011234567181'"
             )
             result = cursor.fetchone()
             assert result is not None, "First alert record should exist in DB"
-            original_area, original_confidence, original_alert_type = result
+            original_area, original_confidence, original_tier, original_alert_type = (
+                result
+            )
             assert original_area == 2.345
-            assert original_confidence == 1.0
+            assert original_confidence is None
+            assert original_tier == 2.0
             assert original_alert_type == "illegal_fishing"
 
-            # Verify initial data for SECOND alert in DB
+            # Verify initial data for SECOND alert in DB (deprecated confidence, no tier)
             cursor.execute(
-                "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
+                "SELECT area_alert_ha, confidence, tier_validation, alert_type FROM fake_alerts_geojson_update "
                 "WHERE alert_id = '20230990099887766'"
             )
             result = cursor.fetchone()
@@ -1024,10 +1075,12 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
             (
                 second_original_area,
                 second_original_confidence,
+                second_original_tier,
                 second_original_alert_type,
             ) = result
             assert second_original_area == 10.5
             assert second_original_confidence == 0.8
+            assert second_original_tier is None
             assert second_original_alert_type == "deforestation"
 
     # Verify initial FIRST GeoJSON file exists locally
@@ -1041,7 +1094,8 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
         original_geojson = json.load(f)
         original_feature = original_geojson["features"][0]
         assert original_feature["properties"]["area_alert_ha"] == 2.345
-        assert original_feature["properties"]["confidence"] == 1
+        assert "confidence" not in original_feature["properties"]
+        assert original_feature["properties"]["tier_validation"] == 2
         assert original_feature["properties"]["alert_type"] == "illegal_fishing"
 
     # Verify initial SECOND GeoJSON file exists locally
@@ -1055,6 +1109,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
         second_original_feature = second_original_geojson["features"][0]
         assert second_original_feature["properties"]["area_alert_ha"] == 10.5
         assert second_original_feature["properties"]["confidence"] == 0.8
+        assert "tier_validation" not in second_original_feature["properties"]
         assert second_original_feature["properties"]["alert_type"] == "deforestation"
 
     # Store the second file's modification time
@@ -1066,7 +1121,7 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     # Download current content, modify it, and re-upload
     geojson_content = json.loads(blob.download_as_text())
     geojson_content["features"][0]["properties"]["area_alert_ha"] = 5.678
-    geojson_content["features"][0]["properties"]["confidence"] = 0.5
+    geojson_content["features"][0]["properties"]["tier_validation"] = 4
     geojson_content["features"][0]["properties"]["alert_type"] = "illegal_mining"
 
     blob.upload_from_string(json.dumps(geojson_content))
@@ -1087,31 +1142,35 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
     with psycopg.connect(autocommit=True, **pg_database) as conn:
         with conn.cursor() as cursor:
             cursor.execute(
-                "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
+                "SELECT area_alert_ha, confidence, tier_validation, alert_type FROM fake_alerts_geojson_update "
                 "WHERE alert_id = '20230990011234567181'"
             )
             result = cursor.fetchone()
             assert result is not None, "First alert record should still exist in DB"
-            updated_area, updated_confidence, updated_alert_type = result
+            updated_area, updated_confidence, updated_tier, updated_alert_type = result
             assert updated_area == 5.678, "DB area_alert_ha should be updated"
-            assert updated_confidence == 0.5, "DB confidence should be updated"
+            assert updated_confidence is None, "DB confidence should stay unset"
+            assert updated_tier == 4.0, "DB tier_validation should be updated"
             assert updated_alert_type == "illegal_mining", (
                 "DB alert_type should be updated"
             )
 
             # Verify SECOND DB record was NOT changed
             cursor.execute(
-                "SELECT area_alert_ha, confidence, alert_type FROM fake_alerts_geojson_update "
+                "SELECT area_alert_ha, confidence, tier_validation, alert_type FROM fake_alerts_geojson_update "
                 "WHERE alert_id = '20230990099887766'"
             )
             result = cursor.fetchone()
             assert result is not None, "Second alert record should still exist in DB"
-            second_area, second_confidence, second_alert_type = result
+            second_area, second_confidence, second_tier, second_alert_type = result
             assert second_area == 10.5, (
                 "Second alert area_alert_ha should remain unchanged"
             )
             assert second_confidence == 0.8, (
                 "Second alert confidence should remain unchanged"
+            )
+            assert second_tier is None, (
+                "Second alert tier_validation should remain unset"
             )
             assert second_alert_type == "deforestation", (
                 "Second alert type should remain unchanged"
@@ -1124,8 +1183,11 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
         assert updated_feature["properties"]["area_alert_ha"] == 5.678, (
             "Local GeoJSON area_alert_ha should be updated"
         )
-        assert updated_feature["properties"]["confidence"] == 0.5, (
-            "Local GeoJSON confidence should be updated"
+        assert "confidence" not in updated_feature["properties"], (
+            "Local GeoJSON confidence should stay omitted"
+        )
+        assert updated_feature["properties"]["tier_validation"] == 4, (
+            "Local GeoJSON tier_validation should be updated"
         )
         assert updated_feature["properties"]["alert_type"] == "illegal_mining", (
             "Local GeoJSON alert_type should be updated"
@@ -1145,6 +1207,9 @@ def test_geojson_update_logic(pg_database, mock_alerts_storage_client, tmp_path)
         )
         assert second_unchanged_feature["properties"]["confidence"] == 0.8, (
             "Second GeoJSON confidence should remain unchanged"
+        )
+        assert "tier_validation" not in second_unchanged_feature["properties"], (
+            "Second GeoJSON tier_validation should remain omitted"
         )
         assert (
             second_unchanged_feature["properties"]["alert_type"] == "deforestation"
