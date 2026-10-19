@@ -138,15 +138,18 @@ def test_missing_new_records_raises():
     ("language", "expected"),
     [
         ("English", "5 new records were written to *table_a*."),
-        ("Espanol", "5 registros nuevos fueron escritos en *table_a*."),
-        ("Portugues", "5 registros novos foram escritos em *table_a*."),
+        ("Español", "5 registros nuevos fueron escritos en *table_a*."),
+        ("Português", "5 registros novos foram escritos em *table_a*."),
         ("Nederlands", "5 nieuwe registraties zijn weggeschreven naar *table_a*."),
         ("Swahili", "5 rekodi mpya zimeandikwa kwenye *table_a*."),
         ("Thai", "5 รายการ ใหม่ถูกเขียนลงใน *table_a*."),
     ],
 )
 def test_language_translates_fixed_wording(language, expected):
-    assert build_dataset_update_message({"new_records": 5}, "table_a", language=language) == expected
+    assert (
+        build_dataset_update_message({"new_records": 5}, "table_a", language=language)
+        == expected
+    )
 
 
 def test_language_translates_area_and_link():
@@ -155,7 +158,7 @@ def test_language_translates_area_and_link():
         "gov_parcels",
         instance_slug="springfield",
         bbox=[[-61.8, 17.3], [-61.5, 17.6]],
-        language="Espanol",
+        language="Español",
     )
     assert message == (
         "4 features nuevos fueron detectados dentro de un área de interés de "
