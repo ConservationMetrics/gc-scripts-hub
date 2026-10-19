@@ -66,6 +66,10 @@ AI alerts with probability > 40% validated by an image interpretation expert usi
 
 AI probability > 40% pending review (can be subdivided into 3A/3B by probability to prioritize the analyst queue).
 
+> [!NOTE]
+>
+> We strip the trailing letter A or B from the tier_validation value of `3`, as the distinction is not useful for the user.
+
 #### Tier 4 — Discard / Low Confidence
 
 AI probability <40%, or flagged as False Positive during expert review.
