@@ -1,6 +1,6 @@
 # workspace-dependencies-mode: manual
 # py: 3.11
-certifi==2026.2.25
+certifi==2026.10.19
 charset-normalizer==3.4.5
 click==8.4.2
 idna==3.11

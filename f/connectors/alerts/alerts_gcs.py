@@ -27,9 +27,11 @@ from f.common_logic.db_operations import (
     DynSelect_existing_db_table_name,
     StructuredDBWriter,
     conninfo,
-    existing_db_table_name as list_dataset_tables,
     postgresql,
     resolve_db_table_name,
+)
+from f.common_logic.db_operations import (
+    existing_db_table_name as list_dataset_tables,
 )
 
 # type names that refer to Windmill Resources
@@ -459,9 +461,7 @@ def convert_tiffs_to_jpg(tiff_files):
                     # Save the image in the same location in the datalake as the tiff
                     img.save(jpeg_file_path, "JPEG")
             except Exception as e:
-                logger.error(
-                    f"TIFF image can not be opened, potentially empty: {str(e)}"
-                )
+                logger.error(f"TIFF image can not be opened, potentially empty: {e!s}")
 
     logger.info("Successfully converted TIFF files to JPEG.")
 
@@ -514,7 +514,9 @@ def prepare_alerts_metadata(
       immutable once set, serving as a historical record. For instance, an alert
       with confidence level 0 in March may have a new alert with confidence level
       1 in April, but the March data remains unchanged to preserve a record
-      of the alert's original confidence level.
+      of the alert's original confidence level. NOTE: confidence is deprecated.
+    - tier_validation: The tier of validation for the alert. See README.md for
+      more information.
     """
     # c.f. https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
     pd.options.mode.copy_on_write = True
@@ -690,6 +692,22 @@ def _generate_alerts_statistics_from_data(prepared_alerts_data):
     }
 
 
+def _parse_tier_validation(value):
+    """
+    Convert tier_validation to a number, removing any trailing letters (e.g. 3A or 3B → 3).
+    """
+    tier = str(value)
+
+    if len(tier) == 2 and tier[1] in ("A", "B"):
+        tier = tier[0]
+
+    if tier in ("1", "2", "3", "4"):
+        return int(tier)
+
+    logger.error("Invalid tier_validation: %r", value)
+    return None
+
+
 def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
     """
     Prepare alerts data by reading GeoJSON files from a local directory.
@@ -742,6 +760,8 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
             if not alert_id:
                 continue
 
+            tier_validation = _parse_tier_validation(props.get("tier_validation"))
+
             prepared_alerts_data.append(
                 {
                     "_id": str(uuid.uuid5(uuid.NAMESPACE_DNS, alert_id)),
@@ -765,6 +785,7 @@ def prepare_alerts_data(local_directory, geojson_files, alerts_provider):
                     "satellite": props.get("satellite"),
                     "territory_id": props.get("territory_id"),
                     "territory_name": props.get("territory_name"),
+                    "tier_validation": tier_validation,
                     "year_detec": props.get("year_detec"),
                     # Geometry flattening
                     "g__type": geom.get("type"),
@@ -809,6 +830,7 @@ def create_alerts_table(cursor, table_name):
             satellite text,
             territory_id bigint,
             territory_name text,
+            tier_validation real,
             year_detec text,
             -- Deconstruct the "geometry" of a Feature:            
             g__type text,
@@ -830,6 +852,7 @@ def create_metadata_table(cursor, table_name):
             description_alerts text,
             month smallint,
             territory_id bigint,
+            tier_validation real,
             total_alerts bigint,
             type_alert smallint,
             year smallint,

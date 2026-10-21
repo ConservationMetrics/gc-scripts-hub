@@ -1,0 +1,5 @@
+type: inline
+fields:
+  db:
+    type: static
+    value: $res:f/connectors/postgresql
