@@ -44,10 +44,16 @@ jobs:
       - run:
           name: Install tox for Python 3.11
           command: |
-            python -m pip install --upgrade "pip>=26.1"
+            python -m pip install --upgrade "pip>=26.2.2"
             pip install tox~=4.18
+      # Temporary. certifi 2026.10.19 was uploaded 2026-10-20, inside the P7D cooldown below.
+      # Drop this download and PIP_FIND_LINKS once that release is at least 7 days old (after 2026-10-27).
+      - run:
+          name: Download patched certifi outside the upload cooldown
+          command: python -m pip download --no-deps --dest /tmp/certifi certifi==2026.10.19
       - run:
           name: Run tests
           command: tox -p 3 -- -v
           environment:
             PIP_UPLOADED_PRIOR_TO: P7D
+            PIP_FIND_LINKS: /tmp/certifi # temporary; see the certifi download step above
