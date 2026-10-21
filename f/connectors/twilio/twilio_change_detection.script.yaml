@@ -1,10 +1,11 @@
 summary: 'Twilio: Notify of change detection alerts'
-description: Send a Twilio WhatsApp message with a summary of the latest processed change detection alerts.
+description: Send a Twilio WhatsApp message with a summary of the latest
+  processed change detection alerts.
 lock: '!inline f/connectors/twilio/twilio_change_detection.script.lock'
 concurrency_time_window_s: 0
 kind: script
 schema:
-  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  $schema: https://json-schema.org/draft/2020-12/schema
   type: object
   order:
     - db
@@ -15,21 +16,18 @@ schema:
   properties:
     alerts_statistics:
       type: object
-      description: >-
-        An object containing alert statistics: total alerts, date, and
-        description of alerts.
+      description: 'An object containing alert statistics: total alerts, date, and
+        description of alerts.'
       default: null
       properties: {}
     db:
       type: object
-      description: >-
-        Database whose public tables are listed for the dataset picker.
+      description: Database whose public tables are listed for the dataset picker.
       default: null
       format: resource-postgresql
     db_table_name:
       type: object
-      description: >-
-        Existing public table the alerts dashboard link points at. The list
+      description: Existing public table the alerts dashboard link points at. The list
         refreshes from `db` and omits connector sidecar tables (`__columns`,
         `__labels`, `__metadata`).
       default: null
@@ -38,22 +36,19 @@ schema:
       title: Dataset
     instance_slug:
       type: string
-      description: >-
-        The URL slug for the instance, used to construct a link to the alerts
-        dashboard. This name is used for Twilio and must be provided for
+      description: The URL slug for the instance, used to construct a link to the
+        alerts dashboard. This name is used for Twilio and must be provided for
         messages to be sent.
       default: null
       originalType: string
     twilio_message_template:
       type: object
-      description: >-
-        Twilio account credentials and phone numbers for sending alerts after
-        ingesting and writing alerts to the database via a Twilio message
+      description: Twilio account credentials and phone numbers for sending alerts
+        after ingesting and writing alerts to the database via a Twilio message
         content template.
       default: null
       format: resource-twilio_message_template
   required:
-    - db
     - alerts_statistics
     - instance_slug
     - db_table_name

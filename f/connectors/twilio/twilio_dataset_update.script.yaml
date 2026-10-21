@@ -1,0 +1,78 @@
+summary: 'Twilio: Notify of new dataset records'
+description: Send a Twilio WhatsApp message when new records are written to a
+  dataset. The content template is {{1}}; this script assembles that sentence.
+  This script is included as a step in  a Flow and should not be called
+  directly.
+lock: '!inline f/connectors/twilio/twilio_dataset_update.script.lock'
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  order:
+    - db
+    - data_statistics
+    - db_table_name
+    - bbox
+    - instance_slug
+    - language
+    - twilio_message_template
+  properties:
+    bbox:
+      type: string
+      description: Optional area of interest, `[[west, south], [east, north]]` or that
+        value as JSON. When set, the message says the records were detected
+        within an area of interest of that box and written to the dataset. When
+        omitted, the message only says the records were written.
+      default: null
+      nullable: true
+      originalType: string
+    data_statistics:
+      type: object
+      description: Summary of the write that triggered this message, that includes
+        variables used to construct the message body.
+      default: null
+      properties: {}
+    db:
+      type: object
+      description: Database whose public tables are listed for the dataset picker.
+      default: null
+      format: resource-postgresql
+    db_table_name:
+      type: object
+      description: Table name of the dataset that was written to, used in the message
+        and the map link.
+      default: null
+      format: dynselect-db_table_name
+      nullable: true
+      title: Dataset
+    instance_slug:
+      type: string
+      description: The slug for the instance, used to construct the map link. The link
+        is
+        https://explorer.<instance_slug>.guardianconnector.net/map/<db_table_name>.
+        When omitted, the message does not include a link.
+      default: null
+      nullable: true
+      originalType: string
+    language:
+      type: string
+      description: Language for the message body.
+      default: English
+      enum:
+        - English
+        - Español
+        - Português
+        - Nederlands
+        - Swahili
+        - Thai
+      originalType: string
+    twilio_message_template:
+      type: object
+      description: Twilio account credentials, recipient numbers, and a content template.
+      default: null
+      format: resource-twilio_message_template
+  required:
+    - data_statistics
+    - db_table_name
+    - twilio_message_template
