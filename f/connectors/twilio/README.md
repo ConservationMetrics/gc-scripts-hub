@@ -6,6 +6,10 @@ Scripts in this folder send WhatsApp messages through [Twilio content templates]
 >
 > For both of these scripts, currently the Guardian Connector Explorer base URL is hardcoded to `https://explorer.<instance_slug>.guardianconnector.net`. For self-hosted instances, this will need to be updated so that the base URL itself is also configurable.
 
+> [!WARNING]
+>
+> Anyone with access to Windmill can use these scripts to send WhatsApp messages to any number. Be careful with who you share the Windmill credentials with.
+
 # `twilio_change_detection`: Notify of change detection alerts
 
 This script sends a WhatsApp message to each recipient with a summary of the latest processed change detection alerts. The [Alerts: Download, Post, and Notify](../../flows/alerts_download_post_notify.flow/README.md) flow runs it after [`alerts_gcs`](../alerts/README.md) writes new alerts. The flow skips this step when no Twilio template or instance slug is set, or when that fetch wrote no new alerts.
