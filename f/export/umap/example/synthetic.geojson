@@ -1,0 +1,66 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "survey-1",
+      "geometry": null,
+      "properties": {
+        "dataset_name": "synthetic-form",
+        "odk_form_version": "v1",
+        "odk_submission_id": "survey-1",
+        "odk_submission_version_id": "version-1",
+        "meta": "{\"instanceID\": \"version-1\", \"secret\": \"META_CANARY\"}",
+        "feature": "00000001-1111-4111-8111-111111111111",
+        "odk_declared_entity_id": "00000001-1111-4111-8111-111111111111",
+        "odk_entity_dataset": "buildings",
+        "odk_entity_create": "1",
+        "odk_entity_update": null,
+        "xlocation": "1 1 0 0",
+        "fill": "#00ffff",
+        "stroke": "#00ffff",
+        "marker_color": "#00ffff",
+        "stroke_width": 3,
+        "survey_questions": "{\"grp_bldg\": {\"building\": \"industrial\", \"building_levels\": 2, \"building_material\": \"UNSELECTED_ANSWER_CANARY\"}, \"grp_loc\": {\"building_outline\": \"1 1 0 0;1 1.01 0 0;1.01 1 0 0;1 1 0 0\"}, \"private_group\": {\"email\": \"NESTED_SECRET_CANARY\"}}",
+        "__system": {
+          "submitter": {
+            "email": "SYSTEM_CANARY"
+          }
+        },
+        "extra": "FLAT_SECRET_CANARY"
+      },
+      "foreign": "FOREIGN_CANARY"
+    },
+    {
+      "type": "Feature",
+      "id": "survey-2",
+      "geometry": null,
+      "properties": {
+        "dataset_name": "synthetic-form",
+        "odk_form_version": "v1",
+        "odk_submission_id": "survey-2",
+        "odk_submission_version_id": "version-2",
+        "meta": "{\"instanceID\": \"version-2\", \"secret\": \"META_CANARY\"}",
+        "feature": "00000002-1111-4111-8111-111111111111",
+        "odk_declared_entity_id": "00000002-1111-4111-8111-111111111111",
+        "odk_entity_dataset": "buildings",
+        "odk_entity_create": "1",
+        "odk_entity_update": null,
+        "xlocation": "2 2 0 0",
+        "fill": "#800080",
+        "stroke": "#800080",
+        "marker_color": "#800080",
+        "stroke_width": 3,
+        "survey_questions": "{\"grp_bldg\": {\"building\": \"industrial\", \"building_levels\": 4, \"building_material\": \"UNSELECTED_ANSWER_CANARY\"}, \"grp_loc\": {\"building_outline\": \"2 2 0 0;2 2.01 0 0;2.01 2 0 0;2 2 0 0\"}, \"private_group\": {\"email\": \"NESTED_SECRET_CANARY\"}}",
+        "__system": {
+          "submitter": {
+            "email": "SYSTEM_CANARY"
+          }
+        },
+        "extra": "FLAT_SECRET_CANARY"
+      },
+      "foreign": "FOREIGN_CANARY"
+    }
+  ],
+  "foreign": "ROOT_CANARY"
+}
