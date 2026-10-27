@@ -1,37 +1,74 @@
-summary: "POC: Resolve Filebrowser share to storage path"
-description: >-
-  Read-only lookup for one Explorer media share. Pass the password using a
-  Windmill secret variable reference. The resulting path is a candidate only.
+summary: 'POC: Dry-run Filebrowser media migration'
+description: Read every Explorer view and report candidate SMB paths without
+  changing the database. Pass the Filebrowser password using a Windmill secret
+  variable.
+lock: '!inline f/export/filebrowser_share_poc/resolve_filebrowser_share.script.lock'
 kind: script
 schema:
-  $schema: "https://json-schema.org/draft/2020-12/schema"
+  $schema: https://json-schema.org/draft/2020-12/schema
   type: object
   order:
-    - share_url
+    - db
     - filebrowser_origin
     - username
     - password
+    - expected_config_database
     - storage_prefix
     - mount_path
   properties:
-    share_url:
-      type: string
-      description: Filebrowser share URL or public download base URL from an Explorer view.
+    db:
+      type: object
+      description: PostgreSQL resource for the Explorer configuration database, not
+        the warehouse.
       default: null
+      format: resource-postgresql
+      properties:
+        dbname:
+          type: string
+          description: ''
+          originalType: string
+        host:
+          type: string
+          description: ''
+          originalType: string
+        password:
+          type: string
+          description: ''
+          originalType: string
+        port:
+          type: number
+          description: ''
+        root_certificate_pem:
+          type: string
+          description: ''
+          originalType: string
+        sslmode:
+          type: string
+          description: ''
+          originalType: string
+        user:
+          type: string
+          description: ''
+          originalType: string
+    expected_config_database:
+      type: string
+      description: Confirm the Explorer configuration database name.
+      default: guardianconnector
       originalType: string
     filebrowser_origin:
       type: string
       description: Trusted HTTPS origin of the Filebrowser instance.
-      default: https://files.cmistaging.guardianconnector.net
+      default: null
       originalType: string
-    username:
+    mount_path:
       type: string
-      description: Filebrowser administrator with share and download permissions.
-      default: admin
+      description: Optional SMB share mount in the worker, for directory listings.
+      default: ''
       originalType: string
     password:
       type: string
-      description: Select a restricted Windmill secret variable; do not enter a literal password.
+      description: Select a restricted Windmill secret variable; do not enter a
+        literal password.
       default: null
       originalType: string
     storage_prefix:
@@ -39,13 +76,13 @@ schema:
       description: Filebrowser root relative to the SMB share; verify for this deployment.
       default: datalake
       originalType: string
-    mount_path:
+    username:
       type: string
-      description: Optional SMB share mount in the worker, for a directory listing.
-      default: ""
+      description: Filebrowser administrator with share and download permissions.
+      default: null
       originalType: string
   required:
-    - share_url
+    - db
     - filebrowser_origin
     - username
     - password
