@@ -22,34 +22,6 @@ schema:
         the warehouse.
       default: null
       format: resource-postgresql
-      properties:
-        dbname:
-          type: string
-          description: ''
-          originalType: string
-        host:
-          type: string
-          description: ''
-          originalType: string
-        password:
-          type: string
-          description: ''
-          originalType: string
-        port:
-          type: number
-          description: ''
-        root_certificate_pem:
-          type: string
-          description: ''
-          originalType: string
-        sslmode:
-          type: string
-          description: ''
-          originalType: string
-        user:
-          type: string
-          description: ''
-          originalType: string
     expected_config_database:
       type: string
       description: Confirm the Explorer configuration database name.

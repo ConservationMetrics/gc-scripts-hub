@@ -5,14 +5,14 @@ This read-only Windmill script inventories every Explorer view and reports candi
 ## Run on cmistaging
 
 1. Obtain an administrator login for `https://files.cmistaging.guardianconnector.net` with share and download permissions. In the cmistaging Windmill workspace, create a **secret variable** for its password in a restricted user or folder path. Never put the password in source code, logs, or a normal run argument.
-2. Select or create a Windmill **PostgreSQL resource** for Explorer's configuration database, typically `guardianconnector`. This is separate from the `warehouse` database. The account needs `SELECT` on `public.views`. The script supports Postgres `sslmode` values `disable`, `require`, `verify-ca`, and `verify-full`; supply the appropriate CA certificate in the resource if required. It uses `require` without certificate verification, consistent with Explorer's current configuration; use a verification mode if supported by the server.
+2. Select or create a Windmill **PostgreSQL resource** for Explorer's configuration database, typically `guardianconnector`. This is separate from the `warehouse` database. The account needs `SELECT` on `public.views`. The script supports Postgres `sslmode` values `disable`, `require`, `verify-ca`, and `verify-full`; supply the appropriate CA certificate in the resource if required. Configure the resource for the server’s TLS settings; `require` without a supplied CA does not verify the server certificate.
 3. Push this script to the staging workspace using your normal deployment workflow. To target only this script, run from this repository:
 
    ```sh
-   wmill script push f/export/filebrowser_share_poc/resolve_filebrowser_share.ts --workspace <staging-workspace>
+   wmill script push f/export/filebrowser_share_poc/resolve_filebrowser_share.py --workspace <staging-workspace>
    ```
 
-   Check the workspace name first: this updates the named script in that workspace. The script's `pg` dependency is pinned by its Windmill lockfile.
+   Check the workspace name first: this updates the named script in that workspace. The script's Python dependencies is pinned by its Windmill lockfile.
 
 4. Open **POC: Dry-run Filebrowser media migration** in Windmill and enter:
    - `db`: the Explorer configuration Postgres resource from step 2.
@@ -32,8 +32,6 @@ This is not an apply migration: Explorer currently expects HTTP media URLs. An e
 
 ## Local tests
 
-Install the `pg` dependency (the Windmill lockfile records the version) and run with Node 22.6 or later:
-
 ```sh
-node --experimental-strip-types --test f/export/filebrowser_share_poc/tests/resolve_filebrowser_share.test.mjs
+uvx tox -e filebrowser_share_poc
 ```
