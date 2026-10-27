@@ -1,0 +1,51 @@
+summary: "POC: Resolve Filebrowser share to storage path"
+description: >-
+  Read-only lookup for one Explorer media share. Pass the password using a
+  Windmill secret variable reference. The resulting path is a candidate only.
+kind: script
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  order:
+    - share_url
+    - filebrowser_origin
+    - username
+    - password
+    - storage_prefix
+    - mount_path
+  properties:
+    share_url:
+      type: string
+      description: Filebrowser share URL or public download base URL from an Explorer view.
+      default: null
+      originalType: string
+    filebrowser_origin:
+      type: string
+      description: Trusted HTTPS origin of the Filebrowser instance.
+      default: https://files.cmistaging.guardianconnector.net
+      originalType: string
+    username:
+      type: string
+      description: Filebrowser administrator with share and download permissions.
+      default: admin
+      originalType: string
+    password:
+      type: string
+      description: Select a restricted Windmill secret variable; do not enter a literal password.
+      default: null
+      originalType: string
+    storage_prefix:
+      type: string
+      description: Filebrowser root relative to the SMB share; verify for this deployment.
+      default: datalake
+      originalType: string
+    mount_path:
+      type: string
+      description: Optional SMB share mount in the worker, for a directory listing.
+      default: ""
+      originalType: string
+  required:
+    - share_url
+    - filebrowser_origin
+    - username
+    - password
