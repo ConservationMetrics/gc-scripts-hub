@@ -1,0 +1,10 @@
+summary: Prepare HOT ODK survey data for uMap
+description: Selected fields, source styling and explicit geometry; no publishing.
+lock: '!inline f/common_logic/odk_umap.script.lock'
+kind: script
+no_main_func: true
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  properties: {}
+  required: []

@@ -1,0 +1,48 @@
+summary: 'Export: HOT ODK surveys to uMap'
+description: >-
+  Upload prepared GeoJSON, its column mapping and the matching published XForm.
+  Choose questions, identifiers and geometry. Returns map and report downloads;
+  does not publish. Job inputs can contain unselected data: use an approved
+  workspace and a small batch (5 MiB per input and output file).
+lock: '!inline f/export/umap/odk_to_umap.script.lock'
+kind: script
+schema:
+  $schema: 'https://json-schema.org/draft/2020-12/schema'
+  type: object
+  order: [geojson, columns, form_xml, language, fields, geometry, identifiers]
+  properties:
+    geojson:
+      type: string
+      format: base64
+      description: Enriched HOT ODK GeoJSON file, including identity and source style fields.
+    columns:
+      type: string
+      format: base64
+      description: JSON object mapping original column names to exported property names.
+    form_xml:
+      type: string
+      format: base64
+      description: Original published XForm XML for the exported form version.
+    language:
+      type: string
+      description: Exact translation name from the form, such as english(en).
+    fields:
+      type: array
+      items:
+        type: string
+      minItems: 1
+      uniqueItems: true
+      description: Absolute question paths under /data/ to include in properties and popups.
+    geometry:
+      type: string
+      enum: [feature-point, survey-point, outline]
+      description: One source for the whole batch. Missing geometry rejects the batch.
+    identifiers:
+      type: array
+      items:
+        type: string
+        enum: [entity_id, submission_id, submission_version_id, entity_dataset]
+      default: []
+      uniqueItems: true
+      description: IDs to include in downloads. All IDs are validated even when omitted.
+  required: [geojson, columns, form_xml, language, fields, geometry]

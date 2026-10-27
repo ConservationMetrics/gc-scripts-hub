@@ -1,0 +1,20 @@
+{
+  "dataset_name": "dataset_name",
+  "odk_form_version": "odk_form_version",
+  "odk_submission_id": "odk_submission_id",
+  "odk_submission_version_id": "odk_submission_version_id",
+  "meta": "meta",
+  "feature": "feature",
+  "odk_declared_entity_id": "odk_declared_entity_id",
+  "odk_entity_dataset": "odk_entity_dataset",
+  "odk_entity_create": "odk_entity_create",
+  "odk_entity_update": "odk_entity_update",
+  "xlocation": "xlocation",
+  "fill": "fill",
+  "stroke": "stroke",
+  "marker_color": "marker_color",
+  "stroke_width": "stroke_width",
+  "survey_questions": "survey_questions",
+  "__system": "__system",
+  "extra": "extra"
+}

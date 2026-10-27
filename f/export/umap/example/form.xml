@@ -1,0 +1,13 @@
+<html xmlns="http://www.w3.org/2002/xforms"><model>
+<instance><data id="synthetic-form" version="v1"><meta><entity dataset="buildings"/></meta></data></instance>
+<instance id="uses"><root><item><name>industrial</name><itextId>industrial-label</itextId></item></root></instance>
+<itext><translation lang="english(en)">
+<text id="/data/survey_questions/grp_bldg/building:label"><value>Building use</value></text>
+<text id="/data/survey_questions/grp_bldg/building_levels:label"><value>Number of stories</value></text>
+<text id="/data/survey_questions/grp_bldg/building_material:label"><value>Wall material</value></text>
+<text id="industrial-label"><value>Industrial</value></text>
+</translation></itext></model><body>
+<select1 ref="/data/survey_questions/grp_bldg/building"><itemset nodeset="instance('uses')/root/item"/></select1>
+<input ref="/data/survey_questions/grp_bldg/building_levels"/>
+<input ref="/data/survey_questions/grp_bldg/building_material"/>
+</body></html>
