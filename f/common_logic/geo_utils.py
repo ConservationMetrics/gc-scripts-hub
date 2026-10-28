@@ -11,6 +11,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 _WGS84_GEOD = Geod(ellps="WGS84")
 _LON_LAT_RE = re.compile(r"^-?[0-9]+(?:\.[0-9]+)?\s*,\s*-?[0-9]+(?:\.[0-9]+)?$")
+_BBOX_RANGES = {
+    "swlat": (-90, 90),
+    "nelat": (-90, 90),
+    "swlng": (-180, 180),
+    "nelng": (-180, 180),
+}
 
 
 def is_valid_longitude_latitude(longitude: float, latitude: float) -> bool:
@@ -75,6 +81,78 @@ def geojson_point(longitude: float | None, latitude: float | None) -> dict | Non
     if longitude is None or latitude is None:
         return None
     return {"type": "Point", "coordinates": [longitude, latitude]}
+
+
+def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | None:
+    """Parse ``[[west, south], [east, north]]`` into southwest and northeast corners.
+
+    Parameters
+    ----------
+    bounding_box : str, list, or None
+        Two ``[longitude, latitude]`` corners, or a JSON string of that shape.
+        ``None``, ``""``, and ``[]`` mean no bounding box.
+
+    Returns
+    -------
+    dict or None
+        ``swlng``, ``swlat``, ``nelng``, and ``nelat``. Corners are ordered
+        with ``min`` and ``max``, so either corner may be given first.
+        ``None`` when no bounding box was given.
+
+    Raises
+    ------
+    ValueError
+        If the value is not two numeric corners, a coordinate is outside
+        WGS84 bounds, or the two corners do not span both longitude and
+        latitude.
+    """
+    if bounding_box is None or bounding_box == "" or bounding_box == []:
+        return None
+    if isinstance(bounding_box, str):
+        bounding_box = bounding_box.strip()
+        if not bounding_box:
+            return None
+        try:
+            bounding_box = json.loads(bounding_box)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "bounding_box must be a JSON list: [[west, south], [east, north]]."
+            ) from exc
+    if not isinstance(bounding_box, (list, tuple)):
+        raise ValueError("bounding_box must be [[west, south], [east, north]].")
+    if len(bounding_box) == 0:
+        return None
+    if len(bounding_box) != 2:
+        raise ValueError(
+            "bounding_box must contain exactly two [longitude, latitude] corners."
+        )
+
+    corners: list[tuple[float, float]] = []
+    for point in bounding_box:
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ValueError(
+                "bounding_box must contain exactly two [longitude, latitude] corners."
+            )
+        try:
+            corners.append((float(point[0]), float(point[1])))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("bounding_box coordinates must be numeric.") from exc
+
+    (lng_a, lat_a), (lng_b, lat_b) = corners
+    parsed = {
+        "swlng": min(lng_a, lng_b),
+        "swlat": min(lat_a, lat_b),
+        "nelng": max(lng_a, lng_b),
+        "nelat": max(lat_a, lat_b),
+    }
+    for key, (low, high) in _BBOX_RANGES.items():
+        if not low <= parsed[key] <= high:
+            raise ValueError(f"bounding_box {key} must be between {low} and {high}.")
+    if parsed["swlat"] >= parsed["nelat"]:
+        raise ValueError("bounding_box swlat must be less than nelat.")
+    if parsed["swlng"] >= parsed["nelng"]:
+        raise ValueError("bounding_box swlng must be less than nelng.")
+    return parsed
 
 
 def bounding_box_to_wkt(

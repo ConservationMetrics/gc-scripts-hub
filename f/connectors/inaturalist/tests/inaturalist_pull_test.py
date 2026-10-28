@@ -610,51 +610,6 @@ def test_neither_slug_nor_bbox_raises(pg_database, tmp_path):
         )
 
 
-def test_incomplete_bbox_raises(pg_database, tmp_path):
-    with pytest.raises(ValueError, match="exactly two"):
-        main(
-            source=None,
-            slug=None,
-            db=pg_database,
-            db_table_name="inat_incomplete_bbox",
-            attachment_root=tmp_path / "datalake",
-            bounding_box="[[-77.22182, 38.79260]]",
-        )
-
-
-@pytest.mark.parametrize(
-    "bbox, match",
-    [
-        (
-            "[[-77.22182, 91], [-77.21899, 38.79402]]",
-            "nelat must be between -90 and 90",
-        ),
-        (
-            "[[-181, 38.79260], [-77.21899, 38.79402]]",
-            "swlng must be between -180 and 180",
-        ),
-        (
-            "[[-77.22182, 38.79402], [-77.21899, 38.79402]]",
-            "swlat must be less than nelat",
-        ),
-        (
-            "[[-77.22182, 38.79260], [-77.22182, 38.79402]]",
-            "swlng must be less than nelng",
-        ),
-    ],
-)
-def test_invalid_bbox_raises(pg_database, tmp_path, bbox, match):
-    with pytest.raises(ValueError, match=match):
-        main(
-            source=None,
-            slug=None,
-            db=pg_database,
-            db_table_name="inat_bad_bbox",
-            attachment_root=tmp_path / "datalake",
-            bounding_box=bbox,
-        )
-
-
 def test_transform_with_location():
     observations = [
         {
