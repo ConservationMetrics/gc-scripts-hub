@@ -1,6 +1,9 @@
-from datetime import datetime
+import re
+from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta
+
+_DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 
 def calculate_cutoff_date(max_months_lookback):
@@ -32,4 +35,43 @@ def calculate_cutoff_date(max_months_lookback):
 
     cutoff_date = datetime.now() - relativedelta(months=max_months_lookback)
     return (cutoff_date.year, cutoff_date.month)
+
+
+def parse_observation_date(
+    observation_date: str | None, earliest: date | None = None
+) -> date:
+    """Parse ``YYYY-MM-DD`` and reject dates that are not usable.
+
+    Parameters
+    ----------
+    observation_date : str or None
+        Calendar date, for example ``"2020-01-21"``.
+    earliest : datetime.date, optional
+        Inclusive lower bound. When omitted, there is no earliest date.
+
+    Returns
+    -------
+    datetime.date
+        The parsed date.
+
+    Raises
+    ------
+    ValueError
+        If the value is not ``YYYY-MM-DD``, is not a real calendar date,
+        is before ``earliest``, or is after today.
+    """
+    text = observation_date.strip() if isinstance(observation_date, str) else ""
+    if not _DATE_RE.fullmatch(text):
+        raise ValueError("observation_date must be a date in YYYY-MM-DD format.")
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError("observation_date must be a real calendar date.") from exc
+    if earliest is not None and parsed < earliest:
+        raise ValueError(
+            f"observation_date must be on or after {earliest.isoformat()}."
+        )
+    if parsed > date.today():
+        raise ValueError("observation_date must not be in the future.")
+    return parsed
 
