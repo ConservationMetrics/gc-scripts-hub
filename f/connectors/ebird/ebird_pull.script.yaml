@@ -1,0 +1,144 @@
+summary: "eBird: Fetch Observations"
+description: >-
+  Uses the eBird API to download recent, recent notable, or historic
+  observations for a region code or a longitude/latitude pair, saving GeoJSON
+  to the datalake and PostgreSQL.
+lock: "!inline f/connectors/ebird/ebird_pull.script.lock"
+concurrency_time_window_s: 0
+kind: script
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  order:
+    - api_token
+    - observation_type
+    - region_code
+    - observation_date
+    - lon_lat
+    - db
+    - destination_action
+    - existing_db_table_name
+    - db_table_name
+    - attachment_root
+  properties:
+    api_token:
+      type: string
+      description: >-
+        eBird API token, selected from a Windmill variable so the same secret
+        is reused across runs. Create it as a secret variable first, then
+        pick it here. Request a key at https://ebird.org/api/keygen. Sent as
+        the `X-eBirdApiToken` header.
+      default: null
+      format: variable
+      originalType: string
+      title: API token
+    observation_type:
+      type: string
+      description: Which eBird observation list to download.
+      default: null
+      disableCreate: true
+      enum:
+        - recent_region
+        - recent_notable_region
+        - recent_nearby
+        - recent_notable_nearby
+        - historic_date
+      enumLabels:
+        recent_region: Recent observations in a region
+        recent_notable_region: Recent notable observations in a region
+        recent_nearby: Recent nearby observations
+        recent_notable_nearby: Recent nearby notable observations
+        historic_date: Historic observations on a date
+      originalType: enum
+      title: Observations
+    region_code:
+      type: string
+      description: >-
+        eBird region code for a country, subnational1 (state or province),
+        subnational2 (county), or location. Examples: `US-NY`, `US-NY-071`,
+        `L295658`. Required for region observations and for historic
+        observations on a date. See the connector README for how to look up a
+        subnational code.
+      default: null
+      nullable: true
+      originalType: string
+      pattern: '^(|[A-Za-z0-9]+(-[A-Za-z0-9]+)*)$'
+      showExpr: "fields.observation_type == 'recent_region' || fields.observation_type == 'recent_notable_region' || fields.observation_type == 'historic_date'"
+      title: Region code
+    observation_date:
+      type: string
+      description: >-
+        Date of observations, `YYYY-MM-DD`. Example: `2020-01-21`. eBird
+        accepts dates from `1800-01-01` through today. Required for historic
+        observations on a date. One run returns that single day.
+      default: null
+      nullable: true
+      originalType: string
+      pattern: '^(|[0-9]{4}-[0-9]{2}-[0-9]{2})$'
+      showExpr: "fields.observation_type == 'historic_date'"
+      title: Date
+    lon_lat:
+      type: string
+      description: >-
+        Longitude and latitude, in that order, separated by a comma.
+        Example: `79.4551, 43.5309`. Numbers only. Longitude must be between
+        -180 and 180, and latitude between -90 and 90. Required for nearby
+        observations.
+      default: null
+      nullable: true
+      originalType: string
+      pattern: '^(|-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?)$'
+      showExpr: "fields.observation_type == 'recent_nearby' || fields.observation_type == 'recent_notable_nearby'"
+      title: Longitude, latitude
+    attachment_root:
+      type: string
+      description: >-
+        A path where eBird data files will be stored. Files will be stored
+        as: `{attachment_root}/{db_table_name}/...`
+      default: /persistent-storage/datalake
+      originalType: string
+    db:
+      type: object
+      description: A database connection for storing tabular data.
+      default: null
+      format: resource-postgresql
+    destination_action:
+      type: string
+      description: >-
+        Write into a table that already exists, or create a new one.
+      default: create_new_dataset
+      disableCreate: true
+      enum:
+        - create_new_dataset
+        - use_existing_dataset
+      enumLabels:
+        create_new_dataset: Enter dataset name
+        use_existing_dataset: Use existing dataset
+      originalType: enum
+      title: Dataset
+    existing_db_table_name:
+      type: object
+      description: >-
+        Existing table to write into; also used as the datalake subdirectory.
+        The list refreshes from `db` and omits connector sidecar tables
+        (`__columns`, `__labels`, `__metadata`).
+      default: null
+      format: dynselect-existing_db_table_name
+      nullable: true
+      showExpr: "fields.destination_action == 'use_existing_dataset'"
+      title: Existing dataset
+    db_table_name:
+      type: string
+      description: >-
+        Creates the dataset if needed; updates it if it already exists.
+        Also used as the datalake subdirectory.
+      default: null
+      nullable: true
+      originalType: string
+      pattern: "^.{1,54}$"
+      showExpr: "fields.destination_action != 'use_existing_dataset'"
+      title: Dataset name
+  required:
+    - api_token
+    - observation_type
+    - db
