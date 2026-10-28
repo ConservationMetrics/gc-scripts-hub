@@ -8,6 +8,7 @@ import json
 import os
 import re
 import tempfile
+from collections import Counter
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
@@ -51,7 +52,7 @@ def report_views(
     if mount_path and not Path(mount_path).is_absolute():
         raise ValueError("mount_path must be absolute")
 
-    results, pending = [], []
+    results, pending, share_ids = [], [], {}
     for view in views:
         identity = {
             key: view[key]
@@ -91,18 +92,64 @@ def report_views(
                 origin.port or 443,
             ):
                 row["status"] = "other_origin"
+                hostname = f"[{host}]" if ":" in host else host
+                row["origin"] = f"{url.scheme.lower()}://{hostname.lower()}"
+                if port is not None:
+                    row["origin"] += f":{port}"
                 continue
             match = SHARE_PATH.fullmatch(url.path)
             if not match or url.username or url.password or url.query or url.fragment:
                 row["status"] = "unsupported_media_value"
                 continue
-            pending.append((row, match.group(1)))
+            share_hash = match.group(1)
+            if share_hash not in share_ids:
+                share_ids[share_hash] = f"share-{len(share_ids) + 1}"
+            row["share_id"] = share_ids[share_hash]
+            pending.append((row, share_hash))
         if not populated:
             results.append({**identity, "status": "no_media_configured"})
 
-    report = {"dry_run": True, "views_scanned": len(views), "results": results}
+    def make_report():
+        shares = []
+        for share_id in share_ids.values():
+            rows = [row for row, _ in pending if row["share_id"] == share_id]
+            share = {
+                "share_id": share_id,
+                "status": rows[0]["status"],
+                "references": [
+                    {key: row[key] for key in ("view_id", "view_name", "field")}
+                    for row in rows
+                ],
+            }
+            for key in ("candidate_smb_relative_path", "match_count"):
+                if key in rows[0]:
+                    share[key] = rows[0][key]
+            shares.append(share)
+        return {
+            "dry_run": True,
+            "views_scanned": len(views),
+            "inputs": {
+                "filebrowser_origin": base,
+                "storage_prefix": prefix,
+                "mount_path": mount_path or None,
+            },
+            "summary": {
+                "results_by_status": dict(Counter(row["status"] for row in results)),
+                "other_origins": dict(
+                    Counter(
+                        row["origin"]
+                        for row in results
+                        if row["status"] == "other_origin"
+                    )
+                ),
+                "shares": len(shares),
+            },
+            "shares": shares,
+            "results": results,
+        }
+
     if not pending:
-        return report
+        return make_report()
 
     with requests.Session() as session:
 
@@ -141,7 +188,7 @@ def report_views(
             )
             for row, _ in pending:
                 row.update(status="filebrowser_unavailable", reason=reason)
-            return report
+            return make_report()
 
         owners, cache = {}, {}
         for row, share_hash in pending:
@@ -153,7 +200,10 @@ def report_views(
                         if isinstance(share, dict) and share.get("hash") == share_hash
                     ]
                     if len(matches) != 1:
-                        candidate = {"status": "share_not_found_or_ambiguous"}
+                        candidate = {
+                            "status": "share_not_found_or_ambiguous",
+                            "match_count": len(matches),
+                        }
                     else:
                         share = matches[0]
                         owner_id = share.get("userID")
@@ -214,7 +264,7 @@ def report_views(
                     }
                 cache[share_hash] = candidate
             row.update(cache[share_hash])
-    return report
+    return make_report()
 
 
 def main(

@@ -68,6 +68,16 @@ def test_all_views_fields_cached_and_mount(tmp_path):
     assert first["candidate_smb_relative_path"] == "datalake/project/media"
     assert first["mount_check"]["entries"] == ["photo.jpg"]
     assert first["verified"] is False
+    assert report["summary"]["other_origins"] == {"https://another.example": 1}
+    assert report["summary"]["shares"] == 2
+    assert (
+        report["shares"][0]["candidate_smb_relative_path"] == "datalake/project/media"
+    )
+    assert [ref["field"] for ref in report["shares"][0]["references"]] == [
+        "MEDIA_BASE_PATH",
+        "MEDIA_BASE_PATH_ICONS",
+    ]
+    assert report["results"][3]["match_count"] == 0
     assert len(responses.calls) == 3
     assert responses.calls[1].request.headers["X-Auth"] == "jwt"
     assert "secret" not in json.dumps(report)
@@ -85,6 +95,32 @@ def test_untrusted_host_never_receives_credentials():
     )
     assert report["results"][0]["status"] == "other_origin"
     assert not responses.calls
+
+
+@responses.activate
+def test_ambiguous_share_and_origin_redaction():
+    responses.post(f"{ORIGIN}/api/login", body="jwt")
+    responses.get(f"{ORIGIN}/api/shares", json=[{"hash": "hash"}, {"hash": "hash"}])
+    report = report_views(
+        [
+            view(
+                1,
+                {
+                    "MEDIA_BASE_PATH": URL,
+                    "MEDIA_BASE_PATH_ICONS": "https://user:password@other.example:8443/share/private?token=secret",
+                },
+            )
+        ],
+        ORIGIN,
+        "admin",
+        "secret",
+        "datalake",
+        "",
+    )
+    assert report["results"][0]["match_count"] == 2
+    assert report["results"][1]["origin"] == "https://other.example:8443"
+    assert "password" not in json.dumps(report)
+    assert "private" not in json.dumps(report)
 
 
 @responses.activate

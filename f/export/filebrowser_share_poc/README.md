@@ -26,6 +26,14 @@ This read-only Windmill script inventories every Explorer view and reports candi
 6. Check cmistaging's actual Filebrowser root, user scopes, and volume mappings. A resolved path is a **candidate** relative to the SMB share root, not a UNC address. If a mount is supplied, the job lists up to 20 immediate directory entries when accessible; this is a sanity check, not proof of the mapping. Compare representative attachment contents with Filebrowser downloads. `verified` remains false for every candidate. Expiration is reported from the share record and should be reviewed.
 7. Remove the temporary secret after testing. Windmill retains job results, which include view names, storage paths, and optional directory entries; restrict access to the job and its history.
 
+The report summarizes statuses and other origins and groups references to each
+supported share on the selected origin. Share IDs are local to a single run;
+they are not share hashes or stable identifiers across runs. A match count of
+zero means the share was not visible in the returned list; it does not establish
+whether it was deleted or inaccessible. The inventory only covers the three
+media fields in Explorer views, so it cannot establish that a share has no other
+consumers. Check other consumers before retiring a share.
+
 The Filebrowser account must be able to list all relevant shares and read their owners' scopes. A non-admin account may return an incomplete list. Filebrowser requests only use the specified HTTPS origin and reject redirects. If the worker cannot see the mount, run without `mount_path` first; worker mounts and filesystem sandboxing vary by deployment.
 
 This is not an apply migration: Explorer currently expects HTTP media URLs. An eventual migration needs a destination configuration and an authorized media-serving endpoint before any URLs can be replaced.
