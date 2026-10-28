@@ -5,6 +5,7 @@ charset-normalizer==3.4.9
 idna==3.18
 psycopg==3.3.4
 psycopg-binary==3.3.4
+pyproj==3.7.2
 python-dateutil==2.9.0.post0
 requests==2.34.2
 six==1.17.0

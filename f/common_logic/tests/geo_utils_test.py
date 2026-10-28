@@ -7,6 +7,7 @@ from f.common_logic.geo_utils import (
     geojson_point,
     geojson_to_line_delimited,
     is_valid_longitude_latitude,
+    parse_bounding_box,
     parse_lon_lat,
 )
 
@@ -143,6 +144,56 @@ def test_invalid_lon_lat(lon_lat, match):
 )
 def test_parse_lon_lat(lon_lat, expected):
     assert parse_lon_lat(lon_lat) == expected
+
+
+@pytest.mark.parametrize("bounding_box", [None, "", "   ", []])
+def test_parse_bounding_box_absent(bounding_box):
+    assert parse_bounding_box(bounding_box) is None
+
+
+def test_parse_bounding_box():
+    expected = {
+        "swlng": -77.22182,
+        "swlat": 38.79260,
+        "nelng": -77.21899,
+        "nelat": 38.79402,
+    }
+    assert (
+        parse_bounding_box("[[-77.22182, 38.79260], [-77.21899, 38.79402]]")
+        == expected
+    )
+    assert (
+        parse_bounding_box([[-77.21899, 38.79402], [-77.22182, 38.79260]]) == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "bounding_box, match",
+    [
+        ("[[-77.22182, 38.79260]]", "exactly two"),
+        (
+            "[[-77.22182, 91], [-77.21899, 38.79402]]",
+            "nelat must be between -90 and 90",
+        ),
+        (
+            "[[-181, 38.79260], [-77.21899, 38.79402]]",
+            "swlng must be between -180 and 180",
+        ),
+        (
+            "[[-77.22182, 38.79402], [-77.21899, 38.79402]]",
+            "swlat must be less than nelat",
+        ),
+        (
+            "[[-77.22182, 38.79260], [-77.22182, 38.79402]]",
+            "swlng must be less than nelng",
+        ),
+        ("not-json", "JSON list"),
+        ("[1, 2]", "exactly two"),
+    ],
+)
+def test_invalid_bounding_box(bounding_box, match):
+    with pytest.raises(ValueError, match=match):
+        parse_bounding_box(bounding_box)
 
 
 def test_geojson_point():
