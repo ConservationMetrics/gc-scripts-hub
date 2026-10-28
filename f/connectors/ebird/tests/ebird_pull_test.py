@@ -1,5 +1,4 @@
 import json
-from datetime import date, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import psycopg
@@ -10,8 +9,6 @@ from f.common_logic.db_operations import USE_EXISTING_DATASET
 from f.connectors.ebird.ebird_pull import (
     download_observations,
     main,
-    parse_lon_lat,
-    parse_observation_date,
     parse_region_code,
     transform_observations_to_geojson,
 )
@@ -507,38 +504,6 @@ def test_nearby_query_requires_lon_lat():
         )
 
 
-@pytest.mark.parametrize(
-    "lon_lat, match",
-    [
-        ("181, 0", "longitude must be between -180 and 180"),
-        ("-180.0001, 0", "longitude must be between -180 and 180"),
-        ("0, 90.1", "latitude must be between -90 and 90"),
-        ("0, -91", "latitude must be between -90 and 90"),
-        ("79.4551", 'lon_lat must be "lon, lat"'),
-        ("79.4551, 43.5, 1", 'lon_lat must be "lon, lat"'),
-        ("west, 43.5", 'lon_lat must be "lon, lat"'),
-        ("", 'lon_lat must be "lon, lat"'),
-        (None, 'lon_lat must be "lon, lat"'),
-    ],
-)
-def test_invalid_lon_lat(lon_lat, match):
-    with pytest.raises(ValueError, match=match):
-        parse_lon_lat(lon_lat)
-
-
-@pytest.mark.parametrize(
-    "lon_lat, expected",
-    [
-        ("-180, -90", (-180.0, -90.0)),
-        ("180, 90", (180.0, 90.0)),
-        ("79.455132,43.530936", (79.455132, 43.530936)),
-        ("  -74.5262526, 41.2833266  ", (-74.5262526, 41.2833266)),
-    ],
-)
-def test_parse_lon_lat(lon_lat, expected):
-    assert parse_lon_lat(lon_lat) == expected
-
-
 def test_main_rejects_longitude_out_of_range():
     with pytest.raises(ValueError, match="longitude must be between -180 and 180"):
         main(
@@ -570,27 +535,13 @@ def test_historic_requires_region_and_date():
         )
 
 
-@pytest.mark.parametrize(
-    "observation_date, match",
-    [
-        ("2020-1-21", "YYYY-MM-DD"),
-        ("2020/01/21", "YYYY-MM-DD"),
-        ("21-01-2020", "YYYY-MM-DD"),
-        ("", "YYYY-MM-DD"),
-        (None, "YYYY-MM-DD"),
-        ("2020-02-31", "real calendar date"),
-        ("1799-12-31", "on or after 1800-01-01"),
-    ],
-)
-def test_invalid_observation_date(observation_date, match):
-    with pytest.raises(ValueError, match=match):
-        parse_observation_date(observation_date)
-
-
-def test_parse_observation_date_bounds():
-    assert parse_observation_date("  2020-01-21  ") == date(2020, 1, 21)
-    assert parse_observation_date("1800-01-01") == date(1800, 1, 1)
-    today = date.today()
-    assert parse_observation_date(today.isoformat()) == today
-    with pytest.raises(ValueError, match="future"):
-        parse_observation_date((today + timedelta(days=1)).isoformat())
+def test_historic_rejects_dates_before_1800():
+    with pytest.raises(ValueError, match="on or after 1800-01-01"):
+        main(
+            observation_type="historic_date",
+            api_token=API_TOKEN,
+            db={},
+            region_code=REGION_CODE,
+            observation_date="1799-12-31",
+            db_table_name="ebird_historic_early",
+        )

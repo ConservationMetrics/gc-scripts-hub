@@ -1,5 +1,7 @@
 # requirements:
 # psycopg[binary]
+# pyproj
+# python-dateutil
 # requests~=2.32
 
 import logging
@@ -10,6 +12,7 @@ from typing import Any, Literal, NamedTuple
 
 import requests
 
+from f.common_logic.date_utils import parse_observation_date
 from f.common_logic.db_operations import (
     DynSelect_existing_db_table_name,
     existing_db_table_name as list_dataset_tables,
@@ -17,6 +20,7 @@ from f.common_logic.db_operations import (
     resolve_db_table_name,
 )
 from f.common_logic.file_operations import save_data_to_file
+from f.common_logic.geo_utils import geojson_point, parse_lon_lat
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 _API_ROOT = "https://api.ebird.org/v2"
@@ -30,14 +34,9 @@ _OBSERVATION_TYPES = (
 _REGION_TYPES = frozenset({"recent_region", "recent_notable_region"})
 _NOTABLE_TYPES = frozenset({"recent_notable_region", "recent_notable_nearby"})
 _HISTORIC_DATE = "historic_date"
-# Same shape the form pattern accepts: "lon, lat", numbers only.
-_LON_LAT_RE = re.compile(r"^-?[0-9]+(?:\.[0-9]+)?\s*,\s*-?[0-9]+(?:\.[0-9]+)?$")
 _REGION_CODE_RE = re.compile(r"^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$")
-_DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 # eBird's historic endpoint accepts years from 1800 through the present.
 _EARLIEST_OBSERVATION_DATE = date(1800, 1, 1)
-_LON_MIN, _LON_MAX = -180.0, 180.0
-_LAT_MIN, _LAT_MAX = -90.0, 90.0
 # eBird simple observations have no obsId. Notable `detail=full` responses do.
 _FIELD_MAP = (
     ("speciesCode", "species_code"),
@@ -88,39 +87,6 @@ def existing_db_table_name(db: postgresql | None = None, **_):
     return list_dataset_tables(db)
 
 
-def parse_lon_lat(lon_lat: str | None) -> tuple[float, float]:
-    """Parse ``"lon, lat"`` and reject values outside geographic bounds.
-
-    Parameters
-    ----------
-    lon_lat : str or None
-        Longitude and latitude separated by a comma, for example
-        ``"-74.5263, 41.2833"``.
-
-    Returns
-    -------
-    tuple of float
-        ``(longitude, latitude)``.
-
-    Raises
-    ------
-    ValueError
-        If the value is not two numbers, longitude is outside -180 to 180,
-        or latitude is outside -90 to 90.
-    """
-    text = lon_lat.strip() if isinstance(lon_lat, str) else ""
-    if not _LON_LAT_RE.fullmatch(text):
-        raise ValueError('lon_lat must be "lon, lat" with numeric values only.')
-    lon_text, lat_text = (part.strip() for part in text.split(",", 1))
-    lon = float(lon_text)
-    lat = float(lat_text)
-    if not _LON_MIN <= lon <= _LON_MAX:
-        raise ValueError(f"longitude must be between {_LON_MIN:g} and {_LON_MAX:g}.")
-    if not _LAT_MIN <= lat <= _LAT_MAX:
-        raise ValueError(f"latitude must be between {_LAT_MIN:g} and {_LAT_MAX:g}.")
-    return lon, lat
-
-
 def parse_region_code(region_code: str | None) -> str:
     """Return a stripped eBird region code, or raise if it is not usable.
 
@@ -146,39 +112,6 @@ def parse_region_code(region_code: str | None) -> str:
             "region_code must be an eBird region code such as US-NY or L295658."
         )
     return code
-
-
-def parse_observation_date(observation_date: str | None) -> date:
-    """Parse ``YYYY-MM-DD`` and reject dates eBird will not accept.
-
-    Parameters
-    ----------
-    observation_date : str or None
-        Calendar date, for example ``"2020-01-21"``.
-
-    Returns
-    -------
-    datetime.date
-        The parsed date.
-
-    Raises
-    ------
-    ValueError
-        If the value is not ``YYYY-MM-DD``, is not a real calendar date,
-        is before 1800-01-01, or is after today.
-    """
-    text = observation_date.strip() if isinstance(observation_date, str) else ""
-    if not _DATE_RE.fullmatch(text):
-        raise ValueError("observation_date must be a date in YYYY-MM-DD format.")
-    try:
-        parsed = date.fromisoformat(text)
-    except ValueError as exc:
-        raise ValueError("observation_date must be a real calendar date.") from exc
-    if parsed < _EARLIEST_OBSERVATION_DATE:
-        raise ValueError("observation_date must be on or after 1800-01-01.")
-    if parsed > date.today():
-        raise ValueError("observation_date must not be in the future.")
-    return parsed
 
 
 def main(
@@ -269,7 +202,9 @@ def build_observations_request(
 
     if observation_type == _HISTORIC_DATE:
         code = parse_region_code(region_code)
-        observed = parse_observation_date(observation_date)
+        observed = parse_observation_date(
+            observation_date, earliest=_EARLIEST_OBSERVATION_DATE
+        )
         url = (
             f"{_API_ROOT}/data/obs/{code}/historic/"
             f"{observed.year}/{observed.month}/{observed.day}"
@@ -393,7 +328,9 @@ def transform_observations_to_geojson(
             {
                 "type": "Feature",
                 "id": feature_id,
-                "geometry": _point(observation),
+                "geometry": geojson_point(
+                    observation.get("lng"), observation.get("lat")
+                ),
                 "properties": properties,
             }
         )
@@ -454,11 +391,3 @@ def _observation_id(observation: dict) -> str:
     raise ValueError(
         "Observation is missing obsId, so it needs both subId and speciesCode."
     )
-
-
-def _point(observation: dict) -> dict | None:
-    lat = observation.get("lat")
-    lng = observation.get("lng")
-    if lat is None or lng is None:
-        return None
-    return {"type": "Point", "coordinates": [lng, lat]}
