@@ -8,7 +8,7 @@ _ASSETS = Path(__file__).parent
 RECENT_OBSERVATIONS = json.loads((_ASSETS / "recent_observations.json").read_text())
 NOTABLE_OBSERVATIONS = json.loads((_ASSETS / "notable_observations.json").read_text())
 
-RECENT_COUNT = 56
+RECENT_COUNT = 3
 NOTABLE_COUNT = 3
 
 PRIMARY_SPECIES_CODE = "hoocro1"
