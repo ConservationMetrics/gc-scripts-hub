@@ -1,9 +1,9 @@
 # requirements:
 # psycopg[binary]
+# pyproj
 # python-dateutil
 # requests~=2.32
 
-import json
 import logging
 import time
 from pathlib import Path
@@ -20,6 +20,7 @@ from f.common_logic.db_operations import (
     resolve_db_table_name,
 )
 from f.common_logic.file_operations import save_data_to_file
+from f.common_logic.geo_utils import parse_bounding_box
 from f.connectors.geojson.geojson_to_postgres import main as save_geojson_to_postgres
 
 _API_V1 = "https://api.inaturalist.org/v1"
@@ -31,12 +32,6 @@ _PAGE_DELAY_S = 1.1
 _MEDIA_DELAY_S = 0.2
 _MEDIA_PROGRESS_EVERY = 200
 _VALID_SOURCES = frozenset({"project", "user"})
-_BBOX_RANGES = {
-    "swlat": (-90, 90),
-    "nelat": (-90, 90),
-    "swlng": (-180, 180),
-    "nelng": (-180, 180),
-}
 
 # v2 silently drops unknown field names (HTTP 200, no error). This spec is the
 # single source of truth for both the request and the transform.
@@ -121,57 +116,6 @@ def _optional_text(value: Any) -> str | None:
         return None
     text = value if isinstance(value, str) else str(value)
     return text.strip() or None
-
-
-def parse_bounding_box(bounding_box: str | list | None) -> dict[str, float] | None:
-    """Parse a JSON string ``[[west, south], [east, north]]``."""
-    if bounding_box is None or bounding_box == "" or bounding_box == []:
-        return None
-    if isinstance(bounding_box, str):
-        bounding_box = bounding_box.strip()
-        if not bounding_box:
-            return None
-        try:
-            bounding_box = json.loads(bounding_box)
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                "bounding_box must be a JSON list: [[west, south], [east, north]]."
-            ) from exc
-    if not isinstance(bounding_box, (list, tuple)):
-        raise ValueError("bounding_box must be [[west, south], [east, north]].")
-    if len(bounding_box) == 0:
-        return None
-    if len(bounding_box) != 2:
-        raise ValueError(
-            "bounding_box must contain exactly two [longitude, latitude] corners."
-        )
-
-    corners: list[tuple[float, float]] = []
-    for point in bounding_box:
-        if not isinstance(point, (list, tuple)) or len(point) != 2:
-            raise ValueError(
-                "bounding_box must contain exactly two [longitude, latitude] corners."
-            )
-        try:
-            corners.append((float(point[0]), float(point[1])))
-        except (TypeError, ValueError) as exc:
-            raise ValueError("bounding_box coordinates must be numeric.") from exc
-
-    (lng_a, lat_a), (lng_b, lat_b) = corners
-    parsed = {
-        "swlng": min(lng_a, lng_b),
-        "swlat": min(lat_a, lat_b),
-        "nelng": max(lng_a, lng_b),
-        "nelat": max(lat_a, lat_b),
-    }
-    for key, (low, high) in _BBOX_RANGES.items():
-        if not low <= parsed[key] <= high:
-            raise ValueError(f"bounding_box {key} must be between {low} and {high}.")
-    if parsed["swlat"] >= parsed["nelat"]:
-        raise ValueError("bounding_box swlat must be less than nelat.")
-    if parsed["swlng"] >= parsed["nelng"]:
-        raise ValueError("bounding_box swlng must be less than nelng.")
-    return parsed
 
 
 def existing_db_table_name(db: postgresql | None = None, **_):
