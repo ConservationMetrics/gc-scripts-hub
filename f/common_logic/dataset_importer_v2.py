@@ -249,13 +249,11 @@ def _tabular_geometry_warning(rows):
     fields = _source_fields(rows)
     if {"g__type", "g__coordinates"}.issubset(fields):
         return None
-    aliases = {alias for pair in COORDINATE_PAIRS for alias in pair}
-    if any(_canonical_coordinate_field(field) in aliases for field in fields):
-        return (
-            "Coordinate columns were incomplete or could not be paired within one file, "
-            "so no map geometry was generated."
-        )
-    return None
+    return (
+        "⚠️ No geodata detected. If your file has geographic coordinates, please rename "
+        "the fields to longitude and latitude. Otherwise, you can ignore this warning. "
+        "The coordinate values must be WGS84 decimal degrees (for GeoJSON standard compatibility)."
+    )
 
 
 def _conninfo(db):

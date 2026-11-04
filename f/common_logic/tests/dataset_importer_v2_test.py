@@ -297,8 +297,22 @@ def test_csv_warns_when_a_coordinate_pair_is_incomplete(mock_db_connection):
         "incomplete_points",
     )
 
-    assert "no map geometry was generated" in staged["geometry_warning"]
+    assert "No geodata detected" in staged["geometry_warning"]
     assert "g__type" not in staged["fields"]
+
+
+def test_tabular_geodata_warning_depends_on_detected_geometry():
+    for contents in (b"id,name\n1,Ibis\n", b"id,longitude\n1,-54\n"):
+        warning = importer._tabular_geometry_warning(importer._parse_csv(contents))
+        assert "No geodata detected" in warning
+        assert "longitude and latitude" in warning
+        assert "WGS84 decimal degrees" in warning
+
+    for contents in (
+        b"id,longitude,latitude\n1,-54,3\n",
+        b'id,g__type,g__coordinates\n1,Point,"[-54,3]"\n',
+    ):
+        assert importer._tabular_geometry_warning(importer._parse_csv(contents)) is None
 
 
 def test_csv_preserves_valid_explicit_geometry():
