@@ -25,12 +25,14 @@ The API token is sent as the `X-eBirdApiToken` header. **API token** is a Windmi
 > It is not possible to batch-download all historical observations. **Historic observations on a date** returns one day at a time: enter that day as `YYYY-MM-DD` with a region code. Recent observation lists cover at most the last 30 days, and those requests use the API default of 14 days.
 
 > [!TIP]
-> Use the eBird [Region Info](https://documenter.getpostman.com/view/664302/S1ENwy59#07c64240-6359-4688-9c4f-ff3d678a7248) endpoint to look up a subnational code. For Suriname (`SR`):
+> List a country's subnational codes with the [Sub Region List](https://documenter.getpostman.com/view/664302/S1ENwy59#382da1c8-8bff-4926-936a-a1f8b065e7d5) endpoint. For Suriname (`SR`):
 >
 > ```bash
 > curl --location 'https://api.ebird.org/v2/ref/region/list/subnational1/SR' \
 >   --header 'X-eBirdApiToken: YOUR_API_TOKEN'
 > ```
+>
+> [Region Info](https://documenter.getpostman.com/view/664302/S1ENwy59#07c64240-6359-4688-9c4f-ff3d678a7248) describes a region code you already have.
 >
 > Alternatively, you can reference [Statoids](https://statoids.com/), which also lists subnational region codes. Replace the dot with a hyphen. Sipaliwini is `SR.SI` on Statoids and `SR-SI` in eBird.
 
@@ -43,5 +45,6 @@ Review the [eBird API Terms of Use](https://www.birds.cornell.edu/home/ebird-api
 - [eBird API 2.0](https://documenter.getpostman.com/view/664302/S1ENwy59)
 - [Request an eBird API key](https://ebird.org/api/keygen)
 - [eBird API Terms of Use](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/)
+- [Sub Region List](https://documenter.getpostman.com/view/664302/S1ENwy59#382da1c8-8bff-4926-936a-a1f8b065e7d5)
 - [Region Info](https://documenter.getpostman.com/view/664302/S1ENwy59#07c64240-6359-4688-9c4f-ff3d678a7248)
 - [Historic observations on a date](https://documenter.getpostman.com/view/664302/S1ENwy59#2d8c6ee8-c435-4e91-9f66-6d3eeb09edd2)

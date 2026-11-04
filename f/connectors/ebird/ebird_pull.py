@@ -306,6 +306,13 @@ def transform_observations_to_geojson(
     dict
         A GeoJSON FeatureCollection. Each feature id is ``obsId`` when the
         record has one, otherwise ``{subId}_{speciesCode}``.
+
+    Notes
+    -----
+    Known duplication edge case: if the same observation is imported into a
+    dataset from both a notable search and a regular recent or historic
+    search, it creates two rows. Notable results use ``obsId``; the others
+    use a checklist-and-species id.
     """
     features = []
     seen: set[str] = set()
