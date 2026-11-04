@@ -14,6 +14,23 @@ it replaces its table on each run.
 
 ## `gbif_download`
 
+The occurrence import records its execution, dataset, and retained archive,
+CSV, and provenance file in the shared `registry` PostgreSQL schema. Deploy
+the registry schema before enabling this version of the connector. The
+registry records paths relative to the datalake mount; set
+`DATASET_IMPORTER_DATALAKE_ROOT` on the worker if the mount is not
+`/persistent-storage/datalake`. The configured `attachment_root` must be
+inside that mount. A run covers the occurrence-import step of the flow;
+download submission and polling are not included in its status.
+
+Dataset and registry updates commit together. Files are written before that
+transaction and can remain on disk after a failed run. A successful retry
+registers them. The `__metadata` table remains available to existing consumers.
+If a file is already in the registry without a SHA-256 checksum, ingestion
+stops rather than claiming its content changed or stayed the same without
+evidence. Existing file entries need a checksum backfill before this connector
+can register those paths.
+
 ### Setup
 
 Create a Windmill `gbif` resource with your GBIF username and password:

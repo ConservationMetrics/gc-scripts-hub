@@ -168,6 +168,11 @@ def normalize_identifier(
     return name[:maxlen]
 
 
+def source_fields(rows):
+    """Return distinct source keys in the order they first appear."""
+    return list(dict.fromkeys(key for row in rows for key in row))
+
+
 def sanitize_sql_message(
     message,
     column_renames,

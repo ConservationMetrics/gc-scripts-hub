@@ -33,6 +33,35 @@ def test_fetch_tables_from_postgres(mock_db_connection):
         assert writer.table_name in tables
 
 
+def test_atomic_writer_rolls_back_all_rows_on_error(mock_db_connection):
+    with psycopg.connect(mock_db_connection) as conn:
+        conn.execute(
+            "CREATE TABLE atomic_test (_id TEXT PRIMARY KEY, value TEXT CHECK (value <> 'bad'))"
+        )
+
+    writer = StructuredDBWriter(mock_db_connection, "atomic_test")
+    with pytest.raises(psycopg.errors.CheckViolation):
+        writer.handle_output(
+            [{"_id": "1", "value": "good"}, {"_id": "2", "value": "bad"}],
+            atomic=True,
+        )
+
+    with psycopg.connect(mock_db_connection) as conn:
+        assert conn.execute("SELECT count(*) FROM atomic_test").fetchone() == (0,)
+
+
+def test_writer_keeps_colliding_fields_distinct_across_sparse_rows(mock_db_connection):
+    writer = StructuredDBWriter(mock_db_connection, "collision_test", use_mapping_table=True)
+    writer.handle_output([
+        {"_id": "1", "Tree Type": "Mopane", "Tree-Type": "Healthy"},
+        {"_id": "2", "Tree-Type": "Damaged"},
+    ])
+    writer.handle_output([{"_id": "3", "Tree-Type": "Recovering"}])
+    with psycopg.connect(mock_db_connection) as conn:
+        rows = conn.execute('SELECT "TreeType", "TreeType_001" FROM collision_test ORDER BY _id').fetchall()
+    assert rows == [("Mopane", "Healthy"), (None, "Damaged"), (None, "Recovering")]
+
+
 def test_existing_db_table_name_without_db():
     assert existing_db_table_name(db=None) == []
     assert existing_db_table_name() == []

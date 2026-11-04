@@ -32,8 +32,10 @@ from f.common_logic.db_operations import (
 from f.common_logic.identifier_utils import (
     normalize_identifier,
     sanitize_sql_columns,
+    source_fields,
     uniquify_sql_identifier,
 )
+from f.common_logic.ingest_registry import datalake_root
 
 SCHEMA = "dataset_importer_v2"
 MAX_SOURCE_BYTES = 25 * 1024 * 1024
@@ -246,7 +248,7 @@ def _normalize_tabular_geometry(rows):
 
 
 def _tabular_geometry_warning(rows):
-    fields = _source_fields(rows)
+    fields = source_fields(rows)
     if {"g__type", "g__coordinates"}.issubset(fields):
         return None
     aliases = {alias for pair in COORDINATE_PAIRS for alias in pair}
@@ -268,9 +270,7 @@ def _quoted_table(table_name):
 
 
 def _archive_destination(table_name, source_name, import_id):
-    root = Path(
-        os.environ.get("DATASET_IMPORTER_DATALAKE_ROOT", "/persistent-storage/datalake")
-    )
+    root = datalake_root()
     return root / table_name / f"{import_id}_{Path(source_name).name}"
 
 
@@ -615,17 +615,6 @@ def _parse_source(name, contents):
         return _parse_path(path)
 
 
-def _source_fields(rows):
-    source_fields = []
-    seen = set()
-    for row in rows:
-        for field in row:
-            if field not in seen:
-                seen.add(field)
-                source_fields.append(field)
-    return source_fields
-
-
 def _source_mapping(rows, existing_mapping=None, target_columns=None):
     existing_mapping = existing_mapping or {}
     target_columns = set(target_columns or [])
@@ -643,7 +632,7 @@ def _source_mapping(rows, existing_mapping=None, target_columns=None):
     )
     seeded_mapping = {**existing_mapping, "_id": uploaded_id_column}
     mapping = sanitize_sql_columns(
-        _source_fields(rows),
+        source_fields(rows),
         seeded_mapping,
         reverse_properties_separated_by="/",
         str_replace=[("/", "__"), ("$", "__")],

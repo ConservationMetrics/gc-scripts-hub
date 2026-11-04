@@ -171,6 +171,19 @@ def test_pull_imports_and_upserts_enriched_real_archive(
         assert dataset == f"Dataset {dataset_key}"
         assert publishing_org == f"Publisher {publishing_org_key}"
         first_imported_at = _observations_imported_at(cursor)
+        cursor.execute("SELECT connector_id, outcome FROM registry.ingest_runs")
+        assert cursor.fetchall() == [("gbif_occurrences", "succeeded")]
+        cursor.execute("SELECT schema_name, table_name FROM registry.datasets")
+        assert cursor.fetchall() == [("public", "gbif_occurrences")]
+        cursor.execute("SELECT operation FROM registry.ingest_runs_datasets")
+        assert cursor.fetchall() == [("created",)]
+        cursor.execute("SELECT count(*) FROM registry.files")
+        assert cursor.fetchone() == (3,)
+        cursor.execute("SELECT source_metadata FROM registry.files WHERE relative_path LIKE '%.zip'")
+        assert cursor.fetchone()[0]["download_key"] == server_responses.DOWNLOAD_KEY
+        cursor.execute("SELECT count(*) FROM registry.datasets_files")
+        assert cursor.fetchone() == (2,)
+        cursor.execute("UPDATE registry.files SET display_name = 'My archive' WHERE relative_path LIKE '%.zip'")
     saved_csv = destination / f"{server_responses.DOWNLOAD_KEY}.csv"
     saved_row = next(csv.DictReader(saved_csv.open(encoding="utf-8")))
     assert saved_row["dataset"] == f"Dataset {saved_row['dataset_key']}"
@@ -206,6 +219,110 @@ def test_pull_imports_and_upserts_enriched_real_archive(
         )
         assert cursor.fetchone()[0] == 852
         assert _observations_imported_at(cursor) >= first_imported_at
+        cursor.execute("SELECT count(*) FROM registry.files")
+        assert cursor.fetchone() == (3,)
+        cursor.execute("SELECT display_name FROM registry.files WHERE relative_path LIKE '%.zip'")
+        assert cursor.fetchone() == ("My archive",)
+        cursor.execute("SELECT operation FROM registry.ingest_runs_datasets ORDER BY recorded_at")
+        assert cursor.fetchall() == [("created",), ("unchanged",)]
+        cursor.execute(
+            "SELECT operation, count(*) FROM registry.ingest_runs_files GROUP BY operation ORDER BY operation"
+        )
+        assert cursor.fetchall() == [("created", 3), ("unchanged", 3)]
+
+
+def test_failed_database_write_records_failed_run_without_dataset(
+    mocked_responses, archive_bytes, pg_database, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(gbif_pull_occurrences, "_resolve_registry_titles", lambda *_: ({}, {}))
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(),
+    )
+    mocked_responses.add(responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("database write failed")
+
+    monkeypatch.setattr(gbif_pull_occurrences, "save_csv_to_postgres", fail)
+    with pytest.raises(RuntimeError, match="database write failed"):
+        gbif_pull_occurrences.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
+            db_table_name="gbif_failure",
+            attachment_root=str(tmp_path),
+        )
+    with connect(**pg_database) as conn:
+        assert conn.execute("SELECT outcome FROM registry.ingest_runs").fetchall() == [("failed",)]
+        assert conn.execute("SELECT count(*) FROM registry.datasets").fetchone() == (0,)
+        assert conn.execute("SELECT count(*) FROM registry.files").fetchone() == (0,)
+
+
+def test_rejects_output_outside_configured_datalake(pg_database, tmp_path):
+    with pytest.raises(ValueError, match="outside the configured datalake"):
+        gbif_pull_occurrences.main(
+            download_key="example",
+            db=pg_database,
+            db_table_name="outside",
+            attachment_root=str(tmp_path.parent),
+        )
+    with connect(**pg_database) as conn:
+        assert conn.execute("SELECT outcome FROM registry.ingest_runs").fetchall() == [("failed",)]
+
+
+def test_registry_failure_rolls_back_dataset_write(
+    mocked_responses, archive_bytes, pg_database, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(gbif_pull_occurrences, "_resolve_registry_titles", lambda *_: ({}, {}))
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(),
+    )
+    mocked_responses.add(responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("registry failure")
+
+    monkeypatch.setattr(gbif_pull_occurrences, "register_file", fail)
+    with pytest.raises(RuntimeError, match="registry failure"):
+        gbif_pull_occurrences.main(
+            download_key=server_responses.DOWNLOAD_KEY,
+            db=pg_database,
+            db_table_name="gbif_rollback",
+            attachment_root=str(tmp_path),
+        )
+    with connect(**pg_database) as conn:
+        assert conn.execute("SELECT to_regclass('public.gbif_rollback')").fetchone() == (None,)
+        assert conn.execute("SELECT count(*) FROM registry.datasets").fetchone() == (0,)
+        assert conn.execute("SELECT outcome FROM registry.ingest_runs").fetchall() == [("failed",)]
+
+
+def test_unhashed_registered_file_is_not_overwritten(
+    mocked_responses, archive_bytes, pg_database, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(gbif_pull_occurrences, "_resolve_registry_titles", lambda *_: ({}, {}))
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(),
+    )
+    mocked_responses.add(responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes)
+    output = tmp_path / "observations" / f"{server_responses.DOWNLOAD_KEY}.zip"
+    output.parent.mkdir()
+    output.write_bytes(b"previous file")
+    with connect(**pg_database) as conn:
+        conn.execute(
+            "INSERT INTO registry.files (relative_path, size_bytes) VALUES (%s, %s)",
+            (output.relative_to(tmp_path).as_posix(), len(b"previous file")),
+        )
+    with pytest.raises(ValueError, match="lacks a checksum"):
+        gbif_pull_occurrences.main(
+            download_key=server_responses.DOWNLOAD_KEY, db=pg_database,
+            db_table_name="observations", attachment_root=str(tmp_path),
+        )
+    assert output.read_bytes() == b"previous file"
 
 
 def test_convert_rejects_missing_and_duplicate_ids(tmp_path):
@@ -409,6 +526,38 @@ def test_pull_retains_empty_download_without_creating_an_occurrence_table(
         cursor.execute("SELECT to_regclass('empty_gbif')")
         assert cursor.fetchone()[0] is None
         _observations_imported_at(cursor, "empty_gbif")
+        cursor.execute("SELECT count(*) FROM registry.datasets")
+        assert cursor.fetchone() == (0,)
+        cursor.execute("SELECT count(*) FROM registry.files")
+        assert cursor.fetchone() == (3,)
+        cursor.execute("SELECT outcome FROM registry.ingest_runs")
+        assert cursor.fetchall() == [("succeeded",)]
+
+
+def test_empty_download_records_unchanged_existing_dataset(
+    mocked_responses, pg_database, tmp_path
+):
+    archive = tmp_path / "empty.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("occurrences.csv", "gbifID\tdecimalLongitude\n")
+    mocked_responses.add(
+        responses.GET,
+        f"https://api.gbif.org/v1/occurrence/download/{server_responses.DOWNLOAD_KEY}",
+        json=server_responses.metadata(),
+    )
+    mocked_responses.add(responses.GET, server_responses.ARCHIVE_URL, body=archive.read_bytes())
+    with connect(**pg_database) as conn:
+        conn.execute("CREATE TABLE observations (_id text PRIMARY KEY)")
+    gbif_pull_occurrences.main(
+        download_key=server_responses.DOWNLOAD_KEY,
+        db=pg_database,
+        destination_action=USE_EXISTING_DATASET,
+        existing_db_table_name="observations",
+        attachment_root=str(tmp_path),
+    )
+    with connect(**pg_database) as conn:
+        assert conn.execute("SELECT operation FROM registry.ingest_runs_datasets").fetchall() == [("unchanged",)]
+        assert conn.execute("SELECT last_imported_at IS NOT NULL FROM registry.datasets").fetchone() == (True,)
 
 
 def _observations_imported_at(cursor, table_name="gbif_occurrences"):
