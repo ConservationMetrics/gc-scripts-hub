@@ -7,8 +7,6 @@
 import csv
 import json
 import logging
-import os
-import tempfile
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -19,18 +17,16 @@ from typing import Literal
 from urllib.parse import quote
 
 import requests
-from psycopg import connect, sql
 
 from f.common_logic.db_operations import (
     DynSelect_existing_db_table_name,
-    conninfo,
     existing_db_table_name as list_dataset_tables,
     postgresql,
-    resolve_db_table_name,
 )
 from f.common_logic.geo_utils import is_valid_longitude_latitude
 from f.common_logic.identifier_utils import camel_to_snake
-from f.connectors.csv.csv_to_postgres import main as save_csv_to_postgres
+from f.common_logic.ingest import Ingest
+
 
 _API = "https://api.gbif.org/v1/occurrence/download"
 _REGISTRY_API = "https://api.gbif.org/v1"
@@ -78,8 +74,25 @@ def main(
     existing_db_table_name : str, optional
         Public table to write into when using an existing dataset.
     """
-    db_table_name = resolve_db_table_name(
-        db, destination_action, db_table_name, existing_db_table_name
+    with Ingest(db, "gbif_occurrences", attachment_root) as ingest:
+        return _pull_occurrences(
+            download_key,
+            db_table_name,
+            destination_action,
+            existing_db_table_name,
+            ingest,
+        )
+
+
+def _pull_occurrences(
+    download_key,
+    db_table_name,
+    destination_action,
+    existing_db_table_name,
+    ingest,
+):
+    db_table_name = ingest.resolve_dataset(
+        destination_action, db_table_name, existing_db_table_name
     )
     if (
         len(db_table_name) > _MAX_TABLE_NAME_LENGTH
@@ -100,10 +113,7 @@ def main(
     if not isinstance(download_url, str) or not download_url:
         raise RuntimeError(f"GBIF download {download_key} has no archive URL.")
 
-    destination = Path(attachment_root) / db_table_name
-    destination.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=destination) as temporary_directory:
-        temporary = Path(temporary_directory)
+    with ingest.staging(db_table_name) as temporary:
         archive = temporary / "download.zip"
         _stream_download(download_url, archive)
         csv_path, record_count = _convert_archive(
@@ -113,66 +123,32 @@ def main(
         enrichment = _enrich_csv(csv_path, enriched_csv)
         csv_path.unlink()
         csv_path = enriched_csv
-        final_archive = destination / f"{download_key}.zip"
-        final_csv = destination / f"{download_key}.csv"
-        os.replace(archive, final_archive)
-        os.replace(csv_path, final_csv)
-        logger.info("GBIF archive saved to %s", final_archive)
-        logger.info(
-            "GBIF occurrence CSV saved to %s (%d records)", final_csv, record_count
+        provenance = {
+            "download_key": download_key,
+            "doi": metadata.get("doi"),
+            "license": metadata.get("license"),
+            "predicate": request.get("predicate") if isinstance(request, dict) else None,
+            "record_count": record_count,
+            "enrichment": enrichment,
+        }
+        provenance_file = temporary / "provenance.json"
+        provenance_file.write_text(json.dumps(provenance, indent=2), encoding="utf-8")
+        ingest.write_file(archive, f"{download_key}.zip", metadata=provenance, dataset_source=True)
+        ingest.write_file(csv_path, f"{download_key}.csv", dataset_source=True)
+        ingest.write_file(provenance_file, f"{download_key}.json")
+        ingest.write_dataset(
+            dataset=db_table_name,
+            source=csv_path,
+            identity="_id",
+            record_count=record_count,
+            timestamp_column="observations_last_imported_at",
         )
-
-    provenance = {
-        "download_key": download_key,
-        "doi": metadata.get("doi"),
-        "license": metadata.get("license"),
-        "predicate": request.get("predicate") if isinstance(request, dict) else None,
-        "record_count": record_count,
-        "enrichment": enrichment,
-    }
-    provenance_path = destination / f"{download_key}.json"
-    provenance_path.write_text(json.dumps(provenance, indent=2), encoding="utf-8")
-    logger.info("GBIF provenance metadata saved to %s", provenance_path)
-    if record_count:
-        save_csv_to_postgres(
-            db,
-            db_table_name,
-            str(final_csv.relative_to(attachment_root)),
-            attachment_root,
-            delete_csv_file=False,
-            id_column="_id",
-        )
-    _record_imported_at(db, db_table_name)
     return {
         "download_key": download_key,
         "doi": metadata.get("doi"),
         "destination": db_table_name,
         "record_count": record_count,
     }
-
-
-def _record_imported_at(db: postgresql, db_table_name: str) -> None:
-    """Replace `{name}__metadata` with the time this import finished."""
-    table_name = f"{db_table_name.lower()}{_METADATA_SUFFIX}"
-    logger.info("Recording observations import time in %s.", table_name)
-    with (
-        connect(conninfo(db), autocommit=True) as connection,
-        connection.transaction(),
-        connection.cursor() as cursor,
-    ):
-        table = sql.Identifier(table_name)
-        cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
-        cursor.execute(
-            sql.SQL(
-                "CREATE TABLE {} (observations_last_imported_at TIMESTAMPTZ NOT NULL)"
-            ).format(table)
-        )
-        cursor.execute(
-            sql.SQL(
-                "INSERT INTO {} (observations_last_imported_at) VALUES (%s)"
-            ).format(table),
-            (datetime.now(timezone.utc),),
-        )
 
 
 def _metadata(download_key: str) -> dict:

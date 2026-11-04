@@ -7,6 +7,7 @@ This module provides functions and classes for interacting with PostgreSQL datab
 
 import json
 import logging
+from contextlib import nullcontext
 
 from psycopg import Error, connect, errors, sql
 
@@ -762,10 +763,24 @@ class StructuredDBWriter:
 
         return inserted_count, updated_count
 
-    def handle_output(self, submissions):
+    def handle_output(
+        self, submissions, *, atomic=False, connection=None, return_counts=False
+    ):
+        """Write submissions, optionally using a caller-owned transaction.
+
+        With ``atomic=True`` a row failure aborts the batch. When a connection
+        is supplied the caller controls the outer commit. ``return_counts``
+        returns (inserted, updated); the default preserves the legacy boolean.
+        """
         table_name = self.table_name
 
-        with self._get_conn() as pgconn:
+        connection_context = (
+            self._get_conn() if connection is None else nullcontext(connection)
+        )
+        with (
+            connection_context as pgconn,
+            pgconn.transaction() if atomic else nullcontext(),
+        ):
             if self.use_mapping_table:
                 columns_table_name = column_mapping_table_name(table_name)
                 existing_fields = self._get_existing_cols(
@@ -863,9 +878,13 @@ class StructuredDBWriter:
 
                 except Exception as e:
                     logger.error(f"Error inserting data: {e}, {type(e).__name__}")
+                    if atomic:
+                        raise
 
             logger.info(f"Total rows inserted: {inserted_count}")
             logger.info(f"Total rows updated: {updated_count}")
 
         # Return True if there were new inserts
+        if return_counts:
+            return inserted_count, updated_count
         return inserted_count > 0
