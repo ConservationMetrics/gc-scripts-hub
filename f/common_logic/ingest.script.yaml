@@ -1,6 +1,6 @@
 summary: Shared registry operations for ingest
 description: ''
-lock: '!inline f/common_logic/ingest_registry.script.lock'
+lock: '!inline f/common_logic/ingest.script.lock'
 kind: script
 no_main_func: true
 schema:

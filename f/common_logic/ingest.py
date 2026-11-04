@@ -15,11 +15,16 @@ import os
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from psycopg import connect
 from psycopg.types.json import Jsonb
 
-from f.common_logic.db_operations import conninfo
+from f.common_logic.db_operations import (
+    StructuredDBWriter,
+    conninfo,
+    resolve_db_table_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -171,3 +176,116 @@ def register_file(cursor, run_id, path, dataset_id=None, source_metadata=None):
             (dataset_id, file_id),
         )
     return file_id
+
+
+class Ingest:
+    """Write one connector run's files and CSV dataset to the warehouse."""
+
+    def __init__(self, db, connector, attachment_root):
+        self.db = db
+        self.connector = connector
+        self.attachment_root = Path(attachment_root)
+        self._run = None
+        self.run_id = None
+        self._files = []
+
+    def __enter__(self):
+        self._run = ingest_run(self.db, self.connector)
+        self.run_id = self._run.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        return self._run.__exit__(*args)
+
+    def resolve_dataset(self, destination_action, table_name, existing_table_name):
+        """Resolve the destination and check the configured datalake."""
+        result = resolve_db_table_name(
+            self.db, destination_action, table_name, existing_table_name
+        )
+        datalake_relative_path(self.attachment_root)
+        return result
+
+    @contextmanager
+    def staging(self, dataset):
+        """Create a temporary workspace on the datalake filesystem."""
+        destination = self.attachment_root / dataset
+        datalake_relative_path(destination)
+        destination.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(dir=destination) as directory:
+            yield Path(directory)
+
+    def write_file(self, source, name, *, metadata=None, dataset_source=False):
+        """Queue a file for publication with the current dataset."""
+        source = Path(source)
+        self._files.append((source, name, metadata, dataset_source))
+        return source
+
+    def write_dataset(self, dataset, source, identity, record_count, timestamp_column):
+        """Publish files and merge a CSV dataset, recording the result in the registry.
+
+        The timestamp column preserves the connector's existing sidecar contract.
+        """
+        from psycopg import sql
+
+        from f.connectors.csv.csv_to_postgres import transform_csv_data
+
+        destination = self.attachment_root / dataset
+        targets = [
+            (Path(temp), destination / name, metadata, is_source)
+            for temp, name, metadata, is_source in self._files
+        ]
+        if sum(temp == Path(source) for temp, _, _, _ in targets) != 1:
+            raise ValueError("The CSV source must be included exactly once in files")
+        if len({target for _, target, _, _ in targets}) != len(targets):
+            raise ValueError("File destinations must be distinct")
+        require_known_file_hashes(self.db, [target for _, target, _, _ in targets])
+        source_path = None
+        for temp, target, _, _ in targets:
+            os.replace(temp, target)
+            if temp == source:
+                source_path = target
+            logger.info("Saved file to %s", target)
+        with connect(conninfo(self.db)) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = %s)",
+                (dataset,),
+            )
+            existed = cursor.fetchone()[0]
+            dataset_id = None
+            if record_count:
+                rows = transform_csv_data(source_path, identity)
+                writer = StructuredDBWriter(conninfo(self.db), dataset)
+                inserted, updated = writer.handle_output(
+                    rows, atomic=True, connection=connection, return_counts=True
+                )
+                operation = (
+                    "created"
+                    if not existed
+                    else "updated"
+                    if inserted or updated
+                    else "unchanged"
+                )
+                dataset_id = register_dataset(cursor, self.run_id, dataset, operation)
+            elif existed:
+                dataset_id = register_dataset(cursor, self.run_id, dataset, "unchanged")
+            for _, target, metadata, is_source in targets:
+                register_file(
+                    cursor,
+                    self.run_id,
+                    target,
+                    dataset_id if is_source else None,
+                    metadata,
+                )
+            table = sql.Identifier(f"{dataset.lower()}__metadata")
+            cursor.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
+            cursor.execute(
+                sql.SQL("CREATE TABLE {} ({} TIMESTAMPTZ NOT NULL)").format(
+                    table, sql.Identifier(timestamp_column)
+                )
+            )
+            cursor.execute(
+                sql.SQL("INSERT INTO {} ({}) VALUES (now())").format(
+                    table, sql.Identifier(timestamp_column)
+                )
+            )
+            complete_run(cursor, self.run_id)

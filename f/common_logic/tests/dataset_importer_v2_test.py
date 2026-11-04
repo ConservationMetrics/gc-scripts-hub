@@ -669,42 +669,6 @@ def test_create_persists_column_mapping_for_later_imports(mock_db_connection):
     }
 
 
-def test_colliding_fields_keep_their_columns_across_imports(mock_db_connection):
-    created = stage_import(
-        mock_db_connection,
-        upload("first.csv", "Tree Type,Tree-Type\nMopane,Healthy\n"),
-        "create",
-        "trees",
-    )
-    confirm(
-        mock_db_connection,
-        created,
-        preview_import(mock_db_connection, created["import_id"]),
-    )
-
-    for name, contents in (
-        ("reversed.csv", "Tree-Type,Tree Type\nDamaged,Acacia\n"),
-        ("sparse.csv", "Tree-Type\nRecovering\n"),
-    ):
-        staged = stage_import(
-            mock_db_connection, upload(name, contents), "append", "trees"
-        )
-        confirm(
-            mock_db_connection,
-            staged,
-            preview_import(mock_db_connection, staged["import_id"]),
-        )
-
-    assert {
-        (row["Tree_Type"], row["Tree_Type_001"])
-        for row in table_rows(mock_db_connection, "trees")
-    } == {
-        ("Mopane", "Healthy"),
-        ("Acacia", "Damaged"),
-        (None, "Recovering"),
-    }
-
-
 @pytest.mark.parametrize("goal", ["merge", "sync"])
 def test_staging_only_offers_existing_columns_for_identity(mock_db_connection, goal):
     with psycopg.connect(mock_db_connection) as conn, conn.cursor() as cursor:

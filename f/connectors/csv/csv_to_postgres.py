@@ -37,9 +37,6 @@ def main(
     destination_action: Literal["create_new_dataset", "use_existing_dataset"]
     | None = None,
     existing_db_table_name: DynSelect_existing_db_table_name | None = None,
-    atomic: bool = False,
-    connection=None,
-    return_counts: bool = False,
 ):
     """
     Import CSV data into PostgreSQL table.
@@ -70,12 +67,6 @@ def main(
         that already resolved the table name.
     existing_db_table_name : str, optional
         Public table to write into when using an existing dataset.
-    atomic : bool, optional
-        Roll back and raise if any row cannot be written.
-    connection : psycopg Connection, optional
-        Caller-owned connection used for the data write.
-    return_counts : bool, optional
-        Return the inserted and updated row counts for internal callers.
     """
     if destination_action is not None:
         db_table_name = resolve_db_table_name(
@@ -91,17 +82,10 @@ def main(
         reverse_properties_separated_by=reverse_properties_separated_by,
         sep_policy=sep_policy,
     )
-    result = db_writer.handle_output(
-        transformed_csv_data,
-        atomic=atomic,
-        connection=connection,
-        return_counts=return_counts,
-    )
+    db_writer.handle_output(transformed_csv_data)
 
     if delete_csv_file:
         delete_csv_file(csv_path)
-
-    return result if return_counts else None
 
 
 def transform_csv_data(csv_path, id_column=None):

@@ -9,6 +9,7 @@ import responses
 from psycopg import connect, sql
 
 from f.common_logic.db_operations import USE_EXISTING_DATASET
+from f.common_logic import ingest as ingest_module
 from f.connectors.gbif import (
     gbif_check_download,
     gbif_pull_occurrences,
@@ -135,7 +136,7 @@ def test_pull_imports_and_upserts_enriched_real_archive(
     mocked_responses.add(
         responses.GET, server_responses.ARCHIVE_URL, body=archive_bytes
     )
-    with caplog.at_level(logging.INFO, logger="f.connectors.gbif.gbif_pull_occurrences"):
+    with caplog.at_level(logging.INFO, logger="f.common_logic.ingest"):
         result = gbif_pull_occurrences.main(
             download_key=server_responses.DOWNLOAD_KEY,
             db=pg_database,
@@ -145,15 +146,15 @@ def test_pull_imports_and_upserts_enriched_real_archive(
     assert result["record_count"] == 852
     destination = tmp_path / "gbif_occurrences"
     assert (
-        f"GBIF archive saved to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}"
+        f"Saved file to {destination / f'{server_responses.DOWNLOAD_KEY}.zip'}"
         in caplog.text
     )
     assert (
-        f"GBIF occurrence CSV saved to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'} (852 records)"
+        f"Saved file to {destination / f'{server_responses.DOWNLOAD_KEY}.csv'}"
         in caplog.text
     )
     assert (
-        f"GBIF provenance metadata saved to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}"
+        f"Saved file to {destination / f'{server_responses.DOWNLOAD_KEY}.json'}"
         in caplog.text
     )
     with connect(**pg_database) as connection, connection.cursor() as cursor:
@@ -245,7 +246,7 @@ def test_failed_database_write_records_failed_run_without_dataset(
     def fail(*args, **kwargs):
         raise RuntimeError("database write failed")
 
-    monkeypatch.setattr(gbif_pull_occurrences, "save_csv_to_postgres", fail)
+    monkeypatch.setattr(ingest_module.StructuredDBWriter, "handle_output", fail)
     with pytest.raises(RuntimeError, match="database write failed"):
         gbif_pull_occurrences.main(
             download_key=server_responses.DOWNLOAD_KEY,
@@ -285,7 +286,7 @@ def test_registry_failure_rolls_back_dataset_write(
     def fail(*args, **kwargs):
         raise RuntimeError("registry failure")
 
-    monkeypatch.setattr(gbif_pull_occurrences, "register_file", fail)
+    monkeypatch.setattr(ingest_module, "register_file", fail)
     with pytest.raises(RuntimeError, match="registry failure"):
         gbif_pull_occurrences.main(
             download_key=server_responses.DOWNLOAD_KEY,
@@ -439,7 +440,7 @@ def test_enrich_csv_keeps_keys_when_registry_lookup_fails(
         json={"key": server_responses.PUBLISHING_ORG_KEY},
     )
 
-    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
+    with caplog.at_level(logging.WARNING, logger="f.common_logic.ingest"):
         summary = gbif_pull_occurrences._enrich_csv(source_path=source, output_path=tmp_path / "enriched.csv")
 
     row = next(csv.DictReader((tmp_path / "enriched.csv").open(encoding="utf-8")))
@@ -464,7 +465,7 @@ def test_registry_enrichment_stops_at_deadline(monkeypatch, caplog):
     monkeypatch.setattr(gbif_pull_occurrences, "monotonic", lambda: next(lookup_times))
     monkeypatch.setattr(gbif_pull_occurrences, "_registry_title", registry_title)
 
-    with caplog.at_level(logging.WARNING, logger="f.connectors.gbif.gbif_pull_occurrences"):
+    with caplog.at_level(logging.WARNING, logger="f.common_logic.ingest"):
         dataset_titles, publishing_org_titles = gbif_pull_occurrences._resolve_registry_titles(
             dataset_keys={"dataset-1", "dataset-2"},
             publishing_org_keys={"organization-1", "organization-2"},

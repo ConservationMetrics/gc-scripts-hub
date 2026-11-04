@@ -13,9 +13,7 @@ from psycopg import Error, connect, errors, sql
 
 from f.common_logic.identifier_utils import (
     normalize_identifier,
-    sanitize_sql_columns,
     sanitize_sql_message,
-    source_fields,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -796,29 +794,19 @@ class StructuredDBWriter:
                 existing_mappings = {}
 
             rows = []
-            submissions = list(submissions)
-            original_to_sql = dict(existing_mappings)
-            original_to_sql.update(
-                sanitize_sql_columns(
-                    source_fields(submissions),
-                    existing_mappings,
-                    reverse_properties_separated_by=self.reverse_separator,
-                    str_replace=self.str_replace,
-                    sep_policy=self.sep_policy,
-                )
-            )
+            original_to_sql = {}
 
             # Rename submissions' keys for compatability as (non-duplicate) SQL columns
             for submission in submissions:
                 sanitized, updated = sanitize_sql_message(
                     submission,
-                    original_to_sql,
+                    existing_mappings,
                     reverse_properties_separated_by=self.reverse_separator,
                     str_replace=self.str_replace,
                     sep_policy=self.sep_policy,
                 )
                 rows.append((sanitized, existing_mappings))
-                original_to_sql = updated
+                original_to_sql.update(updated)
 
             missing_map_keys = set()
             missing_field_keys = set()
