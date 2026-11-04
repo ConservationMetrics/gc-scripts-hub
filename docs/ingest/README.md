@@ -1,10 +1,9 @@
 # Ingest
 
 `Ingest` helps connectors save files to the datalake, write data to the
-warehouse, and record what happened in the Registry. GBIF is the first
-connector to use it.
+warehouse, and record what happened in the Registry.
 
-The connector still fetches and prepares the data. `Ingest` takes care of
+The connector fetches and prepares the data. `Ingest` takes care of
 saving the results and updating the Registry. The Registry tables need to be
 installed separately before you run the connector.
 
@@ -33,8 +32,8 @@ are added.
 
 Use `dataset_source=True` for files that supply the dataset, such as the
 original archive and the CSV. Other files, like the provenance JSON, are
-recorded as outputs of the run. The `timestamp_column` argument keeps GBIF's
-existing import-time table working for its current consumers.
+recorded as outputs of the run. The `timestamp_column` argument names the
+import-time column in the dataset's `<table_name>__metadata` table.
 
 ## If an import fails
 
@@ -45,9 +44,9 @@ can remain on disk after a failed import.
 An existing Registry file needs a checksum before it can be replaced. If it
 has none, the import stops so we don't guess whether its contents changed.
 
-## Where we're starting
+## File locations
 
-This version supports GBIF's CSV import. Connectors still choose filenames,
-and `Ingest` doesn't yet follow files moved or renamed through the file
-browser. Dataset Importer v2 and additional import strategies can be brought
-into the shared code as we migrate more connectors.
+Connectors choose filenames. `Ingest` writes them beneath
+`attachment_root/<table_name>` and records paths relative to the configured
+datalake root. It resolves destinations from these names, so moving or
+renaming a registered file does not redirect subsequent connector writes.
