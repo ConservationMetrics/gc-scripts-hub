@@ -1,7 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
-from f.common_logic.date_utils import calculate_cutoff_date
+import pytest
+
+from f.common_logic.date_utils import calculate_cutoff_date, parse_observation_date
 
 
 @patch("f.common_logic.date_utils.datetime")
@@ -38,4 +40,36 @@ def test_calculate_cutoff_date_with_none():
     """Test calculate_cutoff_date with None returns None"""
     result = calculate_cutoff_date(max_months_lookback=None)
     assert result is None
+
+
+@pytest.mark.parametrize(
+    "observation_date, match",
+    [
+        ("2020-1-21", "YYYY-MM-DD"),
+        ("2020/01/21", "YYYY-MM-DD"),
+        ("21-01-2020", "YYYY-MM-DD"),
+        ("", "YYYY-MM-DD"),
+        (None, "YYYY-MM-DD"),
+        ("2020-02-31", "real calendar date"),
+    ],
+)
+def test_invalid_observation_date(observation_date, match):
+    with pytest.raises(ValueError, match=match):
+        parse_observation_date(observation_date)
+
+
+def test_parse_observation_date_bounds():
+    assert parse_observation_date("  2020-01-21  ") == date(2020, 1, 21)
+    assert parse_observation_date("1799-12-31") == date(1799, 12, 31)
+    today = date.today()
+    assert parse_observation_date(today.isoformat()) == today
+    with pytest.raises(ValueError, match="future"):
+        parse_observation_date((today + timedelta(days=1)).isoformat())
+
+
+def test_parse_observation_date_earliest():
+    earliest = date(1800, 1, 1)
+    assert parse_observation_date("1800-01-01", earliest=earliest) == earliest
+    with pytest.raises(ValueError, match="on or after 1800-01-01"):
+        parse_observation_date("1799-12-31", earliest=earliest)
 

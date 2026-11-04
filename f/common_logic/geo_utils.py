@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import re
 import tempfile
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from pyproj import Geod
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 _WGS84_GEOD = Geod(ellps="WGS84")
+_LON_LAT_RE = re.compile(r"^-?[0-9]+(?:\.[0-9]+)?\s*,\s*-?[0-9]+(?:\.[0-9]+)?$")
 
 
 def is_valid_longitude_latitude(longitude: float, latitude: float) -> bool:
@@ -19,6 +21,60 @@ def is_valid_longitude_latitude(longitude: float, latitude: float) -> bool:
         and -180 <= longitude <= 180
         and -90 <= latitude <= 90
     )
+
+
+def parse_lon_lat(lon_lat: str | None) -> tuple[float, float]:
+    """Parse ``"lon, lat"`` and reject values outside geographic bounds.
+
+    Parameters
+    ----------
+    lon_lat : str or None
+        Longitude and latitude separated by a comma, for example
+        ``"-74.5263, 41.2833"``.
+
+    Returns
+    -------
+    tuple of float
+        ``(longitude, latitude)``.
+
+    Raises
+    ------
+    ValueError
+        If the value is not two numbers, longitude is outside -180 to 180,
+        or latitude is outside -90 to 90.
+    """
+    text = lon_lat.strip() if isinstance(lon_lat, str) else ""
+    if not _LON_LAT_RE.fullmatch(text):
+        raise ValueError('lon_lat must be "lon, lat" with numeric values only.')
+    lon_text, lat_text = (part.strip() for part in text.split(",", 1))
+    longitude = float(lon_text)
+    latitude = float(lat_text)
+    if not is_valid_longitude_latitude(longitude, latitude):
+        if not -180 <= longitude <= 180:
+            raise ValueError("longitude must be between -180 and 180.")
+        raise ValueError("latitude must be between -90 and 90.")
+    return longitude, latitude
+
+
+def geojson_point(longitude: float | None, latitude: float | None) -> dict | None:
+    """Return a GeoJSON Point, or None when either coordinate is missing.
+
+    Parameters
+    ----------
+    longitude : float or None
+        WGS84 longitude. Stored first in GeoJSON coordinate order.
+    latitude : float or None
+        WGS84 latitude.
+
+    Returns
+    -------
+    dict or None
+        ``{"type": "Point", "coordinates": [longitude, latitude]}``, or None
+        when either value is None. ``0`` is a real coordinate and is kept.
+    """
+    if longitude is None or latitude is None:
+        return None
+    return {"type": "Point", "coordinates": [longitude, latitude]}
 
 
 def bounding_box_to_wkt(

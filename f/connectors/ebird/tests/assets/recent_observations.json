@@ -1,0 +1,47 @@
+[
+  {
+    "speciesCode": "hoocro1",
+    "comName": "Hooded Crow",
+    "sciName": "Corvus cornix",
+    "locId": "L7884500",
+    "locName": "улица Старикова, Chundzha KZ-Almaty (43.5309,79.4551)",
+    "obsDt": "2020-01-21 16:35",
+    "howMany": 1,
+    "lat": 43.530936,
+    "lng": 79.455132,
+    "obsValid": true,
+    "obsReviewed": false,
+    "locationPrivate": true,
+    "subId": "S63619695"
+  },
+  {
+    "speciesCode": "eutspa",
+    "comName": "Eurasian Tree Sparrow",
+    "sciName": "Passer montanus",
+    "locId": "L10233102",
+    "locName": "Ahmet Yesevi University",
+    "obsDt": "2020-01-21 09:03",
+    "howMany": 1,
+    "lat": 43.2995121,
+    "lng": 68.3065226,
+    "obsValid": true,
+    "obsReviewed": false,
+    "locationPrivate": false,
+    "subId": "S63615092"
+  },
+  {
+    "speciesCode": "y00764",
+    "comName": "House/Eurasian Tree Sparrow",
+    "sciName": "Passer domesticus/montanus",
+    "locId": "L7884500",
+    "locName": "улица Старикова, Chundzha KZ-Almaty (43.5309,79.4551)",
+    "obsDt": "2020-01-08 14:30",
+    "howMany": 15,
+    "lat": 43.530936,
+    "lng": 79.455132,
+    "obsValid": true,
+    "obsReviewed": false,
+    "locationPrivate": true,
+    "subId": "S63158588"
+  }
+]
