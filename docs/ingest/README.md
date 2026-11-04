@@ -1,9 +1,14 @@
 # Ingest
 
-`f.common_logic.ingest.Ingest` provides the connector-facing boundary for the
-GBIF occurrence import. It records a registry run, publishes files within the
-configured datalake, and writes a CSV dataset and its registry metadata.
-Deploy the registry schema separately before running a connector that uses it.
+`Ingest` helps connectors save files to the datalake, write data to the
+warehouse, and record what happened in the Registry. GBIF is the first
+connector to use it.
+
+The connector still fetches and prepares the data. `Ingest` takes care of
+saving the results and updating the Registry. The Registry tables need to be
+installed separately before you run the connector.
+
+Here's what the GBIF import looks like once its files are ready:
 
 ```python
 from f.common_logic.ingest import Ingest
@@ -21,15 +26,28 @@ with Ingest(db, "gbif_occurrences", attachment_root) as ingest:
     )
 ```
 
-`write_file` queues a staged file; `write_dataset` publishes the queued files
-and merges the CSV by its identity column. The `dataset_source` flag controls
-whether the file is linked to the dataset. The timestamp column preserves the
-existing GBIF metadata sidecar. The registry and warehouse database changes
-commit together. Files are replaced before that transaction and can remain on
-disk after failure; retries and reconciliation are necessary. Existing registry
-files without checksums must be backfilled before they can be replaced.
+`write_file` adds a prepared file to the list of files to save. Nothing is
+published yet. `write_dataset` saves those files and imports the CSV, matching
+existing rows by the `identity` column. Matching rows are updated; new rows
+are added.
 
-File paths currently derive from connector-provided names. The future registry
-identity mapping needed to respect file-browser renames is not implemented.
-The Dataset Importer v2 review workflow and other write strategies remain
-separate; this interface currently implements only GBIF's merge behavior.
+Use `dataset_source=True` for files that supply the dataset, such as the
+original archive and the CSV. Other files, like the provenance JSON, are
+recorded as outputs of the run. The `timestamp_column` argument keeps GBIF's
+existing import-time table working for its current consumers.
+
+## If an import fails
+
+Warehouse data and Registry updates are saved in one database transaction.
+If either fails, both are rolled back. Files are saved first, though, so they
+can remain on disk after a failed import.
+
+An existing Registry file needs a checksum before it can be replaced. If it
+has none, the import stops so we don't guess whether its contents changed.
+
+## Where we're starting
+
+This version supports GBIF's CSV import. Connectors still choose filenames,
+and `Ingest` doesn't yet follow files moved or renamed through the file
+browser. Dataset Importer v2 and additional import strategies can be brought
+into the shared code as we migrate more connectors.
