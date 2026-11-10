@@ -6,7 +6,7 @@ semver: 2.0.0
 ---
 
 # Dataset Importer V2
- 
+
 This is the original feature spec written before implementation, it defines all the key acceptance criteria for feature completeness. It is preserved here for record-keeping and to document our original intent. If we change any core requirements in the importer app we should update this spec as source of truth.
 
 # Background
@@ -16,23 +16,21 @@ A Dataset Importer app was already created as a multi-step Windmill App. It was 
 ## Jobs to be Done
 
 - **I have an old `.geojson` file of bird observations, and I want to view them on a satellite basemap so I can see if any sightings overlap with my tribal territory**
-    
-    The file contains 1,000 features which are species observations captured with the Mapeo app as geojson. I need a way to upload that data so I can view it in Explorer, as-is.
-    
+
+  The file contains 1,000 features which are species observations captured with the Mapeo app as geojson. I need a way to upload that data so I can view it in Explorer, as-is.
+
 - **I want to understand which observations changed since my last Kobo field survey.**
-    
-    I exported the same Kobo project twice. The second export contains mostly the same observations, a few new sightings, and edits to some notes and locations. I need to compare the exports without counting unchanged observations as new sightings. The features do not have stable identifiers.
-    
+
+  I exported the same Kobo project twice. The second export contains mostly the same observations, a few new sightings, and edits to some notes and locations. I need to compare the exports without counting unchanged observations as new sightings. The features do not have stable identifiers.
+
 - **I want to create and upload dummy data during a CoMapeo training workshop, and I want that dummy data to be deleted when I re-upload the real dataset at a later date**
-    
-    From Rudo:
-    
-    > One of our users just brought this up on a call. Here is a user story. CoMapeo projects often start with a training workshop, where a bunch of dummy / training data is generated. Most of the time, this is unwanted data that ends up being deleted in the app. If Guardian Connector has already received and written this training data before the data was deleted, then the next time the script runs, it could detect the change upstream and remove the records from the dataset.
-    [https://github.com/ConservationMetrics/gc-scripts-hub/issues/288#issuecomment-5681792735](https://github.com/ConservationMetrics/gc-scripts-hub/issues/288#issuecomment-5681792735)
-    > 
+
+  From Rudo:
+
+  > One of our users just brought this up on a call. Here is a user story. CoMapeo projects often start with a training workshop, where a bunch of dummy / training data is generated. Most of the time, this is unwanted data that ends up being deleted in the app. If Guardian Connector has already received and written this training data before the data was deleted, then the next time the script runs, it could detect the change upstream and remove the records from the dataset.
+  > [https://github.com/ConservationMetrics/gc-scripts-hub/issues/288#issuecomment-5681792735](https://github.com/ConservationMetrics/gc-scripts-hub/issues/288#issuecomment-5681792735)
+
 - **I’m editing data manually externally in QGIS, importing to the data warehouse, for long term storage and to visualize in Explorer as a map view**
-    
-    
 
 # Feature Components
 
@@ -41,21 +39,21 @@ A Dataset Importer app was already created as a multi-step Windmill App. It was 
 The feature is comprised of a multi-step upload journey. The user navigates between steps with “Next” and “Back buttons”. The Next button is disabled until valid input is provided. Some steps are required, and some steps are conditional.
 
 1. What’s your goal? (required)
-    1. **Create** a new dataset
-    2. **Append** to an existing dataset. Do not match, update, nor remove any existing records.
-    3. **Sync** an existing dataset. Match and update records, add new records, and **remove** **existing records** not present in the import.
-    4. **Merge** into an existing dataset. Match and update records, add new records, and **keep** **existing** **records** not present in the import.
+   1. **Create** a new dataset
+   2. **Append** to an existing dataset. Do not match, update, nor remove any existing records.
+   3. **Sync** an existing dataset. Match and update records, add new records, and **remove** **existing records** not present in the import.
+   4. **Merge** into an existing dataset. Match and update records, add new records, and **keep** **existing** **records** not present in the import.
 2. Name your new dataset (conditional on `1A`)
 3. Select target dataset (conditional on `1B OR 1C OR 1D`)
 4. Upload your data (required)
 5. Choose record identity (conditional on `1C or 1D`)
-    1. Select one or more uniqueness column(s), in order.
-    2. Choose update policy for records that exist in both datasets.
-        1. Imported records win (default)
-        2. Existing records win
+   1. Select one or more uniqueness column(s), in order.
+   2. Choose update policy for records that exist in both datasets.
+      1. Imported records win (default)
+      2. Existing records win
 6. Review & confirm changes
-    1. Accept
-    2. Go back
+   1. Accept
+   2. Go back
 
 ```yaml
 CORE:
@@ -146,7 +144,7 @@ IDENTITY:
   6: Every selected component is required in every uploaded row; all one to three components must match for two identities to be equal.
   7: Display actual source-to-stored mappings in identity dropdown labels, for example `_id → source_id`; selection values remain original source names.
   7-1: Explain that uploaded `_id` does not select the target's internal Postgres `_id`; reuse actual mappings and preserve collision handling.
-  
+
 POLICY:
 	1: I must select from two options; 'Imported records win' or 'Existing records win'
 	2: The default selection is 'Imported records win'
@@ -177,7 +175,6 @@ VALIDATION:
   7: Apply identity rules after existing parsing, preserving converter behavior including Excel text trimming. Equality uses existing stored text without new trimming, case folding, or timestamp conversion.
   8: Errors identify the original selected field and bounded staged ordinals for incomplete identities, without record contents. Validation failures cause no target changes.
   9: Create and Append perform no identity matching or new identity validation.
-
 ```
 
 ```yaml
@@ -202,10 +199,10 @@ REVIEW:
 ```yaml
 # codify how merge/update/append goals are treated for rows with matching identity
 MATCH:
-  1: | 
+  1: |
     If my goal is Append, identity is ignored
     I may insert duplicate records, even if they have an id column.
-  2: | 
+  2: |
     If my goal is Sync, matches are resolved based on my Update Policy [importer.POLICY.1]
     Existing rows without a match are removed.
   3: |
@@ -243,23 +240,23 @@ LIMITS:
 ## Data
 
 ```yaml
-  DATA:
-    1: After a successful import, the original file is saved in the existing 'datalake'
-    1-1: Unfinished uploads are kept temporarily for review or retry, then cleaned up after 24 hours when the importer runs again
-    1-2: While a new dataset is staged, another import cannot create a dataset with the same name
-    2: Perform import validation, change counting, and record matching in PostgreSQL using staging tables and SQL operations; do not load either the imported dataset or target dataset into application memory for comparison.
-    3: Spatial imports preserve geometry type and spatial position
-    3-1: If a tabular file has longitude and latitude columns, use them to place records on the map; warn me when coordinates are incomplete or invalid
-    3-2: The preview shows how many imported records have valid map geometry
-    3-3: GeoJSON GeometryCollection is not supported; show a helpful error instead of importing it
-    4: Source column names are converted to stable, SQL-safe stored column names per established convention.
-    4-1: If source column mapping does not exist for a dataset, it is created
-    4-2: If two source column names would become the same stored column name, both fields are imported as distinct columns and stay distinct on later imports.
-    4-3: If a dataset already has a column-name map, imports reuse it so the same fields stay connected
-    4-4: Internal Postgres `_id` is separate from uploaded `_id`, normally stored as `source_id`; existing mappings and collisions may produce another stored name.
-    4-5: Imports do not repair missing identities or automatically backfill source IDs.
-    5: Nested or multi-value source fields are retained as structured text
-    6: Imports are all-or-nothing, if it fails, no data is written to the target dataset
+DATA:
+  1: After a successful import, the original file is saved in the existing 'datalake'
+  1-1: Unfinished uploads are kept temporarily for review or retry, then cleaned up after 24 hours when the importer runs again
+  1-2: While a new dataset is staged, another import cannot create a dataset with the same name
+  2: Perform import validation, change counting, and record matching in PostgreSQL using staging tables and SQL operations; do not load either the imported dataset or target dataset into application memory for comparison.
+  3: Spatial imports preserve geometry type and spatial position
+  3-1: If a tabular file has longitude and latitude columns, use them to place records on the map; warn me when coordinates are incomplete or invalid
+  3-2: The preview shows how many imported records have valid map geometry
+  3-3: GeoJSON GeometryCollection is not supported; show a helpful error instead of importing it
+  4: Source column names are converted to stable, SQL-safe stored column names per established convention.
+  4-1: If source column mapping does not exist for a dataset, it is created
+  4-2: If two source column names would become the same stored column name, both fields are imported as distinct columns and stay distinct on later imports.
+  4-3: If a dataset already has a column-name map, imports reuse it so the same fields stay connected
+  4-4: Internal Postgres `_id` is separate from uploaded `_id`, normally stored as `source_id`; existing mappings and collisions may produce another stored name.
+  4-5: Imports do not repair missing identities or automatically backfill source IDs.
+  5: Nested or multi-value source fields are retained as structured text
+  6: Imports are all-or-nothing, if it fails, no data is written to the target dataset
 ```
 
 # Out of scope / won’t ship
