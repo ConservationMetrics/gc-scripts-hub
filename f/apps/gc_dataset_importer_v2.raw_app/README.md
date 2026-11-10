@@ -3,7 +3,9 @@
 React 19 Windmill full-code app for Dataset Importer v2.
 
 ## Goals
+
 Support more complex 'import strategies', where v1 only supported basic merges.
+
 - **Create** creates a dataset from the uploaded records.
 - **Append** inserts every uploaded record without matching.
 - **Merge** adds unmatched records and retains existing unmatched records.

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# Dependency lockfile and Windmill-managed backend files and metadata.
+package-lock.json
+backend/
+raw_app.yaml
